@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pricing | Apex Aviation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="pages.css" />
+</head>
+<body>
+
+  <header class="nav" id="nav">
+    <div class="container nav__inner">
+      <a href="index.html" class="nav__logo">
+        <svg width="36" height="32" viewBox="0 0 36 32" fill="none">
+          <path d="M18 1L3 28h5.5l2-4h15l2 4H33L18 1z" fill="#D4A527"/>
+          <path d="M18 8l5.5 11h-11L18 8z" fill="#080F1E"/>
+          <path d="M4 19.5L30 14l2 2.5L6 22z" fill="#B8891A"/>
+          <path d="M4 19.5L30 14l1 1.2L5 21.2z" fill="#D4A527"/>
+        </svg>
+        <span class="nav__logo-text"><strong>APEX</strong><small>AVIATION</small></span>
+      </a>
+      <nav class="nav__links">
+        <a href="index.html">Home</a>
+        <a href="programs.html">Programs</a>
+        <a href="fleet.html">Fleet</a>
+        <a href="about.html">About</a>
+        <a href="pricing.html" class="active">Pricing</a>
+        <a href="contact.html" class="btn btn--nav">Book a Flight</a>
+      </nav>
+      <button class="nav__hamburger" id="hamburger" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <div class="nav__mobile" id="mobileMenu">
+      <a href="index.html">Home</a>
+      <a href="programs.html">Programs</a>
+      <a href="fleet.html">Fleet</a>
+      <a href="about.html">About</a>
+      <a href="pricing.html">Pricing</a>
+      <a href="contact.html">Book a Flight</a>
+    </div>
+  </header>
+
+  <!-- PAGE HERO -->
+  <section class="page-hero">
+    <div class="page-hero__bg-text">PRICING</div>
+    <div class="container page-hero__inner">
+      <div class="section__eyebrow">Transparent Pricing</div>
+      <h1 class="page-hero__title">Invest in Your<br /><span>Future</span></h1>
+      <p class="page-hero__sub">No hidden fees. Straightforward rates so you can plan your training journey with confidence. Financing options available.</p>
+    </div>
+  </section>
+
+  <!-- PROGRAM PACKAGES -->
+  <section class="section">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Program Packages</div>
+        <h2 class="section__title">Training Packages</h2>
+        <p class="section__desc">All-inclusive packages covering aircraft rental, instructor fees, and ground school. Estimates based on minimum required hours.</p>
+      </div>
+      <div class="pricing__grid">
+
+        <div class="pricing-card">
+          <div class="pricing-card__header">
+            <h3>Discovery Flight</h3>
+            <div class="pricing-card__price"><span>$199</span></div>
+            <p>Your first time at the controls</p>
+          </div>
+          <ul>
+            <li>60-minute flight lesson</li>
+            <li>Pre-flight briefing</li>
+            <li>You fly the plane!</li>
+            <li>Logbook entry included</li>
+            <li>Applies toward PPL training</li>
+          </ul>
+          <a href="contact.html" class="btn btn--outline btn--full">Book Now</a>
+        </div>
+
+        <div class="pricing-card pricing-card--featured">
+          <div class="pricing-card__header">
+            <h3>Private Pilot</h3>
+            <div class="pricing-card__price"><span>$12,500</span><small>est.</small></div>
+            <p>Complete PPL package</p>
+          </div>
+          <ul>
+            <li>40+ dual flight hours</li>
+            <li>Ground school (online + in-person)</li>
+            <li>Aircraft rental included</li>
+            <li>Instructor fees included</li>
+            <li>Written exam prep</li>
+            <li>Checkride prep &amp; support</li>
+          </ul>
+          <a href="contact.html" class="btn btn--primary btn--full">Get Started</a>
+        </div>
+
+        <div class="pricing-card">
+          <div class="pricing-card__header">
+            <h3>Instrument Rating</h3>
+            <div class="pricing-card__price"><span>$9,800</span><small>est.</small></div>
+            <p>IFR add-on for PPL holders</p>
+          </div>
+          <ul>
+            <li>50 hours instrument time</li>
+            <li>Simulator sessions included</li>
+            <li>Garmin GTN 650 training</li>
+            <li>IFR written exam prep</li>
+            <li>Checkride preparation</li>
+          </ul>
+          <a href="contact.html" class="btn btn--outline btn--full">Get Started</a>
+        </div>
+
+        <div class="pricing-card">
+          <div class="pricing-card__header">
+            <h3>Commercial Pilot</h3>
+            <div class="pricing-card__price"><span>$24,000</span><small>est.</small></div>
+            <p>Full CPL package</p>
+          </div>
+          <ul>
+            <li>250 total flight hours</li>
+            <li>Commercial maneuvers training</li>
+            <li>Complex aircraft endorsement</li>
+            <li>Multi-engine option available</li>
+            <li>Career placement support</li>
+          </ul>
+          <a href="contact.html" class="btn btn--outline btn--full">Get Started</a>
+        </div>
+
+      </div>
+      <p class="pricing__note">* Package estimates assume minimum FAA-required hours. Actual costs vary by individual student progress. All packages include aircraft rental, instructor fees, and applicable ground instruction.</p>
+    </div>
+  </section>
+
+  <!-- HOURLY RATES TABLE -->
+  <section class="section section--light">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">À La Carte</div>
+        <h2 class="section__title">Hourly Rates</h2>
+        <p class="section__desc">Prefer to pay as you go? All aircraft and instructor time is available at the following hourly rates.</p>
+      </div>
+
+      <div class="rates-table-wrap">
+        <table class="rates-table">
+          <thead>
+            <tr>
+              <th>Aircraft / Service</th>
+              <th>Type</th>
+              <th>Notes</th>
+              <th>Rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Cessna 172 Skyhawk</strong></td>
+              <td>Single Engine</td>
+              <td>Garmin G1000 · Wet rate (fuel included)</td>
+              <td>$185/hr</td>
+            </tr>
+            <tr>
+              <td><strong>Piper PA-28 Cherokee</strong></td>
+              <td>Single Engine IFR</td>
+              <td>Garmin GTN 650 · Wet rate</td>
+              <td>$195/hr</td>
+            </tr>
+            <tr>
+              <td><strong>Piper PA-44 Seminole</strong></td>
+              <td>Multi-Engine</td>
+              <td>Garmin G500 · Wet rate</td>
+              <td>$320/hr</td>
+            </tr>
+            <tr>
+              <td><strong>Flight Simulator (AATD)</strong></td>
+              <td>FAA-Approved Sim</td>
+              <td>G1000 cockpit · IFR hours count</td>
+              <td>$65/hr</td>
+            </tr>
+            <tr>
+              <td><strong>Certified Flight Instructor (CFI)</strong></td>
+              <td>Dual Instruction</td>
+              <td>Per flight hour with instructor</td>
+              <td>$75/hr</td>
+            </tr>
+            <tr>
+              <td><strong>Ground Instruction</strong></td>
+              <td>Ground School</td>
+              <td>One-on-one ground lesson</td>
+              <td>$60/hr</td>
+            </tr>
+            <tr>
+              <td><strong>Checkride Prep Flight</strong></td>
+              <td>Stage Check</td>
+              <td>Pre-checkride evaluation flight</td>
+              <td>$275 flat</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="pricing__note" style="text-align:left;margin-bottom:8px">* All aircraft rates are "wet" — fuel is included. No fuel surcharges or hidden fees.</p>
+      <p class="pricing__note" style="text-align:left">* Block time discounts available: purchase 10+ hours in advance and save 5%. Ask us for details.</p>
+    </div>
+  </section>
+
+  <!-- FINANCING -->
+  <section class="section">
+    <div class="container">
+      <div class="financing-section">
+        <div>
+          <h3>We Make Training Accessible</h3>
+          <p>Flight training is an investment in your future, and we never want cost to be the reason you don't pursue your dream. We work with approved aviation lending partners to offer flexible financing options for all programs.</p>
+          <ul class="financing-features">
+            <li>Loans from $2,500 to $100,000</li>
+            <li>Terms from 12 to 84 months</li>
+            <li>Rates as low as 6.99% APR (subject to credit approval)</li>
+            <li>No prepayment penalties</li>
+            <li>GI Bill &amp; VA education benefits accepted</li>
+            <li>Quick online application — decision in minutes</li>
+          </ul>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(212,165,39,0.2);border-radius:12px;padding:28px">
+            <div style="font-size:13px;color:var(--gold);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px">Example Monthly Payment</div>
+            <div style="font-size:36px;font-weight:800;color:var(--white);margin-bottom:4px">~$280<small style="font-size:16px;color:var(--gray-2)">/mo</small></div>
+            <div style="font-size:13px;color:var(--gray-2)">$12,500 PPL package · 60 months · 7.9% APR</div>
+          </div>
+          <a href="contact.html" class="btn btn--primary">Ask About Financing</a>
+          <p style="font-size:12px;color:var(--gray-2);text-align:center">Subject to credit approval. Example is for illustrative purposes only.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="faq-section">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Common Questions</div>
+        <h2 class="section__title">Pricing FAQs</h2>
+      </div>
+      <div class="faq-list">
+        <div class="faq-item">
+          <button class="faq-item__question">
+            What does "wet rate" mean?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>A "wet rate" means fuel is included in the hourly price. You pay the listed rate and there are no separate fuel charges. This makes budgeting simple and predictable. All of our aircraft rental rates are wet.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            Does the package price include the instructor fee?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>Yes — all program package prices include both aircraft rental and CFI instruction fees for dual flight hours. When you're flying solo, the instructor fee obviously doesn't apply. Ground school and written exam prep are also included in packages.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            Why might my actual cost exceed the estimate?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>Package estimates are based on the FAA minimum required hours. Most students require more hours than the minimum — the national average for PPL is 60–70 hours vs. the 40-hour minimum. Weather cancellations, scheduling gaps, and the pace of skill development all affect total cost. We provide honest estimates and will never drag out your training unnecessarily.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            Is there a discount for buying block time upfront?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>Yes. If you purchase 10 or more aircraft hours in advance, you receive a 5% discount on those hours. Block time doesn't expire, so it's a great way to save if you plan to fly regularly. Contact us for details on setting up a block time account.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            Do you accept GI Bill benefits?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>Yes, we are VA-approved and accept GI Bill education benefits for flight training. We work directly with the VA to handle the paperwork on your behalf. Contact us and we'll walk you through the process of applying your benefits to your training program.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-banner section--dark">
+    <div class="container cta-banner__inner">
+      <div class="cta-banner__text">
+        <div class="section__eyebrow">Start for $199</div>
+        <h2>Your First Flight is Just $199</h2>
+        <p>A discovery flight is the lowest-risk way to start. You'll take the controls, experience real flight, and get a feel for whether training is right for you — all for $199 that applies toward your PPL if you continue.</p>
+      </div>
+      <div class="cta-banner__actions">
+        <a href="contact.html" class="btn btn--primary">Book a Discovery Flight</a>
+        <a href="programs.html" class="btn btn--ghost">Explore Programs</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container footer__inner">
+      <div class="footer__brand">
+        <a href="index.html" class="nav__logo">
+          <svg width="30" height="26" viewBox="0 0 36 32" fill="none"><path d="M18 1L3 28h5.5l2-4h15l2 4H33L18 1z" fill="#D4A527"/><path d="M18 8l5.5 11h-11L18 8z" fill="#080F1E"/><path d="M4 19.5L30 14l2 2.5L6 22z" fill="#B8891A"/><path d="M4 19.5L30 14l1 1.2L5 21.2z" fill="#D4A527"/></svg>
+          <span class="nav__logo-text"><strong>APEX</strong><small>AVIATION</small></span>
+        </a>
+        <p>Turning your aviation dreams into reality since 2004. FAA Part 141 Certified Flight School.</p>
+      </div>
+      <div class="footer__links">
+        <div>
+          <h4>Programs</h4>
+          <a href="programs.html#ppl">Private Pilot</a>
+          <a href="programs.html#ifr">Instrument Rating</a>
+          <a href="programs.html#cpl">Commercial Pilot</a>
+          <a href="programs.html#cfi">CFI / CFII</a>
+        </div>
+        <div>
+          <h4>Company</h4>
+          <a href="about.html">About Us</a>
+          <a href="fleet.html">Our Fleet</a>
+          <a href="about.html">Instructors</a>
+          <a href="pricing.html">Pricing</a>
+        </div>
+        <div>
+          <h4>Contact</h4>
+          <a href="tel:5558675309">(555) 867-5309</a>
+          <a href="mailto:info@apexaviation.com">info@apexaviation.com</a>
+          <a href="contact.html">Book a Flight</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <div class="container">
+        <p>&copy; 2024 Apex Aviation. All rights reserved.</p>
+        <p>FAA Certified Part 141 Flight School</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+  <script>
+    document.querySelectorAll('.faq-item__question').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const item = btn.closest('.faq-item');
+        const isOpen = item.classList.contains('open');
+        document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+        if (!isOpen) item.classList.add('open');
+      });
+    });
+  </script>
+</body>
+</html>
