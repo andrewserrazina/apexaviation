@@ -8,14 +8,15 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="pages.css" />
 </head>
 <body>
 
   <!-- NAV -->
   <header class="nav" id="nav">
     <div class="container nav__inner">
-      <a href="#" class="nav__logo">
-        <svg width="36" height="32" viewBox="0 0 36 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <a href="index.html" class="nav__logo">
+        <svg width="36" height="32" viewBox="0 0 36 32" fill="none">
           <path d="M18 1L3 28h5.5l2-4h15l2 4H33L18 1z" fill="#D4A527"/>
           <path d="M18 8l5.5 11h-11L18 8z" fill="#080F1E"/>
           <path d="M4 19.5L30 14l2 2.5L6 22z" fill="#B8891A"/>
@@ -24,22 +25,24 @@
         <span class="nav__logo-text"><strong>APEX</strong><small>AVIATION</small></span>
       </a>
       <nav class="nav__links">
-        <a href="#programs">Programs</a>
-        <a href="#fleet">Fleet</a>
-        <a href="#instructors">Instructors</a>
-        <a href="#pricing">Pricing</a>
-        <a href="#contact" class="btn btn--nav">Book a Discovery Flight</a>
+        <a href="index.html" class="active">Home</a>
+        <a href="programs.html">Programs</a>
+        <a href="fleet.html">Fleet</a>
+        <a href="about.html">About</a>
+        <a href="pricing.html">Pricing</a>
+        <a href="contact.html" class="btn btn--nav">Book a Flight</a>
       </nav>
       <button class="nav__hamburger" id="hamburger" aria-label="Toggle menu">
         <span></span><span></span><span></span>
       </button>
     </div>
     <div class="nav__mobile" id="mobileMenu">
-      <a href="#programs">Programs</a>
-      <a href="#fleet">Fleet</a>
-      <a href="#instructors">Instructors</a>
-      <a href="#pricing">Pricing</a>
-      <a href="#contact">Book a Discovery Flight</a>
+      <a href="index.html">Home</a>
+      <a href="programs.html">Programs</a>
+      <a href="fleet.html">Fleet</a>
+      <a href="about.html">About</a>
+      <a href="pricing.html">Pricing</a>
+      <a href="contact.html">Book a Flight</a>
     </div>
   </header>
 
@@ -51,8 +54,8 @@
       <h1 class="hero__title">Your Aviation<br /><span>Journey Starts Here</span></h1>
       <p class="hero__sub">World-class flight training from discovery flights to commercial certificates. Train with experienced instructors in modern aircraft at Apex Aviation.</p>
       <div class="hero__ctas">
-        <a href="#contact" class="btn btn--primary">Book a Discovery Flight</a>
-        <a href="#programs" class="btn btn--ghost">Explore Programs</a>
+        <a href="contact.html" class="btn btn--primary">Book a Discovery Flight</a>
+        <a href="programs.html" class="btn btn--ghost">Explore Programs</a>
       </div>
       <div class="hero__stats">
         <div class="stat"><span class="stat__num">500+</span><span class="stat__label">Graduates</span></div>
@@ -70,7 +73,7 @@
     </div>
   </section>
 
-  <!-- ABOUT -->
+  <!-- ABOUT TEASER -->
   <section class="about section" id="about">
     <div class="container about__grid">
       <div class="about__image">
@@ -91,7 +94,7 @@
         <ul class="about__list">
           <li>
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Part 141 & Part 61 training pathways
+            Part 141 &amp; Part 61 training pathways
           </li>
           <li>
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -103,14 +106,15 @@
           </li>
           <li>
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Flexible scheduling — evenings & weekends
+            Flexible scheduling — evenings &amp; weekends
           </li>
         </ul>
+        <a href="about.html" class="btn btn--outline" style="margin-top:28px">Learn Our Story</a>
       </div>
     </div>
   </section>
 
-  <!-- PROGRAMS -->
+  <!-- PROGRAMS TEASER -->
   <section class="programs section section--dark" id="programs">
     <div class="container">
       <div class="section__header">
@@ -122,17 +126,17 @@
 
         <div class="program-card">
           <div class="program-card__icon">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" fill="#D4A527"/></svg>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#D4A527"/></svg>
           </div>
           <div class="program-card__level">Beginner</div>
           <h3>Private Pilot License</h3>
-          <p>The foundation of your aviation career. Learn to fly solo, navigate by instruments and landmarks, and earn your PPL in as few as 40 hours.</p>
+          <p>The foundation of your aviation career. Learn to fly solo, navigate by landmarks and instruments, and earn your PPL in as few as 40 hours.</p>
           <ul>
             <li>Minimum 40 flight hours</li>
             <li>Ground school included</li>
             <li>Written &amp; practical exam prep</li>
           </ul>
-          <a href="#contact" class="btn btn--outline">Learn More</a>
+          <a href="programs.html" class="btn btn--outline">Learn More</a>
         </div>
 
         <div class="program-card program-card--featured">
@@ -148,12 +152,12 @@
             <li>Advanced avionics training</li>
             <li>Sim hours count toward total</li>
           </ul>
-          <a href="#contact" class="btn btn--primary">Learn More</a>
+          <a href="programs.html" class="btn btn--primary">Learn More</a>
         </div>
 
         <div class="program-card">
           <div class="program-card__icon">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#D4A527"/></svg>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 3L1 9l11 6 11-6-11-6zM1 15l11 6 11-6M1 9l11 6 11-6" stroke="#D4A527" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
           <div class="program-card__level">Advanced</div>
           <h3>Commercial Pilot</h3>
@@ -163,12 +167,12 @@
             <li>Multi-engine endorsement available</li>
             <li>Career placement support</li>
           </ul>
-          <a href="#contact" class="btn btn--outline">Learn More</a>
+          <a href="programs.html" class="btn btn--outline">Learn More</a>
         </div>
 
         <div class="program-card">
           <div class="program-card__icon">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 3L1 9l11 6 11-6-11-6zM1 15l11 6 11-6M1 9l11 6 11-6" stroke="#D4A527" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="#D4A527" stroke-width="2"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#D4A527" stroke-width="2" stroke-linecap="round"/></svg>
           </div>
           <div class="program-card__level">Instructor</div>
           <h3>CFI / CFII</h3>
@@ -178,20 +182,23 @@
             <li>Lesson plan development</li>
             <li>Checkride preparation</li>
           </ul>
-          <a href="#contact" class="btn btn--outline">Learn More</a>
+          <a href="programs.html" class="btn btn--outline">Learn More</a>
         </div>
 
+      </div>
+      <div style="text-align:center;margin-top:48px">
+        <a href="programs.html" class="btn btn--primary">View All Programs &amp; Curriculum</a>
       </div>
     </div>
   </section>
 
-  <!-- FLEET -->
+  <!-- FLEET TEASER -->
   <section class="fleet section" id="fleet">
     <div class="container">
       <div class="section__header">
         <div class="section__eyebrow">Our Fleet</div>
         <h2 class="section__title">Modern, Well-Maintained Aircraft</h2>
-        <p class="section__desc">Every aircraft in our fleet undergoes rigorous maintenance checks and is equipped with modern avionics for a safe and effective training experience.</p>
+        <p class="section__desc">Every aircraft undergoes rigorous maintenance checks and is equipped with modern avionics for a safe and effective training experience.</p>
       </div>
       <div class="fleet__grid">
 
@@ -218,7 +225,7 @@
           </div>
           <div class="fleet-card__body">
             <h3>Piper PA-28 Cherokee</h3>
-            <p>Low-wing handling characteristics ideal for instrument and cross-country training. Fully IFR equipped.</p>
+            <p>Low-wing handling ideal for instrument and cross-country training. Fully IFR equipped with modern avionics.</p>
             <div class="fleet-card__specs">
               <div><strong>Cruise</strong><span>118 kts</span></div>
               <div><strong>Range</strong><span>520 nm</span></div>
@@ -244,10 +251,13 @@
         </div>
 
       </div>
+      <div style="text-align:center;margin-top:48px">
+        <a href="fleet.html" class="btn btn--outline">Explore the Full Fleet</a>
+      </div>
     </div>
   </section>
 
-  <!-- INSTRUCTORS -->
+  <!-- INSTRUCTORS TEASER -->
   <section class="instructors section section--light" id="instructors">
     <div class="container">
       <div class="section__header">
@@ -277,7 +287,7 @@
           </div>
           <div class="instructor-card__body">
             <h3>Sarah Chen</h3>
-            <div class="instructor-card__title">Instrument & IFR Specialist</div>
+            <div class="instructor-card__title">Instrument &amp; IFR Specialist</div>
             <p>CFI, CFII. 4,200 hours. Specializes in instrument training and glass-cockpit avionics. Airline First Officer.</p>
             <div class="instructor-card__certs">
               <span>CFI</span><span>CFII</span>
@@ -291,7 +301,7 @@
           </div>
           <div class="instructor-card__body">
             <h3>Marcus Webb</h3>
-            <div class="instructor-card__title">Commercial & Multi-Engine</div>
+            <div class="instructor-card__title">Commercial &amp; Multi-Engine</div>
             <p>CFI, MEI. 3,800 hours. Commercial pilot and charter captain. Specializes in accelerated commercial programs.</p>
             <div class="instructor-card__certs">
               <span>CFI</span><span>MEI</span>
@@ -300,171 +310,23 @@
         </div>
 
       </div>
+      <div style="text-align:center;margin-top:48px">
+        <a href="about.html" class="btn btn--outline">Meet the Full Team</a>
+      </div>
     </div>
   </section>
 
-  <!-- PRICING -->
-  <section class="pricing section section--dark" id="pricing">
-    <div class="container">
-      <div class="section__header">
-        <div class="section__eyebrow">Transparent Pricing</div>
-        <h2 class="section__title">Invest in Your Future</h2>
-        <p class="section__desc">No hidden fees. Straightforward pricing so you can plan your training with confidence. Financing options available.</p>
+  <!-- CTA BANNER -->
+  <section class="cta-banner section--dark">
+    <div class="container cta-banner__inner">
+      <div class="cta-banner__text">
+        <div class="section__eyebrow">Start Today</div>
+        <h2>Ready to Take the Controls?</h2>
+        <p>Your first lesson could be this week. Book a discovery flight for just $199 — no experience necessary. We'll take care of the rest.</p>
       </div>
-      <div class="pricing__grid">
-
-        <div class="pricing-card">
-          <div class="pricing-card__header">
-            <h3>Discovery Flight</h3>
-            <div class="pricing-card__price"><span>$199</span></div>
-            <p>Your first time at the controls</p>
-          </div>
-          <ul>
-            <li>60-minute flight lesson</li>
-            <li>Pre-flight briefing</li>
-            <li>You fly the plane!</li>
-            <li>Logbook entry included</li>
-            <li>Credit toward PPL training</li>
-          </ul>
-          <a href="#contact" class="btn btn--outline btn--full">Book Now</a>
-        </div>
-
-        <div class="pricing-card pricing-card--featured">
-          <div class="pricing-card__header">
-            <h3>Private Pilot</h3>
-            <div class="pricing-card__price"><span>$12,500</span><small>est.</small></div>
-            <p>Complete PPL package</p>
-          </div>
-          <ul>
-            <li>40+ dual flight hours</li>
-            <li>Ground school (online + in-person)</li>
-            <li>Aircraft rental included</li>
-            <li>Instructor fees included</li>
-            <li>Checkride prep &amp; support</li>
-          </ul>
-          <a href="#contact" class="btn btn--primary btn--full">Get Started</a>
-        </div>
-
-        <div class="pricing-card">
-          <div class="pricing-card__header">
-            <h3>Instrument Rating</h3>
-            <div class="pricing-card__price"><span>$9,800</span><small>est.</small></div>
-            <p>IFR add-on for PPL holders</p>
-          </div>
-          <ul>
-            <li>50 hours instrument time</li>
-            <li>Simulator sessions included</li>
-            <li>IFR avionics training</li>
-            <li>Written exam prep</li>
-            <li>Checkride preparation</li>
-          </ul>
-          <a href="#contact" class="btn btn--outline btn--full">Get Started</a>
-        </div>
-
-        <div class="pricing-card">
-          <div class="pricing-card__header">
-            <h3>Hourly Rates</h3>
-            <div class="pricing-card__price"><span>From $185</span><small>/hr</small></div>
-            <p>Rent solo or dual instruction</p>
-          </div>
-          <ul>
-            <li>C172: $185/hr wet</li>
-            <li>PA-28: $195/hr wet</li>
-            <li>Seminole: $320/hr wet</li>
-            <li>Simulator: $65/hr</li>
-            <li>CFI: $75/hr</li>
-          </ul>
-          <a href="#contact" class="btn btn--outline btn--full">Schedule Time</a>
-        </div>
-
-      </div>
-      <p class="pricing__note">* Estimates based on minimum required hours. Actual costs vary by student progression. Financing through approved lenders available — ask us for details.</p>
-    </div>
-  </section>
-
-  <!-- CONTACT -->
-  <section class="contact section" id="contact">
-    <div class="container contact__grid">
-      <div class="contact__info">
-        <div class="section__eyebrow">Get in Touch</div>
-        <h2 class="section__title">Ready to Take Flight?</h2>
-        <p>Book your discovery flight, ask about our programs, or schedule a tour of our facilities. Our team is ready to help you get started.</p>
-        <div class="contact__details">
-          <div class="contact__item">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#D4A527"/></svg>
-            <div>
-              <strong>Location</strong>
-              <span>123 Airport Drive, Hangar 7<br/>Springfield, USA 12345</span>
-            </div>
-          </div>
-          <div class="contact__item">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" fill="#D4A527"/></svg>
-            <div>
-              <strong>Phone</strong>
-              <span>(555) 867-5309</span>
-            </div>
-          </div>
-          <div class="contact__item">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" fill="#D4A527"/></svg>
-            <div>
-              <strong>Email</strong>
-              <span>info@apexaviation.com</span>
-            </div>
-          </div>
-          <div class="contact__item">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm.5 5v5.25l4.5 2.67-.75 1.23L11 13V7h1.5z" fill="#D4A527"/></svg>
-            <div>
-              <strong>Hours</strong>
-              <span>Mon–Fri: 7am–7pm<br/>Sat–Sun: 8am–5pm</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="contact__form-wrap">
-        <form class="contact__form" id="contactForm">
-          <h3>Book a Discovery Flight</h3>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="firstName">First Name</label>
-              <input type="text" id="firstName" name="firstName" placeholder="John" required />
-            </div>
-            <div class="form-group">
-              <label for="lastName">Last Name</label>
-              <input type="text" id="lastName" name="lastName" placeholder="Smith" required />
-            </div>
-          </div>
-          <div class="form-group">
-            <label for="email">Email Address</label>
-            <input type="email" id="email" name="email" placeholder="john@example.com" required />
-          </div>
-          <div class="form-group">
-            <label for="phone">Phone Number</label>
-            <input type="tel" id="phone" name="phone" placeholder="(555) 000-0000" />
-          </div>
-          <div class="form-group">
-            <label for="program">Interested In</label>
-            <select id="program" name="program">
-              <option value="">Select a program...</option>
-              <option value="discovery">Discovery Flight</option>
-              <option value="ppl">Private Pilot License</option>
-              <option value="ifr">Instrument Rating</option>
-              <option value="cpl">Commercial Pilot</option>
-              <option value="cfi">CFI / CFII</option>
-              <option value="other">Other / Not Sure</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="message">Message (optional)</label>
-            <textarea id="message" name="message" rows="4" placeholder="Tell us about your goals or ask any questions..."></textarea>
-          </div>
-          <button type="submit" class="btn btn--primary btn--full">Send Message</button>
-          <p class="form__note">We'll get back to you within 1 business day.</p>
-        </form>
-        <div class="form__success" id="formSuccess">
-          <svg width="56" height="56" viewBox="0 0 56 56" fill="none"><circle cx="28" cy="28" r="28" fill="#D4A527" fill-opacity=".1"/><path d="M18 28l8 8 14-16" stroke="#D4A527" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <h3>Message Sent!</h3>
-          <p>Thank you for reaching out. A member of our team will contact you within 1 business day to get your training started.</p>
-        </div>
+      <div class="cta-banner__actions">
+        <a href="contact.html" class="btn btn--primary">Book a Discovery Flight — $199</a>
+        <a href="pricing.html" class="btn btn--ghost">View Pricing</a>
       </div>
     </div>
   </section>
@@ -473,7 +335,7 @@
   <footer class="footer">
     <div class="container footer__inner">
       <div class="footer__brand">
-        <a href="#" class="nav__logo">
+        <a href="index.html" class="nav__logo">
           <svg width="30" height="26" viewBox="0 0 36 32" fill="none"><path d="M18 1L3 28h5.5l2-4h15l2 4H33L18 1z" fill="#D4A527"/><path d="M18 8l5.5 11h-11L18 8z" fill="#080F1E"/><path d="M4 19.5L30 14l2 2.5L6 22z" fill="#B8891A"/><path d="M4 19.5L30 14l1 1.2L5 21.2z" fill="#D4A527"/></svg>
           <span class="nav__logo-text"><strong>APEX</strong><small>AVIATION</small></span>
         </a>
@@ -482,23 +344,23 @@
       <div class="footer__links">
         <div>
           <h4>Programs</h4>
-          <a href="#programs">Private Pilot</a>
-          <a href="#programs">Instrument Rating</a>
-          <a href="#programs">Commercial Pilot</a>
-          <a href="#programs">CFI / CFII</a>
+          <a href="programs.html">Private Pilot</a>
+          <a href="programs.html">Instrument Rating</a>
+          <a href="programs.html">Commercial Pilot</a>
+          <a href="programs.html">CFI / CFII</a>
         </div>
         <div>
           <h4>Company</h4>
-          <a href="#about">About Us</a>
-          <a href="#fleet">Our Fleet</a>
-          <a href="#instructors">Instructors</a>
-          <a href="#pricing">Pricing</a>
+          <a href="about.html">About Us</a>
+          <a href="fleet.html">Our Fleet</a>
+          <a href="about.html">Instructors</a>
+          <a href="pricing.html">Pricing</a>
         </div>
         <div>
           <h4>Contact</h4>
           <a href="tel:5558675309">(555) 867-5309</a>
           <a href="mailto:info@apexaviation.com">info@apexaviation.com</a>
-          <a href="#contact">Book a Flight</a>
+          <a href="contact.html">Book a Flight</a>
         </div>
       </div>
     </div>
