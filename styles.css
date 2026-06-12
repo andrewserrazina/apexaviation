@@ -2,30 +2,32 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --navy:    #080F1E;
-  --navy-2:  #0D1930;
-  --gold:    #D4A527;
-  --gold-2:  #B8891A;
-  --gold-light: #F0C84A;
-  --white:   #FFFFFF;
-  --off-white: #F5F4F0;
-  --light:   #F0EBD8;
-  --gray:    #6B7A99;
-  --gray-2:  #9AA5BE;
-  --border:  #E2DDD0;
-  --text:    #1A1F2E;
+  --navy:      #0B1F3A;
+  --navy-2:    #162C4F;
+  --gold:      #F4B400;
+  --gold-2:    #D4920A;
+  --gold-light:#F9D04A;
+  --white:     #FFFFFF;
+  --off-white: #F5F7FA;
+  --light:     #EDF0F5;
+  --gray:      #5A6A7E;
+  --gray-2:    #8A96A8;
+  --border:    #DDE3EC;
+  --text:      #1A2A3A;
 
-  /* alias so existing rules still compile */
-  --blue:    #D4A527;
-  --blue-2:  #B8891A;
+  /* alias kept for backward compat */
+  --blue:   #F4B400;
+  --blue-2: #D4920A;
 
-  --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
   --radius: 12px;
   --radius-lg: 20px;
-  --shadow: 0 4px 24px rgba(10,22,40,0.08);
-  --shadow-lg: 0 8px 48px rgba(10,22,40,0.14);
+  --shadow: 0 4px 24px rgba(11,31,58,0.08);
+  --shadow-lg: 0 8px 48px rgba(11,31,58,0.14);
   --transition: 0.22s ease;
 }
+
+.accent { font-family: 'Playfair Display', Georgia, serif; font-style: italic; }
 
 html { scroll-behavior: smooth; }
 
@@ -69,7 +71,7 @@ a { text-decoration: none; color: inherit; }
   color: var(--white);
   border-color: var(--blue);
 }
-.btn--primary:hover { background: var(--blue-2); border-color: var(--blue-2); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(212,165,39,.4); }
+.btn--primary:hover { background: var(--blue-2); border-color: var(--blue-2); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(244,180,0,.4); }
 .btn--ghost {
   background: transparent;
   color: var(--white);
@@ -133,7 +135,7 @@ a { text-decoration: none; color: inherit; }
   transition: background var(--transition), box-shadow var(--transition);
 }
 .nav.scrolled {
-  background: rgba(10,22,40,0.96);
+  background: rgba(11,31,58,0.96);
   backdrop-filter: blur(12px);
   box-shadow: 0 2px 20px rgba(0,0,0,0.3);
 }
@@ -201,7 +203,7 @@ a { text-decoration: none; color: inherit; }
   display: none;
   flex-direction: column;
   padding: 16px 24px 24px;
-  background: rgba(10,22,40,0.97);
+  background: rgba(11,31,58,0.97);
   backdrop-filter: blur(12px);
 }
 .nav__mobile a {
@@ -226,7 +228,7 @@ a { text-decoration: none; color: inherit; }
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(to bottom, rgba(8,15,30,0.7) 0%, rgba(8,15,30,0.5) 60%, rgba(8,15,30,0.85) 100%),
+    linear-gradient(to bottom, rgba(11,31,58,0.7) 0%, rgba(11,31,58,0.5) 60%, rgba(11,31,58,0.85) 100%),
     url('https://images.unsplash.com/photo-1464037866556-6812c9d1c72e?w=1800&q=85') center/cover no-repeat;
 }
 .hero__content {
@@ -241,8 +243,8 @@ a { text-decoration: none; color: inherit; }
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(212,165,39,0.15);
-  border: 1px solid rgba(212,165,39,0.4);
+  background: rgba(244,180,0,0.15);
+  border: 1px solid rgba(244,180,0,0.4);
   color: var(--gold-light);
   font-size: 13px;
   font-weight: 600;
@@ -388,8 +390,8 @@ a { text-decoration: none; color: inherit; }
 }
 .program-card:hover { background: rgba(255,255,255,0.08); transform: translateY(-4px); box-shadow: 0 16px 48px rgba(0,0,0,0.3); }
 .program-card--featured {
-  background: linear-gradient(135deg, rgba(212,165,39,0.18), rgba(184,137,26,0.1));
-  border-color: rgba(212,165,39,0.45);
+  background: linear-gradient(135deg, rgba(244,180,0,0.18), rgba(212,146,10,0.1));
+  border-color: rgba(244,180,0,0.45);
 }
 .program-card__badge {
   position: absolute;
@@ -504,7 +506,7 @@ a { text-decoration: none; color: inherit; }
   font-weight: 700;
   padding: 3px 10px;
   border-radius: 100px;
-  border: 1px solid rgba(212,165,39,0.25);
+  border: 1px solid rgba(244,180,0,0.25);
 }
 
 /* ─── PRICING ───────────────────────────────────────────────────── */
@@ -522,7 +524,7 @@ a { text-decoration: none; color: inherit; }
   overflow: hidden;
   transition: all var(--transition);
 }
-.pricing-card:hover { transform: translateY(-4px); border-color: rgba(212,165,39,0.45); }
+.pricing-card:hover { transform: translateY(-4px); border-color: rgba(244,180,0,0.45); }
 .pricing-card--featured {
   background: var(--white);
   color: var(--text);
@@ -610,7 +612,7 @@ a { text-decoration: none; color: inherit; }
 .form-group select:focus,
 .form-group textarea:focus {
   border-color: var(--gold);
-  box-shadow: 0 0 0 3px rgba(212,165,39,0.18);
+  box-shadow: 0 0 0 3px rgba(244,180,0,0.18);
 }
 .form-group textarea { resize: vertical; min-height: 100px; }
 .form__note { font-size: 13px; color: var(--gray); text-align: center; margin-top: 12px; }

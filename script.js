@@ -17,11 +17,24 @@ mobileMenu.querySelectorAll('a').forEach(link => {
 // Contact form
 const form = document.getElementById('contactForm');
 const successMsg = document.getElementById('formSuccess');
-form.addEventListener('submit', (e) => {
-  e.preventDefault();
-  form.style.display = 'none';
-  successMsg.classList.add('visible');
-});
+if (form) {
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    form.style.display = 'none';
+    successMsg.classList.add('visible');
+  });
+}
+
+// Waitlist form
+const waitlistForm = document.getElementById('waitlistForm');
+const waitlistSuccess = document.getElementById('waitlistSuccess');
+if (waitlistForm) {
+  waitlistForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    waitlistForm.style.display = 'none';
+    waitlistSuccess.classList.add('visible');
+  });
+}
 
 // Scroll-in animations
 const observer = new IntersectionObserver((entries) => {
