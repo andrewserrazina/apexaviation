@@ -1874,3 +1874,207 @@
     font-size: 0.82rem;
   }
 }
+
+/* ============================================================
+   MISSING COMPONENT STYLES (used by programs/fleet/about/pricing/contact)
+   ============================================================ */
+
+/* Page hero bg text watermark */
+.page-hero__bg-text {
+  position: absolute;
+  right: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: clamp(80px, 12vw, 160px);
+  font-weight: 900;
+  color: rgba(212,165,39,0.04);
+  letter-spacing: 0.05em;
+  user-select: none;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.page-hero__title { font-size: clamp(32px,5vw,56px); font-weight:800; color:#fff; line-height:1.1; margin-bottom:16px; max-width:640px; }
+.page-hero__title span { color: #D4A527; }
+.page-hero__sub { font-size:18px; color:rgba(255,255,255,0.65); max-width:520px; line-height:1.7; }
+
+/* CTA Banner */
+.cta-banner { padding: 80px 0; }
+.cta-banner__inner { display:flex; align-items:center; justify-content:space-between; gap:48px; flex-wrap:wrap; }
+.cta-banner__text h2 { font-size:clamp(24px,3vw,36px); font-weight:800; color:#fff; margin-bottom:10px; }
+.cta-banner__text p { color:rgba(255,255,255,0.65); font-size:16px; max-width:480px; line-height:1.7; }
+.cta-banner__actions { display:flex; gap:16px; flex-wrap:wrap; flex-shrink:0; }
+
+/* ── Program detail sections ── */
+.program-detail { padding: 72px 0; border-bottom: 1px solid var(--border); }
+.program-detail:last-child { border-bottom: none; }
+.program-detail__grid {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 64px;
+  align-items: start;
+}
+.program-detail__grid.reverse { direction: rtl; }
+.program-detail__grid.reverse > * { direction: ltr; }
+.program-detail__level {
+  display: inline-block;
+  font-size: 12px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+  color: #D4A527;
+  background: rgba(212,165,39,0.1);
+  border: 1px solid rgba(212,165,39,0.25);
+  padding: 4px 12px; border-radius: 100px; margin-bottom: 16px;
+}
+.program-detail__title { font-size:clamp(24px,3vw,32px); font-weight:800; margin-bottom:16px; line-height:1.2; }
+.program-detail__desc { font-size:16px; color:var(--gray); line-height:1.8; margin-bottom:24px; }
+.program-detail__stats { display:flex; gap:24px; margin-bottom:28px; flex-wrap:wrap; }
+.detail-stat {
+  text-align:center; padding:16px 20px;
+  background:var(--off-white); border-radius:var(--radius); border:1px solid var(--border); min-width:100px;
+}
+.detail-stat__num { font-size:22px; font-weight:800; color:#D4A527; display:block; }
+.detail-stat__label { font-size:12px; color:var(--gray); font-weight:500; margin-top:2px; display:block; }
+.program-detail__highlights { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:32px; }
+.highlight-item { display:flex; align-items:center; gap:10px; font-size:14px; font-weight:500; color:var(--text); }
+.highlight-item svg { flex-shrink:0; }
+.program-detail__curriculum {
+  background:var(--off-white); border-radius:var(--radius-lg); padding:32px; border:1px solid var(--border);
+}
+.program-detail__curriculum h4 { font-size:16px; font-weight:700; margin-bottom:20px; color:var(--text); }
+.curriculum-phase { display:flex; gap:16px; padding:16px 0; border-bottom:1px solid var(--border); }
+.curriculum-phase:last-child { border-bottom:none; padding-bottom:0; }
+.curriculum-phase__num {
+  width:32px; height:32px; background:#D4A527; color:#080F1E;
+  border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:800; flex-shrink:0;
+}
+.curriculum-phase__body h5 { font-size:14px; font-weight:700; margin-bottom:4px; }
+.curriculum-phase__body p { font-size:13px; color:var(--gray); line-height:1.6; }
+
+/* ── Aircraft detail (fleet page) ── */
+.aircraft-detail { padding: 80px 0; border-bottom: 1px solid var(--border); }
+.aircraft-detail:last-child { border-bottom: none; }
+.aircraft-detail__grid { display:grid; grid-template-columns:1fr 1fr; gap:56px; align-items:start; }
+.aircraft-detail__img { border-radius:var(--radius-lg); overflow:hidden; position:relative; height:320px; }
+.aircraft-detail__img img { width:100%; height:100%; object-fit:cover; }
+.aircraft-detail__tag {
+  position:absolute; top:16px; left:16px;
+  background:#080F1E; color:#fff; font-size:12px; font-weight:600; padding:5px 14px; border-radius:100px;
+}
+.aircraft-detail__title { font-size:28px; font-weight:800; margin-bottom:8px; }
+.aircraft-detail__subtitle { font-size:14px; color:#D4A527; font-weight:600; letter-spacing:0.05em; margin-bottom:16px; }
+.aircraft-detail__desc { font-size:15px; color:var(--gray); line-height:1.8; margin-bottom:28px; }
+.specs-table { width:100%; border-collapse:collapse; margin-bottom:24px; }
+.specs-table tr { border-bottom:1px solid var(--border); }
+.specs-table tr:last-child { border-bottom:none; }
+.specs-table td { padding:10px 0; font-size:14px; }
+.specs-table td:first-child { color:var(--gray); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.06em; width:45%; }
+.specs-table td:last-child { font-weight:600; color:var(--text); }
+.aircraft-detail__used-for {
+  background:rgba(212,165,39,0.06); border:1px solid rgba(212,165,39,0.2); border-radius:var(--radius); padding:16px 20px;
+}
+.aircraft-detail__used-for h5 { font-size:13px; font-weight:700; color:#D4A527; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.08em; }
+.aircraft-detail__used-for ul { list-style:none; display:flex; flex-wrap:wrap; gap:8px; }
+.aircraft-detail__used-for li { font-size:13px; background:rgba(212,165,39,0.1); color:var(--text); padding:4px 12px; border-radius:100px; font-weight:500; }
+
+/* ── FAQ Accordion ── */
+.faq-section { padding:80px 0; background:var(--off-white); }
+.faq-section .section__header { margin-bottom:48px; }
+.faq-list { max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:12px; }
+.faq-item { background:#fff; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+.faq-item__question {
+  width:100%; display:flex; justify-content:space-between; align-items:center;
+  padding:20px 24px; background:none; border:none; cursor:pointer;
+  font-family:var(--font); font-size:15px; font-weight:600; color:var(--text); text-align:left; gap:16px;
+  transition:color var(--transition);
+}
+.faq-item__question:hover { color:#D4A527; }
+.faq-item__question svg { flex-shrink:0; transition:transform var(--transition); }
+.faq-item.open .faq-item__question svg { transform:rotate(180deg); }
+.faq-item__answer { max-height:0; overflow:hidden; transition:max-height 0.3s ease; }
+.faq-item.open .faq-item__answer { max-height:400px; }
+.faq-item__answer p { padding:0 24px 20px; font-size:15px; color:var(--gray); line-height:1.75; }
+
+/* ── Stats row (about page) ── */
+.stats-row {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:2px;
+  background:var(--border); border-radius:var(--radius-lg); overflow:hidden; margin:48px 0;
+}
+.stats-row__item { background:#fff; padding:36px 24px; text-align:center; }
+.stats-row__num { font-size:36px; font-weight:800; color:#D4A527; display:block; line-height:1; margin-bottom:6px; }
+.stats-row__label { font-size:13px; color:var(--gray); font-weight:500; }
+
+/* ── Values (about page) ── */
+.values-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:28px; }
+.value-card {
+  background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); padding:36px 28px; text-align:center;
+  box-shadow:var(--shadow); transition:all var(--transition);
+}
+.value-card:hover { transform:translateY(-4px); box-shadow:var(--shadow-lg); }
+.value-card__icon {
+  width:64px; height:64px; background:rgba(212,165,39,0.1); border-radius:50%;
+  display:flex; align-items:center; justify-content:center; margin:0 auto 20px;
+}
+.value-card h3 { font-size:18px; font-weight:700; margin-bottom:12px; }
+.value-card p { font-size:14px; color:var(--gray); line-height:1.7; }
+
+/* ── Certifications (about page) ── */
+.certifications { display:flex; flex-wrap:wrap; gap:16px; margin-top:32px; }
+.cert-badge {
+  display:flex; align-items:center; gap:10px;
+  background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:12px 20px; box-shadow:var(--shadow);
+}
+.cert-badge strong { font-size:14px; font-weight:700; display:block; }
+.cert-badge span { font-size:12px; color:var(--gray); }
+
+/* ── Rates table (pricing page) ── */
+.rates-table-wrap { background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow); margin-bottom:48px; }
+.rates-table { width:100%; border-collapse:collapse; }
+.rates-table th { background:#080F1E; color:#fff; padding:14px 20px; text-align:left; font-size:13px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; }
+.rates-table th:last-child { text-align:right; }
+.rates-table td { padding:14px 20px; font-size:14px; border-bottom:1px solid var(--border); }
+.rates-table tr:last-child td { border-bottom:none; }
+.rates-table td:last-child { text-align:right; font-weight:700; color:#D4A527; font-size:15px; }
+.rates-table tr:hover td { background:var(--off-white); }
+
+/* ── Financing (pricing page) ── */
+.financing-section {
+  background:#080F1E; border-radius:var(--radius-lg); padding:48px;
+  display:grid; grid-template-columns:1fr 1fr; gap:48px; align-items:center; margin-bottom:48px;
+}
+.financing-section h3 { font-size:26px; font-weight:800; color:#fff; margin-bottom:12px; }
+.financing-section p { font-size:15px; color:rgba(255,255,255,0.65); line-height:1.75; margin-bottom:24px; }
+.financing-features { list-style:none; display:flex; flex-direction:column; gap:10px; }
+.financing-features li { display:flex; align-items:center; gap:10px; font-size:14px; color:rgba(255,255,255,0.8); }
+.financing-features li::before { content:'✓'; color:#D4A527; font-weight:700; }
+
+/* ── Contact page ── */
+.contact-page__grid { display:grid; grid-template-columns:1fr 1.2fr; gap:64px; align-items:start; }
+.contact-info-block { display:flex; flex-direction:column; gap:32px; }
+.contact-info-block h3 { font-size:22px; font-weight:700; margin-bottom:4px; }
+.contact-info-block p { font-size:15px; color:var(--gray); line-height:1.7; }
+.airport-info { background:var(--off-white); border-radius:var(--radius-lg); padding:32px; border:1px solid var(--border); }
+.airport-info h4 { font-size:16px; font-weight:700; margin-bottom:16px; }
+.map-placeholder {
+  background:linear-gradient(135deg,#080F1E 0%,#0d1930 100%); border-radius:var(--radius-lg);
+  height:220px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px;
+  margin-bottom:16px; border:1px solid rgba(212,165,39,0.2);
+}
+.map-placeholder svg { opacity:0.5; }
+.map-placeholder span { color:rgba(255,255,255,0.4); font-size:13px; }
+
+/* ── Responsive ── */
+@media (max-width:900px) {
+  .program-detail__grid,
+  .program-detail__grid.reverse { direction:ltr; grid-template-columns:1fr; }
+  .aircraft-detail__grid { grid-template-columns:1fr; }
+  .financing-section { grid-template-columns:1fr; }
+  .contact-page__grid { grid-template-columns:1fr; }
+  .values-grid { grid-template-columns:1fr; }
+  .stats-row { grid-template-columns:repeat(2,1fr); }
+  .program-detail__highlights { grid-template-columns:1fr; }
+  .cta-banner__inner { flex-direction:column; }
+}
+@media (max-width:600px) {
+  .cta-banner__actions { flex-direction:column; width:100%; }
+  .cta-banner__actions .btn { width:100%; }
+  .stats-row { grid-template-columns:1fr 1fr; }
+}
