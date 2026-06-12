@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Our Fleet | Apex Aviation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="pages.css" />
+</head>
+<body>
+
+  <header class="nav" id="nav">
+    <div class="container nav__inner">
+      <a href="index.html" class="nav__logo">
+        <svg width="36" height="32" viewBox="0 0 36 32" fill="none">
+          <path d="M18 1L3 28h5.5l2-4h15l2 4H33L18 1z" fill="#D4A527"/>
+          <path d="M18 8l5.5 11h-11L18 8z" fill="#080F1E"/>
+          <path d="M4 19.5L30 14l2 2.5L6 22z" fill="#B8891A"/>
+          <path d="M4 19.5L30 14l1 1.2L5 21.2z" fill="#D4A527"/>
+        </svg>
+        <span class="nav__logo-text"><strong>APEX</strong><small>AVIATION</small></span>
+      </a>
+      <nav class="nav__links">
+        <a href="index.html">Home</a>
+        <a href="programs.html">Programs</a>
+        <a href="fleet.html" class="active">Fleet</a>
+        <a href="about.html">About</a>
+        <a href="pricing.html">Pricing</a>
+        <a href="contact.html" class="btn btn--nav">Book a Flight</a>
+      </nav>
+      <button class="nav__hamburger" id="hamburger" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <div class="nav__mobile" id="mobileMenu">
+      <a href="index.html">Home</a>
+      <a href="programs.html">Programs</a>
+      <a href="fleet.html">Fleet</a>
+      <a href="about.html">About</a>
+      <a href="pricing.html">Pricing</a>
+      <a href="contact.html">Book a Flight</a>
+    </div>
+  </header>
+
+  <!-- PAGE HERO -->
+  <section class="page-hero">
+    <div class="page-hero__bg-text">FLEET</div>
+    <div class="container page-hero__inner">
+      <div class="section__eyebrow">Our Aircraft</div>
+      <h1 class="page-hero__title">Modern Aircraft,<br /><span>Expertly Maintained</span></h1>
+      <p class="page-hero__sub">Every aircraft in our fleet is inspected to the highest standards and equipped with modern avionics to give you the best possible training experience.</p>
+    </div>
+  </section>
+
+  <!-- AIRCRAFT DETAIL -->
+  <div class="container">
+
+    <div class="aircraft-detail" id="c172">
+      <div class="aircraft-detail__grid">
+        <div>
+          <div class="aircraft-detail__img">
+            <img src="https://images.unsplash.com/photo-1474302770737-173ee21bab63?w=900&q=80" alt="Cessna 172 Skyhawk" loading="lazy" />
+            <div class="aircraft-detail__tag">Primary Trainer</div>
+          </div>
+        </div>
+        <div>
+          <h2 class="aircraft-detail__title">Cessna 172 Skyhawk</h2>
+          <div class="aircraft-detail__subtitle">High-Wing Single Engine · Glass Cockpit</div>
+          <p class="aircraft-detail__desc">The Cessna 172 Skyhawk is the world's most produced aircraft and the gold standard for primary flight training. Its forgiving handling, excellent visibility, and stable flight characteristics make it the ideal platform for students learning to fly. Our fleet of C172s is equipped with the Garmin G1000 glass cockpit — the same avionics used in modern commercial aircraft — giving students real-world experience from day one.</p>
+          <table class="specs-table">
+            <tr><td>Engine</td><td>Lycoming IO-360-L2A (180 HP)</td></tr>
+            <tr><td>Cruise Speed</td><td>122 knots (140 mph)</td></tr>
+            <tr><td>Maximum Range</td><td>640 nm (1,185 km)</td></tr>
+            <tr><td>Service Ceiling</td><td>14,000 ft MSL</td></tr>
+            <tr><td>Fuel Capacity</td><td>53 gallons usable</td></tr>
+            <tr><td>Useful Load</td><td>878 lbs</td></tr>
+            <tr><td>Avionics</td><td>Garmin G1000 NXi</td></tr>
+            <tr><td>Seats</td><td>4</td></tr>
+          </table>
+          <div class="aircraft-detail__used-for">
+            <h5>Used For</h5>
+            <ul>
+              <li>Private Pilot Training</li>
+              <li>Discovery Flights</li>
+              <li>Solo Cross-Country</li>
+              <li>Night Currency</li>
+              <li>Rental (Solo &amp; Dual)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="aircraft-detail" id="pa28">
+      <div class="aircraft-detail__grid">
+        <div>
+          <div class="aircraft-detail__img">
+            <img src="https://images.unsplash.com/photo-1556388158-158ea5ccacbd?w=900&q=80" alt="Piper PA-28 Cherokee" loading="lazy" />
+            <div class="aircraft-detail__tag">IFR Trainer</div>
+          </div>
+        </div>
+        <div>
+          <h2 class="aircraft-detail__title">Piper PA-28 Cherokee</h2>
+          <div class="aircraft-detail__subtitle">Low-Wing Single Engine · Full IFR Panel</div>
+          <p class="aircraft-detail__desc">The Piper PA-28 Cherokee is our workhorse for instrument and cross-country training. Its low-wing design provides different handling characteristics than the C172, preparing students for a wider variety of aircraft they'll encounter in their careers. Fully IFR certified and equipped with the Garmin GTN 650 touchscreen navigator, it mirrors the cockpit environment of many modern GA and charter aircraft.</p>
+          <table class="specs-table">
+            <tr><td>Engine</td><td>Lycoming O-360-A4M (180 HP)</td></tr>
+            <tr><td>Cruise Speed</td><td>118 knots (136 mph)</td></tr>
+            <tr><td>Maximum Range</td><td>520 nm (963 km)</td></tr>
+            <tr><td>Service Ceiling</td><td>13,000 ft MSL</td></tr>
+            <tr><td>Fuel Capacity</td><td>50 gallons usable</td></tr>
+            <tr><td>Useful Load</td><td>912 lbs</td></tr>
+            <tr><td>Avionics</td><td>Garmin GTN 650 + G5 HSI</td></tr>
+            <tr><td>IFR Certified</td><td>Yes</td></tr>
+          </table>
+          <div class="aircraft-detail__used-for">
+            <h5>Used For</h5>
+            <ul>
+              <li>Instrument Rating</li>
+              <li>IFR Cross-Country</li>
+              <li>Commercial Training</li>
+              <li>Rental (IFR Rated)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="aircraft-detail" id="seminole">
+      <div class="aircraft-detail__grid">
+        <div>
+          <div class="aircraft-detail__img">
+            <img src="https://images.unsplash.com/photo-1540962351504-03099e0a754b?w=900&q=80" alt="Piper PA-44 Seminole" loading="lazy" />
+            <div class="aircraft-detail__tag">Multi-Engine</div>
+          </div>
+        </div>
+        <div>
+          <h2 class="aircraft-detail__title">Piper PA-44 Seminole</h2>
+          <div class="aircraft-detail__subtitle">Twin Engine · Advanced Avionics</div>
+          <p class="aircraft-detail__desc">The Piper Seminole is one of the most popular light twin-engine training aircraft in the world, and for good reason — it's docile enough to be a great trainer yet capable enough to simulate real multi-engine operations. With counter-rotating propellers (eliminating the critical engine), it offers a balanced training environment. Equipped with Garmin G500 and dual GTN navigators, the Seminole prepares students for the complex aircraft they'll fly professionally.</p>
+          <table class="specs-table">
+            <tr><td>Engines</td><td>2× Lycoming O-360-E1A6D (180 HP each)</td></tr>
+            <tr><td>Cruise Speed</td><td>161 knots (185 mph)</td></tr>
+            <tr><td>Maximum Range</td><td>920 nm (1,704 km)</td></tr>
+            <tr><td>Service Ceiling</td><td>15,000 ft MSL</td></tr>
+            <tr><td>Fuel Capacity</td><td>110 gallons usable</td></tr>
+            <tr><td>Useful Load</td><td>1,008 lbs</td></tr>
+            <tr><td>Avionics</td><td>Garmin G500 + Dual GTN 650</td></tr>
+            <tr><td>IFR Certified</td><td>Yes</td></tr>
+          </table>
+          <div class="aircraft-detail__used-for">
+            <h5>Used For</h5>
+            <ul>
+              <li>Multi-Engine Rating</li>
+              <li>Commercial Multi-Engine</li>
+              <li>Multi-Engine IFR</li>
+              <li>ATP Hour Building</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MAINTENANCE & SIM -->
+  <section class="section section--light">
+    <div class="container">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:start">
+        <div>
+          <div class="section__eyebrow">Airworthiness</div>
+          <h2 class="section__title" style="text-align:left">Maintained to the Highest Standard</h2>
+          <p style="color:var(--gray);line-height:1.8;margin-bottom:24px">Every aircraft in our fleet undergoes regular inspections that exceed FAA requirements. We believe well-maintained aircraft are not just a legal obligation — they're the foundation of good training.</p>
+          <ul class="about__list">
+            <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Annual inspections by FAA-certified A&amp;P mechanics</li>
+            <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>100-hour inspections on all training aircraft</li>
+            <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>On-site maintenance facility with priority turnaround</li>
+            <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Avionics database subscriptions kept current</li>
+            <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Squawk resolution within 24 hours</li>
+          </ul>
+        </div>
+        <div>
+          <div class="section__eyebrow">Simulator</div>
+          <h2 class="section__title" style="text-align:left">Full-Motion Flight Simulator</h2>
+          <p style="color:var(--gray);line-height:1.8;margin-bottom:24px">Our on-site FAA-approved Advanced Aviation Training Device (AATD) replicates the Garmin G1000 cockpit environment. Simulator time counts toward instrument rating requirements and lets you practice approaches, holds, and emergencies without the cost of aircraft fuel.</p>
+          <ul class="about__list">
+            <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>FAA-approved AATD — hours count toward IFR</li>
+            <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Garmin G1000 NXi cockpit replication</li>
+            <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Real-world weather &amp; airport scenery</li>
+            <li><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Only $65/hr — a fraction of aircraft cost</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-banner section--dark">
+    <div class="container cta-banner__inner">
+      <div class="cta-banner__text">
+        <div class="section__eyebrow">Schedule Time</div>
+        <h2>Ready to Fly Our Fleet?</h2>
+        <p>Book a discovery flight or schedule rental time. All aircraft available 7 days a week, early morning through evening.</p>
+      </div>
+      <div class="cta-banner__actions">
+        <a href="contact.html" class="btn btn--primary">Book a Flight</a>
+        <a href="pricing.html" class="btn btn--ghost">View Rates</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container footer__inner">
+      <div class="footer__brand">
+        <a href="index.html" class="nav__logo">
+          <svg width="30" height="26" viewBox="0 0 36 32" fill="none"><path d="M18 1L3 28h5.5l2-4h15l2 4H33L18 1z" fill="#D4A527"/><path d="M18 8l5.5 11h-11L18 8z" fill="#080F1E"/><path d="M4 19.5L30 14l2 2.5L6 22z" fill="#B8891A"/><path d="M4 19.5L30 14l1 1.2L5 21.2z" fill="#D4A527"/></svg>
+          <span class="nav__logo-text"><strong>APEX</strong><small>AVIATION</small></span>
+        </a>
+        <p>Turning your aviation dreams into reality since 2004. FAA Part 141 Certified Flight School.</p>
+      </div>
+      <div class="footer__links">
+        <div>
+          <h4>Programs</h4>
+          <a href="programs.html#ppl">Private Pilot</a>
+          <a href="programs.html#ifr">Instrument Rating</a>
+          <a href="programs.html#cpl">Commercial Pilot</a>
+          <a href="programs.html#cfi">CFI / CFII</a>
+        </div>
+        <div>
+          <h4>Company</h4>
+          <a href="about.html">About Us</a>
+          <a href="fleet.html">Our Fleet</a>
+          <a href="about.html">Instructors</a>
+          <a href="pricing.html">Pricing</a>
+        </div>
+        <div>
+          <h4>Contact</h4>
+          <a href="tel:5558675309">(555) 867-5309</a>
+          <a href="mailto:info@apexaviation.com">info@apexaviation.com</a>
+          <a href="contact.html">Book a Flight</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <div class="container">
+        <p>&copy; 2024 Apex Aviation. All rights reserved.</p>
+        <p>FAA Certified Part 141 Flight School</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
