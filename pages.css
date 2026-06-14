@@ -8,9 +8,9 @@
    ---------------------------------------------------------- */
 .page-hero {
   min-height: 380px;
-  background-color: #080F1E;
+  background-color: #0B1F3A;
   background-image:
-    radial-gradient(ellipse at 70% 50%, rgba(212, 165, 39, 0.12) 0%, transparent 65%),
+    radial-gradient(ellipse at 70% 50%, rgba(244, 180, 0, 0.12) 0%, transparent 65%),
     repeating-linear-gradient(
       -45deg,
       transparent,
@@ -29,7 +29,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 20% 80%, rgba(184, 137, 26, 0.08) 0%, transparent 50%);
+  background: radial-gradient(circle at 20% 80%, rgba(212, 146, 10, 0.08) 0%, transparent 50%);
   pointer-events: none;
 }
 
@@ -44,12 +44,12 @@
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: #D4A527;
+  color: #F4B400;
   margin-bottom: 16px;
   padding: 4px 12px;
-  border: 1px solid rgba(212, 165, 39, 0.35);
+  border: 1px solid rgba(244, 180, 0, 0.35);
   border-radius: 2px;
-  background: rgba(212, 165, 39, 0.07);
+  background: rgba(244, 180, 0, 0.07);
 }
 
 .page-hero__title {
@@ -73,13 +73,13 @@
    ACTIVE NAV LINK
    ---------------------------------------------------------- */
 .nav__links a.active {
-  color: #D4A527;
-  border-bottom: 2px solid #D4A527;
+  color: #F4B400;
+  border-bottom: 2px solid #F4B400;
   padding-bottom: 2px;
 }
 
 .nav__mobile a.active {
-  color: #D4A527;
+  color: #F4B400;
 }
 
 /* ----------------------------------------------------------
@@ -90,7 +90,7 @@
 }
 
 .section--alt {
-  background: #0d1629;
+  background: #162C4F;
 }
 
 .section__header {
@@ -104,7 +104,7 @@
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #D4A527;
+  color: #F4B400;
   margin-bottom: 12px;
 }
 
@@ -131,8 +131,8 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 0;
-  background: #0d1629;
-  border: 1px solid rgba(212, 165, 39, 0.2);
+  background: #162C4F;
+  border: 1px solid rgba(244, 180, 0, 0.2);
   border-radius: 12px;
   overflow: hidden;
   margin: 64px 0;
@@ -141,7 +141,7 @@
 .stat-item {
   padding: 40px 24px;
   text-align: center;
-  border-right: 1px solid rgba(212, 165, 39, 0.15);
+  border-right: 1px solid rgba(244, 180, 0, 0.15);
   transition: background 0.2s;
 }
 
@@ -150,13 +150,13 @@
 }
 
 .stat-item:hover {
-  background: rgba(212, 165, 39, 0.05);
+  background: rgba(244, 180, 0, 0.05);
 }
 
 .stat-item__number {
   font-size: 2.5rem;
   font-weight: 800;
-  color: #D4A527;
+  color: #F4B400;
   display: block;
   line-height: 1;
   margin-bottom: 8px;
@@ -181,9 +181,9 @@
 }
 
 .program-card {
-  background: #0d1629;
+  background: #162C4F;
   border: 1px solid rgba(255, 255, 255, 0.07);
-  border-left: 4px solid #D4A527;
+  border-left: 4px solid #F4B400;
   border-radius: 12px;
   padding: 40px;
   transition: box-shadow 0.25s, transform 0.25s;
@@ -204,7 +204,7 @@
 .program-card__icon {
   width: 56px;
   height: 56px;
-  background: rgba(212, 165, 39, 0.12);
+  background: rgba(244, 180, 0, 0.12);
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -223,9 +223,9 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #D4A527;
-  background: rgba(212, 165, 39, 0.1);
-  border: 1px solid rgba(212, 165, 39, 0.3);
+  color: #F4B400;
+  background: rgba(244, 180, 0, 0.1);
+  border: 1px solid rgba(244, 180, 0, 0.3);
   border-radius: 3px;
   padding: 2px 8px;
   margin-bottom: 6px;
@@ -258,7 +258,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #D4A527;
+  color: #F4B400;
   margin: 0 0 12px;
 }
 
@@ -283,12 +283,12 @@
   content: '›';
   position: absolute;
   left: 0;
-  color: #D4A527;
+  color: #F4B400;
   font-weight: 700;
 }
 
 .program-card__curriculum {
-  background: rgba(8, 15, 30, 0.6);
+  background: rgba(11, 31, 58, 0.6);
   border-radius: 8px;
   padding: 16px;
 }
@@ -296,9 +296,9 @@
 .program-card__highlights {
   margin-bottom: 28px;
   padding: 20px 24px;
-  background: rgba(212, 165, 39, 0.05);
+  background: rgba(244, 180, 0, 0.05);
   border-radius: 8px;
-  border: 1px solid rgba(212, 165, 39, 0.12);
+  border: 1px solid rgba(244, 180, 0, 0.12);
 }
 
 .program-card__highlights-title {
@@ -306,7 +306,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #D4A527;
+  color: #F4B400;
   margin: 0 0 12px;
 }
 
@@ -330,7 +330,7 @@
   content: '✓';
   position: absolute;
   left: 0;
-  color: #D4A527;
+  color: #F4B400;
   font-weight: 700;
 }
 
@@ -399,25 +399,25 @@
   color: #ffffff;
   font-size: 1rem;
   font-weight: 600;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   transition: color 0.2s;
 }
 
 .faq__question:hover {
-  color: #D4A527;
+  color: #F4B400;
 }
 
 .faq__question-icon {
   width: 24px;
   height: 24px;
   flex-shrink: 0;
-  background: rgba(212, 165, 39, 0.12);
-  border: 1px solid rgba(212, 165, 39, 0.25);
+  background: rgba(244, 180, 0, 0.12);
+  border: 1px solid rgba(244, 180, 0, 0.25);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #D4A527;
+  color: #F4B400;
   font-size: 1rem;
   font-weight: 700;
   transition: transform 0.3s, background 0.2s;
@@ -426,7 +426,7 @@
 
 .faq__item.open .faq__question-icon {
   transform: rotate(45deg);
-  background: rgba(212, 165, 39, 0.2);
+  background: rgba(244, 180, 0, 0.2);
 }
 
 .faq__answer {
@@ -494,7 +494,7 @@
 }
 
 .aircraft-card {
-  background: #0d1629;
+  background: #162C4F;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 16px;
   overflow: hidden;
@@ -559,7 +559,7 @@
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #D4A527;
+  color: #F4B400;
   font-weight: 700;
   margin-bottom: 8px;
 }
@@ -647,7 +647,7 @@
 }
 
 .value-card {
-  background: #0d1629;
+  background: #162C4F;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 12px;
   padding: 36px 28px;
@@ -663,7 +663,7 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, #D4A527, #B8891A);
+  background: linear-gradient(90deg, #F4B400, #D4920A);
 }
 
 .value-card:hover {
@@ -701,7 +701,7 @@
 }
 
 .instructor-card--large {
-  background: #0d1629;
+  background: #162C4F;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 14px;
   overflow: hidden;
@@ -738,7 +738,7 @@
   left: 0;
   right: 0;
   height: 80px;
-  background: linear-gradient(transparent, #0d1629);
+  background: linear-gradient(transparent, #162C4F);
 }
 
 .instructor-card--large__body {
@@ -756,7 +756,7 @@
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #D4A527;
+  color: #F4B400;
   font-weight: 600;
   margin-bottom: 12px;
 }
@@ -772,16 +772,16 @@
   font-size: 0.7rem;
   font-weight: 700;
   padding: 3px 8px;
-  background: rgba(212, 165, 39, 0.1);
-  border: 1px solid rgba(212, 165, 39, 0.25);
+  background: rgba(244, 180, 0, 0.1);
+  border: 1px solid rgba(244, 180, 0, 0.25);
   border-radius: 3px;
-  color: #D4A527;
+  color: #F4B400;
   letter-spacing: 0.05em;
 }
 
 .instructor-card--large__hours {
   font-size: 0.82rem;
-  color: #D4A527;
+  color: #F4B400;
   font-weight: 700;
   margin-bottom: 10px;
 }
@@ -798,7 +798,7 @@
   color: #a0aec0;
   font-size: 0.875rem;
   line-height: 1.6;
-  border-left: 3px solid #D4A527;
+  border-left: 3px solid #F4B400;
   padding-left: 14px;
   margin: 0;
 }
@@ -817,15 +817,15 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #0d1629;
-  border: 1px solid rgba(212, 165, 39, 0.2);
+  background: #162C4F;
+  border: 1px solid rgba(244, 180, 0, 0.2);
   border-radius: 10px;
   padding: 16px 24px;
   transition: background 0.2s, box-shadow 0.2s;
 }
 
 .cert-badge:hover {
-  background: rgba(212, 165, 39, 0.06);
+  background: rgba(244, 180, 0, 0.06);
   box-shadow: 0 4px 20px rgba(0,0,0,0.2);
 }
 
@@ -868,7 +868,7 @@
   position: absolute;
   inset: -3px;
   border-radius: 18px;
-  background: linear-gradient(135deg, #D4A527, transparent 50%);
+  background: linear-gradient(135deg, #F4B400, transparent 50%);
   z-index: -1;
 }
 
@@ -902,7 +902,7 @@
 }
 
 .pricing-card {
-  background: #0d1629;
+  background: #162C4F;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 14px;
   padding: 32px 24px;
@@ -918,12 +918,12 @@
 }
 
 .pricing-card--featured {
-  border-color: #D4A527;
-  box-shadow: 0 0 0 1px rgba(212, 165, 39, 0.3), 0 8px 32px rgba(212, 165, 39, 0.12);
+  border-color: #F4B400;
+  box-shadow: 0 0 0 1px rgba(244, 180, 0, 0.3), 0 8px 32px rgba(244, 180, 0, 0.12);
 }
 
 .pricing-card--featured:hover {
-  box-shadow: 0 0 0 1px rgba(212, 165, 39, 0.5), 0 16px 48px rgba(212, 165, 39, 0.18);
+  box-shadow: 0 0 0 1px rgba(244, 180, 0, 0.5), 0 16px 48px rgba(244, 180, 0, 0.18);
 }
 
 .pricing-card__badge {
@@ -931,8 +931,8 @@
   top: -13px;
   left: 50%;
   transform: translateX(-50%);
-  background: #D4A527;
-  color: #080F1E;
+  background: #F4B400;
+  color: #0B1F3A;
   font-size: 0.68rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -952,7 +952,7 @@
 .pricing-card__price {
   font-size: 2rem;
   font-weight: 800;
-  color: #D4A527;
+  color: #F4B400;
   margin: 0 0 4px;
   letter-spacing: -0.02em;
   line-height: 1;
@@ -976,7 +976,7 @@
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #D4A527;
+  color: #F4B400;
   font-weight: 700;
   margin-bottom: 10px;
 }
@@ -1001,7 +1001,7 @@
   content: '✓';
   position: absolute;
   left: 0;
-  color: #D4A527;
+  color: #F4B400;
   font-weight: 700;
   font-size: 0.75rem;
 }
@@ -1019,12 +1019,12 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.925rem;
-  background: #0d1629;
+  background: #162C4F;
 }
 
 .rates-table thead tr {
-  background: rgba(212, 165, 39, 0.08);
-  border-bottom: 1px solid rgba(212, 165, 39, 0.2);
+  background: rgba(244, 180, 0, 0.08);
+  border-bottom: 1px solid rgba(244, 180, 0, 0.2);
 }
 
 .rates-table th {
@@ -1034,7 +1034,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #D4A527;
+  color: #F4B400;
 }
 
 .rates-table td {
@@ -1059,7 +1059,7 @@
 
 .rates-table .rate-price {
   font-weight: 700;
-  color: #D4A527;
+  color: #F4B400;
 }
 
 .rates-table .rate-note {
@@ -1071,8 +1071,8 @@
    FINANCING SECTION
    ---------------------------------------------------------- */
 .financing-section {
-  background: linear-gradient(135deg, #0d1629 0%, #111827 100%);
-  border: 1px solid rgba(212, 165, 39, 0.15);
+  background: linear-gradient(135deg, #162C4F 0%, #111827 100%);
+  border: 1px solid rgba(244, 180, 0, 0.15);
   border-radius: 16px;
   padding: 56px 48px;
   display: grid;
@@ -1116,7 +1116,7 @@
 
 .financing-items li::before {
   content: '✓';
-  color: #D4A527;
+  color: #F4B400;
   font-weight: 700;
   font-size: 0.875rem;
   margin-top: 1px;
@@ -1127,9 +1127,9 @@
    CTA BANNER
    ---------------------------------------------------------- */
 .cta-banner {
-  background: linear-gradient(135deg, #060c18 0%, #0d1629 60%, #0a1220 100%);
-  border-top: 1px solid rgba(212, 165, 39, 0.2);
-  border-bottom: 1px solid rgba(212, 165, 39, 0.2);
+  background: linear-gradient(135deg, #060c18 0%, #162C4F 60%, #0a1220 100%);
+  border-top: 1px solid rgba(244, 180, 0, 0.2);
+  border-bottom: 1px solid rgba(244, 180, 0, 0.2);
   padding: 80px 0;
   text-align: center;
   position: relative;
@@ -1140,7 +1140,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 50% 50%, rgba(212, 165, 39, 0.08) 0%, transparent 65%);
+  background: radial-gradient(ellipse at 50% 50%, rgba(244, 180, 0, 0.08) 0%, transparent 65%);
   pointer-events: none;
 }
 
@@ -1152,7 +1152,7 @@
 .cta-banner__title {
   font-size: clamp(1.75rem, 4vw, 2.75rem);
   font-weight: 800;
-  color: #D4A527;
+  color: #F4B400;
   margin: 0 0 16px;
   letter-spacing: -0.02em;
 }
@@ -1176,7 +1176,7 @@
 }
 
 .contact-info {
-  background: #0d1629;
+  background: #162C4F;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 14px;
   padding: 36px 32px;
@@ -1205,8 +1205,8 @@
 .contact-info__icon {
   width: 38px;
   height: 38px;
-  background: rgba(212, 165, 39, 0.1);
-  border: 1px solid rgba(212, 165, 39, 0.2);
+  background: rgba(244, 180, 0, 0.1);
+  border: 1px solid rgba(244, 180, 0, 0.2);
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -1219,7 +1219,7 @@
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #D4A527;
+  color: #F4B400;
   font-weight: 700;
   margin-bottom: 3px;
 }
@@ -1237,7 +1237,7 @@
 }
 
 .contact-info__item-value a:hover {
-  color: #D4A527;
+  color: #F4B400;
 }
 
 .contact-info__hours {
@@ -1249,7 +1249,7 @@
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #D4A527;
+  color: #F4B400;
   font-weight: 700;
   margin-bottom: 8px;
 }
@@ -1262,7 +1262,7 @@
 }
 
 .contact-form {
-  background: #0d1629;
+  background: #162C4F;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 14px;
   padding: 40px;
@@ -1299,13 +1299,13 @@
 .form-group select,
 .form-group textarea {
   width: 100%;
-  background: rgba(8, 15, 30, 0.6);
+  background: rgba(11, 31, 58, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   padding: 12px 16px;
   color: #ffffff;
   font-size: 0.95rem;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   transition: border-color 0.2s, box-shadow 0.2s;
   box-sizing: border-box;
   appearance: none;
@@ -1321,7 +1321,7 @@
 }
 
 .form-group select option {
-  background: #0d1629;
+  background: #162C4F;
   color: #ffffff;
 }
 
@@ -1334,8 +1334,8 @@
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #D4A527;
-  box-shadow: 0 0 0 3px rgba(212, 165, 39, 0.12);
+  border-color: #F4B400;
+  box-shadow: 0 0 0 3px rgba(244, 180, 0, 0.12);
 }
 
 .form-group textarea {
@@ -1385,7 +1385,7 @@
 }
 
 .airport-info {
-  background: #0d1629;
+  background: #162C4F;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 14px;
   padding: 36px;
@@ -1427,7 +1427,7 @@
 }
 
 .airport-freq-table td:last-child {
-  color: #D4A527;
+  color: #F4B400;
   font-weight: 700;
 }
 
@@ -1451,7 +1451,7 @@
   content: '›';
   position: absolute;
   left: 0;
-  color: #D4A527;
+  color: #F4B400;
   font-weight: 700;
 }
 
@@ -1460,12 +1460,12 @@
   overflow: hidden;
   height: 100%;
   min-height: 340px;
-  background-color: #0d1629;
+  background-color: #162C4F;
   background-image:
-    linear-gradient(rgba(212, 165, 39, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(212, 165, 39, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(244, 180, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(244, 180, 0, 0.04) 1px, transparent 1px);
   background-size: 32px 32px;
-  border: 1px solid rgba(212, 165, 39, 0.15);
+  border: 1px solid rgba(244, 180, 0, 0.15);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1478,7 +1478,7 @@
 .map-placeholder__pin {
   font-size: 2.5rem;
   margin-bottom: 12px;
-  filter: drop-shadow(0 0 12px rgba(212, 165, 39, 0.5));
+  filter: drop-shadow(0 0 12px rgba(244, 180, 0, 0.5));
 }
 
 .map-placeholder__name {
@@ -1497,17 +1497,17 @@
 
 .map-placeholder__link {
   font-size: 0.85rem;
-  color: #D4A527;
+  color: #F4B400;
   text-decoration: none;
   font-weight: 600;
   padding: 8px 18px;
-  border: 1px solid rgba(212, 165, 39, 0.35);
+  border: 1px solid rgba(244, 180, 0, 0.35);
   border-radius: 6px;
   transition: background 0.2s, color 0.2s;
 }
 
 .map-placeholder__link:hover {
-  background: rgba(212, 165, 39, 0.1);
+  background: rgba(244, 180, 0, 0.1);
   color: #f0c040;
 }
 
@@ -1515,7 +1515,7 @@
    SIMULATOR SECTION
    ---------------------------------------------------------- */
 .simulator-card {
-  background: #0d1629;
+  background: #162C4F;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 16px;
   padding: 48px;
@@ -1539,9 +1539,9 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #D4A527;
-  background: rgba(212, 165, 39, 0.1);
-  border: 1px solid rgba(212, 165, 39, 0.25);
+  color: #F4B400;
+  background: rgba(244, 180, 0, 0.1);
+  border: 1px solid rgba(244, 180, 0, 0.25);
   border-radius: 3px;
   padding: 3px 10px;
   margin-bottom: 12px;
@@ -1573,15 +1573,15 @@
 
 .simulator-features li::before {
   content: '✓';
-  color: #D4A527;
+  color: #F4B400;
   font-weight: 700;
   flex-shrink: 0;
   margin-top: 1px;
 }
 
 .simulator-visual {
-  background: rgba(8, 15, 30, 0.7);
-  border: 1px solid rgba(212, 165, 39, 0.15);
+  background: rgba(11, 31, 58, 0.7);
+  border: 1px solid rgba(244, 180, 0, 0.15);
   border-radius: 12px;
   padding: 48px 32px;
   text-align: center;
@@ -1591,13 +1591,13 @@
   font-size: 4rem;
   margin-bottom: 16px;
   display: block;
-  filter: drop-shadow(0 0 16px rgba(212, 165, 39, 0.4));
+  filter: drop-shadow(0 0 16px rgba(244, 180, 0, 0.4));
 }
 
 .simulator-visual__rate {
   font-size: 2rem;
   font-weight: 800;
-  color: #D4A527;
+  color: #F4B400;
   letter-spacing: -0.02em;
 }
 
@@ -1619,7 +1619,7 @@
 }
 
 .maintenance-item {
-  background: #0d1629;
+  background: #162C4F;
   border: 1px solid rgba(255,255,255,0.07);
   border-radius: 10px;
   padding: 24px;
@@ -1653,20 +1653,20 @@
   align-items: center;
   gap: 8px;
   padding: 12px 28px;
-  border: 2px solid #D4A527;
+  border: 2px solid #F4B400;
   border-radius: 6px;
-  color: #D4A527;
+  color: #F4B400;
   font-weight: 700;
   font-size: 0.9rem;
   text-decoration: none;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   cursor: pointer;
   background: transparent;
   transition: background 0.2s, color 0.2s;
 }
 
 .btn--outline-gold:hover {
-  background: rgba(212, 165, 39, 0.1);
+  background: rgba(244, 180, 0, 0.1);
   color: #f0c040;
 }
 
@@ -1735,11 +1735,11 @@
 
   .stat-item {
     border-right: none;
-    border-bottom: 1px solid rgba(212, 165, 39, 0.15);
+    border-bottom: 1px solid rgba(244, 180, 0, 0.15);
   }
 
   .stat-item:nth-child(odd) {
-    border-right: 1px solid rgba(212, 165, 39, 0.15);
+    border-right: 1px solid rgba(244, 180, 0, 0.15);
   }
 
   .stat-item:nth-last-child(-n+2) {
@@ -1887,14 +1887,14 @@
   transform: translateY(-50%);
   font-size: clamp(80px, 12vw, 160px);
   font-weight: 900;
-  color: rgba(212,165,39,0.04);
+  color: rgba(244,180,0,0.04);
   letter-spacing: 0.05em;
   user-select: none;
   pointer-events: none;
   white-space: nowrap;
 }
 .page-hero__title { font-size: clamp(32px,5vw,56px); font-weight:800; color:#fff; line-height:1.1; margin-bottom:16px; max-width:640px; }
-.page-hero__title span { color: #D4A527; }
+.page-hero__title span { color: #F4B400; }
 .page-hero__sub { font-size:18px; color:rgba(255,255,255,0.65); max-width:520px; line-height:1.7; }
 
 /* CTA Banner */
@@ -1918,9 +1918,9 @@
 .program-detail__level {
   display: inline-block;
   font-size: 12px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
-  color: #D4A527;
-  background: rgba(212,165,39,0.1);
-  border: 1px solid rgba(212,165,39,0.25);
+  color: #F4B400;
+  background: rgba(244,180,0,0.1);
+  border: 1px solid rgba(244,180,0,0.25);
   padding: 4px 12px; border-radius: 100px; margin-bottom: 16px;
 }
 .program-detail__title { font-size:clamp(24px,3vw,32px); font-weight:800; margin-bottom:16px; line-height:1.2; }
@@ -1930,7 +1930,7 @@
   text-align:center; padding:16px 20px;
   background:var(--off-white); border-radius:var(--radius); border:1px solid var(--border); min-width:100px;
 }
-.detail-stat__num { font-size:22px; font-weight:800; color:#D4A527; display:block; }
+.detail-stat__num { font-size:22px; font-weight:800; color:#F4B400; display:block; }
 .detail-stat__label { font-size:12px; color:var(--gray); font-weight:500; margin-top:2px; display:block; }
 .program-detail__highlights { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:32px; }
 .highlight-item { display:flex; align-items:center; gap:10px; font-size:14px; font-weight:500; color:var(--text); }
@@ -1942,7 +1942,7 @@
 .curriculum-phase { display:flex; gap:16px; padding:16px 0; border-bottom:1px solid var(--border); }
 .curriculum-phase:last-child { border-bottom:none; padding-bottom:0; }
 .curriculum-phase__num {
-  width:32px; height:32px; background:#D4A527; color:#080F1E;
+  width:32px; height:32px; background:#F4B400; color:#0B1F3A;
   border-radius:50%; display:flex; align-items:center; justify-content:center;
   font-size:13px; font-weight:800; flex-shrink:0;
 }
@@ -1957,10 +1957,10 @@
 .aircraft-detail__img img { width:100%; height:100%; object-fit:cover; }
 .aircraft-detail__tag {
   position:absolute; top:16px; left:16px;
-  background:#080F1E; color:#fff; font-size:12px; font-weight:600; padding:5px 14px; border-radius:100px;
+  background:#0B1F3A; color:#fff; font-size:12px; font-weight:600; padding:5px 14px; border-radius:100px;
 }
 .aircraft-detail__title { font-size:28px; font-weight:800; margin-bottom:8px; }
-.aircraft-detail__subtitle { font-size:14px; color:#D4A527; font-weight:600; letter-spacing:0.05em; margin-bottom:16px; }
+.aircraft-detail__subtitle { font-size:14px; color:#F4B400; font-weight:600; letter-spacing:0.05em; margin-bottom:16px; }
 .aircraft-detail__desc { font-size:15px; color:var(--gray); line-height:1.8; margin-bottom:28px; }
 .specs-table { width:100%; border-collapse:collapse; margin-bottom:24px; }
 .specs-table tr { border-bottom:1px solid var(--border); }
@@ -1969,11 +1969,11 @@
 .specs-table td:first-child { color:var(--gray); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.06em; width:45%; }
 .specs-table td:last-child { font-weight:600; color:var(--text); }
 .aircraft-detail__used-for {
-  background:rgba(212,165,39,0.06); border:1px solid rgba(212,165,39,0.2); border-radius:var(--radius); padding:16px 20px;
+  background:rgba(244,180,0,0.06); border:1px solid rgba(244,180,0,0.2); border-radius:var(--radius); padding:16px 20px;
 }
-.aircraft-detail__used-for h5 { font-size:13px; font-weight:700; color:#D4A527; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.08em; }
+.aircraft-detail__used-for h5 { font-size:13px; font-weight:700; color:#F4B400; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.08em; }
 .aircraft-detail__used-for ul { list-style:none; display:flex; flex-wrap:wrap; gap:8px; }
-.aircraft-detail__used-for li { font-size:13px; background:rgba(212,165,39,0.1); color:var(--text); padding:4px 12px; border-radius:100px; font-weight:500; }
+.aircraft-detail__used-for li { font-size:13px; background:rgba(244,180,0,0.1); color:var(--text); padding:4px 12px; border-radius:100px; font-weight:500; }
 
 /* ── FAQ Accordion ── */
 .faq-section { padding:80px 0; background:var(--off-white); }
@@ -1986,7 +1986,7 @@
   font-family:var(--font); font-size:15px; font-weight:600; color:var(--text); text-align:left; gap:16px;
   transition:color var(--transition);
 }
-.faq-item__question:hover { color:#D4A527; }
+.faq-item__question:hover { color:#F4B400; }
 .faq-item__question svg { flex-shrink:0; transition:transform var(--transition); }
 .faq-item.open .faq-item__question svg { transform:rotate(180deg); }
 .faq-item__answer { max-height:0; overflow:hidden; transition:max-height 0.3s ease; }
@@ -1999,7 +1999,7 @@
   background:var(--border); border-radius:var(--radius-lg); overflow:hidden; margin:48px 0;
 }
 .stats-row__item { background:#fff; padding:36px 24px; text-align:center; }
-.stats-row__num { font-size:36px; font-weight:800; color:#D4A527; display:block; line-height:1; margin-bottom:6px; }
+.stats-row__num { font-size:36px; font-weight:800; color:#F4B400; display:block; line-height:1; margin-bottom:6px; }
 .stats-row__label { font-size:13px; color:var(--gray); font-weight:500; }
 
 /* ── Values (about page) ── */
@@ -2010,7 +2010,7 @@
 }
 .value-card:hover { transform:translateY(-4px); box-shadow:var(--shadow-lg); }
 .value-card__icon {
-  width:64px; height:64px; background:rgba(212,165,39,0.1); border-radius:50%;
+  width:64px; height:64px; background:rgba(244,180,0,0.1); border-radius:50%;
   display:flex; align-items:center; justify-content:center; margin:0 auto 20px;
 }
 .value-card h3 { font-size:18px; font-weight:700; margin-bottom:12px; }
@@ -2028,23 +2028,23 @@
 /* ── Rates table (pricing page) ── */
 .rates-table-wrap { background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow); margin-bottom:48px; }
 .rates-table { width:100%; border-collapse:collapse; }
-.rates-table th { background:#080F1E; color:#fff; padding:14px 20px; text-align:left; font-size:13px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; }
+.rates-table th { background:#0B1F3A; color:#fff; padding:14px 20px; text-align:left; font-size:13px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; }
 .rates-table th:last-child { text-align:right; }
 .rates-table td { padding:14px 20px; font-size:14px; border-bottom:1px solid var(--border); }
 .rates-table tr:last-child td { border-bottom:none; }
-.rates-table td:last-child { text-align:right; font-weight:700; color:#D4A527; font-size:15px; }
+.rates-table td:last-child { text-align:right; font-weight:700; color:#F4B400; font-size:15px; }
 .rates-table tr:hover td { background:var(--off-white); }
 
 /* ── Financing (pricing page) ── */
 .financing-section {
-  background:#080F1E; border-radius:var(--radius-lg); padding:48px;
+  background:#0B1F3A; border-radius:var(--radius-lg); padding:48px;
   display:grid; grid-template-columns:1fr 1fr; gap:48px; align-items:center; margin-bottom:48px;
 }
 .financing-section h3 { font-size:26px; font-weight:800; color:#fff; margin-bottom:12px; }
 .financing-section p { font-size:15px; color:rgba(255,255,255,0.65); line-height:1.75; margin-bottom:24px; }
 .financing-features { list-style:none; display:flex; flex-direction:column; gap:10px; }
 .financing-features li { display:flex; align-items:center; gap:10px; font-size:14px; color:rgba(255,255,255,0.8); }
-.financing-features li::before { content:'✓'; color:#D4A527; font-weight:700; }
+.financing-features li::before { content:'✓'; color:#F4B400; font-weight:700; }
 
 /* ── Contact page ── */
 .contact-page__grid { display:grid; grid-template-columns:1fr 1.2fr; gap:64px; align-items:start; }
@@ -2054,9 +2054,9 @@
 .airport-info { background:var(--off-white); border-radius:var(--radius-lg); padding:32px; border:1px solid var(--border); }
 .airport-info h4 { font-size:16px; font-weight:700; margin-bottom:16px; }
 .map-placeholder {
-  background:linear-gradient(135deg,#080F1E 0%,#0d1930 100%); border-radius:var(--radius-lg);
+  background:linear-gradient(135deg,#0B1F3A 0%,#0d1930 100%); border-radius:var(--radius-lg);
   height:220px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px;
-  margin-bottom:16px; border:1px solid rgba(212,165,39,0.2);
+  margin-bottom:16px; border:1px solid rgba(244,180,0,0.2);
 }
 .map-placeholder svg { opacity:0.5; }
 .map-placeholder span { color:rgba(255,255,255,0.4); font-size:13px; }
@@ -2077,4 +2077,18 @@
   .cta-banner__actions { flex-direction:column; width:100%; }
   .cta-banner__actions .btn { width:100%; }
   .stats-row { grid-template-columns:1fr 1fr; }
+}
+
+/* ----------------------------------------------------------
+   WAITLIST SECTION
+   ---------------------------------------------------------- */
+.waitlist-section { background: var(--off-white); }
+.waitlist__inner { display: grid; grid-template-columns: 1fr 1.1fr; gap: 72px; align-items: start; }
+.waitlist__text .section__title { text-align: left; }
+.waitlist__text p { color: var(--gray); line-height: 1.8; margin-bottom: 24px; }
+.waitlist__perks { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.waitlist__perks li { font-size: 15px; font-weight: 500; color: var(--text); display: flex; align-items: center; gap: 10px; }
+.waitlist__perks li::before { content: '→'; color: var(--gold); font-weight: 700; }
+@media (max-width: 768px) {
+  .waitlist__inner { grid-template-columns: 1fr; gap: 48px; }
 }
