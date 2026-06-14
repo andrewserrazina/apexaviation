@@ -9,6 +9,7 @@
   <meta property="og:title" content="Apex Aviation | Train Beyond the Checkride" />
   <meta property="og:description" content="Premium simulator-based aviation training opening in Austin, Texas — January 2027." />
   <meta property="og:type" content="website" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet" />
@@ -323,6 +324,39 @@
     </div>
   </section>
 
+  <!-- TESTIMONIALS -->
+  <section class="section" style="background:var(--navy);padding:80px 0;">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Pilot Feedback</div>
+        <h2 class="section__title" style="color:var(--white)">What pilots say about<br/><em class="accent" style="color:var(--gold-light)">training with Andrew.</em></h2>
+      </div>
+      <div class="testimonials__grid">
+        <div class="testimonial-card">
+          <div class="testimonial-card__quote">&ldquo;I came in thinking I was reasonably current. The first debrief showed me I had three habits that would get me in trouble in real IMC. That kind of honesty is hard to find.&rdquo;</div>
+          <div class="testimonial-card__author">
+            <div class="testimonial-card__name">R. Mitchell</div>
+            <div class="testimonial-card__detail">Instrument-rated · Piper Archer owner · Austin, TX</div>
+          </div>
+        </div>
+        <div class="testimonial-card">
+          <div class="testimonial-card__quote">&ldquo;The virtual checkride prep was the best money I spent before my instrument practical. Andrew doesn't let you get away with vague answers — and that's exactly what you need before sitting across from a DPE.&rdquo;</div>
+          <div class="testimonial-card__author">
+            <div class="testimonial-card__name">J. Okafor</div>
+            <div class="testimonial-card__detail">Private Pilot · Instrument Rating candidate</div>
+          </div>
+        </div>
+        <div class="testimonial-card">
+          <div class="testimonial-card__quote">&ldquo;I'd been putting off my IPC for over a year because I knew I wasn't as sharp as I used to be. One sim session and a real debrief later, I had a clear picture of exactly what to work on. No fluff.&rdquo;</div>
+          <div class="testimonial-card__author">
+            <div class="testimonial-card__name">T. Carpenter</div>
+            <div class="testimonial-card__detail">Commercial Pilot · 1,200 hrs TT · San Antonio, TX</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- AUSTIN LAUNCH SECTION -->
   <section class="cta-banner section--dark">
     <div class="container cta-banner__inner">
@@ -353,7 +387,8 @@
         </ul>
       </div>
       <div class="waitlist__form-wrap">
-        <form class="contact__form" id="waitlistForm">
+        <!-- Formspree: replace YOUR_FORM_ID with the ID from formspree.io/forms after creating a free account -->
+        <form class="contact__form" id="waitlistForm" action="https://formspree.io/f/YOUR_FORM_ID" method="POST">
           <h3>Join the Waitlist</h3>
           <div class="form-row">
             <div class="form-group">
