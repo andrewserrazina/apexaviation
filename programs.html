@@ -3,10 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Flight Programs | Apex Aviation</title>
+  <title>Training Programs | Apex Aviation</title>
+  <meta name="description" content="Virtual ground school and checkride prep available now. Simulator-based IPC, flight reviews, and AATD training opening in Austin, Texas — January 2027." />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="pages.css" />
 </head>
@@ -15,358 +17,192 @@
   <header class="nav" id="nav">
     <div class="container nav__inner">
       <a href="index.html" class="nav__logo">
-        <svg width="36" height="32" viewBox="0 0 36 32" fill="none">
-          <path d="M18 1L3 28h5.5l2-4h15l2 4H33L18 1z" fill="#D4A527"/>
-          <path d="M18 8l5.5 11h-11L18 8z" fill="#080F1E"/>
-          <path d="M4 19.5L30 14l2 2.5L6 22z" fill="#B8891A"/>
-          <path d="M4 19.5L30 14l1 1.2L5 21.2z" fill="#D4A527"/>
+        <svg width="32" height="28" viewBox="0 0 40 36" fill="none">
+          <path d="M20 2L2 34h6l3-6h18l3 6h6L20 2z" fill="#F4B400"/>
+          <path d="M20 10l5 10H15l5-10z" fill="#0B1F3A"/>
+          <path d="M5 24L35 18l1.5 3L6.5 27z" fill="#D4920A"/>
         </svg>
         <span class="nav__logo-text"><strong>APEX</strong><small>AVIATION</small></span>
       </a>
       <nav class="nav__links">
-        <a href="index.html">Home</a>
-        <a href="programs.html" class="active">Programs</a>
-        <a href="fleet.html">Fleet</a>
+        <a href="index.html#services" class="active">Services</a>
+        <a href="fleet.html">Simulator</a>
         <a href="about.html">About</a>
         <a href="pricing.html">Pricing</a>
-        <a href="contact.html" class="btn btn--nav">Book a Flight</a>
+        <a href="mailto:info@apexaviation.com" class="btn btn--nav">Book a Session</a>
       </nav>
       <button class="nav__hamburger" id="hamburger" aria-label="Toggle menu">
         <span></span><span></span><span></span>
       </button>
     </div>
     <div class="nav__mobile" id="mobileMenu">
-      <a href="index.html">Home</a>
-      <a href="programs.html">Programs</a>
-      <a href="fleet.html">Fleet</a>
+      <a href="index.html#services">Services</a>
+      <a href="fleet.html">Simulator</a>
       <a href="about.html">About</a>
       <a href="pricing.html">Pricing</a>
-      <a href="contact.html">Book a Flight</a>
+      <a href="mailto:info@apexaviation.com">Book a Session</a>
     </div>
   </header>
 
   <!-- PAGE HERO -->
   <section class="page-hero">
-    <div class="page-hero__bg-text">PROGRAMS</div>
+    <div class="page-hero__bg-text">TRAINING</div>
     <div class="container page-hero__inner">
-      <div class="section__eyebrow">Flight Training</div>
-      <h1 class="page-hero__title">Find Your Path<br /><span>to the Skies</span></h1>
-      <p class="page-hero__sub">From your very first flight to an airline career, we offer structured, FAA-approved training programs for every level of aviator.</p>
+      <div class="section__eyebrow">What We Offer</div>
+      <h1 class="page-hero__title">Virtual now.<br /><span>Austin in 2027.</span></h1>
+      <p class="page-hero__sub">Two programs are available today — virtual ground school and checkride prep. IPC, flight reviews, and AATD simulator sessions open with our Austin facility in January 2027.</p>
     </div>
   </section>
 
-  <!-- PROGRAMS DETAIL -->
-  <div class="container">
+  <!-- AVAILABLE NOW -->
+  <section class="section section--light" id="virtual">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Available Now</div>
+        <h2 class="section__title">Virtual training,<br/><em class="accent">no airport required.</em></h2>
+        <p class="section__desc">Live sessions with Andrew, delivered remotely. Structured, honest, and built for pilots who want to actually prepare — not just check a box.</p>
+      </div>
 
-    <!-- PPL -->
-    <div class="program-detail" id="ppl">
-      <div class="program-detail__grid">
-        <div class="program-detail__meta">
-          <div class="program-detail__level">Beginner</div>
-          <h2 class="program-detail__title">Private Pilot License</h2>
-          <p class="program-detail__desc">The Private Pilot License is the first milestone for any aviator. You'll learn to fly, navigate, communicate with ATC, and handle real-world weather decisions. Our PPL program follows both Part 61 and Part 141 pathways, giving you the flexibility to train on your schedule.</p>
-          <div class="program-detail__stats">
-            <div class="detail-stat"><span class="detail-stat__num">40</span><span class="detail-stat__label">Min. Hours</span></div>
-            <div class="detail-stat"><span class="detail-stat__num">3–6</span><span class="detail-stat__label">Months Avg.</span></div>
-            <div class="detail-stat"><span class="detail-stat__num">$12,500</span><span class="detail-stat__label">Est. Cost</span></div>
-          </div>
-          <div class="program-detail__highlights">
-            <div class="highlight-item">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Solo cross-country flights
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px">
+
+        <div class="program-detail" style="border-bottom:none;padding:0">
+          <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:40px;height:100%;box-shadow:var(--shadow)">
+            <div class="program-detail__level" style="color:var(--gold);font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:12px">Ground School · Mon–Thu</div>
+            <h2 style="font-size:clamp(22px,2.5vw,30px);font-weight:800;margin-bottom:16px;line-height:1.2">Virtual Ground School</h2>
+            <p style="color:var(--gray);line-height:1.8;margin-bottom:24px">Live, instructor-led sessions covering everything the FAA written exams test — and everything the written exams don't but DPEs do. Built around how working pilots think, not how textbooks are organized. Sessions run Monday through Thursday with specific tracks per certificate level.</p>
+
+            <div style="background:var(--off-white);border-radius:10px;padding:20px;margin-bottom:24px">
+              <div style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Weekly Schedule</div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;gap:12px;align-items:center;font-size:14px"><span style="background:var(--navy);color:var(--gold);font-size:11px;font-weight:700;padding:3px 10px;border-radius:100px;white-space:nowrap">Mon &amp; Wed</span><span style="color:var(--text)">Private Pilot (PPL)</span></div>
+                <div style="display:flex;gap:12px;align-items:center;font-size:14px"><span style="background:var(--navy);color:var(--gold);font-size:11px;font-weight:700;padding:3px 10px;border-radius:100px;white-space:nowrap">Tuesday</span><span style="color:var(--text)">Instrument Rating</span></div>
+                <div style="display:flex;gap:12px;align-items:center;font-size:14px"><span style="background:var(--navy);color:var(--gold);font-size:11px;font-weight:700;padding:3px 10px;border-radius:100px;white-space:nowrap">Thursday</span><span style="color:var(--text)">Commercial Pilot</span></div>
+              </div>
             </div>
-            <div class="highlight-item">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Night flight training
+
+            <div class="program-detail__highlights" style="margin-bottom:32px">
+              <div class="highlight-item">Regulations, airspace, and ACS standards</div>
+              <div class="highlight-item">Weather theory and real-world ADM</div>
+              <div class="highlight-item">Aircraft systems and aerodynamics</div>
+              <div class="highlight-item">Navigation and IFR procedures</div>
+              <div class="highlight-item">Written exam preparation included</div>
+              <div class="highlight-item">Live Q&amp;A with Andrew every session</div>
             </div>
-            <div class="highlight-item">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Ground school included
-            </div>
-            <div class="highlight-item">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Written &amp; checkride prep
-            </div>
-            <div class="highlight-item">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Part 61 or Part 141 pathway
-            </div>
-            <div class="highlight-item">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Flexible scheduling
-            </div>
-          </div>
-          <a href="contact.html" class="btn btn--primary">Enroll in PPL</a>
-        </div>
-        <div class="program-detail__curriculum">
-          <h4>Training Curriculum</h4>
-          <div class="curriculum-phase">
-            <div class="curriculum-phase__num">1</div>
-            <div class="curriculum-phase__body">
-              <h5>Pre-Solo Fundamentals</h5>
-              <p>Aircraft systems, basic maneuvers, slow flight, stalls, takeoffs and landings. You'll fly solo for the first time after ~15 hours dual instruction.</p>
-            </div>
-          </div>
-          <div class="curriculum-phase">
-            <div class="curriculum-phase__num">2</div>
-            <div class="curriculum-phase__body">
-              <h5>Solo Operations</h5>
-              <p>Practice your maneuvers and landings independently. Build confidence and consistency in the traffic pattern at your home airport.</p>
-            </div>
-          </div>
-          <div class="curriculum-phase">
-            <div class="curriculum-phase__num">3</div>
-            <div class="curriculum-phase__body">
-              <h5>Cross-Country Flying</h5>
-              <p>Plan and fly routes to other airports using VORs, GPS, and pilotage. Complete both dual and solo cross-country requirements including a 150 nm solo flight.</p>
-            </div>
-          </div>
-          <div class="curriculum-phase">
-            <div class="curriculum-phase__num">4</div>
-            <div class="curriculum-phase__body">
-              <h5>Night &amp; Hood Flying</h5>
-              <p>Night dual cross-country and solo landings. Basic instrument skills under the foggles to prepare for unexpected IMC.</p>
-            </div>
-          </div>
-          <div class="curriculum-phase">
-            <div class="curriculum-phase__num">5</div>
-            <div class="curriculum-phase__body">
-              <h5>Checkride Preparation</h5>
-              <p>Mock oral exam, stage checks, and a pre-checkride flight with your CFI. We have a 98% first-attempt pass rate on the practical exam.</p>
+
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <!-- LINKS: replace href values with booking links when available -->
+              <a href="mailto:info@apexaviation.com" class="btn btn--primary">Private Pilot — Mon &amp; Wed</a>
+              <a href="mailto:info@apexaviation.com" class="btn btn--outline">Instrument Rating — Tue</a>
+              <a href="mailto:info@apexaviation.com" class="btn btn--outline">Commercial Pilot — Thu</a>
             </div>
           </div>
         </div>
+
+        <div class="program-detail" style="border-bottom:none;padding:0">
+          <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:40px;height:100%;box-shadow:var(--shadow)">
+            <div class="program-detail__level" style="color:var(--gold);font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:12px">Checkride Prep · Virtual</div>
+            <h2 style="font-size:clamp(22px,2.5vw,30px);font-weight:800;margin-bottom:16px;line-height:1.2">Checkride Preparation</h2>
+            <p style="color:var(--gray);line-height:1.8;margin-bottom:24px">Oral exam coaching and ACS-based scenario work, delivered remotely. We go through every area DPEs actually probe — and we don't stop until your answers are solid and your reasoning is yours, not memorized. Covers private pilot, instrument rating, and commercial pilot practical tests.</p>
+
+            <div style="background:var(--off-white);border-radius:10px;padding:20px;margin-bottom:24px">
+              <div style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">What to Expect</div>
+              <p style="font-size:14px;color:var(--gray);line-height:1.7;margin:0">Sessions are 60–90 minutes. Andrew will run you through a realistic DPE-style oral, identify weak areas, and give you specific follow-up material. Most students do 2–4 sessions before their practical test.</p>
+            </div>
+
+            <div class="program-detail__highlights" style="margin-bottom:32px">
+              <div class="highlight-item">Live oral exam simulation with Andrew</div>
+              <div class="highlight-item">ACS standards review — all areas of operation</div>
+              <div class="highlight-item">ADM scenarios and realistic DPE questioning</div>
+              <div class="highlight-item">Honest feedback — no false reassurance</div>
+              <div class="highlight-item">Private, instrument, and commercial prep</div>
+              <div class="highlight-item">Flexible scheduling — book around your timeline</div>
+            </div>
+
+            <a href="mailto:info@apexaviation.com" class="btn btn--primary" style="width:100%;text-align:center">Book a Checkride Prep Session</a>
+          </div>
+        </div>
+
       </div>
     </div>
+  </section>
 
-    <!-- IFR -->
-    <div class="program-detail" id="ifr">
-      <div class="program-detail__grid reverse">
-        <div class="program-detail__meta">
-          <div class="program-detail__level">Intermediate</div>
-          <h2 class="program-detail__title">Instrument Rating</h2>
-          <p class="program-detail__desc">The Instrument Rating is one of the most valuable add-ons a pilot can earn. It dramatically expands where and when you can fly by allowing you to operate in clouds and low-visibility conditions under Instrument Flight Rules (IFR). You'll master cockpit workload management and precision navigation using modern glass-cockpit avionics.</p>
-          <div class="program-detail__stats">
-            <div class="detail-stat"><span class="detail-stat__num">50</span><span class="detail-stat__label">XC Hours</span></div>
-            <div class="detail-stat"><span class="detail-stat__num">40</span><span class="detail-stat__label">Inst. Hours</span></div>
-            <div class="detail-stat"><span class="detail-stat__num">$9,800</span><span class="detail-stat__label">Est. Cost</span></div>
+  <!-- COMING JAN 2027 -->
+  <section class="section section--dark" id="simulator-programs">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Austin · January 2027</div>
+        <h2 class="section__title">Simulator-based training<br/><em class="accent">opening soon.</em></h2>
+        <p class="section__desc">When the Austin facility opens, founding members get first access. Join the waitlist now to lock in launch-day rates and priority scheduling.</p>
+      </div>
+      <div class="programs__grid">
+
+        <div class="program-card">
+          <div class="program-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
-          <div class="program-detail__highlights">
-            <div class="highlight-item">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              ILS, VOR, GPS approaches
-            </div>
-            <div class="highlight-item">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Simulator hours count
-            </div>
-            <div class="highlight-item">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Garmin GTN 650 training
-            </div>
-            <div class="highlight-item">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              ATC communication mastery
-            </div>
-            <div class="highlight-item">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              IFR flight planning
-            </div>
-            <div class="highlight-item">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Holds &amp; missed approaches
-            </div>
-          </div>
-          <a href="contact.html" class="btn btn--primary">Enroll in IFR</a>
+          <div class="program-card__level">Instrument</div>
+          <h3>IPC &amp; Instrument Proficiency</h3>
+          <p>Restore or sharpen your instrument currency. Holds, approaches, partial panel, and ATC workload under realistic IMC conditions.</p>
+          <ul>
+            <li>Full IPC sign-off in the AATD</li>
+            <li>Partial panel &amp; unusual attitudes</li>
+            <li>Approach briefings &amp; ADM debrief</li>
+          </ul>
+          <a href="index.html#waitlist" class="btn btn--outline">Join the Waitlist</a>
         </div>
-        <div class="program-detail__curriculum">
-          <h4>Training Curriculum</h4>
-          <div class="curriculum-phase">
-            <div class="curriculum-phase__num">1</div>
-            <div class="curriculum-phase__body">
-              <h5>Basic Instrument Flying</h5>
-              <p>Attitude instrument flying, partial-panel skills, unusual attitude recovery, and basic instrument navigation using VOR and GPS.</p>
-            </div>
+
+        <div class="program-card program-card--featured">
+          <div class="program-card__badge">Most Requested</div>
+          <div class="program-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
-          <div class="curriculum-phase">
-            <div class="curriculum-phase__num">2</div>
-            <div class="curriculum-phase__body">
-              <h5>Approach Procedures</h5>
-              <p>ILS precision approaches, VOR/GPS non-precision approaches, circling approaches, and missed approach execution.</p>
-            </div>
-          </div>
-          <div class="curriculum-phase">
-            <div class="curriculum-phase__num">3</div>
-            <div class="curriculum-phase__body">
-              <h5>IFR Cross-Country</h5>
-              <p>Plan and fly real IFR cross-country routes through Class B/C airspace. File and manage flight plans with live ATC.</p>
-            </div>
-          </div>
-          <div class="curriculum-phase">
-            <div class="curriculum-phase__num">4</div>
-            <div class="curriculum-phase__body">
-              <h5>Holds &amp; Emergency Procedures</h5>
-              <p>Holding patterns, lost communications procedures, and single-pilot IFR workload management under simulated IMC.</p>
-            </div>
-          </div>
-          <div class="curriculum-phase">
-            <div class="curriculum-phase__num">5</div>
-            <div class="curriculum-phase__body">
-              <h5>IFR Checkride Prep</h5>
-              <p>Comprehensive oral knowledge review and full mock practical test. We walk you through every ACS task before your DPE appointment.</p>
-            </div>
-          </div>
+          <div class="program-card__level">Currency</div>
+          <h3>Flight Reviews &amp; BFR</h3>
+          <p>Biennial Flight Review or Rusty Pilot reintegration — structured around your current skill level, your aircraft type, and your actual flying environment.</p>
+          <ul>
+            <li>FAA BFR conducted in the AATD</li>
+            <li>Rusty Pilot return-to-flight program</li>
+            <li>Aircraft-specific scenario design</li>
+          </ul>
+          <a href="index.html#waitlist" class="btn btn--primary">Join the Waitlist</a>
         </div>
+
+        <div class="program-card">
+          <div class="program-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><rect x="2" y="3" width="20" height="14" rx="2" stroke="#F4B400" stroke-width="2"/><path d="M8 21h8M12 17v4" stroke="#F4B400" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="10" r="3" stroke="#F4B400" stroke-width="2"/></svg>
+          </div>
+          <div class="program-card__level">Core Platform</div>
+          <h3>AATD Simulator Sessions</h3>
+          <p>Open simulator time for scenario practice, approach currency, or working through specific deficiencies identified in a debrief. Reset, repeat, and build real proficiency.</p>
+          <ul>
+            <li>FAA-approved AATD hours</li>
+            <li>Full national airport database</li>
+            <li>Any weather, any time</li>
+          </ul>
+          <a href="index.html#waitlist" class="btn btn--outline">Join the Waitlist</a>
+        </div>
+
+        <div class="program-card">
+          <div class="program-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="program-card__level">Recurrent</div>
+          <h3>Rusty Pilot Program</h3>
+          <p>Been away from flying? Our structured return-to-flight program starts where you are — no judgment, clear assessment, and a deliberate path back to full confidence in the cockpit.</p>
+          <ul>
+            <li>Structured re-familiarization curriculum</li>
+            <li>Systems &amp; procedures review</li>
+            <li>Simulator-based scenario progression</li>
+          </ul>
+          <a href="index.html#waitlist" class="btn btn--outline">Join the Waitlist</a>
+        </div>
+
+      </div>
+      <div style="text-align:center;margin-top:48px">
+        <a href="index.html#waitlist" class="btn btn--primary">Join the Founding Member Waitlist</a>
       </div>
     </div>
-
-    <!-- CPL -->
-    <div class="program-detail" id="cpl">
-      <div class="program-detail__grid">
-        <div class="program-detail__meta">
-          <div class="program-detail__level">Advanced</div>
-          <h2 class="program-detail__title">Commercial Pilot Certificate</h2>
-          <p class="program-detail__desc">Turn your passion into a career. The Commercial Pilot Certificate allows you to be compensated for flying and is the gateway to a professional aviation career — from charter and cargo to the airlines. Our accelerated CPL program is designed for pilots who want to move quickly and efficiently toward their career goals.</p>
-          <div class="program-detail__stats">
-            <div class="detail-stat"><span class="detail-stat__num">250</span><span class="detail-stat__label">Total Hours</span></div>
-            <div class="detail-stat"><span class="detail-stat__num">100</span><span class="detail-stat__label">PIC Hours</span></div>
-            <div class="detail-stat"><span class="detail-stat__num">$24,000</span><span class="detail-stat__label">Est. Cost</span></div>
-          </div>
-          <div class="program-detail__highlights">
-            <div class="highlight-item">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Advanced maneuvers training
-            </div>
-            <div class="highlight-item">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Multi-engine option
-            </div>
-            <div class="highlight-item">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Night &amp; complex endorsement
-            </div>
-            <div class="highlight-item">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Career placement support
-            </div>
-          </div>
-          <a href="contact.html" class="btn btn--primary">Enroll in CPL</a>
-        </div>
-        <div class="program-detail__curriculum">
-          <h4>Training Curriculum</h4>
-          <div class="curriculum-phase">
-            <div class="curriculum-phase__num">1</div>
-            <div class="curriculum-phase__body">
-              <h5>Hour Building</h5>
-              <p>Build toward 250 total hours through supervised solo cross-countries, IFR flight time, and complex aircraft endorsement flights.</p>
-            </div>
-          </div>
-          <div class="curriculum-phase">
-            <div class="curriculum-phase__num">2</div>
-            <div class="curriculum-phase__body">
-              <h5>Commercial Maneuvers</h5>
-              <p>Chandelles, lazy eights, steep spirals, eights-on-pylons, and precision power-off landings to commercial ACS standards.</p>
-            </div>
-          </div>
-          <div class="curriculum-phase">
-            <div class="curriculum-phase__num">3</div>
-            <div class="curriculum-phase__body">
-              <h5>Complex &amp; High-Performance</h5>
-              <p>Transition to complex aircraft (retractable gear, constant-speed prop) and earn endorsements required for commercial operations.</p>
-            </div>
-          </div>
-          <div class="curriculum-phase">
-            <div class="curriculum-phase__num">4</div>
-            <div class="curriculum-phase__body">
-              <h5>Multi-Engine (Optional)</h5>
-              <p>Earn your multi-engine rating on the Piper Seminole. VMC demonstrations, engine-out procedures, and multi-engine IFR.</p>
-            </div>
-          </div>
-          <div class="curriculum-phase">
-            <div class="curriculum-phase__num">5</div>
-            <div class="curriculum-phase__body">
-              <h5>CPL Checkride Prep</h5>
-              <p>Stage checks, mock oral, and full pre-checkride flight. Career counseling and airline application guidance included.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- CFI -->
-    <div class="program-detail" id="cfi">
-      <div class="program-detail__grid reverse">
-        <div class="program-detail__meta">
-          <div class="program-detail__level">Instructor</div>
-          <h2 class="program-detail__title">CFI / CFII Certification</h2>
-          <p class="program-detail__desc">Becoming a Certified Flight Instructor is one of the best ways to build hours quickly while giving back to the aviation community. Our CFI and CFII programs cover the fundamentals of instruction, lesson plan development, and the techniques needed to develop safe, competent pilots. Many regional airline programs also credit CFI time toward ATP minimums.</p>
-          <div class="program-detail__stats">
-            <div class="detail-stat"><span class="detail-stat__num">CPL</span><span class="detail-stat__label">Required</span></div>
-            <div class="detail-stat"><span class="detail-stat__num">2–4</span><span class="detail-stat__label">Months</span></div>
-            <div class="detail-stat"><span class="detail-stat__num">$6,500</span><span class="detail-stat__label">Est. Cost</span></div>
-          </div>
-          <div class="program-detail__highlights">
-            <div class="highlight-item">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              FOI &amp; FIA written prep
-            </div>
-            <div class="highlight-item">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Lesson plan development
-            </div>
-            <div class="highlight-item">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Teaching from right seat
-            </div>
-            <div class="highlight-item">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#D4A527" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              CFII add-on available
-            </div>
-          </div>
-          <a href="contact.html" class="btn btn--primary">Enroll in CFI</a>
-        </div>
-        <div class="program-detail__curriculum">
-          <h4>Training Curriculum</h4>
-          <div class="curriculum-phase">
-            <div class="curriculum-phase__num">1</div>
-            <div class="curriculum-phase__body">
-              <h5>Fundamentals of Instruction</h5>
-              <p>Human behavior, learning theory, effective communication, the teaching process, and critique techniques. Preparation for the FOI written exam.</p>
-            </div>
-          </div>
-          <div class="curriculum-phase">
-            <div class="curriculum-phase__num">2</div>
-            <div class="curriculum-phase__body">
-              <h5>Flight Instructor Aeronautical Knowledge</h5>
-              <p>Deep dive into all private and commercial ACS tasks from the instructor's perspective. FIA written exam preparation.</p>
-            </div>
-          </div>
-          <div class="curriculum-phase">
-            <div class="curriculum-phase__num">3</div>
-            <div class="curriculum-phase__body">
-              <h5>Lesson Planning &amp; Ground Instruction</h5>
-              <p>Build a complete lesson plan library covering all maneuvers. Practice delivering ground briefings and post-flight critiques.</p>
-            </div>
-          </div>
-          <div class="curriculum-phase">
-            <div class="curriculum-phase__num">4</div>
-            <div class="curriculum-phase__body">
-              <h5>Right-Seat Flight Training</h5>
-              <p>Demonstrate all private and commercial maneuvers from the right seat while simultaneously narrating technique and common errors.</p>
-            </div>
-          </div>
-          <div class="curriculum-phase">
-            <div class="curriculum-phase__num">5</div>
-            <div class="curriculum-phase__body">
-              <h5>CFI Checkride Preparation</h5>
-              <p>Mock oral exam covering all areas of operation. Full pre-checkride stage check with our Chief Instructor before your DPE appointment.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div>
+  </section>
 
   <!-- FAQ -->
   <section class="faq-section">
@@ -378,45 +214,38 @@
       <div class="faq-list">
         <div class="faq-item">
           <button class="faq-item__question">
-            How long does it take to earn a Private Pilot License?
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            How do virtual sessions work?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div class="faq-item__answer"><p>Most students complete their PPL in 3–6 months training 2–3 times per week. The FAA requires a minimum of 40 flight hours, but the national average is closer to 60–70 hours. Our structured Part 141 program helps students stay on track and finish closer to minimums.</p></div>
+          <div class="faq-item__answer"><p>All virtual sessions are conducted live via video call with Andrew. For ground school, sessions follow a structured curriculum and run on the weekly schedule (Mon/Wed PPL, Tue IFR, Thu CPL). Checkride prep sessions are scheduled individually and run 60–90 minutes. You'll need a computer or tablet with a stable internet connection — no special software required.</p></div>
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
-            Do I need any prior experience to start?
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Do virtual ground school sessions count toward FAA requirements?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div class="faq-item__answer"><p>No prior flying experience is required for the Private Pilot program. Your very first lesson can be a Discovery Flight where you actually take the controls. All you need is a valid government-issued ID, the ability to read/speak English, and a medical certificate (we can refer you to an AME).</p></div>
+          <div class="faq-item__answer"><p>Ground school hours are logged and can be credited toward the aeronautical knowledge requirements for your certificate. Your CFI will sign off your ground training endorsement upon completion. The knowledge test (written exam) itself must still be taken at an FAA-approved testing center.</p></div>
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
-            What is the difference between Part 61 and Part 141 training?
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            What's the difference between the virtual checkride prep and the Austin simulator prep?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div class="faq-item__answer"><p>Part 61 is flexible — you train at your own pace with no fixed syllabus. Part 141 follows an FAA-approved structured curriculum with stage checks, which can reduce minimum hour requirements (e.g., 35 hours for PPL vs. 40). We offer both. We recommend Part 141 for students training frequently and Part 61 for those with irregular schedules.</p></div>
+          <div class="faq-item__answer"><p>Virtual checkride prep focuses on the oral exam component — the knowledge, regulations, and decision-making scenarios a DPE will probe. It's available now. When the Austin AATD facility opens in January 2027, we'll add full practical test scenario training in the simulator — flying the actual maneuvers and procedures you'll demonstrate on your checkride, with debrief after each pass.</p></div>
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
-            Can I train toward an airline career at Apex Aviation?
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Can I do an IPC in the AATD instead of an aircraft?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div class="faq-item__answer"><p>Absolutely. Our full pathway from PPL → IFR → CPL → Multi-Engine → CFI puts you on the standard route toward an ATP certificate and regional airline employment. Many of our graduates have gone on to fly for regional and major carriers. We also provide career counseling and can connect you with our airline industry contacts.</p></div>
+          <div class="faq-item__answer"><p>Yes. Under 14 CFR 61.57(d), an Instrument Proficiency Check can be conducted in an FAA-approved AATD. Our simulator qualifies. The IPC covers all the required tasks — holds, approaches, partial panel, and emergency procedures — and your CFII can sign you off in the sim. No aircraft required.</p></div>
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
-            How do I schedule my lessons?
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            I'm a rusty pilot who hasn't flown in a few years. Where do I start?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div class="faq-item__answer"><p>After your enrollment, you'll get access to our online scheduling system where you can book aircraft and instructors 24/7. We're available 7 days a week, including early mornings and evenings to accommodate working students. Weather cancellations are rescheduled at no charge.</p></div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-item__question">
-            What medical certificate do I need?
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#D4A527" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-          <div class="faq-item__answer"><p>A Third Class Medical is sufficient for private pilot training and certificate. A Second Class is required for commercial privileges. We recommend getting your medical early — before you invest heavily in training — so there are no surprises. We can refer you to a local Aviation Medical Examiner (AME).</p></div>
+          <div class="faq-item__answer"><p>Start by emailing us. Andrew will ask a few questions about your background, what you were flying before the gap, and what you want to get back to. Based on that, he'll recommend a starting point — which might be a virtual ground school refresher, a sim-based BFR when Austin opens, or both. There's no one-size-fits-all for rusty pilots, and we don't pretend there is.</p></div>
         </div>
       </div>
     </div>
@@ -427,12 +256,12 @@
     <div class="container cta-banner__inner">
       <div class="cta-banner__text">
         <div class="section__eyebrow">Get Started</div>
-        <h2>Ready to Begin Your Training?</h2>
-        <p>Book a $199 discovery flight this week — no experience needed. We'll show you around our facility, meet your instructor, and get you in the air.</p>
+        <h2>Start training now.<br/><em class="accent">No airport required.</em></h2>
+        <p>Virtual ground school and checkride prep are open today. Email Andrew and he'll get you into the right session for your certificate level and goals.</p>
       </div>
       <div class="cta-banner__actions">
-        <a href="contact.html" class="btn btn--primary">Book a Discovery Flight</a>
-        <a href="pricing.html" class="btn btn--ghost">View Pricing</a>
+        <a href="mailto:info@apexaviation.com" class="btn btn--primary">Book a Virtual Session</a>
+        <a href="index.html#waitlist" class="btn btn--ghost">Join the Austin Waitlist</a>
       </div>
     </div>
   </section>
@@ -441,38 +270,42 @@
     <div class="container footer__inner">
       <div class="footer__brand">
         <a href="index.html" class="nav__logo">
-          <svg width="30" height="26" viewBox="0 0 36 32" fill="none"><path d="M18 1L3 28h5.5l2-4h15l2 4H33L18 1z" fill="#D4A527"/><path d="M18 8l5.5 11h-11L18 8z" fill="#080F1E"/><path d="M4 19.5L30 14l2 2.5L6 22z" fill="#B8891A"/><path d="M4 19.5L30 14l1 1.2L5 21.2z" fill="#D4A527"/></svg>
+          <svg width="30" height="26" viewBox="0 0 40 36" fill="none">
+            <path d="M20 2L2 34h6l3-6h18l3 6h6L20 2z" fill="#F4B400"/>
+            <path d="M20 10l5 10H15l5-10z" fill="#0B1F3A"/>
+            <path d="M5 24L35 18l1.5 3L6.5 27z" fill="#D4920A"/>
+          </svg>
           <span class="nav__logo-text"><strong>APEX</strong><small>AVIATION</small></span>
         </a>
-        <p>Turning your aviation dreams into reality since 2004. FAA Part 141 Certified Flight School.</p>
+        <p>Train Beyond the Checkride. Premium simulator-based aviation training opening in Austin, Texas — January 2027.</p>
       </div>
       <div class="footer__links">
         <div>
-          <h4>Programs</h4>
-          <a href="programs.html#ppl">Private Pilot</a>
-          <a href="programs.html#ifr">Instrument Rating</a>
-          <a href="programs.html#cpl">Commercial Pilot</a>
-          <a href="programs.html#cfi">CFI / CFII</a>
+          <h4>Training</h4>
+          <a href="programs.html#virtual">Virtual Ground School</a>
+          <a href="programs.html#virtual">Checkride Prep</a>
+          <a href="programs.html#simulator-programs">IPC &amp; Instrument</a>
+          <a href="programs.html#simulator-programs">Flight Reviews</a>
         </div>
         <div>
           <h4>Company</h4>
-          <a href="about.html">About Us</a>
-          <a href="fleet.html">Our Fleet</a>
-          <a href="about.html">Instructors</a>
-          <a href="pricing.html">Pricing</a>
+          <a href="about.html">About Apex</a>
+          <a href="fleet.html">The Simulator</a>
+          <a href="about.html#founder">Andrew Serrazina</a>
+          <a href="index.html#waitlist">Founding Members</a>
         </div>
         <div>
           <h4>Contact</h4>
-          <a href="tel:5558675309">(555) 867-5309</a>
           <a href="mailto:info@apexaviation.com">info@apexaviation.com</a>
-          <a href="contact.html">Book a Flight</a>
+          <a href="mailto:info@apexaviation.com">Book a Session</a>
+          <span style="color:var(--gray-2);font-size:14px">Austin, Texas</span>
         </div>
       </div>
     </div>
     <div class="footer__bottom">
       <div class="container">
-        <p>&copy; 2024 Apex Aviation. All rights reserved.</p>
-        <p>FAA Certified Part 141 Flight School</p>
+        <p>&copy; 2027 Apex Aviation. All rights reserved.</p>
+        <p>Train Beyond the Checkride. · Austin, Texas</p>
       </div>
     </div>
   </footer>

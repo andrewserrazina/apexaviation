@@ -3,10 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>About Us | Apex Aviation</title>
+  <title>About | Apex Aviation</title>
+  <meta name="description" content="Apex Aviation was built by Andrew Serrazina — an active IFR pilot who wanted serious, scenario-based recurrent training and couldn't find it in Austin." />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="pages.css" />
 </head>
@@ -15,33 +17,30 @@
   <header class="nav" id="nav">
     <div class="container nav__inner">
       <a href="index.html" class="nav__logo">
-        <svg width="36" height="32" viewBox="0 0 36 32" fill="none">
-          <path d="M18 1L3 28h5.5l2-4h15l2 4H33L18 1z" fill="#D4A527"/>
-          <path d="M18 8l5.5 11h-11L18 8z" fill="#080F1E"/>
-          <path d="M4 19.5L30 14l2 2.5L6 22z" fill="#B8891A"/>
-          <path d="M4 19.5L30 14l1 1.2L5 21.2z" fill="#D4A527"/>
+        <svg width="32" height="28" viewBox="0 0 40 36" fill="none">
+          <path d="M20 2L2 34h6l3-6h18l3 6h6L20 2z" fill="#F4B400"/>
+          <path d="M20 10l5 10H15l5-10z" fill="#0B1F3A"/>
+          <path d="M5 24L35 18l1.5 3L6.5 27z" fill="#D4920A"/>
         </svg>
         <span class="nav__logo-text"><strong>APEX</strong><small>AVIATION</small></span>
       </a>
       <nav class="nav__links">
-        <a href="index.html">Home</a>
-        <a href="programs.html">Programs</a>
-        <a href="fleet.html">Fleet</a>
+        <a href="programs.html">Services</a>
+        <a href="fleet.html">Simulator</a>
         <a href="about.html" class="active">About</a>
         <a href="pricing.html">Pricing</a>
-        <a href="contact.html" class="btn btn--nav">Book a Flight</a>
+        <a href="mailto:info@apexaviation.com" class="btn btn--nav">Book a Session</a>
       </nav>
       <button class="nav__hamburger" id="hamburger" aria-label="Toggle menu">
         <span></span><span></span><span></span>
       </button>
     </div>
     <div class="nav__mobile" id="mobileMenu">
-      <a href="index.html">Home</a>
-      <a href="programs.html">Programs</a>
-      <a href="fleet.html">Fleet</a>
+      <a href="programs.html">Services</a>
+      <a href="fleet.html">Simulator</a>
       <a href="about.html">About</a>
       <a href="pricing.html">Pricing</a>
-      <a href="contact.html">Book a Flight</a>
+      <a href="mailto:info@apexaviation.com">Book a Session</a>
     </div>
   </header>
 
@@ -50,187 +49,102 @@
     <div class="page-hero__bg-text">ABOUT</div>
     <div class="container page-hero__inner">
       <div class="section__eyebrow">Our Story</div>
-      <h1 class="page-hero__title">Built by Pilots,<br /><span>For Pilots</span></h1>
-      <p class="page-hero__sub">For over 20 years, Apex Aviation has been producing safe, skilled, and career-ready aviators. Here's the story behind the school.</p>
+      <h1 class="page-hero__title">Built by a pilot<br /><span>who needed this.</span></h1>
+      <p class="page-hero__sub">Apex Aviation exists because the training Andrew wanted as an active IFR pilot didn't exist in Austin. So he built it.</p>
     </div>
   </section>
 
-  <!-- OUR STORY -->
+  <!-- THE WHY -->
   <section class="about section">
     <div class="container about__grid">
       <div class="about__image">
-        <img src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=800&q=80" alt="Aircraft on tarmac" loading="lazy" />
+        <img src="https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800&q=80" alt="Advanced avionics cockpit" loading="lazy" />
         <div class="about__badge-card">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="#D4A527"/></svg>
-          <div><strong>Founded 2004</strong><span>FAA Part 141 Certified</span></div>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="#F4B400"/></svg>
+          <div><strong>Train Beyond the Checkride.</strong><span>Austin, TX · Est. 2027</span></div>
         </div>
       </div>
       <div class="about__text">
-        <div class="section__eyebrow">How We Started</div>
-        <h2 class="section__title">A School Born From a Passion for Flight</h2>
-        <p>Apex Aviation was founded in 2004 by Captain James Harrington, a former regional airline captain who wanted to create the flight school he wished had existed when he was learning to fly — one where students are treated as the next generation of professional aviators, not just paying customers.</p>
-        <p>What started as a two-aircraft operation has grown into one of the region's most respected flight training academies, with a fleet of 15+ aircraft, a full-motion simulator, and a team of instructors who collectively have logged over 80,000 flight hours across every category of aviation.</p>
-        <p>Our mission has never changed: produce pilots who are not just certificate holders, but truly safe and capable aviators who are ready for whatever comes next — whether that's weekend cross-countries or an airline cockpit.</p>
+        <div class="section__eyebrow">Why Apex Exists</div>
+        <h2 class="section__title">The checkride is the beginning,<br/><em class="accent">not the goal.</em></h2>
+        <p>Most recurrent training is designed to satisfy a regulation, not improve a pilot. Andrew found that the Austin market was full of flight schools structured for primary students — discovery flights, introductory lessons, solo endorsements. What was missing was a place designed specifically for pilots who already hold ratings and want to fly with real proficiency.</p>
+        <p>The Austin GA community has no shortage of instrument-rated pilots who are technically current but haven't filed IFR in months, owners who know their aircraft but haven't practiced their emergency procedures since their initial training, and working professionals who fly seriously but don't have time to navigate a school built around student pilots.</p>
+        <p>Apex is built for those pilots. No student traffic. No discovery flights. No hour-building instructors. Just focused, scenario-driven recurrent training for pilots who take their flying seriously.</p>
       </div>
     </div>
   </section>
 
-  <!-- STATS -->
-  <div class="container">
-    <div class="stats-row">
-      <div class="stats-row__item">
-        <span class="stats-row__num">500+</span>
-        <span class="stats-row__label">Graduates</span>
-      </div>
-      <div class="stats-row__item">
-        <span class="stats-row__num">20+</span>
-        <span class="stats-row__label">Years in Operation</span>
-      </div>
-      <div class="stats-row__item">
-        <span class="stats-row__num">98%</span>
-        <span class="stats-row__label">First-Attempt Pass Rate</span>
-      </div>
-      <div class="stats-row__item">
-        <span class="stats-row__num">15+</span>
-        <span class="stats-row__label">Aircraft in Fleet</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- VALUES -->
-  <section class="section section--light">
+  <!-- ANDREW -->
+  <section class="section section--light" id="founder">
     <div class="container">
       <div class="section__header">
-        <div class="section__eyebrow">What We Stand For</div>
-        <h2 class="section__title">Our Mission &amp; Values</h2>
-        <p class="section__desc">Everything we do is guided by three core principles that have defined Apex Aviation since day one.</p>
+        <div class="section__eyebrow">The Founder</div>
+        <h2 class="section__title">Andrew Serrazina</h2>
+        <p class="section__desc">Founder &amp; Chief Instructor · CFI · CFII · AGI</p>
+      </div>
+      <div style="display:grid;grid-template-columns:340px 1fr;gap:56px;align-items:start;max-width:900px;margin:0 auto">
+        <div>
+          <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&q=80" alt="Andrew Serrazina — Founder, Apex Aviation" loading="lazy" style="border-radius:var(--radius-lg);width:100%;box-shadow:var(--shadow-lg)" />
+          <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+            <span class="instructor-card__certs" style="display:inline-flex;gap:6px">
+              <span>CFI</span><span>CFII</span><span>AGI</span>
+            </span>
+          </div>
+        </div>
+        <div>
+          <p style="color:var(--gray);line-height:1.9;margin-bottom:20px;font-size:16px">Andrew's view on instrument training is direct: most IFR pilots are not as proficient as they think they are, and most recurrent training is too easy to actually change that. An IPC that doesn't challenge you isn't improving you — it's just updating your logbook.</p>
+          <p style="color:var(--gray);line-height:1.9;margin-bottom:20px;font-size:16px">He chose simulator-first as the Apex model because it's the only environment where deliberate practice is actually possible. In an aircraft, you're constrained by weather, cost, safety margins, and the limits of what a CFI can safely induce. In the AATD, you can pause at the FAF and discuss technique. You can fail the vacuum pump at 800 AGL. You can run the same missed approach until the response is automatic. That's where real learning happens.</p>
+          <p style="color:var(--gray);line-height:1.9;margin-bottom:20px;font-size:16px">What pilots who train with Andrew should expect: honest assessment, scenarios that don't pull their punches, and a debrief that identifies exactly what to work on next. If you came in hoping for validation, you'll leave with something more useful — a clear picture of where you actually stand.</p>
+          <a href="mailto:info@apexaviation.com" class="btn btn--outline" style="margin-top:8px">Reach Out to Andrew</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PHILOSOPHY -->
+  <section class="section section--dark">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Our Philosophy</div>
+        <h2 class="section__title">Three things we believe<br/><em class="accent">about good training.</em></h2>
       </div>
       <div class="values-grid">
         <div class="value-card">
           <div class="value-card__icon">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7l-9-5z" fill="#D4A527"/></svg>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
-          <h3>Safety First</h3>
-          <p>Every decision we make — from aircraft maintenance to training syllabus design — starts with safety. We train pilots to exercise sound judgment, not just follow checklists. Our culture of safety is why our graduates have an exceptional safety record.</p>
+          <h3>Scenarios over maneuvers</h3>
+          <p>A maneuver list teaches you to fly. A scenario teaches you to decide. Every Apex session is built around a realistic situation — not a series of techniques to demonstrate. The debrief is where most of the learning happens.</p>
         </div>
         <div class="value-card">
           <div class="value-card__icon">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="#D4A527" stroke-width="2"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#D4A527" stroke-width="2" stroke-linecap="round"/></svg>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
-          <h3>Expert Instruction</h3>
-          <p>We hire only highly experienced instructors with real-world aviation backgrounds — not newly certificated CFIs looking for a quick hour-building job. Every instructor at Apex has at least 1,500 hours and brings genuine expertise to every lesson.</p>
+          <h3>Honest feedback, always</h3>
+          <p>We don't give reassurance that isn't earned. If your instrument scan has a gap, we'll tell you — specifically, with the data from the session to back it up. Comfortable debrief produces comfortable pilots. That's not what we're building.</p>
         </div>
         <div class="value-card">
           <div class="value-card__icon">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="#D4A527" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
-          <h3>Your Goals, Our Mission</h3>
-          <p>Every student is different. Whether you want to fly recreationally on weekends or pursue a career at a major airline, we tailor your training path, schedule, and pace to your personal goals. Your success is our success.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- INSTRUCTORS -->
-  <section class="instructors section" id="instructors">
-    <div class="container">
-      <div class="section__header">
-        <div class="section__eyebrow">Our Team</div>
-        <h2 class="section__title">Meet Your Instructors</h2>
-        <p class="section__desc">Our instructors bring real-world flying experience into every lesson. You won't find hour-builders here — only dedicated professionals committed to your progress.</p>
-      </div>
-      <div class="instructors__grid">
-
-        <div class="instructor-card">
-          <div class="instructor-card__img">
-            <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&q=80" alt="Capt. James Harrington" loading="lazy" />
-          </div>
-          <div class="instructor-card__body">
-            <h3>Capt. James Harrington</h3>
-            <div class="instructor-card__title">Founder &amp; Chief Flight Instructor</div>
-            <p>James founded Apex Aviation in 2004 after a 15-year career flying regional jets. With over 12,000 flight hours and 18 years of full-time instructing experience, he brings unmatched depth to every student interaction. James holds ATP, CFII, MEI, and AGI certificates and is a designated FAA Safety Team Representative.</p>
-            <div class="instructor-card__certs">
-              <span>ATP</span><span>CFII</span><span>MEI</span><span>AGI</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="instructor-card">
-          <div class="instructor-card__img">
-            <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&q=80" alt="Sarah Chen" loading="lazy" />
-          </div>
-          <div class="instructor-card__body">
-            <h3>Sarah Chen</h3>
-            <div class="instructor-card__title">Instrument &amp; IFR Specialist</div>
-            <p>Sarah is currently a First Officer at a regional airline and instructs part-time because she genuinely loves teaching. With 4,200 hours and a specialty in glass-cockpit avionics and IFR procedures, she is one of the most sought-after instrument instructors in the region. Her students consistently pass their IFR checkrides on the first attempt.</p>
-            <div class="instructor-card__certs">
-              <span>CFI</span><span>CFII</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="instructor-card">
-          <div class="instructor-card__img">
-            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80" alt="Marcus Webb" loading="lazy" />
-          </div>
-          <div class="instructor-card__body">
-            <h3>Marcus Webb</h3>
-            <div class="instructor-card__title">Commercial &amp; Multi-Engine Lead</div>
-            <p>Marcus is a commercial pilot and charter captain with 3,800 hours across single and multi-engine aircraft. He specializes in accelerated commercial programs and multi-engine training, and has helped dozens of students reach the 1,500-hour ATP minimums. His practical, career-focused approach resonates with students who have professional goals.</p>
-            <div class="instructor-card__certs">
-              <span>CPL</span><span>CFI</span><span>MEI</span>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </section>
-
-  <!-- CERTIFICATIONS -->
-  <section class="section section--light">
-    <div class="container">
-      <div class="section__header">
-        <div class="section__eyebrow">Credentials</div>
-        <h2 class="section__title">Certifications &amp; Affiliations</h2>
-        <p class="section__desc">Apex Aviation holds the certifications and memberships that matter to the aviation community.</p>
-      </div>
-      <div class="certifications">
-        <div class="cert-badge">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7l-9-5z" fill="#D4A527"/></svg>
-          <div><strong>FAA Part 141</strong><span>Approved Flight School</span></div>
-        </div>
-        <div class="cert-badge">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="#D4A527"/></svg>
-          <div><strong>AOPA Member</strong><span>Aircraft Owners &amp; Pilots Association</span></div>
-        </div>
-        <div class="cert-badge">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#D4A527" stroke-width="2"/><path d="M12 6v6l4 2" stroke="#D4A527" stroke-width="2" stroke-linecap="round"/></svg>
-          <div><strong>FAA Safety Team</strong><span>FAAST Representative</span></div>
-        </div>
-        <div class="cert-badge">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" fill="#D4A527"/></svg>
-          <div><strong>NAFI Member</strong><span>National Assoc. of Flight Instructors</span></div>
-        </div>
-        <div class="cert-badge">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="#D4A527" stroke-width="2"/><path d="M8 12l3 3 5-5" stroke="#D4A527" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <div><strong>VA Approved</strong><span>GI Bill Flight Training</span></div>
+          <h3>Proficiency over currency</h3>
+          <p>Currency means you can legally fly. Proficiency means you should. We care about the second one. Every session is designed to leave you more capable than when you walked in — not just more current.</p>
         </div>
       </div>
     </div>
   </section>
 
   <!-- CTA -->
-  <section class="cta-banner section--dark">
+  <section class="cta-banner section--dark" style="border-top:1px solid rgba(244,180,0,0.15)">
     <div class="container cta-banner__inner">
       <div class="cta-banner__text">
-        <div class="section__eyebrow">Join the Family</div>
-        <h2>Ready to Train with the Best?</h2>
-        <p>Come tour our facility, meet the team, and take your first flight — all for just $199.</p>
+        <div class="section__eyebrow">Get Started</div>
+        <h2>Talk to Andrew<br/><em class="accent">about your flying.</em></h2>
+        <p>Virtual ground school and checkride prep are available now. Austin simulator training opens January 2027. Email Andrew directly — he responds within one business day.</p>
       </div>
       <div class="cta-banner__actions">
-        <a href="contact.html" class="btn btn--primary">Book a Discovery Flight</a>
-        <a href="programs.html" class="btn btn--ghost">Explore Programs</a>
+        <a href="mailto:info@apexaviation.com" class="btn btn--primary">Send Andrew a Message</a>
+        <a href="index.html#waitlist" class="btn btn--ghost">Join the Waitlist</a>
       </div>
     </div>
   </section>
@@ -239,38 +153,42 @@
     <div class="container footer__inner">
       <div class="footer__brand">
         <a href="index.html" class="nav__logo">
-          <svg width="30" height="26" viewBox="0 0 36 32" fill="none"><path d="M18 1L3 28h5.5l2-4h15l2 4H33L18 1z" fill="#D4A527"/><path d="M18 8l5.5 11h-11L18 8z" fill="#080F1E"/><path d="M4 19.5L30 14l2 2.5L6 22z" fill="#B8891A"/><path d="M4 19.5L30 14l1 1.2L5 21.2z" fill="#D4A527"/></svg>
+          <svg width="30" height="26" viewBox="0 0 40 36" fill="none">
+            <path d="M20 2L2 34h6l3-6h18l3 6h6L20 2z" fill="#F4B400"/>
+            <path d="M20 10l5 10H15l5-10z" fill="#0B1F3A"/>
+            <path d="M5 24L35 18l1.5 3L6.5 27z" fill="#D4920A"/>
+          </svg>
           <span class="nav__logo-text"><strong>APEX</strong><small>AVIATION</small></span>
         </a>
-        <p>Turning your aviation dreams into reality since 2004. FAA Part 141 Certified Flight School.</p>
+        <p>Train Beyond the Checkride. Premium simulator-based aviation training opening in Austin, Texas — January 2027.</p>
       </div>
       <div class="footer__links">
         <div>
-          <h4>Programs</h4>
-          <a href="programs.html#ppl">Private Pilot</a>
-          <a href="programs.html#ifr">Instrument Rating</a>
-          <a href="programs.html#cpl">Commercial Pilot</a>
-          <a href="programs.html#cfi">CFI / CFII</a>
+          <h4>Training</h4>
+          <a href="programs.html#virtual">Virtual Ground School</a>
+          <a href="programs.html#virtual">Checkride Prep</a>
+          <a href="programs.html#simulator-programs">IPC &amp; Instrument</a>
+          <a href="programs.html#simulator-programs">Flight Reviews</a>
         </div>
         <div>
           <h4>Company</h4>
-          <a href="about.html">About Us</a>
-          <a href="fleet.html">Our Fleet</a>
-          <a href="about.html">Instructors</a>
-          <a href="pricing.html">Pricing</a>
+          <a href="about.html">About Apex</a>
+          <a href="fleet.html">The Simulator</a>
+          <a href="about.html#founder">Andrew Serrazina</a>
+          <a href="index.html#waitlist">Founding Members</a>
         </div>
         <div>
           <h4>Contact</h4>
-          <a href="tel:5558675309">(555) 867-5309</a>
           <a href="mailto:info@apexaviation.com">info@apexaviation.com</a>
-          <a href="contact.html">Book a Flight</a>
+          <a href="mailto:info@apexaviation.com">Book a Session</a>
+          <span style="color:var(--gray-2);font-size:14px">Austin, Texas</span>
         </div>
       </div>
     </div>
     <div class="footer__bottom">
       <div class="container">
-        <p>&copy; 2024 Apex Aviation. All rights reserved.</p>
-        <p>FAA Certified Part 141 Flight School</p>
+        <p>&copy; 2027 Apex Aviation. All rights reserved.</p>
+        <p>Train Beyond the Checkride. · Austin, Texas</p>
       </div>
     </div>
   </footer>
