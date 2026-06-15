@@ -248,7 +248,7 @@ a { text-decoration: none; color: inherit; }
   inset: 0;
   background:
     linear-gradient(to bottom, rgba(11,31,58,0.7) 0%, rgba(11,31,58,0.5) 60%, rgba(11,31,58,0.85) 100%),
-    url('https://images.unsplash.com/photo-1464037866556-6812c9d1c72e?w=1800&q=85') center/cover no-repeat;
+    url('images/IMG_0224.JPG') center/cover no-repeat;
 }
 .hero__content {
   position: relative;
