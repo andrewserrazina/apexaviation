@@ -99,7 +99,9 @@
 }
 
 .section__eyebrow {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.14em;
