@@ -14,14 +14,41 @@ mobileMenu.querySelectorAll('a').forEach(link => {
   link.addEventListener('click', () => mobileMenu.classList.remove('open'));
 });
 
+async function submitToFormspree(form, successEl) {
+  const btn = form.querySelector('[type="submit"]');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  try {
+    const res = await fetch('https://formspree.io/f/xzdqylpz', {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' },
+      body: new FormData(form),
+    });
+    if (res.ok) {
+      form.style.display = 'none';
+      successEl.classList.add('visible');
+    } else {
+      const data = await res.json();
+      const msg = data.errors ? data.errors.map(e => e.message).join(', ') : 'Something went wrong. Please email info@apexaviation.com directly.';
+      alert(msg);
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  } catch {
+    alert('Network error. Please email info@apexaviation.com directly.');
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
 // Contact form
 const form = document.getElementById('contactForm');
 const successMsg = document.getElementById('formSuccess');
 if (form) {
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    form.style.display = 'none';
-    successMsg.classList.add('visible');
+    submitToFormspree(form, successMsg);
   });
 }
 
@@ -31,8 +58,7 @@ const waitlistSuccess = document.getElementById('waitlistSuccess');
 if (waitlistForm) {
   waitlistForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    waitlistForm.style.display = 'none';
-    waitlistSuccess.classList.add('visible');
+    submitToFormspree(waitlistForm, waitlistSuccess);
   });
 }
 
@@ -52,4 +78,14 @@ document.querySelectorAll('.program-card, .fleet-card, .instructor-card, .pricin
   el.style.transform = 'translateY(24px)';
   el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
   observer.observe(el);
+});
+
+// FAQ accordion (homepage)
+document.querySelectorAll('.faq-item__question').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const item = btn.closest('.faq-item');
+    const isOpen = item.classList.contains('open');
+    document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+    if (!isOpen) item.classList.add('open');
+  });
 });
