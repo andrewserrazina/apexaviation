@@ -540,8 +540,8 @@ a { text-decoration: none; color: inherit; }
 /* ─── TESTIMONIALS ──────────────────────────────────────────────── */
 .testimonials__grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 28px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
 }
 .testimonial-card {
   background: rgba(255,255,255,0.04);
@@ -728,7 +728,7 @@ a { text-decoration: none; color: inherit; }
   .programs__grid { grid-template-columns: repeat(2, 1fr); }
   .pricing__grid { grid-template-columns: repeat(2, 1fr); }
   .footer__inner { grid-template-columns: 1fr 1fr; }
-  .testimonials__grid { grid-template-columns: 1fr; }
+  .testimonials__grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 768px) {
@@ -762,4 +762,5 @@ a { text-decoration: none; color: inherit; }
   .section__title { font-size: 26px; }
   .programs__grid { grid-template-columns: 1fr; }
   .fleet__grid { grid-template-columns: 1fr; }
+  .testimonials__grid { grid-template-columns: 1fr; }
 }
