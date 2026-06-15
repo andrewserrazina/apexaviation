@@ -111,10 +111,13 @@
 .section__title {
   font-size: clamp(1.75rem, 4vw, 2.5rem);
   font-weight: 800;
-  color: #ffffff;
+  color: var(--navy);
   margin: 0 0 16px;
   letter-spacing: -0.02em;
 }
+.section--dark .section__title,
+.section--dark .section__title .accent { color: var(--white); }
+.section--dark .section__title .accent { color: var(--gold); }
 
 .section__subtitle {
   font-size: 1rem;
