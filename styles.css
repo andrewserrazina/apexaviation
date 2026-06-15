@@ -710,6 +710,7 @@ a { text-decoration: none; color: inherit; }
 .footer__social { display: flex; gap: 12px; margin-top: 16px; }
 .footer__social a { color: var(--gray-2); transition: color var(--transition); }
 .footer__social a:hover { color: var(--gold); }
+.footer__links { display: contents; }
 .footer__links > div { display: flex; flex-direction: column; gap: 12px; }
 .footer__links h4 { font-size: 14px; font-weight: 700; color: var(--white); margin-bottom: 4px; }
 .footer__links a { font-size: 14px; color: var(--gray-2); transition: color var(--transition); }

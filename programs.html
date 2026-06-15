@@ -327,15 +327,5 @@
   </footer>
 
   <script src="script.js"></script>
-  <script>
-    document.querySelectorAll('.faq-item__question').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const item = btn.closest('.faq-item');
-        const isOpen = item.classList.contains('open');
-        document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
-        if (!isOpen) item.classList.add('open');
-      });
-    });
-  </script>
 </body>
 </html>
