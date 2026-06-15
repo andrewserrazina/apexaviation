@@ -79,3 +79,13 @@ document.querySelectorAll('.program-card, .fleet-card, .instructor-card, .pricin
   el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
   observer.observe(el);
 });
+
+// FAQ accordion (homepage)
+document.querySelectorAll('.faq-item__question').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const item = btn.closest('.faq-item');
+    const isOpen = item.classList.contains('open');
+    document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+    if (!isOpen) item.classList.add('open');
+  });
+});
