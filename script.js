@@ -14,6 +14,21 @@ mobileMenu.querySelectorAll('a').forEach(link => {
   link.addEventListener('click', () => mobileMenu.classList.remove('open'));
 });
 
+// Training dropdown
+const trainingDropdown = document.getElementById('trainingDropdown');
+if (trainingDropdown) {
+  const toggle = trainingDropdown.querySelector('.nav__dropdown-toggle');
+  toggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = trainingDropdown.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', open);
+  });
+  document.addEventListener('click', () => {
+    trainingDropdown.classList.remove('open');
+    toggle.setAttribute('aria-expanded', 'false');
+  });
+}
+
 async function submitToFormspree(form, successEl) {
   const btn = form.querySelector('[type="submit"]');
   const originalText = btn.textContent;

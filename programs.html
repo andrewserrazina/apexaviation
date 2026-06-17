@@ -8,14 +8,14 @@
   <meta property="og:title" content="Training Programs | Apex Aviation" />
   <meta property="og:description" content="Virtual ground school and checkride prep available now. Simulator-based IPC, BFR, and AATD training opening Austin, TX — January 2027." />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://apexaviationgroup.com/programs.html" />
+  <meta property="og:url" content="https://apexaviationtx.com/programs.html" />
   <meta property="og:image" content="https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=1200&q=85" />
   <meta property="og:site_name" content="Apex Aviation" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Training Programs | Apex Aviation" />
   <meta name="twitter:description" content="Virtual ground school Mon–Thu + checkride prep available now. Austin AATD simulator opening January 2027." />
   <meta name="twitter:image" content="https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=1200&q=85" />
-  <link rel="canonical" href="https://apexaviationgroup.com/programs.html" />
+  <link rel="canonical" href="https://apexaviationtx.com/programs.html" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -46,6 +46,17 @@
       </a>
       <nav class="nav__links">
         <a href="programs.html" class="active">Services</a>
+        <div class="nav__dropdown" id="trainingDropdown">
+          <button class="nav__dropdown-toggle" aria-expanded="false" aria-haspopup="true">
+            Training
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="nav__dropdown-menu">
+            <a href="private-pilot-training.html"><span>Certificate</span>Private Pilot</a>
+            <a href="instrument-rating-training.html"><span>Rating</span>Instrument Rating</a>
+            <a href="commercial-pilot-training.html"><span>Certificate</span>Commercial Pilot</a>
+          </div>
+        </div>
         <a href="fleet.html">Simulator</a>
         <a href="about.html">About</a>
         <a href="instructors.html">Team</a>
@@ -58,6 +69,9 @@
     </div>
     <div class="nav__mobile" id="mobileMenu">
       <a href="programs.html">Services</a>
+      <a href="private-pilot-training.html">Private Pilot Training</a>
+      <a href="instrument-rating-training.html">Instrument Rating</a>
+      <a href="commercial-pilot-training.html">Commercial Pilot</a>
       <a href="fleet.html">Simulator</a>
       <a href="about.html">About</a>
       <a href="instructors.html">Team</a>
@@ -248,6 +262,51 @@
           <a href="index.html#waitlist" class="btn btn--outline">Join the Waitlist</a>
         </div>
 
+        <div class="program-card">
+          <div class="program-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="program-card__level">Simulator</div>
+          <h3>Avionics &amp; Garmin Familiarization</h3>
+          <p>Get comfortable with the Garmin G1000/GTN suite in a low-pressure environment. Covers key functions, failure modes, and workflow before you need it in the air.</p>
+          <ul>
+            <li>G1000/GTN workflow and navigation</li>
+            <li>Failure mode recognition and response</li>
+            <li>Hands-on practice in the AATD</li>
+          </ul>
+          <a href="index.html#waitlist" class="btn btn--outline">Join the Waitlist</a>
+        </div>
+
+        <div class="program-card">
+          <div class="program-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="program-card__level">Simulator</div>
+          <h3>Emergency Scenario Training</h3>
+          <p>Engine failures, vacuum pump loss, electrical failures, inadvertent IMC — practiced repeatedly in the AATD until responses are automatic.</p>
+          <ul>
+            <li>Engine-out and systems failure procedures</li>
+            <li>Inadvertent IMC and unusual attitude recovery</li>
+            <li>Repetition-based proficiency building</li>
+          </ul>
+          <a href="index.html#waitlist" class="btn btn--outline">Join the Waitlist</a>
+        </div>
+
+        <div class="program-card">
+          <div class="program-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="program-card__level">Proficiency</div>
+          <h3>Aircraft Owner Proficiency</h3>
+          <p>For owners who want to fly their aircraft with confidence. Transition training, avionics familiarization, and scenario-based proficiency in your specific aircraft profile.</p>
+          <ul>
+            <li>Aircraft-specific systems and avionics training</li>
+            <li>Scenario-based proficiency sessions</li>
+            <li>Tailored to your aircraft and flying environment</li>
+          </ul>
+          <a href="index.html#waitlist" class="btn btn--outline">Join the Waitlist</a>
+        </div>
+
       </div>
       <div style="text-align:center;margin-top:48px">
         <a href="index.html#waitlist" class="btn btn--primary">Join the Founding Member Waitlist</a>
@@ -274,19 +333,65 @@
           <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Certificate</div>
           <h3 style="font-size:18px;font-weight:800;color:var(--navy);margin-bottom:8px">Private Pilot</h3>
           <p style="font-size:14px;color:var(--gray);line-height:1.7;margin-bottom:20px">Start to checkride with structured simulator prep, scenario-based dual instruction, and solo endorsement.</p>
-          <a href="index.html#waitlist" class="btn btn--outline" style="width:100%;text-align:center;font-size:13px">Join Waitlist</a>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <a href="private-pilot-training.html" class="btn btn--primary" style="width:100%;text-align:center;font-size:13px">Learn More</a>
+            <a href="index.html#waitlist" class="btn btn--outline" style="width:100%;text-align:center;font-size:13px">Join Waitlist</a>
+          </div>
         </div>
         <div style="background:var(--white);border:2px solid var(--gold);border-radius:var(--radius-lg);padding:28px;box-shadow:var(--shadow-lg);text-align:center">
           <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Rating</div>
           <h3 style="font-size:18px;font-weight:800;color:var(--navy);margin-bottom:8px">Instrument Rating</h3>
           <p style="font-size:14px;color:var(--gray);line-height:1.7;margin-bottom:20px">Up to 20 of 40 required instrument hours in the AATD. Approaches, holds, partial panel, and IFR cross-country.</p>
-          <a href="index.html#waitlist" class="btn btn--outline" style="width:100%;text-align:center;font-size:13px">Join Waitlist</a>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <a href="instrument-rating-training.html" class="btn btn--primary" style="width:100%;text-align:center;font-size:13px">Learn More</a>
+            <a href="index.html#waitlist" class="btn btn--outline" style="width:100%;text-align:center;font-size:13px">Join Waitlist</a>
+          </div>
         </div>
         <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;box-shadow:var(--shadow);text-align:center">
           <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Certificate</div>
           <h3 style="font-size:18px;font-weight:800;color:var(--navy);margin-bottom:8px">Commercial Pilot</h3>
           <p style="font-size:14px;color:var(--gray);line-height:1.7;margin-bottom:20px">Up to 50 of 250 required hours in AATD. Commercial maneuvers, advanced cross-country, and ACS standards.</p>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <a href="commercial-pilot-training.html" class="btn btn--primary" style="width:100%;text-align:center;font-size:13px">Learn More</a>
+            <a href="index.html#waitlist" class="btn btn--outline" style="width:100%;text-align:center;font-size:13px">Join Waitlist</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- IN-PERSON WORKSHOPS -->
+  <section class="section section--light">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Opening January 2027</div>
+        <h2 class="section__title">In-person workshops<br/><em class="accent">& seminars.</em></h2>
+        <p class="section__desc">Intensive single-day and weekend programs focused on specific skills, scenarios, and proficiency development. Limited seats per session.</p>
+      </div>
+      <div class="programs__grid">
+        <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;box-shadow:var(--shadow)">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Workshop</div>
+          <h3 style="font-size:18px;font-weight:800;color:var(--navy);margin-bottom:8px">IFR Mastery Workshop</h3>
+          <p style="font-size:14px;color:var(--gray);line-height:1.7;margin-bottom:20px">Full-day intensive covering approaches, holds, partial panel, and real-world IFR decision-making. Sim time included.</p>
           <a href="index.html#waitlist" class="btn btn--outline" style="width:100%;text-align:center;font-size:13px">Join Waitlist</a>
+        </div>
+        <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;box-shadow:var(--shadow)">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Seminar</div>
+          <h3 style="font-size:18px;font-weight:800;color:var(--navy);margin-bottom:8px">Weather Decision-Making</h3>
+          <p style="font-size:14px;color:var(--gray);line-height:1.7;margin-bottom:20px">Scenario-based weather analysis, go/no-go decision frameworks, and real-world case studies. Ground + simulator.</p>
+          <a href="index.html#waitlist" class="btn btn--outline" style="width:100%;text-align:center;font-size:13px">Join Waitlist</a>
+        </div>
+        <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;box-shadow:var(--shadow)">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Training</div>
+          <h3 style="font-size:18px;font-weight:800;color:var(--navy);margin-bottom:8px">Avionics Training Session</h3>
+          <p style="font-size:14px;color:var(--gray);line-height:1.7;margin-bottom:20px">Garmin G1000/GTN workflow, autopilot management, and failure mode procedures. Hands-on in the AATD.</p>
+          <a href="index.html#waitlist" class="btn btn--outline" style="width:100%;text-align:center;font-size:13px">Join Waitlist</a>
+        </div>
+        <div style="background:var(--navy);border:2px solid var(--gold);border-radius:var(--radius-lg);padding:28px;box-shadow:var(--shadow-lg)">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Intensive</div>
+          <h3 style="font-size:18px;font-weight:800;color:var(--white);margin-bottom:8px">Pilot Proficiency Bootcamp</h3>
+          <p style="font-size:14px;color:var(--gray-2);line-height:1.7;margin-bottom:20px">Two-day comprehensive proficiency event. Sim sessions, ground debriefs, weather scenarios, and emergency procedure training.</p>
+          <a href="index.html#waitlist" class="btn btn--primary" style="width:100%;text-align:center;font-size:13px">Join Waitlist</a>
         </div>
       </div>
     </div>
@@ -377,6 +482,9 @@
         <p>Train Beyond the Checkride. Premium simulator-based aviation training opening in Austin, Texas — January 2027.</p>
         <div class="footer__social">
           <a href="https://www.facebook.com/profile.php?id=61590455400224" target="_blank" rel="noopener" aria-label="Facebook"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></a>
+          <a href="https://www.instagram.com/apexaviationtx" target="_blank" rel="noopener" aria-label="Instagram"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.5" cy="6.5" r="1.5"/></svg></a>
+          <a href="https://www.youtube.com/@apexaviationtx" target="_blank" rel="noopener" aria-label="YouTube"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M22.54 6.42a2.78 2.78 0 00-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46a2.78 2.78 0 00-1.95 1.96A29 29 0 001 12a29 29 0 00.46 5.58a2.78 2.78 0 001.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 001.95-1.96A29 29 0 0023 12a29 29 0 00-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="white"/></svg></a>
+          <a href="https://www.tiktok.com/@apexaviationtx" target="_blank" rel="noopener" aria-label="TikTok"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/></svg></a>
           <a href="https://www.linkedin.com/company/apex-aviation-tx" target="_blank" rel="noopener" aria-label="LinkedIn"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg></a>
         </div>
       </div>
@@ -399,7 +507,7 @@
         </div>
         <div>
           <h4>Contact</h4>
-          <a href="mailto:info@apexaviation.com">info@apexaviation.com</a>
+          <a href="mailto:info@apexaviationtx.com">info@apexaviationtx.com</a>
           <a href="contact.html">Book a Session</a>
           <span style="color:var(--gray-2);font-size:14px">Austin, Texas</span>
         </div>

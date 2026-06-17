@@ -8,14 +8,14 @@
   <meta property="og:title" content="About Apex Aviation | Austin Flight Training" />
   <meta property="og:description" content="Founded by Austin CFI Andrew Serrazina. Built for instrument-rated pilots who want real proficiency — not just a current logbook stamp." />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://apexaviationgroup.com/about.html" />
+  <meta property="og:url" content="https://apexaviationtx.com/about.html" />
   <meta property="og:image" content="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=1200&q=85" />
   <meta property="og:site_name" content="Apex Aviation" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="About Apex Aviation | Austin, TX" />
   <meta name="twitter:description" content="Founded by Austin CFII Andrew Serrazina. Scenario-based IFR training for pilots who take proficiency seriously." />
   <meta name="twitter:image" content="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=1200&q=85" />
-  <link rel="canonical" href="https://apexaviationgroup.com/about.html" />
+  <link rel="canonical" href="https://apexaviationtx.com/about.html" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -46,6 +46,17 @@
       </a>
       <nav class="nav__links">
         <a href="programs.html">Services</a>
+        <div class="nav__dropdown" id="trainingDropdown">
+          <button class="nav__dropdown-toggle" aria-expanded="false" aria-haspopup="true">
+            Training
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="nav__dropdown-menu">
+            <a href="private-pilot-training.html"><span>Certificate</span>Private Pilot</a>
+            <a href="instrument-rating-training.html"><span>Rating</span>Instrument Rating</a>
+            <a href="commercial-pilot-training.html"><span>Certificate</span>Commercial Pilot</a>
+          </div>
+        </div>
         <a href="fleet.html">Simulator</a>
         <a href="about.html" class="active">About</a>
         <a href="instructors.html">Team</a>
@@ -58,6 +69,9 @@
     </div>
     <div class="nav__mobile" id="mobileMenu">
       <a href="programs.html">Services</a>
+      <a href="private-pilot-training.html">Private Pilot Training</a>
+      <a href="instrument-rating-training.html">Instrument Rating</a>
+      <a href="commercial-pilot-training.html">Commercial Pilot</a>
       <a href="fleet.html">Simulator</a>
       <a href="about.html">About</a>
       <a href="instructors.html">Team</a>
@@ -102,22 +116,47 @@
       <div class="section__header">
         <div class="section__eyebrow">The Founder</div>
         <h2 class="section__title">Andrew Serrazina</h2>
-        <p class="section__desc">Founder &amp; Chief Instructor · CFI · CFII · AGI</p>
+        <p class="section__desc">Founder &amp; Chief Instructor · CFI · CFII · Commercial Pilot (ASEL/AMEL)</p>
       </div>
       <div style="display:grid;grid-template-columns:340px 1fr;gap:56px;align-items:start;max-width:900px;margin:0 auto">
         <div>
           <img src="images/AndrewHeadshot.JPG" alt="Andrew Serrazina — Founder, Apex Aviation" loading="lazy" style="border-radius:var(--radius-lg);width:100%;box-shadow:var(--shadow-lg);object-fit:cover" />
           <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
-            <span class="instructor-card__certs" style="display:inline-flex;gap:6px">
-              <span>CFI</span><span>CFII</span><span>AGI</span>
-            </span>
+            <span class="cert-pill">CFI</span>
+            <span class="cert-pill">CFII</span>
+            <span class="cert-pill">AGI</span>
+            <span class="cert-pill">Comm. ASEL</span>
+            <span class="cert-pill">Comm. AMEL</span>
+            <span class="cert-pill">Inst. Airplane</span>
+          </div>
+          <div style="margin-top:16px;font-size:13px;color:var(--gray);line-height:1.9">
+            <div>BA, Psychology</div>
+            <div>MS Aeronautics <em>(in progress)</em></div>
+            <div style="margin-top:10px;color:var(--gold);font-weight:600">2.5M+ content views · 5,000+ followers</div>
           </div>
         </div>
         <div>
+          <p style="color:var(--gray);line-height:1.9;margin-bottom:20px;font-size:16px">Before founding Apex Aviation, Andrew operated <strong>Andrew Serrazina Aviation</strong> — an aviation education business focused on pilot training, virtual ground schools, checkride preparation, and proficiency development. Through that work he built a growing audience of pilots and aviation enthusiasts while generating more than 2.5 million views of aviation education content across social media platforms.</p>
           <p style="color:var(--gray);line-height:1.9;margin-bottom:20px;font-size:16px">Andrew's view on instrument training is direct: most IFR pilots are not as proficient as they think they are, and most recurrent training is too easy to actually change that. An IPC that doesn't challenge you isn't improving you — it's just updating your logbook.</p>
           <p style="color:var(--gray);line-height:1.9;margin-bottom:20px;font-size:16px">He chose simulator-first as the Apex model because it's the only environment where deliberate practice is actually possible. In an aircraft, you're constrained by weather, cost, safety margins, and the limits of what a CFI can safely induce. In the AATD, you can pause at the FAF and discuss technique. You can fail the vacuum pump at 800 AGL. You can run the same missed approach until the response is automatic. That's where real learning happens.</p>
           <p style="color:var(--gray);line-height:1.9;margin-bottom:20px;font-size:16px">What pilots who train with Andrew should expect: honest assessment, scenarios that don't pull their punches, and a debrief that identifies exactly what to work on next. If you came in hoping for validation, you'll leave with something more useful — a clear picture of where you actually stand.</p>
-          <a href="mailto:info@apexaviation.com" class="btn btn--outline" style="margin-top:8px">Reach Out to Andrew</a>
+          <a href="mailto:info@apexaviationtx.com" class="btn btn--outline" style="margin-top:8px">Reach Out to Andrew</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MISSION & VISION -->
+  <section class="section">
+    <div class="container">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;max-width:900px;margin:0 auto">
+        <div style="background:var(--navy);border-radius:var(--radius-lg);padding:40px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:16px">Mission</div>
+          <p style="color:var(--white);font-size:18px;line-height:1.7;margin:0;font-weight:500">To help pilots build real-world proficiency through modern, scenario-based aviation training.</p>
+        </div>
+        <div style="border:2px solid var(--gold);border-radius:var(--radius-lg);padding:40px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:16px">Vision</div>
+          <p style="color:var(--navy);font-size:18px;line-height:1.7;margin:0;font-weight:500">To become the leading aviation proficiency and training brand in Texas by combining premium instruction, advanced simulation technology, and modern educational methodologies.</p>
         </div>
       </div>
     </div>
@@ -165,7 +204,7 @@
         <p>Virtual ground school and checkride prep are available now. Austin simulator training opens January 2027. Email Andrew directly — he responds within one business day.</p>
       </div>
       <div class="cta-banner__actions">
-        <a href="mailto:info@apexaviation.com" class="btn btn--primary">Send Andrew a Message</a>
+        <a href="mailto:info@apexaviationtx.com" class="btn btn--primary">Send Andrew a Message</a>
         <a href="index.html#waitlist" class="btn btn--ghost">Join the Waitlist</a>
       </div>
     </div>
@@ -194,6 +233,9 @@
         <p>Train Beyond the Checkride. Premium simulator-based aviation training opening in Austin, Texas — January 2027.</p>
         <div class="footer__social">
           <a href="https://www.facebook.com/profile.php?id=61590455400224" target="_blank" rel="noopener" aria-label="Facebook"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></a>
+          <a href="https://www.instagram.com/apexaviationtx" target="_blank" rel="noopener" aria-label="Instagram"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.5" cy="6.5" r="1.5"/></svg></a>
+          <a href="https://www.youtube.com/@apexaviationtx" target="_blank" rel="noopener" aria-label="YouTube"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M22.54 6.42a2.78 2.78 0 00-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46a2.78 2.78 0 00-1.95 1.96A29 29 0 001 12a29 29 0 00.46 5.58a2.78 2.78 0 001.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 001.95-1.96A29 29 0 0023 12a29 29 0 00-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="white"/></svg></a>
+          <a href="https://www.tiktok.com/@apexaviationtx" target="_blank" rel="noopener" aria-label="TikTok"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/></svg></a>
           <a href="https://www.linkedin.com/company/apex-aviation-tx" target="_blank" rel="noopener" aria-label="LinkedIn"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg></a>
         </div>
       </div>
@@ -216,7 +258,7 @@
         </div>
         <div>
           <h4>Contact</h4>
-          <a href="mailto:info@apexaviation.com">info@apexaviation.com</a>
+          <a href="mailto:info@apexaviationtx.com">info@apexaviationtx.com</a>
           <a href="contact.html">Book a Session</a>
           <span style="color:var(--gray-2);font-size:14px">Austin, Texas</span>
         </div>

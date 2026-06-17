@@ -9,23 +9,23 @@
   <meta property="og:title" content="Apex Aviation | Train Beyond the Checkride" />
   <meta property="og:description" content="Premium simulator-based aviation training in Austin, Texas. Virtual ground school and checkride prep available now. AATD simulator facility opening January 2027." />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://apexaviationgroup.com/" />
+  <meta property="og:url" content="https://apexaviationtx.com/" />
   <meta property="og:image" content="https://images.unsplash.com/photo-1464037866556-6812c9d1c72e?w=1200&q=85" />
   <meta property="og:site_name" content="Apex Aviation" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Apex Aviation | Train Beyond the Checkride" />
   <meta name="twitter:description" content="Simulator-based aviation training in Austin, TX. Virtual sessions open now. AATD facility January 2027." />
   <meta name="twitter:image" content="https://images.unsplash.com/photo-1464037866556-6812c9d1c72e?w=1200&q=85" />
-  <link rel="canonical" href="https://apexaviationgroup.com/" />
+  <link rel="canonical" href="https://apexaviationtx.com/" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "EducationalOrganization",
     "name": "Apex Aviation",
     "description": "Premium simulator-based aviation training in Austin, Texas. Instrument proficiency checks, flight reviews, virtual ground school, and checkride preparation.",
-    "url": "https://apexaviationgroup.com",
-    "logo": "https://apexaviationgroup.com/favicon.svg",
-    "email": "info@apexaviation.com",
+    "url": "https://apexaviationtx.com",
+    "logo": "https://apexaviationtx.com/favicon.svg",
+    "email": "info@apexaviationtx.com",
     "address": {
       "@type": "PostalAddress",
       "addressLocality": "Austin",
@@ -128,6 +128,17 @@
       </a>
       <nav class="nav__links">
         <a href="programs.html">Services</a>
+        <div class="nav__dropdown" id="trainingDropdown">
+          <button class="nav__dropdown-toggle" aria-expanded="false" aria-haspopup="true">
+            Training
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="nav__dropdown-menu">
+            <a href="private-pilot-training.html"><span>Certificate</span>Private Pilot</a>
+            <a href="instrument-rating-training.html"><span>Rating</span>Instrument Rating</a>
+            <a href="commercial-pilot-training.html"><span>Certificate</span>Commercial Pilot</a>
+          </div>
+        </div>
         <a href="fleet.html">Simulator</a>
         <a href="about.html">About</a>
         <a href="instructors.html">Team</a>
@@ -140,6 +151,9 @@
     </div>
     <div class="nav__mobile" id="mobileMenu">
       <a href="programs.html">Services</a>
+      <a href="private-pilot-training.html">Private Pilot Training</a>
+      <a href="instrument-rating-training.html">Instrument Rating</a>
+      <a href="commercial-pilot-training.html">Commercial Pilot</a>
       <a href="fleet.html">Simulator</a>
       <a href="about.html">About</a>
       <a href="instructors.html">Team</a>
@@ -216,6 +230,69 @@
     </div>
   </section>
 
+  <!-- FLIGHT TRAINING PATHS -->
+  <section class="section section--light" id="training">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Flight Training</div>
+        <h2 class="section__title">Your path to the cockpit<br/><em class="accent">starts here.</em></h2>
+        <p class="section__desc">From first flight to commercial certificate — Apex builds every training package around FAA minimums, maximum AATD simulator hours, and 10 extra flight hours so you arrive at the checkride with margin to spare.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:28px">
+
+        <!-- Private Pilot -->
+        <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:36px;box-shadow:var(--shadow);display:flex;flex-direction:column">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Part 61 · Certificate</div>
+          <h3 style="font-size:22px;font-weight:800;color:var(--navy);margin-bottom:12px">Private Pilot</h3>
+          <p style="font-size:14px;color:var(--gray);line-height:1.7;margin-bottom:20px">Start to checkride with scenario-based dual instruction, AATD simulator prep, and solo endorsement. Built for working adults.</p>
+          <div style="background:var(--off-white);border-radius:8px;padding:16px;margin-bottom:24px;font-size:13px;color:var(--gray)">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>Flight instruction</span><strong style="color:var(--navy)">47.5 hrs</strong></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>AATD simulator</span><strong style="color:var(--gold)">7.5 hrs</strong></div>
+            <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:4px"><span style="font-weight:600">Total</span><strong style="color:var(--navy)">55 hrs</strong></div>
+          </div>
+          <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">
+            <a href="private-pilot-training.html" class="btn btn--primary" style="text-align:center">Learn More</a>
+            <a href="index.html#waitlist" class="btn btn--outline" style="text-align:center;font-size:13px">Join Waitlist</a>
+          </div>
+        </div>
+
+        <!-- Instrument Rating -->
+        <div style="background:var(--navy);border:2px solid var(--gold);border-radius:var(--radius-lg);padding:36px;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;position:relative">
+          <div style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--gold);color:var(--navy);font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;padding:4px 16px;border-radius:100px;white-space:nowrap">Most Popular</div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Part 61 · Rating</div>
+          <h3 style="font-size:22px;font-weight:800;color:var(--white);margin-bottom:12px">Instrument Rating</h3>
+          <p style="font-size:14px;color:rgba(255,255,255,0.75);line-height:1.7;margin-bottom:20px">Up to 20 of 40 required instrument hours in the AATD. Approaches, holds, partial panel, and IFR cross-country in a sim that doesn't care about the weather.</p>
+          <div style="background:rgba(255,255,255,0.07);border-radius:8px;padding:16px;margin-bottom:24px;font-size:13px;color:rgba(255,255,255,0.75)">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>Flight instruction</span><strong style="color:var(--white)">30 hrs</strong></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>AATD simulator</span><strong style="color:var(--gold)">25 hrs</strong></div>
+            <div style="display:flex;justify-content:space-between;border-top:1px solid rgba(255,255,255,0.15);padding-top:8px;margin-top:4px"><span style="font-weight:600">Total</span><strong style="color:var(--white)">55 hrs</strong></div>
+          </div>
+          <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">
+            <a href="instrument-rating-training.html" class="btn btn--primary" style="text-align:center">Learn More</a>
+            <a href="index.html#waitlist" class="btn btn--outline" style="text-align:center;font-size:13px;border-color:rgba(255,255,255,0.3);color:rgba(255,255,255,0.8)">Join Waitlist</a>
+          </div>
+        </div>
+
+        <!-- Commercial Pilot -->
+        <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:36px;box-shadow:var(--shadow);display:flex;flex-direction:column">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Part 61 · Certificate</div>
+          <h3 style="font-size:22px;font-weight:800;color:var(--navy);margin-bottom:12px">Commercial Pilot</h3>
+          <p style="font-size:14px;color:var(--gray);line-height:1.7;margin-bottom:20px">Up to 50 AATD hours toward your 250-hour total under §61.129. Commercial maneuvers, advanced XC, and ACS standards.</p>
+          <div style="background:var(--off-white);border-radius:8px;padding:16px;margin-bottom:24px;font-size:13px;color:var(--gray)">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>Flight time</span><strong style="color:var(--navy)">210 hrs</strong></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>AATD simulator</span><strong style="color:var(--gold)">55 hrs</strong></div>
+            <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:4px"><span style="font-weight:600">Total time</span><strong style="color:var(--navy)">265 hrs</strong></div>
+          </div>
+          <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">
+            <a href="commercial-pilot-training.html" class="btn btn--primary" style="text-align:center">Learn More</a>
+            <a href="index.html#waitlist" class="btn btn--outline" style="text-align:center;font-size:13px">Join Waitlist</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
   <!-- SERVICES -->
   <section class="programs section section--dark" id="services">
     <div class="container">
@@ -241,9 +318,9 @@
           </ul>
           <!-- LINKS: replace the three hrefs below with booking links when available -->
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:auto">
-            <a href="mailto:info@apexaviation.com" class="btn btn--outline" style="font-size:13px;padding:10px 16px">Private Pilot — Mon &amp; Wed</a>
-            <a href="mailto:info@apexaviation.com" class="btn btn--outline" style="font-size:13px;padding:10px 16px">Instrument — Tue</a>
-            <a href="mailto:info@apexaviation.com" class="btn btn--outline" style="font-size:13px;padding:10px 16px">Commercial — Thu</a>
+            <a href="mailto:info@apexaviationtx.com" class="btn btn--outline" style="font-size:13px;padding:10px 16px">Private Pilot — Mon &amp; Wed</a>
+            <a href="mailto:info@apexaviationtx.com" class="btn btn--outline" style="font-size:13px;padding:10px 16px">Instrument — Tue</a>
+            <a href="mailto:info@apexaviationtx.com" class="btn btn--outline" style="font-size:13px;padding:10px 16px">Commercial — Thu</a>
           </div>
         </div>
 
@@ -602,12 +679,11 @@
         </a>
         <p>Train Beyond the Checkride. Premium simulator-based aviation training opening in Austin, Texas — January 2027.</p>
         <div class="footer__social">
-          <a href="https://www.facebook.com/profile.php?id=61590455400224" target="_blank" rel="noopener" aria-label="Facebook">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
-          </a>
-          <a href="https://www.linkedin.com/company/apex-aviation-tx" target="_blank" rel="noopener" aria-label="LinkedIn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg>
-          </a>
+          <a href="https://www.facebook.com/profile.php?id=61590455400224" target="_blank" rel="noopener" aria-label="Facebook"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></a>
+          <a href="https://www.instagram.com/apexaviationtx" target="_blank" rel="noopener" aria-label="Instagram"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.5" cy="6.5" r="1.5"/></svg></a>
+          <a href="https://www.youtube.com/@apexaviationtx" target="_blank" rel="noopener" aria-label="YouTube"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M22.54 6.42a2.78 2.78 0 00-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46a2.78 2.78 0 00-1.95 1.96A29 29 0 001 12a29 29 0 00.46 5.58a2.78 2.78 0 001.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 001.95-1.96A29 29 0 0023 12a29 29 0 00-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="white"/></svg></a>
+          <a href="https://www.tiktok.com/@apexaviationtx" target="_blank" rel="noopener" aria-label="TikTok"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/></svg></a>
+          <a href="https://www.linkedin.com/company/apex-aviation-tx" target="_blank" rel="noopener" aria-label="LinkedIn"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg></a>
         </div>
       </div>
       <div class="footer__links">
@@ -628,7 +704,7 @@
         </div>
         <div>
           <h4>Contact</h4>
-          <a href="mailto:info@apexaviation.com">info@apexaviation.com</a>
+          <a href="mailto:info@apexaviationtx.com">info@apexaviationtx.com</a>
           <a href="contact.html">Book a Session</a>
           <span style="color:var(--gray-2);font-size:14px">Austin, Texas</span>
         </div>
