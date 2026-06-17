@@ -205,11 +205,11 @@ a { text-decoration: none; color: inherit; }
 .nav__links {
   display: flex;
   align-items: center;
-  gap: 32px;
+  gap: 24px;
 }
 .nav__links a {
   color: rgba(255,255,255,0.8);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   transition: color var(--transition);
 }
