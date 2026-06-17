@@ -164,6 +164,7 @@ a { text-decoration: none; color: inherit; }
   justify-content: space-between;
   height: 72px;
 }
+.nav__logo img { height: 40px; width: auto; }
 .nav__logo {
   display: flex;
   align-items: center;
