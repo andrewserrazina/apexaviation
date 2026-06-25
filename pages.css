@@ -1981,14 +1981,14 @@
 .aircraft-detail__used-for li { font-size:13px; background:rgba(238,195,88,0.1); color:var(--text); padding:4px 12px; border-radius:100px; font-weight:500; }
 
 /* ── FAQ Accordion ── */
-.faq-section { padding:80px 0; background:var(--off-white); }
+.faq-section { padding:80px 0; background:var(--navy); }
 .faq-section .section__header { margin-bottom:48px; }
 .faq-list { max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:12px; }
-.faq-item { background:#fff; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+.faq-item { background:var(--navy-2); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
 .faq-item__question {
   width:100%; display:flex; justify-content:space-between; align-items:center;
   padding:20px 24px; background:none; border:none; cursor:pointer;
-  font-family:var(--font); font-size:15px; font-weight:600; color:var(--text); text-align:left; gap:16px;
+  font-family:var(--font); font-size:15px; font-weight:600; color:var(--white); text-align:left; gap:16px;
   transition:color var(--transition);
 }
 .faq-item__question:hover { color:#C9960C; }
@@ -2003,15 +2003,15 @@
   display:grid; grid-template-columns:repeat(4,1fr); gap:2px;
   background:var(--border); border-radius:var(--radius-lg); overflow:hidden; margin:48px 0;
 }
-.stats-row__item { background:#fff; padding:36px 24px; text-align:center; }
+.stats-row__item { background:var(--navy-2); padding:36px 24px; text-align:center; }
 .stats-row__num { font-size:36px; font-weight:800; color:#C9960C; display:block; line-height:1; margin-bottom:6px; }
 .stats-row__label { font-size:13px; color:var(--gray); font-weight:500; }
 
 /* ── Values (about page) ── */
 .values-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:28px; }
 .value-card {
-  background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); padding:36px 28px; text-align:center;
-  box-shadow:var(--shadow); transition:all var(--transition);
+  background:var(--navy-2); border:1px solid var(--border); border-radius:var(--radius-lg); padding:36px 28px; text-align:center;
+  box-shadow:none; transition:all var(--transition);
 }
 .value-card:hover { transform:translateY(-4px); box-shadow:var(--shadow-lg); }
 .value-card__icon {
@@ -2025,13 +2025,13 @@
 .certifications { display:flex; flex-wrap:wrap; gap:16px; margin-top:32px; }
 .cert-badge {
   display:flex; align-items:center; gap:10px;
-  background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:12px 20px; box-shadow:var(--shadow);
+  background:var(--navy-2); border:1px solid var(--border); border-radius:var(--radius); padding:12px 20px; box-shadow:none;
 }
 .cert-badge strong { font-size:14px; font-weight:700; display:block; }
 .cert-badge span { font-size:12px; color:var(--gray); }
 
 /* ── Rates table (pricing page) ── */
-.rates-table-wrap { background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow); margin-bottom:48px; }
+.rates-table-wrap { background:var(--navy-2); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; box-shadow:none; margin-bottom:48px; }
 .rates-table { width:100%; border-collapse:collapse; }
 .rates-table th { background:#02060C; color:#fff; padding:14px 20px; text-align:left; font-size:13px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; }
 .rates-table th:last-child { text-align:right; }
