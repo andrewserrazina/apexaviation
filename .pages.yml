@@ -31,11 +31,17 @@ content:
         type: select
         required: true
         options:
-          - pilot-tips
-          - training
-          - apex-news
-          - texas-flying
-          - ground-school
+          values:
+            - label: Pilot Tips
+              value: pilot-tips
+            - label: Training
+              value: training
+            - label: Apex News
+              value: apex-news
+            - label: Texas Flying
+              value: texas-flying
+            - label: Ground School
+              value: ground-school
       - name: excerpt
         label: Excerpt (shown in post cards)
         type: string
