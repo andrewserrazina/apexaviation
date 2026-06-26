@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title id="pageTitle">Blog | Apex Aviation</title>
+  <meta name="description" id="pageDesc" content="Apex Aviation blog — pilot tips, training guides, and Texas flying." />
+  <link rel="icon" type="image/png" href="apexfacivon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="pages.css" />
+  <!-- Google Analytics 4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-JFPBCF2GXE"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-JFPBCF2GXE');
+  </script>
+  <!-- Microsoft Clarity -->
+  <script>
+    (function(c,l,a,r,i,t,y){
+      c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+      t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+      y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window,document,'clarity','script','x95g0qe0g6');
+  </script>
+  <style>
+    .post-hero { background: var(--navy); padding: 80px 0 60px; text-align: center; }
+    .post-hero__eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); margin-bottom: 16px; }
+    .post-hero__title { font-size: clamp(26px, 4vw, 44px); font-weight: 800; color: #fff; line-height: 1.2; max-width: 760px; margin: 0 auto 20px; }
+    .post-hero__meta { display: flex; align-items: center; justify-content: center; gap: 16px; color: rgba(255,255,255,0.5); font-size: 13px; }
+    .post-hero__meta span { display: flex; align-items: center; gap: 6px; }
+    .post-hero__img { width: 100%; max-height: 460px; object-fit: cover; display: block; }
+
+    .post-body { max-width: 740px; margin: 0 auto; padding: 64px 24px 80px; }
+    .post-body h2 { font-size: 24px; font-weight: 800; color: var(--navy); margin: 48px 0 16px; line-height: 1.3; }
+    .post-body h3 { font-size: 20px; font-weight: 700; color: var(--navy); margin: 36px 0 12px; }
+    .post-body p { font-size: 16px; line-height: 1.9; color: var(--gray); margin-bottom: 20px; }
+    .post-body ul, .post-body ol { padding-left: 24px; margin-bottom: 20px; }
+    .post-body li { font-size: 16px; line-height: 1.8; color: var(--gray); margin-bottom: 6px; }
+    .post-body strong { color: var(--text); font-weight: 700; }
+    .post-body a { color: var(--gold); text-decoration: underline; }
+    .post-body a:hover { color: var(--navy); }
+    .post-body blockquote { border-left: 4px solid var(--gold); margin: 32px 0; padding: 16px 24px; background: var(--off-white); border-radius: 0 8px 8px 0; }
+    .post-body blockquote p { margin: 0; font-style: italic; }
+    .post-body hr { border: none; border-top: 1px solid #e5e8ec; margin: 40px 0; }
+    .post-body code { background: var(--off-white); padding: 2px 6px; border-radius: 4px; font-size: 14px; }
+
+    .post-back { display: inline-flex; align-items: center; gap: 8px; color: var(--gray); font-size: 14px; font-weight: 600; text-decoration: none; margin-bottom: 32px; transition: color 0.15s; }
+    .post-back:hover { color: var(--navy); }
+
+    .post-cta { background: var(--navy); border-radius: var(--radius-lg); padding: 48px; text-align: center; margin-top: 64px; }
+    .post-cta h3 { color: #fff; font-size: 22px; font-weight: 800; margin-bottom: 12px; }
+    .post-cta p { color: rgba(255,255,255,0.75); font-size: 15px; line-height: 1.7; margin-bottom: 24px; }
+
+    #postLoading { text-align: center; padding: 120px 20px; color: var(--gray); }
+    #postError { text-align: center; padding: 120px 20px; color: var(--gray); }
+  </style>
+</head>
+<body>
+
+  <header class="nav" id="nav">
+    <div class="container nav__inner">
+      <a href="home.html" class="nav__logo">
+        <img src="apexwhite.png" alt="Apex Aviation" height="40" style="display:block;width:auto" />
+        <span class="nav__logo-text"><strong>APEX</strong><small>AVIATION</small></span>
+      </a>
+      <nav class="nav__links">
+        <a href="programs.html">Services</a>
+        <div class="nav__dropdown" id="trainingDropdown">
+          <button class="nav__dropdown-toggle" aria-expanded="false" aria-haspopup="true">
+            Training
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="nav__dropdown-menu">
+            <a href="private-pilot-training.html">Private Pilot</a>
+            <a href="instrument-rating-training.html">Instrument Rating</a>
+            <a href="commercial-pilot-training.html">Commercial Pilot</a>
+            <a href="apex-advantage.html">Apex Advantage</a>
+          </div>
+        </div>
+        <a href="fleet.html">Simulator</a>
+        <a href="about.html">About</a>
+        <a href="instructors.html">Team</a>
+        <a href="pricing.html">Pricing</a>
+        <a href="blog.html">Blog</a>
+        <a href="contact.html" class="btn btn--nav">Book a Session</a>
+      </nav>
+      <button class="nav__hamburger" id="hamburger" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <div class="nav__mobile" id="mobileMenu">
+      <a href="programs.html">Services</a>
+      <a href="private-pilot-training.html">Private Pilot Training</a>
+      <a href="instrument-rating-training.html">Instrument Rating</a>
+      <a href="commercial-pilot-training.html">Commercial Pilot</a>
+      <a href="apex-advantage.html">Apex Advantage Ground School</a>
+      <a href="fleet.html">Simulator</a>
+      <a href="about.html">About</a>
+      <a href="instructors.html">Team</a>
+      <a href="pricing.html">Pricing</a>
+      <a href="blog.html">Blog</a>
+      <a href="contact.html">Book a Session</a>
+    </div>
+  </header>
+
+  <div id="postLoading">Loading post…</div>
+  <div id="postError" style="display:none">
+    <p>Post not found. <a href="blog.html">Back to blog →</a></p>
+  </div>
+  <div id="postContent" style="display:none">
+    <div class="post-hero" id="postHero">
+      <div class="container">
+        <div class="post-hero__eyebrow" id="postCategory"></div>
+        <h1 class="post-hero__title" id="postTitle"></h1>
+        <div class="post-hero__meta">
+          <span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <span id="postDate"></span>
+          </span>
+          <span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            Andrew Serrazina · CFI, CFII
+          </span>
+        </div>
+      </div>
+    </div>
+    <img id="postFeaturedImg" class="post-hero__img" style="display:none" alt="" />
+    <div class="container">
+      <div class="post-body">
+        <a href="blog.html" class="post-back">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Back to blog
+        </a>
+        <div id="postBodyContent"></div>
+        <div class="post-cta">
+          <h3>Ready to train with Apex?</h3>
+          <p>Apex Advantage ground school launches September 2026. AATD simulator facility opens January 2027. Join the waitlist for founding member pricing.</p>
+          <a href="home.html#waitlist" class="btn btn--primary">Join the Waitlist</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container footer__inner">
+      <div class="footer__brand">
+        <a href="home.html" class="nav__logo">
+          <img src="apexwhite.png" alt="Apex Aviation" height="40" style="display:block;width:auto" />
+          <span class="nav__logo-text"><strong>APEX</strong><small>AVIATION</small></span>
+        </a>
+        <p>Train Beyond the Checkride. Premium simulator-based aviation training opening in Austin, Texas — January 2027.</p>
+      </div>
+      <div class="footer__links">
+        <div>
+          <h4>Training</h4>
+          <a href="private-pilot-training.html">Private Pilot</a>
+          <a href="instrument-rating-training.html">Instrument Rating</a>
+          <a href="commercial-pilot-training.html">Commercial Pilot</a>
+          <a href="apex-advantage.html">Apex Advantage</a>
+        </div>
+        <div>
+          <h4>Company</h4>
+          <a href="about.html">About</a>
+          <a href="instructors.html">Team</a>
+          <a href="fleet.html">Simulator</a>
+          <a href="pricing.html">Pricing</a>
+          <a href="blog.html">Blog</a>
+        </div>
+        <div>
+          <h4>Connect</h4>
+          <a href="contact.html">Contact</a>
+          <a href="https://instagram.com/apexaviationtx" target="_blank" rel="noopener">Instagram</a>
+          <a href="https://facebook.com/apexaviationtx" target="_blank" rel="noopener">Facebook</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <p>&copy; 2027 Apex Aviation LLC. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <!-- marked.js for Markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+  <script src="script.js"></script>
+  <script>
+    const CATEGORY_LABELS = {
+      'pilot-tips': 'Pilot Tips',
+      'training': 'Training',
+      'apex-news': 'Apex News',
+      'texas-flying': 'Texas Flying',
+      'ground-school': 'Ground School',
+    };
+
+    function parseFrontmatter(text) {
+      const match = text.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+      if (!match) return { meta: {}, body: text };
+      const meta = {};
+      match[1].split('\n').forEach(line => {
+        const colonIdx = line.indexOf(':');
+        if (colonIdx === -1) return;
+        const key = line.slice(0, colonIdx).trim();
+        const val = line.slice(colonIdx + 1).trim().replace(/^["']|["']$/g, '');
+        meta[key] = val;
+      });
+      return { meta, body: match[2] };
+    }
+
+    function formatDate(dateStr) {
+      const d = new Date(dateStr + 'T12:00:00');
+      return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+
+    (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const slug = params.get('post');
+      if (!slug) { showError(); return; }
+
+      try {
+        const res = await fetch('posts/' + slug + '.md');
+        if (!res.ok) { showError(); return; }
+        const text = await res.text();
+        const { meta, body } = parseFrontmatter(text);
+
+        document.getElementById('pageTitle').textContent = (meta.title || 'Blog Post') + ' | Apex Aviation';
+        document.getElementById('pageDesc').setAttribute('content', meta.excerpt || '');
+        document.getElementById('postTitle').textContent = meta.title || '';
+        document.getElementById('postDate').textContent = meta.date ? formatDate(meta.date) : '';
+        document.getElementById('postCategory').textContent = CATEGORY_LABELS[meta.category] || meta.category || '';
+
+        if (meta.featured_image) {
+          const img = document.getElementById('postFeaturedImg');
+          img.src = meta.featured_image;
+          img.alt = meta.title || '';
+          img.style.display = 'block';
+        }
+
+        document.getElementById('postBodyContent').innerHTML = marked.parse(body);
+        document.getElementById('postLoading').style.display = 'none';
+        document.getElementById('postContent').style.display = 'block';
+      } catch {
+        showError();
+      }
+    })();
+
+    function showError() {
+      document.getElementById('postLoading').style.display = 'none';
+      document.getElementById('postError').style.display = 'block';
+    }
+  </script>
+</body>
+</html>

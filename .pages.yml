@@ -1,0 +1,54 @@
+media:
+  input: uploads
+  output: /uploads
+
+content:
+  - name: posts
+    label: Blog Posts
+    path: posts
+    type: collection
+    filename: "{fields.slug}"
+    extension: md
+    view:
+      fields: [title, date, category]
+    fields:
+      - name: title
+        label: Title
+        type: string
+        required: true
+      - name: slug
+        label: Slug (URL)
+        type: string
+        required: true
+        pattern: "^[a-z0-9-]+$"
+        hint: "Lowercase letters, numbers, and hyphens only. e.g. instrument-rating-tips"
+      - name: date
+        label: Publish Date
+        type: date
+        required: true
+      - name: category
+        label: Category
+        type: select
+        required: true
+        options:
+          - label: Pilot Tips
+            value: pilot-tips
+          - label: Training
+            value: training
+          - label: Apex News
+            value: apex-news
+          - label: Texas Flying
+            value: texas-flying
+          - label: Ground School
+            value: ground-school
+      - name: excerpt
+        label: Excerpt (shown in post cards)
+        type: string
+        required: true
+      - name: featured_image
+        label: Featured Image URL
+        type: string
+        hint: "Paste an image URL or leave blank"
+      - name: body
+        label: Content
+        type: rich-text
