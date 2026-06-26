@@ -136,13 +136,13 @@ document.querySelectorAll('.faq-item__question').forEach(btn => {
         </div>
         <div class="form-group">
           <label>I'm interested in</label>
-          <div class="checkbox-grid">
-            <label class="checkbox-item"><input type="checkbox" name="services" value="Private Pilot Training" /><span>Private Pilot Training</span></label>
+          <div class="checkbox-grid" style="grid-template-columns:repeat(3,1fr);gap:8px">
+            <label class="checkbox-item"><input type="checkbox" name="services" value="Private Pilot Training" /><span>Private Pilot</span></label>
             <label class="checkbox-item"><input type="checkbox" name="services" value="Instrument Rating" /><span>Instrument Rating</span></label>
             <label class="checkbox-item"><input type="checkbox" name="services" value="Commercial Pilot" /><span>Commercial Pilot</span></label>
-            <label class="checkbox-item"><input type="checkbox" name="services" value="Apex Advantage Ground" /><span>Apex Advantage Ground</span></label>
-            <label class="checkbox-item"><input type="checkbox" name="services" value="IPC / BFR / Currency" /><span>IPC / BFR / Currency</span></label>
-            <label class="checkbox-item"><input type="checkbox" name="services" value="Simulator Sessions" /><span>Simulator Sessions</span></label>
+            <label class="checkbox-item"><input type="checkbox" name="services" value="Apex Advantage Ground" /><span>Apex Advantage</span></label>
+            <label class="checkbox-item"><input type="checkbox" name="services" value="IPC / BFR / Currency" /><span>IPC / BFR</span></label>
+            <label class="checkbox-item"><input type="checkbox" name="services" value="Simulator Sessions" /><span>Simulator</span></label>
           </div>
         </div>
         <button type="submit" class="btn btn--primary btn--full">Join the Waitlist</button>
