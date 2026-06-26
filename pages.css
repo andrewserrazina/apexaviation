@@ -8,7 +8,7 @@
    ---------------------------------------------------------- */
 .page-hero {
   min-height: 380px;
-  background-color: #02060C;
+  background-color: #0B1F3A;
   background-image:
     radial-gradient(ellipse at 70% 50%, rgba(244, 180, 0, 0.12) 0%, transparent 65%),
     repeating-linear-gradient(
@@ -44,7 +44,7 @@
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: #C9960C;
+  color: #F4B400;
   margin-bottom: 16px;
   padding: 4px 12px;
   border: 1px solid rgba(244, 180, 0, 0.35);
@@ -73,13 +73,13 @@
    ACTIVE NAV LINK
    ---------------------------------------------------------- */
 .nav__links a.active {
-  color: #C9960C;
-  border-bottom: 2px solid #C9960C;
+  color: #F4B400;
+  border-bottom: 2px solid #F4B400;
   padding-bottom: 2px;
 }
 
 .nav__mobile a.active {
-  color: #C9960C;
+  color: #F4B400;
 }
 
 /* ----------------------------------------------------------
@@ -90,7 +90,7 @@
 }
 
 .section--alt {
-  background: #0A1628;
+  background: #162C4F;
 }
 
 .section__header {
@@ -106,7 +106,7 @@
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #C9960C;
+  color: #F4B400;
   margin-bottom: 12px;
 }
 
@@ -136,7 +136,7 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 0;
-  background: #0A1628;
+  background: #162C4F;
   border: 1px solid rgba(244, 180, 0, 0.2);
   border-radius: 12px;
   overflow: hidden;
@@ -161,7 +161,7 @@
 .stat-item__number {
   font-size: 2.5rem;
   font-weight: 800;
-  color: #C9960C;
+  color: #F4B400;
   display: block;
   line-height: 1;
   margin-bottom: 8px;
@@ -186,9 +186,9 @@
 }
 
 .program-card {
-  background: #0A1628;
+  background: #162C4F;
   border: 1px solid rgba(255, 255, 255, 0.07);
-  border-left: 4px solid #C9960C;
+  border-left: 4px solid #F4B400;
   border-radius: 12px;
   padding: 40px;
   transition: box-shadow 0.25s, transform 0.25s;
@@ -228,7 +228,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #C9960C;
+  color: #F4B400;
   background: rgba(244, 180, 0, 0.1);
   border: 1px solid rgba(244, 180, 0, 0.3);
   border-radius: 3px;
@@ -263,7 +263,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #C9960C;
+  color: #F4B400;
   margin: 0 0 12px;
 }
 
@@ -288,7 +288,7 @@
   content: '›';
   position: absolute;
   left: 0;
-  color: #C9960C;
+  color: #F4B400;
   font-weight: 700;
 }
 
@@ -311,7 +311,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #C9960C;
+  color: #F4B400;
   margin: 0 0 12px;
 }
 
@@ -335,7 +335,7 @@
   content: '✓';
   position: absolute;
   left: 0;
-  color: #C9960C;
+  color: #F4B400;
   font-weight: 700;
 }
 
@@ -404,12 +404,12 @@
   color: #ffffff;
   font-size: 1rem;
   font-weight: 600;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   transition: color 0.2s;
 }
 
 .faq__question:hover {
-  color: #C9960C;
+  color: #F4B400;
 }
 
 .faq__question-icon {
@@ -422,7 +422,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #C9960C;
+  color: #F4B400;
   font-size: 1rem;
   font-weight: 700;
   transition: transform 0.3s, background 0.2s;
@@ -499,7 +499,7 @@
 }
 
 .aircraft-card {
-  background: #0A1628;
+  background: #162C4F;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 16px;
   overflow: hidden;
@@ -564,7 +564,7 @@
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #C9960C;
+  color: #F4B400;
   font-weight: 700;
   margin-bottom: 8px;
 }
@@ -652,7 +652,7 @@
 }
 
 .value-card {
-  background: #0A1628;
+  background: #162C4F;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 12px;
   padding: 36px 28px;
@@ -668,7 +668,7 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, #C9960C, #A07A08);
+  background: linear-gradient(90deg, #F4B400, #D4920A);
 }
 
 .value-card:hover {
@@ -706,7 +706,7 @@
 }
 
 .instructor-card--large {
-  background: #0A1628;
+  background: #162C4F;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 14px;
   overflow: hidden;
@@ -743,7 +743,7 @@
   left: 0;
   right: 0;
   height: 80px;
-  background: linear-gradient(transparent, #0A1628);
+  background: linear-gradient(transparent, #162C4F);
 }
 
 .instructor-card--large__body {
@@ -761,7 +761,7 @@
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #C9960C;
+  color: #F4B400;
   font-weight: 600;
   margin-bottom: 12px;
 }
@@ -780,13 +780,13 @@
   background: rgba(244, 180, 0, 0.1);
   border: 1px solid rgba(244, 180, 0, 0.25);
   border-radius: 3px;
-  color: #C9960C;
+  color: #F4B400;
   letter-spacing: 0.05em;
 }
 
 .instructor-card--large__hours {
   font-size: 0.82rem;
-  color: #C9960C;
+  color: #F4B400;
   font-weight: 700;
   margin-bottom: 10px;
 }
@@ -803,7 +803,7 @@
   color: #a0aec0;
   font-size: 0.875rem;
   line-height: 1.6;
-  border-left: 3px solid #C9960C;
+  border-left: 3px solid #F4B400;
   padding-left: 14px;
   margin: 0;
 }
@@ -822,7 +822,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #0A1628;
+  background: #162C4F;
   border: 1px solid rgba(244, 180, 0, 0.2);
   border-radius: 10px;
   padding: 16px 24px;
@@ -873,7 +873,7 @@
   position: absolute;
   inset: -3px;
   border-radius: 18px;
-  background: linear-gradient(135deg, #C9960C, transparent 50%);
+  background: linear-gradient(135deg, #F4B400, transparent 50%);
   z-index: -1;
 }
 
@@ -907,7 +907,7 @@
 }
 
 .pricing-card {
-  background: #0A1628;
+  background: #162C4F;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 14px;
   padding: 32px 24px;
@@ -923,7 +923,7 @@
 }
 
 .pricing-card--featured {
-  border-color: #C9960C;
+  border-color: #F4B400;
   box-shadow: 0 0 0 1px rgba(244, 180, 0, 0.3), 0 8px 32px rgba(244, 180, 0, 0.12);
 }
 
@@ -936,8 +936,8 @@
   top: -13px;
   left: 50%;
   transform: translateX(-50%);
-  background: #C9960C;
-  color: #02060C;
+  background: #F4B400;
+  color: #0B1F3A;
   font-size: 0.68rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -957,7 +957,7 @@
 .pricing-card__price {
   font-size: 2rem;
   font-weight: 800;
-  color: #C9960C;
+  color: #F4B400;
   margin: 0 0 4px;
   letter-spacing: -0.02em;
   line-height: 1;
@@ -981,7 +981,7 @@
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #C9960C;
+  color: #F4B400;
   font-weight: 700;
   margin-bottom: 10px;
 }
@@ -1006,7 +1006,7 @@
   content: '✓';
   position: absolute;
   left: 0;
-  color: #C9960C;
+  color: #F4B400;
   font-weight: 700;
   font-size: 0.75rem;
 }
@@ -1024,7 +1024,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.925rem;
-  background: #0A1628;
+  background: #162C4F;
 }
 
 .rates-table thead tr {
@@ -1039,7 +1039,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #C9960C;
+  color: #F4B400;
 }
 
 .rates-table td {
@@ -1064,7 +1064,7 @@
 
 .rates-table .rate-price {
   font-weight: 700;
-  color: #C9960C;
+  color: #F4B400;
 }
 
 .rates-table .rate-note {
@@ -1076,7 +1076,7 @@
    FINANCING SECTION
    ---------------------------------------------------------- */
 .financing-section {
-  background: linear-gradient(135deg, #0A1628 0%, #111827 100%);
+  background: linear-gradient(135deg, #162C4F 0%, #111827 100%);
   border: 1px solid rgba(244, 180, 0, 0.15);
   border-radius: 16px;
   padding: 56px 48px;
@@ -1121,7 +1121,7 @@
 
 .financing-items li::before {
   content: '✓';
-  color: #C9960C;
+  color: #F4B400;
   font-weight: 700;
   font-size: 0.875rem;
   margin-top: 1px;
@@ -1132,7 +1132,7 @@
    CTA BANNER
    ---------------------------------------------------------- */
 .cta-banner {
-  background: linear-gradient(135deg, #060c18 0%, #0A1628 60%, #0a1220 100%);
+  background: linear-gradient(135deg, #060c18 0%, #162C4F 60%, #0a1220 100%);
   border-top: 1px solid rgba(244, 180, 0, 0.2);
   border-bottom: 1px solid rgba(244, 180, 0, 0.2);
   padding: 80px 0;
@@ -1157,7 +1157,7 @@
 .cta-banner__title {
   font-size: clamp(1.75rem, 4vw, 2.75rem);
   font-weight: 800;
-  color: #C9960C;
+  color: #F4B400;
   margin: 0 0 16px;
   letter-spacing: -0.02em;
 }
@@ -1181,7 +1181,7 @@
 }
 
 .contact-info {
-  background: #0A1628;
+  background: #162C4F;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 14px;
   padding: 36px 32px;
@@ -1224,7 +1224,7 @@
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #C9960C;
+  color: #F4B400;
   font-weight: 700;
   margin-bottom: 3px;
 }
@@ -1242,7 +1242,7 @@
 }
 
 .contact-info__item-value a:hover {
-  color: #C9960C;
+  color: #F4B400;
 }
 
 .contact-info__hours {
@@ -1254,7 +1254,7 @@
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #C9960C;
+  color: #F4B400;
   font-weight: 700;
   margin-bottom: 8px;
 }
@@ -1267,7 +1267,7 @@
 }
 
 .contact-form {
-  background: #0A1628;
+  background: #162C4F;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 14px;
   padding: 40px;
@@ -1310,7 +1310,7 @@
   padding: 12px 16px;
   color: #ffffff;
   font-size: 0.95rem;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   transition: border-color 0.2s, box-shadow 0.2s;
   box-sizing: border-box;
   appearance: none;
@@ -1326,7 +1326,7 @@
 }
 
 .form-group select option {
-  background: #0A1628;
+  background: #162C4F;
   color: #ffffff;
 }
 
@@ -1339,7 +1339,7 @@
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #C9960C;
+  border-color: #F4B400;
   box-shadow: 0 0 0 3px rgba(244, 180, 0, 0.12);
 }
 
@@ -1390,7 +1390,7 @@
 }
 
 .airport-info {
-  background: #0A1628;
+  background: #162C4F;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 14px;
   padding: 36px;
@@ -1432,7 +1432,7 @@
 }
 
 .airport-freq-table td:last-child {
-  color: #C9960C;
+  color: #F4B400;
   font-weight: 700;
 }
 
@@ -1456,7 +1456,7 @@
   content: '›';
   position: absolute;
   left: 0;
-  color: #C9960C;
+  color: #F4B400;
   font-weight: 700;
 }
 
@@ -1465,7 +1465,7 @@
   overflow: hidden;
   height: 100%;
   min-height: 340px;
-  background-color: #0A1628;
+  background-color: #162C4F;
   background-image:
     linear-gradient(rgba(244, 180, 0, 0.04) 1px, transparent 1px),
     linear-gradient(90deg, rgba(244, 180, 0, 0.04) 1px, transparent 1px);
@@ -1502,7 +1502,7 @@
 
 .map-placeholder__link {
   font-size: 0.85rem;
-  color: #C9960C;
+  color: #F4B400;
   text-decoration: none;
   font-weight: 600;
   padding: 8px 18px;
@@ -1520,7 +1520,7 @@
    SIMULATOR SECTION
    ---------------------------------------------------------- */
 .simulator-card {
-  background: #0A1628;
+  background: #162C4F;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 16px;
   padding: 48px;
@@ -1544,7 +1544,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #C9960C;
+  color: #F4B400;
   background: rgba(244, 180, 0, 0.1);
   border: 1px solid rgba(244, 180, 0, 0.25);
   border-radius: 3px;
@@ -1578,7 +1578,7 @@
 
 .simulator-features li::before {
   content: '✓';
-  color: #C9960C;
+  color: #F4B400;
   font-weight: 700;
   flex-shrink: 0;
   margin-top: 1px;
@@ -1602,7 +1602,7 @@
 .simulator-visual__rate {
   font-size: 2rem;
   font-weight: 800;
-  color: #C9960C;
+  color: #F4B400;
   letter-spacing: -0.02em;
 }
 
@@ -1624,7 +1624,7 @@
 }
 
 .maintenance-item {
-  background: #0A1628;
+  background: #162C4F;
   border: 1px solid rgba(255,255,255,0.07);
   border-radius: 10px;
   padding: 24px;
@@ -1658,13 +1658,13 @@
   align-items: center;
   gap: 8px;
   padding: 12px 28px;
-  border: 2px solid #C9960C;
+  border: 2px solid #F4B400;
   border-radius: 6px;
-  color: #C9960C;
+  color: #F4B400;
   font-weight: 700;
   font-size: 0.9rem;
   text-decoration: none;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   cursor: pointer;
   background: transparent;
   transition: background 0.2s, color 0.2s;
@@ -1892,14 +1892,14 @@
   transform: translateY(-50%);
   font-size: clamp(80px, 12vw, 160px);
   font-weight: 900;
-  color: rgba(238,195,88,0.04);
+  color: rgba(244,180,0,0.04);
   letter-spacing: 0.05em;
   user-select: none;
   pointer-events: none;
   white-space: nowrap;
 }
 .page-hero__title { font-size: clamp(32px,5vw,56px); font-weight:800; color:#fff; line-height:1.1; margin-bottom:16px; max-width:640px; }
-.page-hero__title span { color: #C9960C; }
+.page-hero__title span { color: #F4B400; }
 .page-hero__sub { font-size:18px; color:rgba(255,255,255,0.65); max-width:520px; line-height:1.7; }
 
 /* CTA Banner */
@@ -1923,9 +1923,9 @@
 .program-detail__level {
   display: inline-block;
   font-size: 12px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
-  color: #C9960C;
-  background: rgba(238,195,88,0.1);
-  border: 1px solid rgba(238,195,88,0.25);
+  color: #F4B400;
+  background: rgba(244,180,0,0.1);
+  border: 1px solid rgba(244,180,0,0.25);
   padding: 4px 12px; border-radius: 100px; margin-bottom: 16px;
 }
 .program-detail__title { font-size:clamp(24px,3vw,32px); font-weight:800; margin-bottom:16px; line-height:1.2; }
@@ -1935,7 +1935,7 @@
   text-align:center; padding:16px 20px;
   background:var(--off-white); border-radius:var(--radius); border:1px solid var(--border); min-width:100px;
 }
-.detail-stat__num { font-size:22px; font-weight:800; color:#C9960C; display:block; }
+.detail-stat__num { font-size:22px; font-weight:800; color:#F4B400; display:block; }
 .detail-stat__label { font-size:12px; color:var(--gray); font-weight:500; margin-top:2px; display:block; }
 .program-detail__highlights { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:32px; }
 .highlight-item { display:flex; align-items:center; gap:10px; font-size:14px; font-weight:500; color:var(--text); }
@@ -1947,7 +1947,7 @@
 .curriculum-phase { display:flex; gap:16px; padding:16px 0; border-bottom:1px solid var(--border); }
 .curriculum-phase:last-child { border-bottom:none; padding-bottom:0; }
 .curriculum-phase__num {
-  width:32px; height:32px; background:#C9960C; color:#02060C;
+  width:32px; height:32px; background:#F4B400; color:#0B1F3A;
   border-radius:50%; display:flex; align-items:center; justify-content:center;
   font-size:13px; font-weight:800; flex-shrink:0;
 }
@@ -1962,10 +1962,10 @@
 .aircraft-detail__img img { width:100%; height:100%; object-fit:cover; }
 .aircraft-detail__tag {
   position:absolute; top:16px; left:16px;
-  background:#02060C; color:#fff; font-size:12px; font-weight:600; padding:5px 14px; border-radius:100px;
+  background:#0B1F3A; color:#fff; font-size:12px; font-weight:600; padding:5px 14px; border-radius:100px;
 }
 .aircraft-detail__title { font-size:28px; font-weight:800; margin-bottom:8px; }
-.aircraft-detail__subtitle { font-size:14px; color:#C9960C; font-weight:600; letter-spacing:0.05em; margin-bottom:16px; }
+.aircraft-detail__subtitle { font-size:14px; color:#F4B400; font-weight:600; letter-spacing:0.05em; margin-bottom:16px; }
 .aircraft-detail__desc { font-size:15px; color:var(--gray); line-height:1.8; margin-bottom:28px; }
 .specs-table { width:100%; border-collapse:collapse; margin-bottom:24px; }
 .specs-table tr { border-bottom:1px solid var(--border); }
@@ -1974,24 +1974,24 @@
 .specs-table td:first-child { color:var(--gray); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.06em; width:45%; }
 .specs-table td:last-child { font-weight:600; color:var(--text); }
 .aircraft-detail__used-for {
-  background:rgba(238,195,88,0.06); border:1px solid rgba(238,195,88,0.2); border-radius:var(--radius); padding:16px 20px;
+  background:rgba(244,180,0,0.06); border:1px solid rgba(244,180,0,0.2); border-radius:var(--radius); padding:16px 20px;
 }
-.aircraft-detail__used-for h5 { font-size:13px; font-weight:700; color:#C9960C; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.08em; }
+.aircraft-detail__used-for h5 { font-size:13px; font-weight:700; color:#F4B400; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.08em; }
 .aircraft-detail__used-for ul { list-style:none; display:flex; flex-wrap:wrap; gap:8px; }
-.aircraft-detail__used-for li { font-size:13px; background:rgba(238,195,88,0.1); color:var(--text); padding:4px 12px; border-radius:100px; font-weight:500; }
+.aircraft-detail__used-for li { font-size:13px; background:rgba(244,180,0,0.1); color:var(--text); padding:4px 12px; border-radius:100px; font-weight:500; }
 
 /* ── FAQ Accordion ── */
-.faq-section { padding:80px 0; background:var(--navy); }
+.faq-section { padding:80px 0; background:var(--off-white); }
 .faq-section .section__header { margin-bottom:48px; }
 .faq-list { max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:12px; }
-.faq-item { background:var(--navy-2); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+.faq-item { background:#fff; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
 .faq-item__question {
   width:100%; display:flex; justify-content:space-between; align-items:center;
   padding:20px 24px; background:none; border:none; cursor:pointer;
-  font-family:var(--font); font-size:15px; font-weight:600; color:var(--white); text-align:left; gap:16px;
+  font-family:var(--font); font-size:15px; font-weight:600; color:var(--text); text-align:left; gap:16px;
   transition:color var(--transition);
 }
-.faq-item__question:hover { color:#C9960C; }
+.faq-item__question:hover { color:#F4B400; }
 .faq-item__question svg { flex-shrink:0; transition:transform var(--transition); }
 .faq-item.open .faq-item__question svg { transform:rotate(180deg); }
 .faq-item__answer { max-height:0; overflow:hidden; transition:max-height 0.3s ease; }
@@ -2003,19 +2003,19 @@
   display:grid; grid-template-columns:repeat(4,1fr); gap:2px;
   background:var(--border); border-radius:var(--radius-lg); overflow:hidden; margin:48px 0;
 }
-.stats-row__item { background:var(--navy-2); padding:36px 24px; text-align:center; }
-.stats-row__num { font-size:36px; font-weight:800; color:#C9960C; display:block; line-height:1; margin-bottom:6px; }
+.stats-row__item { background:#fff; padding:36px 24px; text-align:center; }
+.stats-row__num { font-size:36px; font-weight:800; color:#F4B400; display:block; line-height:1; margin-bottom:6px; }
 .stats-row__label { font-size:13px; color:var(--gray); font-weight:500; }
 
 /* ── Values (about page) ── */
 .values-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:28px; }
 .value-card {
-  background:var(--navy-2); border:1px solid var(--border); border-radius:var(--radius-lg); padding:36px 28px; text-align:center;
-  box-shadow:none; transition:all var(--transition);
+  background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); padding:36px 28px; text-align:center;
+  box-shadow:var(--shadow); transition:all var(--transition);
 }
 .value-card:hover { transform:translateY(-4px); box-shadow:var(--shadow-lg); }
 .value-card__icon {
-  width:64px; height:64px; background:rgba(238,195,88,0.1); border-radius:50%;
+  width:64px; height:64px; background:rgba(244,180,0,0.1); border-radius:50%;
   display:flex; align-items:center; justify-content:center; margin:0 auto 20px;
 }
 .value-card h3 { font-size:18px; font-weight:700; margin-bottom:12px; }
@@ -2025,31 +2025,31 @@
 .certifications { display:flex; flex-wrap:wrap; gap:16px; margin-top:32px; }
 .cert-badge {
   display:flex; align-items:center; gap:10px;
-  background:var(--navy-2); border:1px solid var(--border); border-radius:var(--radius); padding:12px 20px; box-shadow:none;
+  background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:12px 20px; box-shadow:var(--shadow);
 }
 .cert-badge strong { font-size:14px; font-weight:700; display:block; }
 .cert-badge span { font-size:12px; color:var(--gray); }
 
 /* ── Rates table (pricing page) ── */
-.rates-table-wrap { background:var(--navy-2); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; box-shadow:none; margin-bottom:48px; }
+.rates-table-wrap { background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow); margin-bottom:48px; }
 .rates-table { width:100%; border-collapse:collapse; }
-.rates-table th { background:#02060C; color:#fff; padding:14px 20px; text-align:left; font-size:13px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; }
+.rates-table th { background:#0B1F3A; color:#fff; padding:14px 20px; text-align:left; font-size:13px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; }
 .rates-table th:last-child { text-align:right; }
 .rates-table td { padding:14px 20px; font-size:14px; border-bottom:1px solid var(--border); }
 .rates-table tr:last-child td { border-bottom:none; }
-.rates-table td:last-child { text-align:right; font-weight:700; color:#C9960C; font-size:15px; }
+.rates-table td:last-child { text-align:right; font-weight:700; color:#F4B400; font-size:15px; }
 .rates-table tr:hover td { background:var(--off-white); }
 
 /* ── Financing (pricing page) ── */
 .financing-section {
-  background:#02060C; border-radius:var(--radius-lg); padding:48px;
+  background:#0B1F3A; border-radius:var(--radius-lg); padding:48px;
   display:grid; grid-template-columns:1fr 1fr; gap:48px; align-items:center; margin-bottom:48px;
 }
 .financing-section h3 { font-size:26px; font-weight:800; color:#fff; margin-bottom:12px; }
 .financing-section p { font-size:15px; color:rgba(255,255,255,0.65); line-height:1.75; margin-bottom:24px; }
 .financing-features { list-style:none; display:flex; flex-direction:column; gap:10px; }
 .financing-features li { display:flex; align-items:center; gap:10px; font-size:14px; color:rgba(255,255,255,0.8); }
-.financing-features li::before { content:'✓'; color:#C9960C; font-weight:700; }
+.financing-features li::before { content:'✓'; color:#F4B400; font-weight:700; }
 
 /* ── Contact page ── */
 .contact-page__grid { display:grid; grid-template-columns:1fr 1.2fr; gap:64px; align-items:start; }
@@ -2059,9 +2059,9 @@
 .airport-info { background:var(--off-white); border-radius:var(--radius-lg); padding:32px; border:1px solid var(--border); }
 .airport-info h4 { font-size:16px; font-weight:700; margin-bottom:16px; }
 .map-placeholder {
-  background:linear-gradient(135deg,#02060C 0%,#0d1930 100%); border-radius:var(--radius-lg);
+  background:linear-gradient(135deg,#0B1F3A 0%,#0d1930 100%); border-radius:var(--radius-lg);
   height:220px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px;
-  margin-bottom:16px; border:1px solid rgba(238,195,88,0.2);
+  margin-bottom:16px; border:1px solid rgba(244,180,0,0.2);
 }
 .map-placeholder svg { opacity:0.5; }
 .map-placeholder span { color:rgba(255,255,255,0.4); font-size:13px; }
