@@ -216,7 +216,7 @@
 
     /* ── Email capture ── */
     .capture {
-      max-width: 472px;
+      max-width: 520px;
       width: 100%;
       margin: 0 auto;
     }
@@ -229,21 +229,34 @@
       margin-bottom: 14px;
       display: block;
     }
-    .capture__row {
+    .capture__form {
       display: flex;
-      gap: 8px;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .capture__field {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
       background: rgba(255,255,255,0.05);
       border: 1px solid rgba(255,255,255,0.12);
       border-radius: 12px;
-      padding: 6px 6px 6px 20px;
+      padding: 14px 20px;
       transition: border-color var(--transition), background var(--transition);
     }
-    .capture__row:focus-within {
+    .capture__field:focus-within {
       border-color: rgba(244,180,0,0.5);
       background: rgba(255,255,255,0.07);
     }
+    .capture__field-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+      margin-bottom: 4px;
+    }
     .capture__input {
-      flex: 1;
       background: none;
       border: none;
       outline: none;
@@ -251,9 +264,73 @@
       font-family: var(--font);
       font-size: 15px;
       font-weight: 500;
-      min-width: 0;
+      width: 100%;
     }
     .capture__input::placeholder { color: rgba(255,255,255,0.3); }
+    .capture__two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    /* Services checkboxes */
+    .capture__services {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 14px 20px;
+    }
+    .capture__services-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+      margin-bottom: 10px;
+      display: block;
+    }
+    .capture__checks {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .capture__check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.7);
+    }
+    .capture__check input[type="checkbox"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border: 1.5px solid rgba(255,255,255,0.25);
+      border-radius: 4px;
+      background: transparent;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all var(--transition);
+      position: relative;
+    }
+    .capture__check input[type="checkbox"]:checked {
+      background: var(--gold);
+      border-color: var(--gold);
+    }
+    .capture__check input[type="checkbox"]:checked::after {
+      content: '';
+      position: absolute;
+      left: 4px;
+      top: 1px;
+      width: 5px;
+      height: 9px;
+      border: 2px solid var(--navy);
+      border-top: none;
+      border-left: none;
+      transform: rotate(45deg);
+    }
 
     /* Button matches .btn + .btn--primary exactly */
     .capture__btn {
@@ -264,13 +341,15 @@
       color: var(--navy);
       border: 2px solid var(--gold);
       border-radius: var(--radius);
-      padding: 11px 22px;
+      padding: 14px 22px;
       font-family: var(--font);
       font-size: 14px;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
       transition: all var(--transition);
       white-space: nowrap;
+      width: 100%;
+      margin-top: 4px;
     }
     .capture__btn:hover {
       background: var(--gold-2);
@@ -283,7 +362,7 @@
     .capture__note {
       font-size: 12px;
       color: rgba(255,255,255,0.3);
-      margin-top: 12px;
+      margin-top: 10px;
     }
 
     /* Success state */
@@ -292,7 +371,7 @@
       align-items: center;
       justify-content: center;
       gap: 10px;
-      padding: 16px 24px;
+      padding: 20px 24px;
       background: rgba(244,180,0,0.08);
       border: 1px solid rgba(244,180,0,0.28);
       border-radius: 12px;
@@ -379,8 +458,8 @@
     }
 
     @media (max-width: 520px) {
-      .capture__row { flex-direction: column; padding: 14px 16px; gap: 10px; }
-      .capture__btn { width: 100%; }
+      .capture__two-col { grid-template-columns: 1fr; }
+      .capture__checks { grid-template-columns: 1fr; }
       .countdown__sep { display: none; }
     }
   </style>
@@ -449,16 +528,50 @@
   <!-- Email capture -->
   <div class="capture">
     <span class="capture__label">Join the founding member waitlist</span>
-    <form class="capture__row" id="waitlistForm" onsubmit="handleSubmit(event)">
-      <input
-        class="capture__input"
-        type="email"
-        id="emailInput"
-        placeholder="your@email.com"
-        required
-        autocomplete="email"
-      />
-      <button class="capture__btn" type="submit">Get Early Access</button>
+    <form class="capture__form" id="waitlistForm" onsubmit="handleSubmit(event)">
+
+      <div class="capture__two-col">
+        <div class="capture__field">
+          <span class="capture__field-label">Email</span>
+          <input class="capture__input" type="email" id="emailInput" placeholder="your@email.com" required autocomplete="email" />
+        </div>
+        <div class="capture__field">
+          <span class="capture__field-label">Zip Code</span>
+          <input class="capture__input" type="text" id="zipInput" placeholder="78666" maxlength="10" autocomplete="postal-code" />
+        </div>
+      </div>
+
+      <div class="capture__services">
+        <span class="capture__services-label">I'm interested in</span>
+        <div class="capture__checks">
+          <label class="capture__check">
+            <input type="checkbox" name="services" value="Private Pilot Training" />
+            Private Pilot Training
+          </label>
+          <label class="capture__check">
+            <input type="checkbox" name="services" value="Instrument Rating" />
+            Instrument Rating
+          </label>
+          <label class="capture__check">
+            <input type="checkbox" name="services" value="Commercial Pilot" />
+            Commercial Pilot
+          </label>
+          <label class="capture__check">
+            <input type="checkbox" name="services" value="Apex Advantage Ground" />
+            Apex Advantage Ground
+          </label>
+          <label class="capture__check">
+            <input type="checkbox" name="services" value="IPC / BFR / Currency" />
+            IPC / BFR / Currency
+          </label>
+          <label class="capture__check">
+            <input type="checkbox" name="services" value="Simulator Sessions" />
+            Simulator Sessions
+          </label>
+        </div>
+      </div>
+
+      <button class="capture__btn" type="submit">Join the Waitlist</button>
     </form>
     <div class="capture__success" id="successMsg">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -528,6 +641,10 @@
     const email = document.getElementById('emailInput').value.trim();
     if (!email) return;
 
+    const zip = document.getElementById('zipInput').value.trim();
+    const services = Array.from(document.querySelectorAll('input[name="services"]:checked'))
+      .map(cb => cb.value).join(', ') || 'Not specified';
+
     const btn = e.target.querySelector('.capture__btn');
     btn.textContent = 'Sending…';
     btn.disabled = true;
@@ -536,7 +653,7 @@
       const res = await fetch('https://formspree.io/f/REPLACE_WITH_YOUR_FORM_ID', {
         method: 'POST',
         headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email, zip, services })
       });
 
       if (res.ok) {
