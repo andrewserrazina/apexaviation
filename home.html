@@ -624,31 +624,26 @@
               <input type="text" id="wlLastName" name="lastName" placeholder="Smith" required />
             </div>
           </div>
-          <div class="form-group">
-            <label for="wlEmail">Email Address</label>
-            <input type="email" id="wlEmail" name="email" placeholder="andrew@email.com" required />
+          <div class="form-row">
+            <div class="form-group">
+              <label for="wlEmail">Email Address</label>
+              <input type="email" id="wlEmail" name="email" placeholder="andrew@email.com" required />
+            </div>
+            <div class="form-group">
+              <label for="wlZip">Zip Code</label>
+              <input type="text" id="wlZip" name="zip" placeholder="78666" maxlength="10" autocomplete="postal-code" />
+            </div>
           </div>
           <div class="form-group">
-            <label for="wlCert">Pilot Certificate</label>
-            <select id="wlCert" name="certificate">
-              <option value="">Select certificate level...</option>
-              <option value="student">Student Pilot</option>
-              <option value="private">Private Pilot (PPL)</option>
-              <option value="instrument">Instrument Rated</option>
-              <option value="commercial">Commercial Pilot</option>
-              <option value="atp">ATP</option>
-              <option value="none">No Certificate Yet</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="wlIFR">Instrument Rating</label>
-            <select id="wlIFR" name="instrument">
-              <option value="">Instrument rating status...</option>
-              <option value="current">Current (filed IFR in last 6 months)</option>
-              <option value="not-current">Not current (need IPC)</option>
-              <option value="no-rating">No instrument rating</option>
-              <option value="working">Currently working toward IR</option>
-            </select>
+            <label>I'm interested in</label>
+            <div class="checkbox-grid">
+              <label class="checkbox-item"><input type="checkbox" name="services" value="Private Pilot Training" /><span>Private Pilot Training</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="services" value="Instrument Rating" /><span>Instrument Rating</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="services" value="Commercial Pilot" /><span>Commercial Pilot</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="services" value="Apex Advantage Ground" /><span>Apex Advantage Ground</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="services" value="IPC / BFR / Currency" /><span>IPC / BFR / Currency</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="services" value="Simulator Sessions" /><span>Simulator Sessions</span></label>
+            </div>
           </div>
           <button type="submit" class="btn btn--primary btn--full">Join the Waitlist</button>
           <p class="form__note">No spam. Unsubscribe anytime. We'll reach out before launch.</p>
