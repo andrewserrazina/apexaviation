@@ -3,10 +3,10 @@ title: How Many Simulator Hours Count Toward Your Instrument Rating?
 slug: how-many-simulator-hours-count-toward-instrument-rating
 date: 2026-06-26
 category: training
-excerpt: Under FAR Part 61, you can credit up to 20 hours of AATD simulator time toward your instrument rating. Here's exactly how it works — and how to make those hours count.
-featured_image: ""
+excerpt: Under FAR Part 61, you can credit up to 20 hours of AATD simulator time
+  toward your instrument rating. Here's exactly how it works — and how to make
+  those hours count.
 ---
-
 One of the most common questions we get from instrument students is simple: **how much of my training can happen in the simulator?**
 
 The short answer is more than most pilots realize.
