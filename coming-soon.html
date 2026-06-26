@@ -509,7 +509,11 @@
   function pad(n, len) { return String(n).padStart(len, '0'); }
 
   function tick() {
-    const diff = Math.max(0, LAUNCH - Date.now());
+    const diff = LAUNCH - Date.now();
+    if (diff <= 0) {
+      window.location.replace('home.html');
+      return;
+    }
     document.getElementById('cd-days').textContent  = pad(Math.floor(diff / 86400000), 3);
     document.getElementById('cd-hours').textContent = pad(Math.floor((diff % 86400000) / 3600000), 2);
     document.getElementById('cd-mins').textContent  = pad(Math.floor((diff % 3600000) / 60000), 2);
@@ -519,12 +523,33 @@
   tick();
   setInterval(tick, 1000);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    if (!document.getElementById('emailInput').value.trim()) return;
-    // TODO: wire to Mailchimp / ConvertKit / your email provider
-    document.getElementById('waitlistForm').style.display = 'none';
-    document.getElementById('successMsg').style.display = 'flex';
+    const email = document.getElementById('emailInput').value.trim();
+    if (!email) return;
+
+    const btn = e.target.querySelector('.capture__btn');
+    btn.textContent = 'Sending…';
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('https://formspree.io/f/REPLACE_WITH_YOUR_FORM_ID', {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+
+      if (res.ok) {
+        document.getElementById('waitlistForm').style.display = 'none';
+        document.getElementById('successMsg').style.display = 'flex';
+      } else {
+        btn.textContent = 'Try again';
+        btn.disabled = false;
+      }
+    } catch {
+      btn.textContent = 'Try again';
+      btn.disabled = false;
+    }
   }
 </script>
 
