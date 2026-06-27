@@ -13,22 +13,46 @@
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="pages.css" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    "name": "Apex Aviation",
-    "description": "Premium simulator-based flight training serving Lakeway and the Lake Travis area west of Austin, TX.",
-    "url": "https://apexaviationtx.com",
-    "address": {
-      "@type": "PostalAddress",
-      "addressLocality": "Austin",
-      "addressRegion": "TX",
-      "addressCountry": "US"
-    },
-    "areaServed": "Lakeway, TX",
-    "serviceType": "Flight Simulator Training"
-  }
-  </script>
+{
+  "@context": "https://schema.org",
+  "@type": ["LocalBusiness", "EducationalOrganization"],
+  "@id": "https://apexaviationtx.com/#organization",
+  "name": "Apex Aviation",
+  "description": "Premium simulator-based flight training serving Lakeway and the Lake Travis area west of Austin, TX.",
+  "url": "https://apexaviationtx.com",
+  "email": "info@apexaviationtx.com",
+  "telephone": "+1-512-555-0190",
+  "priceRange": "$$",
+  "openingDate": "2026-09-01",
+  "currenciesAccepted": "USD",
+  "paymentAccepted": "Credit Card, Cash",
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Austin",
+    "addressRegion": "TX",
+    "postalCode": "78666",
+    "addressCountry": "US"
+  },
+  "areaServed": [
+    { "@type": "City", "name": "Lakeway" },
+    { "@type": "City", "name": "Austin" },
+    { "@type": "State", "name": "Texas" }
+  ],
+  "serviceType": ["Flight Training", "Ground School", "Instrument Proficiency Check", "Flight Review"],
+  "founder": {
+    "@type": "Person",
+    "@id": "https://apexaviationtx.com/about.html#andrew-serrazina",
+    "name": "Andrew Serrazina",
+    "jobTitle": "Founder & Chief Flight Instructor"
+  },
+  "sameAs": [
+    "https://www.instagram.com/apexaviationtx",
+    "https://www.facebook.com/profile.php?id=61590455400224",
+    "https://www.linkedin.com/company/apex-aviation-tx",
+    "https://www.youtube.com/@apexaviationtx"
+  ]
+}
+</script>
   <!-- Google Analytics 4 -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-JFPBCF2GXE"></script>
   <script>
