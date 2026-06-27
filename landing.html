@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Apex Advantage Ground School | Apex Aviation</title>
+  <meta name="description" content="Live virtual ground school for Private Pilot, Instrument Rating, and Commercial Pilot. Taught by CFI/CFII Andrew Serrazina. Launching September 2026." />
+  <link rel="icon" type="image/png" href="apexfacivon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:    #050d1a;
+      --navy-2:  #0b1f3a;
+      --navy-3:  #0f2a50;
+      --gold:    #F4B400;
+      --gold-2:  #e6a800;
+      --gold-glow: rgba(244,180,0,0.3);
+      --white:   #ffffff;
+      --gray:    rgba(255,255,255,0.55);
+      --font:    'Montserrat', sans-serif;
+      --serif:   'Playfair Display', serif;
+      --ease:    cubic-bezier(0.16,1,0.3,1);
+
+      --track-private:    #F4B400;
+      --track-instrument: #4fa8d5;
+      --track-commercial: #7ec8a0;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      background: var(--navy);
+      color: var(--white);
+      overflow-x: hidden;
+      cursor: none;
+    }
+
+    /* ── Custom cursor ── */
+    .cursor__dot {
+      width: 8px; height: 8px;
+      background: var(--gold);
+      border-radius: 50%;
+      position: fixed;
+      top: 0; left: 0;
+      transform: translate(-50%,-50%);
+      pointer-events: none;
+      z-index: 9999;
+      transition: transform 0.08s;
+    }
+    .cursor__ring {
+      width: 36px; height: 36px;
+      border: 1.5px solid var(--gold);
+      border-radius: 50%;
+      position: fixed;
+      top: 0; left: 0;
+      transform: translate(-50%,-50%);
+      pointer-events: none;
+      z-index: 9998;
+      opacity: 0.6;
+      transition: width 0.3s var(--ease), height 0.3s var(--ease), opacity 0.3s;
+    }
+    body:has(a:hover) .cursor__ring,
+    body:has(button:hover) .cursor__ring { width: 52px; height: 52px; opacity: 1; }
+
+    /* ── Progress bar ── */
+    .progress-bar {
+      position: fixed;
+      top: 0; left: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--gold), #ffd55a);
+      z-index: 200;
+      transform-origin: left;
+      transform: scaleX(0);
+      box-shadow: 0 0 10px var(--gold-glow);
+    }
+
+    /* ── NAV ── */
+    .nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      padding: 22px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background 0.4s, padding 0.4s, backdrop-filter 0.4s;
+    }
+    .nav.scrolled {
+      background: rgba(5,13,26,0.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      padding: 14px 48px;
+      border-bottom: 1px solid rgba(244,180,0,0.08);
+    }
+    .nav__logo {
+      display: flex; align-items: center; gap: 12px;
+      text-decoration: none;
+    }
+    .nav__logo img { height: 34px; width: auto; display: block; }
+    .nav__links {
+      display: flex; align-items: center; gap: 32px;
+      list-style: none;
+    }
+    .nav__links a {
+      color: rgba(255,255,255,0.65);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+      position: relative;
+    }
+    .nav__links a::after {
+      content: '';
+      position: absolute;
+      bottom: -4px; left: 0;
+      width: 0; height: 1.5px;
+      background: var(--gold);
+      transition: width 0.3s var(--ease);
+    }
+    .nav__links a:hover { color: var(--white); }
+    .nav__links a:hover::after { width: 100%; }
+    .nav__cta {
+      background: var(--gold) !important;
+      color: var(--navy) !important;
+      padding: 10px 22px !important;
+      border-radius: 100px !important;
+      font-weight: 700 !important;
+      transition: transform 0.2s, box-shadow 0.2s !important;
+    }
+    .nav__cta::after { display: none !important; }
+    .nav__cta:hover {
+      transform: translateY(-1px) !important;
+      box-shadow: 0 8px 24px var(--gold-glow) !important;
+      color: var(--navy) !important;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 140px 48px 100px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero__bg {
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 70% 50% at 65% 45%, rgba(15,42,80,0.85), transparent 70%),
+        radial-gradient(ellipse 40% 35% at 15% 75%, rgba(244,180,0,0.05), transparent 60%),
+        linear-gradient(160deg, #050d1a 0%, #091828 60%, #050d1a 100%);
+    }
+    .hero__stars { position: absolute; inset: 0; overflow: hidden; }
+    .star {
+      position: absolute;
+      background: white;
+      border-radius: 50%;
+      animation: twinkle var(--dur) ease-in-out infinite alternate;
+    }
+    @keyframes twinkle {
+      from { opacity: var(--min-op); }
+      to   { opacity: var(--max-op); }
+    }
+
+    /* Animated horizon line */
+    .hero__horizon {
+      position: absolute;
+      bottom: 28%;
+      left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent 0%, rgba(244,180,0,0.1) 15%, rgba(244,180,0,0.45) 50%, rgba(244,180,0,0.1) 85%, transparent 100%);
+      animation: horizonGlow 5s ease-in-out infinite alternate;
+    }
+    @keyframes horizonGlow {
+      from { opacity: 0.4; box-shadow: none; }
+      to   { opacity: 1; box-shadow: 0 0 50px 1px rgba(244,180,0,0.15); }
+    }
+
+    .hero__content { position: relative; z-index: 2; max-width: 820px; }
+    .hero__eyebrow {
+      display: inline-flex; align-items: center; gap: 12px;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 28px;
+      opacity: 0; transform: translateY(20px);
+      animation: fadeUp 0.8s var(--ease) 0.2s forwards;
+    }
+    .hero__eyebrow::before {
+      content: ''; display: block;
+      width: 28px; height: 1px; background: var(--gold);
+    }
+
+    .hero__title {
+      font-size: clamp(48px, 6.5vw, 88px);
+      font-weight: 900;
+      line-height: 1.02;
+      letter-spacing: -0.035em;
+      margin-bottom: 28px;
+    }
+    .hero__title .word { display: inline-block; overflow: hidden; }
+    .hero__title .word span {
+      display: inline-block;
+      opacity: 0; transform: translateY(100%);
+      animation: wordReveal 0.9s var(--ease) forwards;
+    }
+    .hero__title .word--gold {
+      color: var(--gold);
+      font-family: var(--serif);
+      font-style: italic;
+    }
+
+    @keyframes wordReveal { to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeUp     { to { opacity: 1; transform: translateY(0); } }
+
+    .hero__sub {
+      font-size: 17px; font-weight: 400;
+      color: var(--gray); line-height: 1.75;
+      max-width: 540px; margin-bottom: 44px;
+      opacity: 0; transform: translateY(20px);
+      animation: fadeUp 0.8s var(--ease) 1.5s forwards;
+    }
+    .hero__actions {
+      display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+      opacity: 0; transform: translateY(20px);
+      animation: fadeUp 0.8s var(--ease) 1.7s forwards;
+    }
+
+    /* ── BADGE STRIP ── */
+    .hero__badges {
+      position: relative; z-index: 2;
+      display: flex; gap: 12px; flex-wrap: wrap;
+      margin-top: 60px;
+      opacity: 0; animation: fadeUp 0.8s var(--ease) 2s forwards;
+    }
+    .hero__badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 100px;
+      padding: 8px 16px;
+      font-size: 12px; font-weight: 600;
+      color: rgba(255,255,255,0.65);
+    }
+    .hero__badge svg { color: var(--gold); }
+
+    /* ── BUTTONS ── */
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: var(--gold); color: var(--navy);
+      border: none; padding: 15px 30px;
+      border-radius: 100px; font-family: var(--font);
+      font-size: 14px; font-weight: 700;
+      text-decoration: none; cursor: none;
+      position: relative; overflow: hidden;
+      transition: transform 0.3s var(--ease), box-shadow 0.3s;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 14px 40px var(--gold-glow);
+    }
+    .btn-ghost {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: transparent; color: var(--white);
+      border: 1.5px solid rgba(255,255,255,0.2);
+      padding: 15px 30px; border-radius: 100px;
+      font-family: var(--font); font-size: 14px; font-weight: 600;
+      text-decoration: none; cursor: none;
+      transition: border-color 0.3s, background 0.3s, transform 0.3s var(--ease);
+    }
+    .btn-ghost:hover {
+      border-color: rgba(255,255,255,0.5);
+      background: rgba(255,255,255,0.05);
+      transform: translateY(-2px);
+    }
+
+    /* ── SCROLL INDICATOR ── */
+    .hero__scroll {
+      position: absolute; bottom: 36px; left: 50%;
+      transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      opacity: 0; animation: fadeUp 1s var(--ease) 2.4s forwards;
+    }
+    .hero__scroll span { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,0.3); }
+    .scroll-line { width: 1px; height: 44px; background: linear-gradient(to bottom, rgba(255,255,255,0.25), transparent); position: relative; overflow: hidden; }
+    .scroll-line::after {
+      content: ''; position: absolute; top: -100%; width: 100%; height: 100%;
+      background: var(--gold); animation: scrollDrop 1.8s ease-in-out infinite;
+    }
+    @keyframes scrollDrop { 0% { top: -100%; opacity: 1; } 100% { top: 100%; opacity: 0; } }
+
+    /* ── REVEAL ANIMATIONS ── */
+    .reveal { opacity: 0; transform: translateY(44px); transition: opacity 0.9s var(--ease), transform 0.9s var(--ease); }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal-left { opacity: 0; transform: translateX(-44px); transition: opacity 0.9s var(--ease), transform 0.9s var(--ease); }
+    .reveal-left.visible { opacity: 1; transform: translateX(0); }
+    .reveal-right { opacity: 0; transform: translateX(44px); transition: opacity 0.9s var(--ease), transform 0.9s var(--ease); }
+    .reveal-right.visible { opacity: 1; transform: translateX(0); }
+    .delay-1 { transition-delay: 0.1s !important; }
+    .delay-2 { transition-delay: 0.22s !important; }
+    .delay-3 { transition-delay: 0.36s !important; }
+    .delay-4 { transition-delay: 0.5s !important; }
+    .delay-5 { transition-delay: 0.64s !important; }
+
+    /* ── EYEBROW / SECTION LABELS ── */
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 12px;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 18px;
+    }
+    .eyebrow::before { content: ''; width: 22px; height: 1px; background: var(--gold); display: block; }
+    .section-title {
+      font-size: clamp(34px, 4vw, 58px);
+      font-weight: 900; line-height: 1.08;
+      letter-spacing: -0.03em; margin-bottom: 18px;
+    }
+    .section-title em { font-family: var(--serif); font-style: italic; color: var(--gold); font-weight: 700; }
+    .section-desc { font-size: 16px; color: var(--gray); line-height: 1.8; max-width: 540px; }
+
+    /* ── HOW IT WORKS ── */
+    .how-it-works {
+      padding: 120px 48px;
+      background: var(--navy-2);
+    }
+    .how-it-works__grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: center;
+      margin-top: 72px;
+    }
+    .steps { display: flex; flex-direction: column; gap: 36px; }
+    .step {
+      display: flex; gap: 24px;
+      padding: 28px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.02);
+      cursor: none;
+      transition: border-color 0.3s, background 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+    .step::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at 0% 50%, rgba(244,180,0,0.05), transparent 60%);
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .step:hover { border-color: rgba(244,180,0,0.2); background: rgba(255,255,255,0.03); }
+    .step:hover::before { opacity: 1; }
+    .step__num {
+      flex-shrink: 0;
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: var(--gold);
+      color: var(--navy);
+      font-size: 18px; font-weight: 900;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .step__title { font-size: 16px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.01em; }
+    .step__desc { font-size: 14px; color: var(--gray); line-height: 1.7; }
+    .how-it-works__visual {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .stat-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 28px 24px;
+      text-align: center;
+      transition: border-color 0.3s, transform 0.3s var(--ease);
+    }
+    .stat-card:hover { border-color: rgba(244,180,0,0.2); transform: translateY(-4px); }
+    .stat-card:nth-child(1) { grid-column: span 2; background: linear-gradient(135deg, rgba(244,180,0,0.08), rgba(244,180,0,0.03)); border-color: rgba(244,180,0,0.15); }
+    .stat-card__num { font-size: 44px; font-weight: 900; letter-spacing: -0.04em; color: var(--gold); line-height: 1; margin-bottom: 8px; }
+    .stat-card__label { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.45); }
+    .stat-card__sub { font-size: 13px; color: var(--gray); margin-top: 6px; }
+
+    /* ── TRACKS / PROGRAMS ── */
+    .tracks {
+      padding: 120px 48px;
+      background: var(--navy);
+    }
+    .tracks__header {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 64px; align-items: end; margin-bottom: 64px;
+    }
+    .tracks__grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    .track-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 20px; padding: 36px 32px;
+      position: relative; overflow: hidden;
+      cursor: none;
+      transition: border-color 0.3s, background 0.3s, transform 0.4s var(--ease);
+      transform-style: preserve-3d;
+    }
+    .track-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--track-color);
+      border-radius: 20px 20px 0 0;
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .track-card:hover { transform: translateY(-6px); }
+    .track-card:hover::after { opacity: 1; }
+    .track-card--private  { --track-color: var(--track-private); }
+    .track-card--instrument { --track-color: var(--track-instrument); }
+    .track-card--commercial { --track-color: var(--track-commercial); }
+    .track-card--private:hover  { border-color: rgba(244,180,0,0.25); }
+    .track-card--instrument:hover { border-color: rgba(79,168,213,0.25); }
+    .track-card--commercial:hover { border-color: rgba(126,200,160,0.25); }
+
+    .track-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--track-color); margin-bottom: 20px;
+      box-shadow: 0 0 12px var(--track-color);
+    }
+    .track-badge {
+      display: inline-block;
+      font-size: 10px; font-weight: 800;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--track-color);
+      border: 1px solid var(--track-color);
+      border-radius: 100px; padding: 3px 10px;
+      margin-bottom: 16px; opacity: 0.9;
+    }
+    .track-title { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 12px; }
+    .track-desc { font-size: 13px; color: var(--gray); line-height: 1.7; margin-bottom: 24px; }
+    .track-modules { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
+    .track-modules li {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 13px; color: rgba(255,255,255,0.7);
+    }
+    .track-modules li::before {
+      content: '';
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--track-color); flex-shrink: 0;
+    }
+    .track-price {
+      font-size: 24px; font-weight: 900; letter-spacing: -0.03em;
+      color: var(--white);
+    }
+    .track-price span { font-size: 13px; font-weight: 500; color: var(--gray); }
+
+    /* ── SCHEDULE / CALENDAR ── */
+    .schedule {
+      padding: 120px 48px;
+      background: var(--navy-2);
+      overflow: hidden;
+    }
+    .schedule__header { margin-bottom: 56px; }
+    .schedule__legend {
+      display: flex; gap: 24px; flex-wrap: wrap;
+      margin-top: 24px;
+    }
+    .legend-item {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.55);
+    }
+    .legend-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+    }
+
+    /* Tab selector */
+    .schedule__tabs {
+      display: flex; gap: 8px; margin-bottom: 32px; flex-wrap: wrap;
+    }
+    .tab-btn {
+      padding: 8px 20px;
+      border-radius: 100px;
+      border: 1.5px solid rgba(255,255,255,0.12);
+      background: transparent;
+      font-family: var(--font); font-size: 12px; font-weight: 700;
+      color: rgba(255,255,255,0.45); letter-spacing: 0.05em; text-transform: uppercase;
+      cursor: none; transition: all 0.2s;
+    }
+    .tab-btn:hover { border-color: rgba(255,255,255,0.3); color: rgba(255,255,255,0.7); }
+    .tab-btn.active { background: rgba(244,180,0,0.12); border-color: rgba(244,180,0,0.4); color: var(--gold); }
+
+    /* Calendar grid */
+    .calendar-wrap {
+      overflow-x: auto;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+    .calendar {
+      min-width: 760px;
+      border-collapse: collapse;
+      width: 100%;
+    }
+    .calendar thead th {
+      padding: 16px 20px;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      text-align: left;
+      background: rgba(255,255,255,0.02);
+    }
+    .calendar thead th:first-child { width: 100px; }
+    .calendar tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .calendar tbody tr:last-child { border-bottom: none; }
+    .calendar tbody td {
+      padding: 10px 12px;
+      vertical-align: top;
+      border-right: 1px solid rgba(255,255,255,0.04);
+    }
+    .calendar tbody td:last-child { border-right: none; }
+    .time-cell {
+      font-size: 11px; font-weight: 700;
+      color: rgba(255,255,255,0.3);
+      letter-spacing: 0.05em;
+      padding-top: 12px !important;
+      white-space: nowrap;
+    }
+    .cal-session {
+      display: flex; flex-direction: column;
+      background: rgba(255,255,255,0.04);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin: 2px 0;
+      border-left: 3px solid var(--s-color);
+      transition: transform 0.2s, background 0.2s;
+      cursor: none;
+    }
+    .cal-session:hover { background: rgba(255,255,255,0.07); transform: scale(1.02); }
+    .cal-session__track {
+      font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--s-color); margin-bottom: 3px;
+    }
+    .cal-session__title { font-size: 12px; font-weight: 700; color: var(--white); line-height: 1.35; }
+    .cal-session--empty { min-height: 40px; }
+
+    /* Note under calendar */
+    .schedule__note {
+      margin-top: 20px;
+      display: flex; align-items: center; gap: 10px;
+      font-size: 12px; color: rgba(255,255,255,0.35);
+    }
+    .schedule__note svg { color: var(--gold); flex-shrink: 0; }
+
+    /* ── QUOTE / PHILOSOPHY ── */
+    .philosophy {
+      padding: 140px 48px;
+      background: var(--navy);
+      position: relative; overflow: hidden;
+    }
+    .philosophy__bg-text {
+      position: absolute;
+      font-size: clamp(100px, 16vw, 220px);
+      font-weight: 900; color: rgba(255,255,255,0.018);
+      letter-spacing: -0.05em;
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      white-space: nowrap; pointer-events: none; user-select: none;
+    }
+    .philosophy__inner {
+      position: relative; z-index: 1;
+      max-width: 880px; margin: 0 auto; text-align: center;
+    }
+    .philosophy__quote {
+      font-size: clamp(26px, 3.2vw, 44px);
+      font-family: var(--serif); font-style: italic; font-weight: 700;
+      line-height: 1.45; margin-bottom: 32px;
+    }
+    .philosophy__quote em { color: var(--gold); font-style: normal; }
+    .philosophy__attr {
+      font-size: 12px; font-weight: 600; letter-spacing: 0.1em;
+      text-transform: uppercase; color: rgba(255,255,255,0.3);
+    }
+
+    /* ── CTA ── */
+    .cta-section {
+      padding: 140px 48px;
+      background: var(--navy-2);
+      text-align: center; position: relative; overflow: hidden;
+    }
+    .cta-section__glow {
+      position: absolute;
+      width: 700px; height: 700px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(244,180,0,0.07) 0%, transparent 70%);
+      top: 50%; left: 50%; transform: translate(-50%,-50%);
+      animation: ctaGlow 5s ease-in-out infinite alternate;
+    }
+    @keyframes ctaGlow {
+      from { transform: translate(-50%,-50%) scale(1); opacity: 0.6; }
+      to   { transform: translate(-50%,-50%) scale(1.25); opacity: 1; }
+    }
+    .cta-section__inner { position: relative; z-index: 1; max-width: 660px; margin: 0 auto; }
+    .cta-section__title {
+      font-size: clamp(38px, 5vw, 66px); font-weight: 900;
+      letter-spacing: -0.04em; line-height: 1.05; margin-bottom: 22px;
+    }
+    .cta-section__title em { font-family: var(--serif); font-style: italic; color: var(--gold); }
+    .cta-section__sub { font-size: 16px; color: var(--gray); line-height: 1.75; margin-bottom: 44px; }
+
+    /* Inline email form */
+    .cta-form { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .cta-form input {
+      flex: 1; min-width: 240px;
+      background: rgba(255,255,255,0.07);
+      border: 1.5px solid rgba(255,255,255,0.15);
+      border-radius: 100px;
+      padding: 14px 22px;
+      font-family: var(--font); font-size: 14px;
+      color: var(--white);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .cta-form input::placeholder { color: rgba(255,255,255,0.3); }
+    .cta-form input:focus { border-color: rgba(244,180,0,0.5); }
+    .cta-form__success {
+      display: none;
+      align-items: center; gap: 10px; justify-content: center;
+      font-size: 15px; font-weight: 600; color: var(--gold);
+      margin-top: 16px;
+    }
+    .cta-form__success.visible { display: flex; }
+
+    /* ── FOOTER ── */
+    .footer {
+      padding: 56px 48px 36px;
+      background: var(--navy);
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .footer__inner {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 36px;
+    }
+    .footer__links { display: flex; gap: 28px; }
+    .footer__links a {
+      font-size: 12px; font-weight: 600;
+      color: rgba(255,255,255,0.35); text-decoration: none;
+      letter-spacing: 0.05em; text-transform: uppercase;
+      transition: color 0.2s;
+    }
+    .footer__links a:hover { color: var(--gold); }
+    .footer__copy {
+      font-size: 12px; color: rgba(255,255,255,0.2);
+      text-align: center;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      padding-top: 24px;
+    }
+
+    /* ── MOBILE ── */
+    @media (max-width: 900px) {
+      .nav { padding: 18px 20px; }
+      .nav.scrolled { padding: 12px 20px; }
+      .nav__links { display: none; }
+      .hero { padding: 110px 20px 80px; }
+      .how-it-works { padding: 80px 20px; }
+      .how-it-works__grid { grid-template-columns: 1fr; gap: 48px; }
+      .how-it-works__visual { display: none; }
+      .tracks { padding: 80px 20px; }
+      .tracks__header { grid-template-columns: 1fr; gap: 24px; }
+      .tracks__grid { grid-template-columns: 1fr; }
+      .schedule { padding: 80px 20px; }
+      .philosophy { padding: 100px 20px; }
+      .cta-section { padding: 100px 20px; }
+      .footer { padding: 44px 20px 28px; }
+      .footer__inner { flex-direction: column; gap: 20px; }
+      .footer__links { flex-wrap: wrap; justify-content: center; }
+      body { cursor: auto; }
+      .cursor__dot, .cursor__ring { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="progress-bar" id="progressBar"></div>
+  <div class="cursor__dot" id="cursorDot"></div>
+  <div class="cursor__ring" id="cursorRing"></div>
+
+  <!-- NAV -->
+  <header class="nav" id="nav">
+    <a href="home.html" class="nav__logo">
+      <img src="apexwhite.png" alt="Apex Aviation" />
+    </a>
+    <ul class="nav__links">
+      <li><a href="apex-advantage.html">About</a></li>
+      <li><a href="programs.html">Programs</a></li>
+      <li><a href="pricing.html">Pricing</a></li>
+      <li><a href="blog.html">Blog</a></li>
+      <li><a href="#waitlist" class="nav__cta">Join Waitlist</a></li>
+    </ul>
+  </header>
+
+  <!-- ══ HERO ══ -->
+  <section class="hero">
+    <div class="hero__bg"></div>
+    <div class="hero__stars" id="stars"></div>
+    <div class="hero__horizon"></div>
+
+    <div class="hero__content">
+      <div class="hero__eyebrow">Apex Aviation · Launching September 2026</div>
+
+      <h1 class="hero__title" id="heroTitle" aria-label="Ground school that actually prepares you."></h1>
+
+      <p class="hero__sub">Live virtual ground school for Private Pilot, Instrument Rating, and Commercial Pilot certificates — taught by CFI/CFII Andrew Serrazina. No recordings. Real instruction. Real debrief.</p>
+
+      <div class="hero__actions">
+        <a href="#waitlist" class="btn-primary">
+          Reserve Your Spot
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a href="#schedule" class="btn-ghost">View Schedule</a>
+      </div>
+    </div>
+
+    <div class="hero__badges">
+      <div class="hero__badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        100% Virtual
+      </div>
+      <div class="hero__badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        Available Nationwide
+      </div>
+      <div class="hero__badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        Sessions at Your Pace
+      </div>
+      <div class="hero__badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        $25 / Session
+      </div>
+    </div>
+
+    <div class="hero__scroll">
+      <span>Scroll</span>
+      <div class="scroll-line"></div>
+    </div>
+  </section>
+
+  <!-- ══ HOW IT WORKS ══ -->
+  <section class="how-it-works">
+    <div class="reveal-left">
+      <div class="eyebrow">How It Works</div>
+      <h2 class="section-title">Three steps to your<br/><em>knowledge test endorsement.</em></h2>
+    </div>
+    <div class="how-it-works__grid">
+      <div class="steps">
+        <div class="step reveal delay-1">
+          <div class="step__num">1</div>
+          <div>
+            <div class="step__title">Pick your series</div>
+            <div class="step__desc">Choose Private Pilot, Instrument Rating, or Commercial Pilot. Each series is purpose-built for its certificate — not a generic aviation survey course.</div>
+          </div>
+        </div>
+        <div class="step reveal delay-2">
+          <div class="step__num">2</div>
+          <div>
+            <div class="step__title">Attend live sessions</div>
+            <div class="step__desc">Every module runs on a daily rolling schedule. Show up when it fits your calendar — morning, midday, or evening slots available every weekday and Saturday.</div>
+          </div>
+        </div>
+        <div class="step reveal delay-3">
+          <div class="step__num">3</div>
+          <div>
+            <div class="step__title">Earn your endorsement</div>
+            <div class="step__desc">Complete all modules in your series and receive your FAA knowledge test endorsement from Andrew directly. Walk into the testing center ready — not hoping.</div>
+          </div>
+        </div>
+      </div>
+      <div class="how-it-works__visual reveal-right delay-1">
+        <div class="stat-card reveal delay-1">
+          <div class="stat-card__num">$25</div>
+          <div class="stat-card__label">Per Session</div>
+          <div class="stat-card__sub">Founding member pricing locked in at launch</div>
+        </div>
+        <div class="stat-card reveal delay-2">
+          <div class="stat-card__num">3</div>
+          <div class="stat-card__label">Certificate Tracks</div>
+        </div>
+        <div class="stat-card reveal delay-3">
+          <div class="stat-card__num">Daily</div>
+          <div class="stat-card__label">Rolling Schedule</div>
+        </div>
+        <div class="stat-card reveal delay-4">
+          <div class="stat-card__num">Live</div>
+          <div class="stat-card__label">No Recordings</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ TRACKS ══ -->
+  <section class="tracks" id="tracks">
+    <div class="tracks__header">
+      <div class="reveal-left">
+        <div class="eyebrow">Ground School Series</div>
+        <h2 class="section-title">Three series.<br/><em>One standard.</em></h2>
+      </div>
+      <p class="section-desc reveal-right delay-2">Attend any module from any series — modules are self-contained and can be taken in any order. Complete all modules in a series to earn your knowledge test endorsement.</p>
+    </div>
+
+    <div class="tracks__grid">
+      <div class="track-card track-card--private reveal delay-1">
+        <div class="track-dot"></div>
+        <div class="track-badge">Private Pilot Series</div>
+        <div class="track-title">Private Pilot Ground School</div>
+        <div class="track-desc">Everything in the PAR — from aerodynamics and airspace to weather and cross-country planning. Built for student pilots starting from zero.</div>
+        <ul class="track-modules">
+          <li>Aerodynamics &amp; aircraft systems</li>
+          <li>Weather theory &amp; decision-making</li>
+          <li>Airspace &amp; regulations</li>
+          <li>VFR navigation &amp; charts</li>
+          <li>Emergency procedures &amp; ADM</li>
+          <li>PAR knowledge test endorsement</li>
+        </ul>
+        <div class="track-price">$25 <span>/ session</span></div>
+      </div>
+
+      <div class="track-card track-card--instrument reveal delay-2">
+        <div class="track-dot"></div>
+        <div class="track-badge">Instrument Series</div>
+        <div class="track-title">Instrument Rating Ground School</div>
+        <div class="track-desc">IFR regulations, navigation systems, approach procedures, and weather for instrument flight. Built for VFR pilots adding their instrument rating.</div>
+        <ul class="track-modules">
+          <li>IFR regulations &amp; flight planning</li>
+          <li>Navigation systems &amp; avionics</li>
+          <li>Instrument approach procedures</li>
+          <li>Holding patterns &amp; en route ops</li>
+          <li>IFR weather &amp; decision-making</li>
+          <li>IRA knowledge test endorsement</li>
+        </ul>
+        <div class="track-price">$25 <span>/ session</span></div>
+      </div>
+
+      <div class="track-card track-card--commercial reveal delay-3">
+        <div class="track-dot"></div>
+        <div class="track-badge">Commercial Series</div>
+        <div class="track-title">Commercial Pilot Ground School</div>
+        <div class="track-desc">Advanced aerodynamics, commercial regulations, and complex systems for the CAX. Built for instrument-rated pilots pursuing their commercial certificate.</div>
+        <ul class="track-modules">
+          <li>Advanced aerodynamics &amp; performance</li>
+          <li>Commercial regulations (Parts 61, 119)</li>
+          <li>Complex aircraft systems</li>
+          <li>Weight &amp; balance &amp; planning</li>
+          <li>Commercial maneuvers theory</li>
+          <li>CAX knowledge test endorsement</li>
+        </ul>
+        <div class="track-price">$25 <span>/ session</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ SCHEDULE ══ -->
+  <section class="schedule" id="schedule">
+    <div class="schedule__header">
+      <div class="reveal-left">
+        <div class="eyebrow">Weekly Schedule</div>
+        <h2 class="section-title">Sessions run daily.<br/><em>Pick what fits.</em></h2>
+        <p class="section-desc" style="margin-top:12px">Every module repeats on a weekly rotation — morning, midday, and evening slots. Attend each topic once and you're done with it. No lock-in to a specific cohort or start date.</p>
+      </div>
+      <div class="schedule__legend reveal delay-2">
+        <div class="legend-item">
+          <div class="legend-dot" style="background:var(--track-private)"></div>
+          Private Pilot
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:var(--track-instrument)"></div>
+          Instrument Rating
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:var(--track-commercial)"></div>
+          Commercial Pilot
+        </div>
+      </div>
+    </div>
+
+    <div class="schedule__tabs reveal delay-1">
+      <button class="tab-btn active" data-week="morning">Morning (7–8 AM CT)</button>
+      <button class="tab-btn" data-week="midday">Midday (12–1 PM CT)</button>
+      <button class="tab-btn" data-week="evening">Evening (7–8 PM CT)</button>
+    </div>
+
+    <div class="calendar-wrap reveal delay-2">
+      <table class="calendar" id="calendarTable">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Monday</th>
+            <th>Tuesday</th>
+            <th>Wednesday</th>
+            <th>Thursday</th>
+            <th>Friday</th>
+            <th>Saturday</th>
+          </tr>
+        </thead>
+        <tbody id="calendarBody">
+          <!-- Injected by JS -->
+        </tbody>
+      </table>
+    </div>
+
+    <div class="schedule__note reveal delay-3">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      Sample schedule — exact session dates and booking links will be sent to waitlist members before the September 2026 launch. All times Central.
+    </div>
+  </section>
+
+  <!-- ══ PHILOSOPHY ══ -->
+  <section class="philosophy">
+    <div class="philosophy__bg-text">KNOWLEDGE</div>
+    <div class="philosophy__inner">
+      <div class="eyebrow reveal" style="justify-content:center">The Apex Standard</div>
+      <blockquote class="philosophy__quote reveal delay-1">
+        "Ground school isn't about passing a test. It's about building the mental model that keeps you <em>alive when things go wrong.</em>"
+      </blockquote>
+      <div class="philosophy__attr reveal delay-2">— Andrew Serrazina, CFI · CFII · Founder</div>
+    </div>
+  </section>
+
+  <!-- ══ CTA / WAITLIST ══ -->
+  <section class="cta-section" id="waitlist">
+    <div class="cta-section__glow"></div>
+    <div class="cta-section__inner">
+      <div class="eyebrow reveal" style="justify-content:center">Launching September 2026</div>
+      <h2 class="cta-section__title reveal delay-1">Be first in the<br/><em>pattern.</em></h2>
+      <p class="cta-section__sub reveal delay-2">Waitlist members get first access to session booking, founding member pricing ($25/session locked in), and a direct line to Andrew before launch.</p>
+
+      <div class="reveal delay-3">
+        <form class="cta-form" id="waitlistForm">
+          <input type="email" name="email" placeholder="your@email.com" required autocomplete="email" />
+          <button type="submit" class="btn-primary" id="waitlistBtn">
+            Join the Waitlist
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </form>
+        <div class="cta-form__success" id="waitlistSuccess">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="var(--gold)" stroke-width="2" stroke-linecap="round"/></svg>
+          You're on the list — we'll be in touch before September 2026.
+        </div>
+        <p style="font-size:12px;color:rgba(255,255,255,0.25);margin-top:14px">No spam. Unsubscribe anytime.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer__inner">
+      <a href="home.html" class="nav__logo">
+        <img src="apexwhite.png" alt="Apex Aviation" />
+      </a>
+      <div class="footer__links">
+        <a href="home.html">Home</a>
+        <a href="programs.html">Programs</a>
+        <a href="pricing.html">Pricing</a>
+        <a href="contact.html">Contact</a>
+        <a href="blog.html">Blog</a>
+      </div>
+    </div>
+    <p class="footer__copy">&copy; 2027 Apex Aviation LLC. All rights reserved. · Austin, Texas</p>
+  </footer>
+
+  <script>
+    // ── Cursor ──
+    const dot  = document.getElementById('cursorDot');
+    const ring = document.getElementById('cursorRing');
+    let mx = 0, my = 0, rx = 0, ry = 0;
+    document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+    (function animCursor() {
+      dot.style.left  = mx + 'px'; dot.style.top  = my + 'px';
+      rx += (mx - rx) * 0.12;     ry += (my - ry) * 0.12;
+      ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+      requestAnimationFrame(animCursor);
+    })();
+
+    // ── Progress bar ──
+    const bar = document.getElementById('progressBar');
+    window.addEventListener('scroll', () => {
+      bar.style.transform = `scaleX(${window.scrollY / (document.body.scrollHeight - innerHeight)})`;
+    }, { passive: true });
+
+    // ── Nav scroll ──
+    const nav = document.getElementById('nav');
+    window.addEventListener('scroll', () => nav.classList.toggle('scrolled', scrollY > 60), { passive: true });
+
+    // ── Stars ──
+    const starsEl = document.getElementById('stars');
+    for (let i = 0; i < 110; i++) {
+      const s = document.createElement('div');
+      s.className = 'star';
+      const size = Math.random() * 2 + 0.5;
+      const minOp = (Math.random() * 0.15 + 0.04).toFixed(2);
+      const maxOp = (parseFloat(minOp) + Math.random() * 0.35 + 0.08).toFixed(2);
+      s.style.cssText = `width:${size}px;height:${size}px;top:${Math.random()*100}%;left:${Math.random()*100}%;--min-op:${minOp};--max-op:${maxOp};--dur:${(Math.random()*4+2).toFixed(1)}s;animation-delay:${(Math.random()*5).toFixed(1)}s`;
+      starsEl.appendChild(s);
+    }
+
+    // ── Hero title word reveal ──
+    const heroWords = [
+      { text: 'Ground',   gold: false },
+      { text: 'school',   gold: false },
+      { text: 'that',     gold: false },
+      { text: 'actually', gold: false },
+      { text: 'prepares', gold: false },
+      { text: 'you.',     gold: true  },
+    ];
+    const titleEl = document.getElementById('heroTitle');
+    heroWords.forEach((w, i) => {
+      const wrap  = document.createElement('span');
+      wrap.className = 'word' + (w.gold ? ' word--gold' : '');
+      wrap.style.marginRight = '0.22em';
+      const inner = document.createElement('span');
+      inner.textContent = w.text;
+      inner.style.animationDelay = (0.5 + i * 0.14) + 's';
+      wrap.appendChild(inner);
+      titleEl.appendChild(wrap);
+    });
+
+    // ── Scroll reveals ──
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.reveal, .reveal-left, .reveal-right').forEach(el => observer.observe(el));
+
+    // ── SCHEDULE DATA ──
+    const SCHEDULE = {
+      morning: [
+        // [track, title]  — indexed [dayIndex 0=Mon..5=Sat]
+        // Each time slot has one entry per day
+        [
+          ['private',    'Aerodynamics & Lift'],
+          ['instrument', 'IFR Regs & FARs'],
+          ['commercial', 'Adv. Aerodynamics'],
+          ['private',    'Airspace Overview'],
+          ['instrument', 'Approach Procedures'],
+          ['private',    'VFR Navigation'],
+        ],
+        [
+          ['instrument', 'Nav Systems & GPS'],
+          ['commercial', 'Aircraft Performance'],
+          ['private',    'Weather Theory'],
+          ['instrument', 'Holding Patterns'],
+          ['commercial', 'Weight & Balance'],
+          ['instrument', 'IFR Weather'],
+        ],
+      ],
+      midday: [
+        [
+          ['commercial', 'Commercial Regs'],
+          ['private',    'Aircraft Systems'],
+          ['instrument', 'En Route IFR'],
+          ['commercial', 'Cross-Country Planning'],
+          ['private',    'Aeromedical Factors'],
+          ['instrument', 'Avionics & Glass'],
+        ],
+        [
+          ['private',    'VFR Chart Reading'],
+          ['instrument', 'IFR Departures'],
+          ['commercial', 'High-Performance Systems'],
+          ['private',    'Emergency Procedures'],
+          ['instrument', 'Alternate Planning'],
+          ['commercial', 'Maneuvers Theory'],
+        ],
+      ],
+      evening: [
+        [
+          ['instrument', 'ILS & RNAV Approaches'],
+          ['private',    'Regulations (FAR 91)'],
+          ['commercial', 'Part 119 & 135'],
+          ['instrument', 'Lost Comms Procedures'],
+          ['private',    'ADM & Risk Mgmt'],
+          ['commercial', 'Complex Aircraft'],
+        ],
+        [
+          ['private',    'Cross-Country Planning'],
+          ['commercial', 'Night Operations'],
+          ['instrument', 'Circling Approaches'],
+          ['private',    'Airport Operations'],
+          ['instrument', 'Icing & Turbulence'],
+          ['commercial', 'Checkride Prep'],
+        ],
+      ],
+    };
+
+    const TIME_LABELS = {
+      morning: ['7:00 AM', '7:30 AM'],
+      midday:  ['12:00 PM', '12:30 PM'],
+      evening: ['7:00 PM',  '7:30 PM'],
+    };
+
+    const TRACK_LABELS = {
+      private:    'Private Pilot',
+      instrument: 'Instrument',
+      commercial: 'Commercial',
+    };
+    const TRACK_COLORS = {
+      private:    'var(--track-private)',
+      instrument: 'var(--track-instrument)',
+      commercial: 'var(--track-commercial)',
+    };
+
+    function renderCalendar(slot) {
+      const body = document.getElementById('calendarBody');
+      const rows = SCHEDULE[slot];
+      const times = TIME_LABELS[slot];
+      body.innerHTML = rows.map((days, rowIdx) => `
+        <tr>
+          <td class="time-cell">${times[rowIdx]}</td>
+          ${days.map(([track, title]) => `
+            <td>
+              <div class="cal-session" style="--s-color:${TRACK_COLORS[track]}">
+                <div class="cal-session__track">${TRACK_LABELS[track]}</div>
+                <div class="cal-session__title">${title}</div>
+              </div>
+            </td>
+          `).join('')}
+        </tr>
+      `).join('');
+    }
+
+    // Init calendar
+    renderCalendar('morning');
+
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderCalendar(btn.dataset.week);
+      });
+    });
+
+    // ── Waitlist form ──
+    const form = document.getElementById('waitlistForm');
+    const successEl = document.getElementById('waitlistSuccess');
+    const submitBtn = document.getElementById('waitlistBtn');
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending…';
+      try {
+        const res = await fetch('https://formspree.io/f/xzdqylpz', {
+          method: 'POST',
+          headers: { 'Accept': 'application/json' },
+          body: new FormData(form),
+        });
+        if (res.ok) {
+          form.style.display = 'none';
+          successEl.classList.add('visible');
+        } else {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalText;
+        }
+      } catch {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
+    });
+  </script>
+</body>
+</html>
