@@ -747,6 +747,7 @@ a { text-decoration: none; color: inherit; }
   border-color: var(--gold);
   box-shadow: 0 0 0 3px rgba(244,180,0,0.18);
 }
+.form-group input::placeholder { color: rgba(255,255,255,0.2); }
 .form-group textarea { resize: vertical; min-height: 100px; }
 .form__note { font-size: 13px; color: var(--gray); text-align: center; margin-top: 12px; }
 
