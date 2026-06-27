@@ -113,7 +113,7 @@
 .section__title {
   font-size: clamp(1.75rem, 4vw, 2.5rem);
   font-weight: 800;
-  color: var(--navy);
+  color: #fff;
   margin: 0 0 16px;
   letter-spacing: -0.02em;
 }
@@ -136,7 +136,7 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 0;
-  background: #162C4F;
+  background: rgba(255,255,255,0.04);
   border: 1px solid rgba(244, 180, 0, 0.2);
   border-radius: 12px;
   overflow: hidden;
@@ -170,7 +170,7 @@
 
 .stat-item__label {
   font-size: 0.875rem;
-  color: #8896a5;
+  color: rgba(255,255,255,0.45);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -653,12 +653,13 @@
 
 .value-card {
   background: #162C4F;
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255,255,255,0.08);
   border-radius: 12px;
   padding: 36px 28px;
   transition: box-shadow 0.25s, transform 0.25s;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
 }
 
 .value-card::before {
@@ -685,12 +686,12 @@
 .value-card__title {
   font-size: 1.15rem;
   font-weight: 700;
-  color: #ffffff;
+  color: #fff;
   margin: 0 0 12px;
 }
 
 .value-card__text {
-  color: #8896a5;
+  color: rgba(255,255,255,0.55);
   font-size: 0.925rem;
   line-height: 1.7;
   margin: 0;
