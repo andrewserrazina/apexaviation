@@ -64,20 +64,19 @@
     })(window,document,'clarity','script','x95g0qe0g6');
   </script>
   <style>
-    /* ── Page-specific styles ── */
+    /* ── Fleet page — uses site design system (styles.css + pages.css) ── */
+
+    /* HERO — navy gradient matching homepage hero */
     .sim-hero {
-      background: linear-gradient(160deg, #050d1a 0%, #0b1f3a 55%, #050d1a 100%);
+      background: linear-gradient(160deg, var(--navy) 0%, #162c4f 60%, var(--navy) 100%);
       padding: 140px 0 0;
       overflow: hidden;
       position: relative;
     }
     .sim-hero__grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 64px;
-      align-items: center;
-      max-width: 1200px;
-      margin: 0 auto;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 64px; align-items: center;
+      max-width: 1200px; margin: 0 auto;
       padding: 0 48px 80px;
     }
     .sim-hero__eyebrow {
@@ -87,47 +86,34 @@
     }
     .sim-hero__eyebrow::before { content: ''; width: 24px; height: 1px; background: var(--gold); display: block; }
     .sim-hero__title {
-      font-size: clamp(40px, 5vw, 68px); font-weight: 900;
-      line-height: 1.04; letter-spacing: -0.035em;
-      color: #fff; margin-bottom: 20px;
+      font-size: clamp(38px, 4.5vw, 62px); font-weight: 800;
+      line-height: 1.06; letter-spacing: -0.025em;
+      color: var(--white); margin-bottom: 20px;
     }
-    .sim-hero__title em { font-family: 'Playfair Display', serif; font-style: italic; color: var(--gold); }
+    .sim-hero__title em { font-family: 'Playfair Display', serif; font-style: italic; color: var(--gold); font-weight: 700; }
     .sim-hero__sub {
-      font-size: 16px; color: rgba(255,255,255,0.55); line-height: 1.8;
+      font-size: 16px; color: rgba(255,255,255,0.65); line-height: 1.8;
       margin-bottom: 36px; max-width: 480px;
     }
-    .sim-hero__badges {
-      display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 36px;
-    }
+    .sim-hero__badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 36px; }
     .sim-hero__badge {
       display: inline-flex; align-items: center; gap: 7px;
-      background: rgba(244,180,0,0.1); border: 1px solid rgba(244,180,0,0.25);
-      border-radius: 100px; padding: 7px 14px;
-      font-size: 12px; font-weight: 700; color: var(--gold);
-      letter-spacing: 0.04em;
+      background: rgba(244,180,0,0.12); border: 1px solid rgba(244,180,0,0.3);
+      border-radius: 100px; padding: 6px 14px;
+      font-size: 12px; font-weight: 600; color: var(--gold); letter-spacing: 0.03em;
     }
 
-    /* Image gallery */
+    /* Hero photo */
     .sim-hero__visual { position: relative; }
     .sim-photo-main {
-      width: 100%; aspect-ratio: 4/3;
-      border-radius: 20px; overflow: hidden;
-      position: relative;
-      background: linear-gradient(135deg, #0b1f3a 0%, #162c4f 100%);
-      border: 1px solid rgba(244,180,0,0.12);
-      box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04);
+      width: 100%; aspect-ratio: 4/3; border-radius: var(--radius-lg);
+      overflow: hidden; position: relative;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid rgba(255,255,255,0.08);
     }
-    /* REPLACE: swap the gradient div below with <img src="your-redbird-photo.jpg" alt="Redbird FMX simulator cockpit" style="width:100%;height:100%;object-fit:cover" /> */
-    .sim-photo-main__placeholder {
-      width: 100%; height: 100%;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 16px;
-      background: linear-gradient(135deg, #0b1f3a 0%, #0f2a50 50%, #0b1f3a 100%);
-    }
-    .sim-photo-main__placeholder svg { opacity: 0.2; }
     .sim-photo-main__label {
       position: absolute; bottom: 0; left: 0; right: 0;
-      background: linear-gradient(to top, rgba(5,13,26,0.95), transparent);
+      background: linear-gradient(to top, rgba(11,31,58,0.92), transparent);
       padding: 24px 24px 20px;
     }
     .sim-photo-main__label-text {
@@ -139,235 +125,164 @@
     /* Floating stat cards */
     .sim-stat-card {
       position: absolute;
-      background: rgba(11,31,58,0.92);
-      border: 1px solid rgba(244,180,0,0.2);
-      border-radius: 14px;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
       padding: 16px 20px;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      box-shadow: var(--shadow-lg);
     }
     .sim-stat-card--tl { top: -20px; left: -24px; }
     .sim-stat-card--br { bottom: 24px; right: -28px; }
-    .sim-stat-card__num { font-size: 28px; font-weight: 900; letter-spacing: -0.04em; color: #fff; line-height: 1; }
+    .sim-stat-card__num { font-size: 26px; font-weight: 800; letter-spacing: -0.03em; color: var(--navy); line-height: 1; }
     .sim-stat-card__num span { font-size: 14px; color: var(--gold); }
-    .sim-stat-card__label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4); letter-spacing: 0.06em; margin-top: 4px; }
+    .sim-stat-card__label { font-size: 11px; font-weight: 600; color: var(--text); opacity: 0.5; letter-spacing: 0.05em; margin-top: 4px; }
 
-    /* ── FAA HOURS SECTION ── */
-    .hours-section { padding: 100px 48px; background: var(--navy, #050d1a); }
+    /* PHOTO GALLERY — white background */
+    .photo-gallery { padding: 0 48px 80px; background: var(--white); }
+    .photo-gallery__grid {
+      display: grid; grid-template-columns: 2fr 1fr 1fr;
+      grid-template-rows: 260px; gap: 12px;
+    }
+    .gallery-slot {
+      border-radius: var(--radius); overflow: hidden; position: relative;
+      background: var(--border); border: 1px solid var(--border);
+    }
+    .gallery-slot__label {
+      position: absolute; bottom: 10px; left: 10px; right: 10px;
+      background: rgba(11,31,58,0.82); backdrop-filter: blur(8px);
+      border-radius: 8px; padding: 7px 12px;
+      font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.7);
+      letter-spacing: 0.05em; text-transform: uppercase;
+    }
+
+    /* FAA HOURS — navy dark section */
+    .hours-section { padding: 100px 48px; background: var(--navy); }
     .hours-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
-      margin-top: 56px;
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 20px; margin-top: 56px;
     }
     .hours-card {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 20px;
-      padding: 36px 32px;
-      position: relative;
-      overflow: hidden;
-      transition: border-color 0.3s, transform 0.3s;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: var(--radius-lg); padding: 36px 32px;
+      position: relative; overflow: hidden;
+      transition: border-color 0.25s, transform 0.25s;
     }
-    .hours-card:hover { border-color: rgba(244,180,0,0.2); transform: translateY(-4px); }
+    .hours-card:hover { border-color: rgba(244,180,0,0.35); transform: translateY(-3px); }
     .hours-card::before {
-      content: '';
-      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
       background: var(--card-color);
     }
-    .hours-card--private  { --card-color: var(--gold, #F4B400); }
+    .hours-card--private   { --card-color: var(--gold); }
     .hours-card--instrument { --card-color: #4fa8d5; }
     .hours-card--commercial { --card-color: #7ec8a0; }
     .hours-card__cert {
-      font-size: 10px; font-weight: 800; letter-spacing: 0.14em;
-      text-transform: uppercase; color: var(--card-color);
-      margin-bottom: 20px;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--card-color); margin-bottom: 20px;
     }
-    .hours-card__num {
-      font-size: 64px; font-weight: 900; line-height: 1;
-      letter-spacing: -0.05em; color: #fff; margin-bottom: 4px;
-    }
-    .hours-card__unit {
-      font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.4);
-      letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 20px;
-    }
-    .hours-card__desc {
-      font-size: 13px; color: rgba(255,255,255,0.5); line-height: 1.7;
-      margin-bottom: 20px;
-    }
-    .hours-card__far {
-      font-size: 11px; font-weight: 700; color: var(--card-color);
-      letter-spacing: 0.04em;
-    }
-    .hours-card__total {
-      margin-top: 20px; padding-top: 20px;
-      border-top: 1px solid rgba(255,255,255,0.06);
-      font-size: 12px; color: rgba(255,255,255,0.35); line-height: 1.6;
-    }
-    .hours-card__total strong { color: rgba(255,255,255,0.7); }
+    .hours-card__num { font-size: 60px; font-weight: 800; line-height: 1; letter-spacing: -0.04em; color: var(--white); margin-bottom: 4px; }
+    .hours-card__unit { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.45); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 20px; }
+    .hours-card__desc { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.7; margin-bottom: 20px; }
+    .hours-card__far { font-size: 11px; font-weight: 700; color: var(--card-color); letter-spacing: 0.04em; }
+    .hours-card__total { margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 12px; color: rgba(255,255,255,0.4); line-height: 1.65; }
+    .hours-card__total strong { color: rgba(255,255,255,0.75); }
+    .hours-bar { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.1); margin-top: 16px; overflow: hidden; }
+    .hours-bar__fill { height: 100%; border-radius: 2px; background: var(--card-color); width: var(--pct); }
+    .hours-bar__label { display: flex; justify-content: space-between; font-size: 11px; color: rgba(255,255,255,0.3); margin-top: 6px; }
 
-    /* Visual progress bar */
-    .hours-bar {
-      height: 4px; border-radius: 2px;
-      background: rgba(255,255,255,0.07);
-      margin-top: 16px; overflow: hidden;
-    }
-    .hours-bar__fill {
-      height: 100%; border-radius: 2px;
-      background: var(--card-color);
-      width: var(--pct);
-      transition: width 1.2s cubic-bezier(0.16,1,0.3,1);
-    }
-    .hours-bar__label {
-      display: flex; justify-content: space-between;
-      font-size: 11px; color: rgba(255,255,255,0.3); margin-top: 6px;
-    }
-
-    /* ── TECH SPECS ── */
-    .specs-section { padding: 100px 48px; background: #07111f; }
-    .specs-inner {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 80px; align-items: start;
-    }
+    /* TECH SPECS — white background */
+    .specs-section { padding: 100px 48px; background: var(--white); }
+    .specs-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: start; }
     .specs-table { display: flex; flex-direction: column; }
     .spec-row {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 16px; padding: 14px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-      align-items: center;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+      padding: 13px 0; border-bottom: 1px solid var(--border); align-items: center;
     }
     .spec-row:last-child { border-bottom: none; }
-    .spec-key { font-size: 12px; color: rgba(255,255,255,0.4); font-weight: 600; letter-spacing: 0.04em; }
-    .spec-val { font-size: 13px; color: #fff; font-weight: 700; text-align: right; }
-    .spec-val--gold { color: var(--gold, #F4B400); }
-
-    /* Spec highlight cards */
+    .spec-key { font-size: 12px; color: var(--text); opacity: 0.55; font-weight: 600; letter-spacing: 0.03em; }
+    .spec-val { font-size: 13px; color: var(--navy); font-weight: 700; text-align: right; }
+    .spec-val--gold { color: var(--gold-2); }
     .spec-highlights { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .spec-highlight {
-      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 14px; padding: 20px;
-      transition: border-color 0.3s;
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px;
+      box-shadow: var(--shadow); transition: box-shadow 0.25s, border-color 0.25s;
     }
-    .spec-highlight:hover { border-color: rgba(244,180,0,0.15); }
+    .spec-highlight:hover { box-shadow: var(--shadow-lg); border-color: rgba(244,180,0,0.3); }
     .spec-highlight__icon {
       width: 40px; height: 40px; border-radius: 10px;
       background: rgba(244,180,0,0.1);
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: 14px;
+      display: flex; align-items: center; justify-content: center; margin-bottom: 14px;
     }
-    .spec-highlight__title { font-size: 13px; font-weight: 800; color: #fff; margin-bottom: 6px; }
-    .spec-highlight__desc { font-size: 12px; color: rgba(255,255,255,0.45); line-height: 1.6; }
+    .spec-highlight__title { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+    .spec-highlight__desc { font-size: 12px; color: var(--text); opacity: 0.6; line-height: 1.6; }
 
-    /* ── PHOTO GALLERY STRIP ── */
-    .photo-gallery { padding: 0 48px 100px; background: #07111f; }
-    .photo-gallery__grid {
-      display: grid;
-      grid-template-columns: 2fr 1fr 1fr;
-      grid-template-rows: 280px;
-      gap: 12px;
-    }
-    .gallery-slot {
-      border-radius: 14px; overflow: hidden; position: relative;
-      background: linear-gradient(135deg, #0b1f3a, #162c4f);
-      border: 1px solid rgba(255,255,255,0.05);
-    }
-    /* REPLACE: each .gallery-slot div below can become <img src="photo.jpg" alt="..." style="width:100%;height:100%;object-fit:cover"> */
-    .gallery-slot__inner {
-      width: 100%; height: 100%;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .gallery-slot__label {
-      position: absolute; bottom: 12px; left: 12px; right: 12px;
-      background: rgba(5,13,26,0.8); backdrop-filter: blur(8px);
-      border-radius: 8px; padding: 8px 12px;
-      font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.5);
-      letter-spacing: 0.06em; text-transform: uppercase;
-    }
-
-    /* ── CAPABILITIES ── */
-    .capabilities { padding: 100px 48px; background: var(--navy, #050d1a); }
-    .cap-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 16px; margin-top: 56px;
-    }
+    /* CAPABILITIES — navy dark section */
+    .capabilities { padding: 100px 48px; background: var(--navy); }
+    .cap-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 56px; }
     .cap-card {
-      background: rgba(255,255,255,0.025);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 16px; padding: 32px 28px;
-      transition: border-color 0.3s, background 0.3s;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: var(--radius-lg); padding: 32px 28px;
+      transition: border-color 0.25s, background 0.25s;
     }
-    .cap-card:hover { border-color: rgba(244,180,0,0.18); background: rgba(255,255,255,0.04); }
+    .cap-card:hover { border-color: rgba(244,180,0,0.3); background: rgba(255,255,255,0.08); }
     .cap-card__icon {
       width: 44px; height: 44px; border-radius: 12px;
-      background: rgba(244,180,0,0.1);
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: 20px;
+      background: rgba(244,180,0,0.12);
+      display: flex; align-items: center; justify-content: center; margin-bottom: 20px;
     }
-    .cap-card__title { font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 10px; letter-spacing: -0.01em; }
-    .cap-card__desc { font-size: 13px; color: rgba(255,255,255,0.5); line-height: 1.7; margin-bottom: 18px; }
+    .cap-card__title { font-size: 15px; font-weight: 700; color: var(--white); margin-bottom: 10px; }
+    .cap-card__desc { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.7; margin-bottom: 18px; }
     .cap-card__tags { display: flex; gap: 6px; flex-wrap: wrap; }
     .cap-tag {
-      font-size: 11px; font-weight: 700; color: var(--gold, #F4B400);
-      background: rgba(244,180,0,0.08); border: 1px solid rgba(244,180,0,0.15);
+      font-size: 11px; font-weight: 700; color: var(--gold);
+      background: rgba(244,180,0,0.1); border: 1px solid rgba(244,180,0,0.2);
       border-radius: 100px; padding: 3px 10px;
     }
 
-    /* ── HOW WE TEACH ── */
-    .teach-section { padding: 100px 48px; background: #07111f; }
-    .teach-inner {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 96px; align-items: center;
-    }
-    .teach-steps { display: flex; flex-direction: column; gap: 0; }
-    .teach-step {
-      display: flex; gap: 24px; padding: 28px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-    }
+    /* HOW WE TEACH — white background */
+    .teach-section { padding: 100px 48px; background: var(--white); }
+    .teach-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
+    .teach-steps { display: flex; flex-direction: column; }
+    .teach-step { display: flex; gap: 24px; padding: 24px 0; border-bottom: 1px solid var(--border); }
     .teach-step:last-child { border-bottom: none; }
     .teach-step__num {
-      flex-shrink: 0;
-      width: 36px; height: 36px; border-radius: 50%;
-      border: 1.5px solid rgba(244,180,0,0.35);
+      flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%;
+      border: 1.5px solid var(--gold); background: rgba(244,180,0,0.08);
       display: flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 800; color: var(--gold, #F4B400);
-      margin-top: 2px;
+      font-size: 12px; font-weight: 700; color: var(--gold); margin-top: 2px;
     }
-    .teach-step__title { font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 6px; }
-    .teach-step__desc { font-size: 13px; color: rgba(255,255,255,0.5); line-height: 1.7; }
+    .teach-step__title { font-size: 15px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+    .teach-step__desc { font-size: 13px; color: var(--text); opacity: 0.7; line-height: 1.7; }
 
-    /* ── AIRCRAFT SECTION ── */
-    .aircraft-section { padding: 100px 48px; background: var(--navy, #050d1a); }
-    .aircraft-inner {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 72px; align-items: center;
-    }
+    /* AIRCRAFT — light grey section */
+    .aircraft-section { padding: 100px 48px; background: #f4f6f9; }
+    .aircraft-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 72px; align-items: center; }
     .aircraft-photo {
-      aspect-ratio: 4/3; border-radius: 20px; overflow: hidden;
-      background: linear-gradient(135deg, #0b1f3a, #162c4f);
-      border: 1px solid rgba(255,255,255,0.06); position: relative;
+      aspect-ratio: 4/3; border-radius: var(--radius-lg); overflow: hidden;
+      background: var(--border); border: 1px solid var(--border);
+      box-shadow: var(--shadow); position: relative;
     }
-    .aircraft-photo__inner {
-      width: 100%; height: 100%;
-      display: flex; align-items: center; justify-content: center;
-    }
+    .aircraft-photo__inner { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
     .aircraft-photo__label {
       position: absolute; bottom: 0; left: 0; right: 0;
-      background: linear-gradient(to top, rgba(5,13,26,0.95), transparent);
+      background: linear-gradient(to top, rgba(11,31,58,0.88), transparent);
       padding: 24px;
     }
     .aircraft-specs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 24px 0; }
     .aircraft-spec {
-      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 10px; padding: 14px 16px;
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow);
     }
-    .aircraft-spec__label { font-size: 11px; color: rgba(255,255,255,0.35); margin-bottom: 4px; }
-    .aircraft-spec__val { font-size: 13px; font-weight: 700; color: #fff; }
+    .aircraft-spec__label { font-size: 11px; color: var(--text); opacity: 0.5; margin-bottom: 4px; }
+    .aircraft-spec__val { font-size: 13px; font-weight: 700; color: var(--navy); }
 
-    /* ── MOBILE ── */
+    /* MOBILE */
     @media (max-width: 900px) {
-      .sim-hero__grid { grid-template-columns: 1fr; gap: 48px; padding: 0 20px 60px; }
+      .sim-hero__grid { grid-template-columns: 1fr; gap: 40px; padding: 0 20px 60px; }
       .sim-stat-card { display: none; }
-      .hours-section, .specs-section, .capabilities, .teach-section, .aircraft-section, .photo-gallery { padding: 72px 20px; }
+      .hours-section, .specs-section, .capabilities, .teach-section, .aircraft-section, .photo-gallery { padding: 64px 20px; }
       .hours-grid { grid-template-columns: 1fr; }
       .specs-inner { grid-template-columns: 1fr; gap: 48px; }
       .cap-grid { grid-template-columns: 1fr 1fr; }
@@ -375,10 +290,10 @@
       .aircraft-inner { grid-template-columns: 1fr; gap: 40px; }
       .photo-gallery__grid { grid-template-columns: 1fr; grid-template-rows: auto; }
       .photo-gallery__grid .gallery-slot { min-height: 220px; }
-      .photo-gallery__grid .gallery-slot:nth-child(1) { grid-row: auto; }
     }
     @media (max-width: 600px) {
       .cap-grid { grid-template-columns: 1fr; }
+      .spec-highlights { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -489,8 +404,8 @@
   <section class="photo-gallery" id="gallery">
     <div style="max-width:1200px;margin:0 auto">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
-        <div style="font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.3)">The Simulator</div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.2)">Austin, TX · Opening January 2027</div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:rgba(11,31,58,0.4)">The Simulator</div>
+        <div style="font-size:12px;color:rgba(11,31,58,0.35)">Austin, TX · Opening January 2027</div>
       </div>
       <div class="photo-gallery__grid">
         <div class="gallery-slot" style="grid-row:span 1">
@@ -518,8 +433,8 @@
             <span style="width:22px;height:1px;background:var(--gold,#F4B400);display:block"></span>
             FAA Hour Credits
           </div>
-          <h2 style="font-size:clamp(34px,4vw,54px);font-weight:900;line-height:1.08;letter-spacing:-0.03em;color:#fff;margin-bottom:0">
-            Sim hours that count<br/><em style="font-family:'Playfair Display',serif;font-style:italic;color:var(--gold,#F4B400)">toward your certificate.</em>
+          <h2 style="font-size:clamp(34px,4vw,54px);font-weight:800;line-height:1.08;letter-spacing:-0.025em;color:var(--white);margin-bottom:0">
+            Sim hours that count<br/><em style="font-family:'Playfair Display',serif;font-style:italic;color:var(--gold)">toward your certificate.</em>
           </h2>
         </div>
         <p style="font-size:16px;color:rgba(255,255,255,0.5);line-height:1.8">The Apex Redbird FMX is FAA-qualified as an AATD — which means hours logged in the simulator count directly toward your rating requirements. The numbers below are the FAA maximums under 14 CFR Part 61.</p>
@@ -596,11 +511,11 @@
         <span style="width:22px;height:1px;background:var(--gold,#F4B400);display:block"></span>
         Technical Specifications
       </div>
-      <h2 style="font-size:clamp(32px,3.5vw,50px);font-weight:900;line-height:1.08;letter-spacing:-0.03em;color:#fff;margin-bottom:56px">Redbird FMX — <em style="font-family:'Playfair Display',serif;font-style:italic;color:var(--gold,#F4B400)">by the numbers.</em></h2>
+      <h2 style="font-size:clamp(32px,3.5vw,50px);font-weight:800;line-height:1.08;letter-spacing:-0.025em;color:var(--navy);margin-bottom:56px">Redbird FMX — <em style="font-family:'Playfair Display',serif;font-style:italic;color:var(--gold-2)">by the numbers.</em></h2>
 
       <div class="specs-inner">
         <div class="specs-table">
-          <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.3);margin-bottom:4px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.05)">Hardware</div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:rgba(11,31,58,0.4);margin-bottom:4px;padding-bottom:12px;border-bottom:1px solid var(--border)">Hardware</div>
           <div class="spec-row"><div class="spec-key">FAA Classification</div><div class="spec-val spec-val--gold">AATD</div></div>
           <div class="spec-row"><div class="spec-key">International</div><div class="spec-val">EASA FNPT II</div></div>
           <div class="spec-row"><div class="spec-key">Motion System</div><div class="spec-val">3-axis electric full motion</div></div>
@@ -675,7 +590,7 @@
             <span style="width:22px;height:1px;background:var(--gold,#F4B400);display:block"></span>
             What We Train
           </div>
-          <h2 style="font-size:clamp(32px,3.5vw,50px);font-weight:900;line-height:1.08;letter-spacing:-0.03em;color:#fff">What no aircraft<br/><em style="font-family:'Playfair Display',serif;font-style:italic;color:var(--gold,#F4B400)">can give you.</em></h2>
+          <h2 style="font-size:clamp(32px,3.5vw,50px);font-weight:800;line-height:1.08;letter-spacing:-0.025em;color:var(--white)">What no aircraft<br/><em style="font-family:'Playfair Display',serif;font-style:italic;color:var(--gold)">can give you.</em></h2>
         </div>
         <p style="font-size:15px;color:rgba(255,255,255,0.5);line-height:1.8">A real aircraft is constrained by weather, maintenance cost, and the limits of what's safe to practice. The AATD removes every one of those constraints — and adds the ability to pause, repeat, and debrief in real time.</p>
       </div>
@@ -741,7 +656,7 @@
             <span style="width:22px;height:1px;background:var(--gold,#F4B400);display:block"></span>
             The Apex Method
           </div>
-          <h2 style="font-size:clamp(30px,3.2vw,46px);font-weight:900;line-height:1.1;letter-spacing:-0.03em;color:#fff;margin-bottom:40px">Learn it in the sim.<br/><em style="font-family:'Playfair Display',serif;font-style:italic;color:var(--gold,#F4B400)">Apply it in the airplane.</em></h2>
+          <h2 style="font-size:clamp(30px,3.2vw,46px);font-weight:800;line-height:1.1;letter-spacing:-0.025em;color:var(--navy);margin-bottom:40px">Learn it in the sim.<br/><em style="font-family:'Playfair Display',serif;font-style:italic;color:var(--gold-2)">Apply it in the airplane.</em></h2>
           <div class="teach-steps">
             <div class="teach-step">
               <div class="teach-step__num">1</div>
@@ -776,29 +691,29 @@
 
         <!-- Right side — quote + metrics -->
         <div style="display:flex;flex-direction:column;gap:20px">
-          <div style="background:rgba(244,180,0,0.06);border:1px solid rgba(244,180,0,0.15);border-radius:20px;padding:40px">
-            <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold,#F4B400);margin-bottom:20px">From the instructor</div>
-            <blockquote style="font-family:'Playfair Display',serif;font-style:italic;font-size:18px;font-weight:700;color:#fff;line-height:1.55;margin:0 0 20px">
+          <div style="background:var(--navy);border-radius:var(--radius-lg);padding:40px;box-shadow:var(--shadow-lg)">
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);margin-bottom:20px">From the instructor</div>
+            <blockquote style="font-family:'Playfair Display',serif;font-style:italic;font-size:18px;font-weight:700;color:var(--white);line-height:1.55;margin:0 0 20px">
               "The goal was never to fill Hobbs hours. It was to produce pilots who make better decisions before, during, and after every flight."
             </blockquote>
-            <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:0.08em;text-transform:uppercase">— Andrew Serrazina, CFI · CFII</div>
+            <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.4);letter-spacing:0.08em;text-transform:uppercase">— Andrew Serrazina, CFI · CFII</div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:20px;text-align:center">
-              <div style="font-size:32px;font-weight:900;letter-spacing:-0.04em;color:#fff;line-height:1">Zero</div>
-              <div style="font-size:11px;color:rgba(255,255,255,0.35);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-top:6px">Weather Cancellations</div>
+            <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;box-shadow:var(--shadow)">
+              <div style="font-size:30px;font-weight:800;letter-spacing:-0.03em;color:var(--navy);line-height:1">Zero</div>
+              <div style="font-size:11px;color:var(--text);opacity:0.5;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-top:6px">Weather Cancellations</div>
             </div>
-            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:20px;text-align:center">
-              <div style="font-size:32px;font-weight:900;letter-spacing:-0.04em;color:#fff;line-height:1">$90</div>
-              <div style="font-size:11px;color:rgba(255,255,255,0.35);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-top:6px">Per Hour Open Sim</div>
+            <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;box-shadow:var(--shadow)">
+              <div style="font-size:30px;font-weight:800;letter-spacing:-0.03em;color:var(--gold-2);line-height:1">$90</div>
+              <div style="font-size:11px;color:var(--text);opacity:0.5;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-top:6px">Per Hour Open Sim</div>
             </div>
-            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:20px;text-align:center">
-              <div style="font-size:32px;font-weight:900;letter-spacing:-0.04em;color:#fff;line-height:1">All</div>
-              <div style="font-size:11px;color:rgba(255,255,255,0.35);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-top:6px">US Airports in DB</div>
+            <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;box-shadow:var(--shadow)">
+              <div style="font-size:30px;font-weight:800;letter-spacing:-0.03em;color:var(--navy);line-height:1">All</div>
+              <div style="font-size:11px;color:var(--text);opacity:0.5;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-top:6px">US Airports in DB</div>
             </div>
-            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:20px;text-align:center">
-              <div style="font-size:32px;font-weight:900;letter-spacing:-0.04em;color:#fff;line-height:1">20+</div>
-              <div style="font-size:11px;color:rgba(255,255,255,0.35);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-top:6px">Global Authorities</div>
+            <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;box-shadow:var(--shadow)">
+              <div style="font-size:30px;font-weight:800;letter-spacing:-0.03em;color:var(--navy);line-height:1">20+</div>
+              <div style="font-size:11px;color:var(--text);opacity:0.5;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-top:6px">Global Authorities</div>
             </div>
           </div>
         </div>
@@ -813,7 +728,7 @@
         <span style="width:22px;height:1px;background:var(--gold,#F4B400);display:block"></span>
         Training Fleet · KHYI San Marcos · January 2027
       </div>
-      <h2 style="font-size:clamp(30px,3.5vw,48px);font-weight:900;line-height:1.08;letter-spacing:-0.03em;color:#fff;margin-bottom:56px">The aircraft is where<br/><em style="font-family:'Playfair Display',serif;font-style:italic;color:var(--gold,#F4B400)">you prove it.</em></h2>
+      <h2 style="font-size:clamp(30px,3.5vw,48px);font-weight:800;line-height:1.08;letter-spacing:-0.025em;color:var(--navy);margin-bottom:56px">The aircraft is where<br/><em style="font-family:'Playfair Display',serif;font-style:italic;color:var(--gold-2)">you prove it.</em></h2>
       <div class="aircraft-inner">
         <!-- Aircraft photo slot -->
         <div class="aircraft-photo">
@@ -834,21 +749,21 @@
 
         <div>
           <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold,#F4B400);margin-bottom:10px">Light Sport Aircraft</div>
-          <h3 style="font-size:30px;font-weight:900;color:#fff;letter-spacing:-0.02em;margin-bottom:16px">FlightDesign CTSW</h3>
-          <p style="font-size:14px;color:rgba(255,255,255,0.5);line-height:1.8;margin-bottom:24px">The CT series is one of the most refined Light Sport Aircraft ever built — carbon fiber composite construction, excellent climb performance, and fuel efficiency that keeps operating costs well below a traditional trainer. Based at San Marcos Regional Airport (KHYI), it's the airplane where Apex students apply what they've already mastered in the Redbird FMX.</p>
+          <h3 style="font-size:28px;font-weight:800;color:var(--navy);letter-spacing:-0.02em;margin-bottom:16px">FlightDesign CTSW</h3>
+          <p style="font-size:14px;color:var(--text);line-height:1.8;margin-bottom:24px">The CT series is one of the most refined Light Sport Aircraft ever built — carbon fiber composite construction, excellent climb performance, and fuel efficiency that keeps operating costs well below a traditional trainer. Based at San Marcos Regional Airport (KHYI), it's the airplane where Apex students apply what they've already mastered in the Redbird FMX.</p>
           <div class="aircraft-specs-grid">
             <div class="aircraft-spec"><div class="aircraft-spec__label">Engine</div><div class="aircraft-spec__val">Rotax 912 ULS · 100 hp</div></div>
             <div class="aircraft-spec"><div class="aircraft-spec__label">Home Base</div><div class="aircraft-spec__val">KHYI · San Marcos, TX</div></div>
             <div class="aircraft-spec"><div class="aircraft-spec__label">Construction</div><div class="aircraft-spec__val">Carbon fiber composite</div></div>
             <div class="aircraft-spec"><div class="aircraft-spec__label">Safety</div><div class="aircraft-spec__val">BRS ballistic parachute</div></div>
-            <div class="aircraft-spec"><div class="aircraft-spec__label">Aircraft Rate</div><div class="aircraft-spec__val" style="color:var(--gold,#F4B400)">$145 / hr wet</div></div>
-            <div class="aircraft-spec"><div class="aircraft-spec__label">Instruction</div><div class="aircraft-spec__val" style="color:var(--gold,#F4B400)">$75 / hr</div></div>
+            <div class="aircraft-spec"><div class="aircraft-spec__label">Aircraft Rate</div><div class="aircraft-spec__val" style="color:var(--gold-2)">$145 / hr wet</div></div>
+            <div class="aircraft-spec"><div class="aircraft-spec__label">Instruction</div><div class="aircraft-spec__val" style="color:var(--gold-2)">$75 / hr</div></div>
           </div>
           <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:28px">
-            <div style="display:flex;gap:10px;font-size:13px;color:rgba(255,255,255,0.5)"><span style="color:var(--gold,#F4B400);font-weight:700;flex-shrink:0">✓</span>Eligible for Sport Pilot &amp; Private Pilot certificate training</div>
-            <div style="display:flex;gap:10px;font-size:13px;color:rgba(255,255,255,0.5)"><span style="color:var(--gold,#F4B400);font-weight:700;flex-shrink:0">✓</span>Lower hourly cost than traditional trainers — more time, same budget</div>
-            <div style="display:flex;gap:10px;font-size:13px;color:rgba(255,255,255,0.5)"><span style="color:var(--gold,#F4B400);font-weight:700;flex-shrink:0">✓</span>G1000 avionics transfer directly from Redbird FMX cockpit</div>
-            <div style="display:flex;gap:10px;font-size:13px;color:rgba(255,255,255,0.5)"><span style="color:var(--gold,#F4B400);font-weight:700;flex-shrink:0">✓</span>Instrument rating and commercial certificate training (opening Jan 2027)</div>
+            <div style="display:flex;gap:10px;font-size:13px;color:var(--text)"><span style="color:var(--gold);font-weight:700;flex-shrink:0">✓</span>Eligible for Sport Pilot &amp; Private Pilot certificate training</div>
+            <div style="display:flex;gap:10px;font-size:13px;color:var(--text)"><span style="color:var(--gold);font-weight:700;flex-shrink:0">✓</span>Lower hourly cost than traditional trainers — more time, same budget</div>
+            <div style="display:flex;gap:10px;font-size:13px;color:var(--text)"><span style="color:var(--gold);font-weight:700;flex-shrink:0">✓</span>G1000 avionics transfer directly from Redbird FMX cockpit</div>
+            <div style="display:flex;gap:10px;font-size:13px;color:var(--text)"><span style="color:var(--gold);font-weight:700;flex-shrink:0">✓</span>Instrument rating and commercial certificate training (opening Jan 2027)</div>
           </div>
           <a href="home.html#waitlist" class="btn btn--primary">Join the Waitlist</a>
         </div>
