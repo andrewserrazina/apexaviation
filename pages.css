@@ -113,7 +113,7 @@
 .section__title {
   font-size: clamp(1.75rem, 4vw, 2.5rem);
   font-weight: 800;
-  color: var(--navy);
+  color: #fff;
   margin: 0 0 16px;
   letter-spacing: -0.02em;
 }
@@ -136,7 +136,7 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 0;
-  background: #162C4F;
+  background: rgba(255,255,255,0.04);
   border: 1px solid rgba(244, 180, 0, 0.2);
   border-radius: 12px;
   overflow: hidden;
@@ -170,7 +170,7 @@
 
 .stat-item__label {
   font-size: 0.875rem;
-  color: #8896a5;
+  color: rgba(255,255,255,0.45);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -653,12 +653,13 @@
 
 .value-card {
   background: #162C4F;
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255,255,255,0.08);
   border-radius: 12px;
   padding: 36px 28px;
   transition: box-shadow 0.25s, transform 0.25s;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
 }
 
 .value-card::before {
@@ -685,12 +686,12 @@
 .value-card__title {
   font-size: 1.15rem;
   font-weight: 700;
-  color: #ffffff;
+  color: #fff;
   margin: 0 0 12px;
 }
 
 .value-card__text {
-  color: #8896a5;
+  color: rgba(255,255,255,0.55);
   font-size: 0.925rem;
   line-height: 1.7;
   margin: 0;
@@ -822,8 +823,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #162C4F;
-  border: 1px solid rgba(244, 180, 0, 0.2);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
   border-radius: 10px;
   padding: 16px 24px;
   transition: background 0.2s, box-shadow 0.2s;
@@ -842,7 +843,7 @@
 .cert-badge__text {
   font-size: 0.88rem;
   font-weight: 600;
-  color: #cbd5e0;
+  color: #fff;
 }
 
 /* ----------------------------------------------------------
@@ -965,7 +966,7 @@
 
 .pricing-card__price-note {
   font-size: 0.78rem;
-  color: #4a5568;
+  color: rgba(255,255,255,0.35);
   margin-bottom: 20px;
 }
 
@@ -1928,31 +1929,31 @@
   border: 1px solid rgba(244,180,0,0.25);
   padding: 4px 12px; border-radius: 100px; margin-bottom: 16px;
 }
-.program-detail__title { font-size:clamp(24px,3vw,32px); font-weight:800; margin-bottom:16px; line-height:1.2; }
-.program-detail__desc { font-size:16px; color:var(--gray); line-height:1.8; margin-bottom:24px; }
+.program-detail__title { font-size:clamp(24px,3vw,32px); font-weight:800; margin-bottom:16px; line-height:1.2; color:#fff; }
+.program-detail__desc { font-size:16px; color:rgba(255,255,255,0.6); line-height:1.8; margin-bottom:24px; }
 .program-detail__stats { display:flex; gap:24px; margin-bottom:28px; flex-wrap:wrap; }
 .detail-stat {
   text-align:center; padding:16px 20px;
-  background:var(--off-white); border-radius:var(--radius); border:1px solid var(--border); min-width:100px;
+  background:rgba(255,255,255,0.04); border-radius:var(--radius); border:1px solid rgba(255,255,255,0.08); min-width:100px;
 }
 .detail-stat__num { font-size:22px; font-weight:800; color:#F4B400; display:block; }
-.detail-stat__label { font-size:12px; color:var(--gray); font-weight:500; margin-top:2px; display:block; }
+.detail-stat__label { font-size:12px; color:rgba(255,255,255,0.45); font-weight:500; margin-top:2px; display:block; }
 .program-detail__highlights { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:32px; }
-.highlight-item { display:flex; align-items:center; gap:10px; font-size:14px; font-weight:500; color:var(--text); }
+.highlight-item { display:flex; align-items:center; gap:10px; font-size:14px; font-weight:500; color:rgba(255,255,255,0.8); }
 .highlight-item svg { flex-shrink:0; }
 .program-detail__curriculum {
-  background:var(--off-white); border-radius:var(--radius-lg); padding:32px; border:1px solid var(--border);
+  background:rgba(255,255,255,0.04); border-radius:var(--radius-lg); padding:32px; border:1px solid rgba(255,255,255,0.08);
 }
-.program-detail__curriculum h4 { font-size:16px; font-weight:700; margin-bottom:20px; color:var(--text); }
-.curriculum-phase { display:flex; gap:16px; padding:16px 0; border-bottom:1px solid var(--border); }
+.program-detail__curriculum h4 { font-size:16px; font-weight:700; margin-bottom:20px; color:#fff; }
+.curriculum-phase { display:flex; gap:16px; padding:16px 0; border-bottom:1px solid rgba(255,255,255,0.07); }
 .curriculum-phase:last-child { border-bottom:none; padding-bottom:0; }
 .curriculum-phase__num {
   width:32px; height:32px; background:#F4B400; color:#0B1F3A;
   border-radius:50%; display:flex; align-items:center; justify-content:center;
   font-size:13px; font-weight:800; flex-shrink:0;
 }
-.curriculum-phase__body h5 { font-size:14px; font-weight:700; margin-bottom:4px; }
-.curriculum-phase__body p { font-size:13px; color:var(--gray); line-height:1.6; }
+.curriculum-phase__body h5 { font-size:14px; font-weight:700; margin-bottom:4px; color:#fff; }
+.curriculum-phase__body p { font-size:13px; color:rgba(255,255,255,0.55); line-height:1.6; }
 
 /* ── Aircraft detail (fleet page) ── */
 .aircraft-detail { padding: 80px 0; border-bottom: 1px solid var(--border); }
@@ -1984,11 +1985,11 @@
 .faq-section { padding:80px 0; background:var(--off-white); }
 .faq-section .section__header { margin-bottom:48px; }
 .faq-list { max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:12px; }
-.faq-item { background:#fff; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+.faq-item { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:var(--radius); overflow:hidden; }
 .faq-item__question {
   width:100%; display:flex; justify-content:space-between; align-items:center;
   padding:20px 24px; background:none; border:none; cursor:pointer;
-  font-family:var(--font); font-size:15px; font-weight:600; color:var(--text); text-align:left; gap:16px;
+  font-family:var(--font); font-size:15px; font-weight:600; color:#fff; text-align:left; gap:16px;
   transition:color var(--transition);
 }
 .faq-item__question:hover { color:#F4B400; }
@@ -1996,49 +1997,50 @@
 .faq-item.open .faq-item__question svg { transform:rotate(180deg); }
 .faq-item__answer { max-height:0; overflow:hidden; transition:max-height 0.3s ease; }
 .faq-item.open .faq-item__answer { max-height:400px; }
-.faq-item__answer p { padding:0 24px 20px; font-size:15px; color:var(--gray); line-height:1.75; }
+.faq-item__answer p { padding:0 24px 20px; font-size:15px; color:rgba(255,255,255,0.55); line-height:1.75; }
 
 /* ── Stats row (about page) ── */
 .stats-row {
   display:grid; grid-template-columns:repeat(4,1fr); gap:2px;
-  background:var(--border); border-radius:var(--radius-lg); overflow:hidden; margin:48px 0;
+  background:rgba(255,255,255,0.04); border:1px solid rgba(244,180,0,0.2); border-radius:var(--radius-lg); overflow:hidden; margin:48px 0;
 }
-.stats-row__item { background:#fff; padding:36px 24px; text-align:center; }
+.stats-row__item { background:rgba(255,255,255,0.03); padding:36px 24px; text-align:center; }
 .stats-row__num { font-size:36px; font-weight:800; color:#F4B400; display:block; line-height:1; margin-bottom:6px; }
-.stats-row__label { font-size:13px; color:var(--gray); font-weight:500; }
+.stats-row__label { font-size:13px; color:rgba(255,255,255,0.45); font-weight:500; }
 
 /* ── Values (about page) ── */
 .values-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:28px; }
 .value-card {
-  background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); padding:36px 28px; text-align:center;
-  box-shadow:var(--shadow); transition:all var(--transition);
+  background:#162C4F; border:1px solid rgba(255,255,255,0.08); border-radius:var(--radius-lg); padding:36px 28px; text-align:center;
+  box-shadow:0 4px 24px rgba(0,0,0,0.4); transition:all var(--transition);
 }
-.value-card:hover { transform:translateY(-4px); box-shadow:var(--shadow-lg); }
+.value-card:hover { transform:translateY(-4px); box-shadow:0 8px 48px rgba(0,0,0,0.55); }
 .value-card__icon {
   width:64px; height:64px; background:rgba(244,180,0,0.1); border-radius:50%;
   display:flex; align-items:center; justify-content:center; margin:0 auto 20px;
 }
-.value-card h3 { font-size:18px; font-weight:700; margin-bottom:12px; }
-.value-card p { font-size:14px; color:var(--gray); line-height:1.7; }
+.value-card h3 { font-size:18px; font-weight:700; margin-bottom:12px; color:#fff; }
+.value-card p { font-size:14px; color:rgba(255,255,255,0.55); line-height:1.7; }
 
 /* ── Certifications (about page) ── */
 .certifications { display:flex; flex-wrap:wrap; gap:16px; margin-top:32px; }
 .cert-badge {
   display:flex; align-items:center; gap:10px;
-  background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:12px 20px; box-shadow:var(--shadow);
+  background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:var(--radius); padding:12px 20px;
 }
-.cert-badge strong { font-size:14px; font-weight:700; display:block; }
-.cert-badge span { font-size:12px; color:var(--gray); }
+.cert-badge strong { font-size:14px; font-weight:700; display:block; color:#fff; }
+.cert-badge span { font-size:12px; color:rgba(255,255,255,0.5); }
 
 /* ── Rates table (pricing page) ── */
-.rates-table-wrap { background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow); margin-bottom:48px; }
-.rates-table { width:100%; border-collapse:collapse; }
-.rates-table th { background:#0B1F3A; color:#fff; padding:14px 20px; text-align:left; font-size:13px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; }
+.rates-table-wrap { background:#162C4F; border:1px solid rgba(255,255,255,0.08); border-radius:var(--radius-lg); overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.4); margin-bottom:48px; }
+.rates-table { width:100%; border-collapse:collapse; background:#162C4F; }
+.rates-table th { background:rgba(244,180,0,0.08); color:var(--gold); padding:14px 20px; text-align:left; font-size:13px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; }
 .rates-table th:last-child { text-align:right; }
-.rates-table td { padding:14px 20px; font-size:14px; border-bottom:1px solid var(--border); }
+.rates-table td { padding:14px 20px; font-size:14px; color:rgba(255,255,255,0.75); border-bottom:1px solid rgba(255,255,255,0.05); }
 .rates-table tr:last-child td { border-bottom:none; }
+.rates-table td:first-child { color:#fff; }
 .rates-table td:last-child { text-align:right; font-weight:700; color:#F4B400; font-size:15px; }
-.rates-table tr:hover td { background:var(--off-white); }
+.rates-table tr:hover td { background:rgba(255,255,255,0.03); }
 
 /* ── Financing (pricing page) ── */
 .financing-section {
@@ -2054,10 +2056,10 @@
 /* ── Contact page ── */
 .contact-page__grid { display:grid; grid-template-columns:1fr 1.2fr; gap:64px; align-items:start; }
 .contact-info-block { display:flex; flex-direction:column; gap:32px; }
-.contact-info-block h3 { font-size:22px; font-weight:700; margin-bottom:4px; }
-.contact-info-block p { font-size:15px; color:var(--gray); line-height:1.7; }
-.airport-info { background:var(--off-white); border-radius:var(--radius-lg); padding:32px; border:1px solid var(--border); }
-.airport-info h4 { font-size:16px; font-weight:700; margin-bottom:16px; }
+.contact-info-block h3 { font-size:22px; font-weight:700; margin-bottom:4px; color:#fff; }
+.contact-info-block p { font-size:15px; color:rgba(255,255,255,0.6); line-height:1.7; }
+.airport-info { background:rgba(255,255,255,0.04); border-radius:var(--radius-lg); padding:32px; border:1px solid rgba(255,255,255,0.08); }
+.airport-info h4 { font-size:16px; font-weight:700; margin-bottom:16px; color:#fff; }
 .map-placeholder {
   background:linear-gradient(135deg,#0B1F3A 0%,#0d1930 100%); border-radius:var(--radius-lg);
   height:220px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px;
@@ -2090,9 +2092,9 @@
 .waitlist-section { background: var(--off-white); }
 .waitlist__inner { display: grid; grid-template-columns: 1fr 1.1fr; gap: 72px; align-items: start; }
 .waitlist__text .section__title { text-align: left; }
-.waitlist__text p { color: var(--gray); line-height: 1.8; margin-bottom: 24px; }
+.waitlist__text p { color: rgba(255,255,255,0.6); line-height: 1.8; margin-bottom: 24px; }
 .waitlist__perks { list-style: none; display: flex; flex-direction: column; gap: 10px; }
-.waitlist__perks li { font-size: 15px; font-weight: 500; color: var(--text); display: flex; align-items: center; gap: 10px; }
+.waitlist__perks li { font-size: 15px; font-weight: 500; color: #fff; display: flex; align-items: center; gap: 10px; }
 .waitlist__perks li::before { content: '→'; color: var(--gold); font-weight: 700; }
 @media (max-width: 768px) {
   .waitlist__inner { grid-template-columns: 1fr; gap: 48px; }
@@ -2114,16 +2116,16 @@
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
-  color: var(--text);
+  color: #fff;
 }
 .checkbox-item input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
   width: 16px;
   height: 16px;
-  border: 1.5px solid #c8cdd4;
+  border: 1.5px solid rgba(255,255,255,0.2);
   border-radius: 4px;
-  background: #fff;
+  background: rgba(255,255,255,0.04);
   cursor: pointer;
   flex-shrink: 0;
   transition: all 0.15s ease;
@@ -2167,13 +2169,14 @@
   display: flex;
 }
 .exit-popup {
-  background: #fff;
+  background: #162C4F;
+  color: #fff;
   border-radius: 16px;
   max-width: 520px;
   width: 100%;
   padding: 48px 40px 40px;
   position: relative;
-  box-shadow: 0 24px 80px rgba(11,31,58,0.25);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5);
   animation: popupIn 0.25s ease;
 }
 @keyframes popupIn {
@@ -2187,12 +2190,12 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--gray);
+  color: rgba(255,255,255,0.4);
   padding: 4px;
   line-height: 1;
   transition: color 0.15s;
 }
-.exit-popup__close:hover { color: var(--navy); }
+.exit-popup__close:hover { color: #fff; }
 .exit-popup__eyebrow {
   font-size: 11px;
   font-weight: 700;
@@ -2204,13 +2207,13 @@
 .exit-popup h2 {
   font-size: 26px;
   font-weight: 800;
-  color: var(--navy);
+  color: #fff;
   margin-bottom: 10px;
   line-height: 1.2;
 }
 .exit-popup p {
   font-size: 15px;
-  color: var(--gray);
+  color: rgba(255,255,255,0.6);
   line-height: 1.7;
   margin-bottom: 24px;
 }
