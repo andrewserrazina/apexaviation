@@ -2111,12 +2111,13 @@
 }
 .checkbox-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
   color: #fff;
+  line-height: 1.4;
 }
 .checkbox-item input[type="checkbox"] {
   appearance: none;
@@ -2130,6 +2131,7 @@
   flex-shrink: 0;
   transition: all 0.15s ease;
   position: relative;
+  margin-top: 2px;
 }
 .checkbox-item input[type="checkbox"]:checked {
   background: var(--gold);
