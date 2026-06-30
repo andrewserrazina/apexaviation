@@ -112,109 +112,173 @@
 
   <section class="section section--light">
     <div class="container">
-      <div style="max-width:800px;margin:0 auto;color:rgba(255,255,255,0.65);line-height:1.9;font-size:16px">
+      <!-- STAT STRIP -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:rgba(255,255,255,0.06);border-radius:14px;overflow:hidden;margin-bottom:64px">
+        <div style="background:#0b1627;padding:28px 24px;text-align:center">
+          <div style="font-size:36px;font-weight:800;color:var(--gold);line-height:1">50</div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-top:6px">Hours Required</div>
+        </div>
+        <div style="background:#0b1627;padding:28px 24px;text-align:center">
+          <div style="font-size:36px;font-weight:800;color:var(--gold);line-height:1">20</div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-top:6px">AATD Sim Hours</div>
+        </div>
+        <div style="background:#0b1627;padding:28px 24px;text-align:center">
+          <div style="font-size:36px;font-weight:800;color:var(--gold);line-height:1">55</div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-top:6px">Apex Package Hours</div>
+        </div>
+        <div style="background:#0b1627;padding:28px 24px;text-align:center">
+          <div style="font-size:36px;font-weight:800;color:var(--gold);line-height:1">IMC</div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-top:6px">Ready. Not Just Legal.</div>
+        </div>
+      </div>
 
-        <h2 style="color:var(--white);font-size:26px;font-weight:800;margin:0 0 16px">How Apex Trains Instrument Pilots</h2>
-        <p style="margin-bottom:16px">Instrument flying is exactly what simulator-first training was built for. At Apex, IFR procedures — holds, approaches, partial panel, missed approach decisions — are taught in the AATD first. You can run the same ILS approach ten times in a row, fail an instrument mid-final, or program a sudden IMC encounter at cruise altitude. None of that is possible (or safe) to practice repeatedly in an actual aircraft.</p>
-        <p style="margin-bottom:24px">Once a procedure is solid in the sim, we take it to the aircraft. By that point it's application, not discovery — which means your aircraft hours are spent building real-world judgment, not re-learning what the simulator already taught you. Apex flies a FlightDesign CTSW based at San Marcos Regional Airport (KHYI).</p>
+      <div style="max-width:860px;margin:0 auto">
 
-        <h2 style="color:var(--white);font-size:26px;font-weight:800;margin:32px 0 16px">FAA Requirements for the Instrument Rating</h2>
-        <p style="margin-bottom:24px">To earn your instrument rating under FAA Part 61, you'll need 50 hours of PIC cross-country time (accumulated as a private pilot), 40 hours of actual or simulated instrument time — of which at least 15 must be with a CFII and up to 20 can be in an approved AATD. You'll also need an IFR cross-country flight covering at least 250 nm with three different types of instrument approaches, and you must pass the Instrument Rating Airplane (IRA) written exam before your checkride.</p>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;background:rgba(255,255,255,0.05);border-radius:10px;padding:24px;margin-bottom:32px">
+        <!-- WHY IFR -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:center;margin-bottom:64px">
           <div>
-            <div style="color:rgba(255,255,255,0.65);font-size:14px;margin-bottom:2px">Total instrument time</div>
-            <div style="color:var(--white);font-weight:700">40 hrs minimum</div>
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Why Instrument Training</div>
+            <h2 style="color:var(--white);font-size:30px;font-weight:800;line-height:1.2;margin:0 0 16px">The rating that changes<br/>everything.</h2>
+            <p style="color:rgba(255,255,255,0.65);line-height:1.85;margin-bottom:16px">The instrument rating is the single biggest upgrade a VFR pilot can make. It opens up weather, altitude, airspace, and — most importantly — decision-making. A pilot with an instrument ticket doesn't just fly more. They fly with a completely different risk framework.</p>
+            <p style="color:rgba(255,255,255,0.65);line-height:1.85">At Apex, we front-load the simulator precisely because instrument training is where sim hours matter most. Approaches, holds, partial panel, unusual attitudes — you build the scan in the AATD before you ever manage it in actual IMC.</p>
           </div>
-          <div>
-            <div style="color:rgba(255,255,255,0.65);font-size:14px;margin-bottom:2px">CFII dual instruction</div>
-            <div style="color:var(--white);font-weight:700">15 hrs minimum</div>
-          </div>
-          <div>
-            <div style="color:rgba(255,255,255,0.65);font-size:14px;margin-bottom:2px">AATD simulator credit</div>
-            <div style="color:var(--white);font-weight:700">Up to 20 hrs (Part 61)</div>
-          </div>
-          <div>
-            <div style="color:rgba(255,255,255,0.65);font-size:14px;margin-bottom:2px">PIC cross-country time</div>
-            <div style="color:var(--white);font-weight:700">50 hrs (as private pilot)</div>
-          </div>
-          <div>
-            <div style="color:rgba(255,255,255,0.65);font-size:14px;margin-bottom:2px">IFR cross-country</div>
-            <div style="color:var(--white);font-weight:700">250 nm, 3 IAP types</div>
-          </div>
-          <div>
-            <div style="color:rgba(255,255,255,0.65);font-size:14px;margin-bottom:2px">Written exam (IRA)</div>
-            <div style="color:var(--white);font-weight:700">Must pass before checkride</div>
+          <div style="display:grid;gap:12px">
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px 24px;display:flex;align-items:flex-start;gap:16px">
+              <div style="background:var(--gold);color:#080f1e;font-weight:800;font-size:13px;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+              <div>
+                <div style="color:var(--white);font-weight:700;margin-bottom:4px">Build the scan in the sim</div>
+                <div style="color:rgba(255,255,255,0.6);font-size:14px">Pause on the hard parts. Fail systems safely. Repeat until it's reflex.</div>
+              </div>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px 24px;display:flex;align-items:flex-start;gap:16px">
+              <div style="background:var(--gold);color:#080f1e;font-weight:800;font-size:13px;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
+              <div>
+                <div style="color:var(--white);font-weight:700;margin-bottom:4px">Apply it in actual IMC</div>
+                <div style="color:rgba(255,255,255,0.6);font-size:14px">Aircraft time is for applying what you've already internalized.</div>
+              </div>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px 24px;display:flex;align-items:flex-start;gap:16px">
+              <div style="background:var(--gold);color:#080f1e;font-weight:800;font-size:13px;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
+              <div>
+                <div style="color:var(--white);font-weight:700;margin-bottom:4px">Fly in the system</div>
+                <div style="color:rgba(255,255,255,0.6);font-size:14px">IFR clearances, holds, approaches to minimums — for real.</div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <h2 style="color:var(--white);font-size:26px;font-weight:800;margin:40px 0 16px">The Apex Instrument Rating Package</h2>
-        <p style="margin-bottom:24px">Our instrument program is built around the simulator. We use every FAA-allowed AATD hour — and add five more beyond the minimum — because the sim is where procedural fluency actually develops. You'll fly more approaches, more holds, and more unusual attitudes per session than any aircraft-only program can offer.</p>
-
-        <div style="background:#162C4F;color:#fff;border-radius:10px;padding:28px;max-width:480px;margin:24px auto">
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
-            <span style="color:rgba(255,255,255,0.8)">Flight instruction</span>
-            <span style="font-weight:700;color:#F4B400">30 hrs</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
-            <span style="color:rgba(255,255,255,0.8)">AATD simulator</span>
-            <span style="font-weight:700;color:#F4B400">25 hrs</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0 10px;border-top:2px solid #F4B400;margin-top:4px">
-            <span style="font-weight:800;font-size:18px">Total instrument time</span>
-            <span style="font-weight:800;font-size:18px;color:#F4B400">55 hrs</span>
-          </div>
-          <p style="font-size:13px;color:rgba(255,255,255,0.65);margin:12px 0 0;line-height:1.6">20 hrs AATD credit under Part 61 — 5 additional bonus sim hours included</p>
-        </div>
-
-        <p style="text-align:center;font-size:15px;margin:20px 0 8px;color:rgba(255,255,255,0.65)">Simulator: <strong>$90/hr</strong> &nbsp;|&nbsp; Instruction: <strong>$75/hr</strong> &nbsp;|&nbsp; Aircraft: <strong>$145/hr</strong></p>
-        <p style="text-align:center;font-size:14px;color:rgba(255,255,255,0.65);margin-bottom:32px">Full package pricing announced before January 2027. <a href="pricing.html" style="color:var(--gold)">View pricing</a>.</p>
-
-        <h2 style="color:var(--white);font-size:26px;font-weight:800;margin:40px 0 16px">What You'll Train For</h2>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:32px">
-          <div style="display:flex;align-items:flex-start;gap:10px">
-            <span style="color:#F4B400;font-weight:800;font-size:18px;line-height:1.4">&#10003;</span>
-            <span>IFR departure &amp; en route procedures</span>
-          </div>
-          <div style="display:flex;align-items:flex-start;gap:10px">
-            <span style="color:#F4B400;font-weight:800;font-size:18px;line-height:1.4">&#10003;</span>
-            <span>Precision &amp; non-precision approaches (ILS, RNAV, VOR)</span>
-          </div>
-          <div style="display:flex;align-items:flex-start;gap:10px">
-            <span style="color:#F4B400;font-weight:800;font-size:18px;line-height:1.4">&#10003;</span>
-            <span>Holding patterns &amp; course reversals</span>
-          </div>
-          <div style="display:flex;align-items:flex-start;gap:10px">
-            <span style="color:#F4B400;font-weight:800;font-size:18px;line-height:1.4">&#10003;</span>
-            <span>Partial panel flying &amp; unusual attitudes</span>
-          </div>
-          <div style="display:flex;align-items:flex-start;gap:10px">
-            <span style="color:#F4B400;font-weight:800;font-size:18px;line-height:1.4">&#10003;</span>
-            <span>Weather systems &amp; IFR decision-making</span>
-          </div>
-          <div style="display:flex;align-items:flex-start;gap:10px">
-            <span style="color:#F4B400;font-weight:800;font-size:18px;line-height:1.4">&#10003;</span>
-            <span>Lost comms, alternate planning &amp; ATC procedures</span>
+        <!-- FAA REQUIREMENTS -->
+        <div style="margin-bottom:64px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">FAA Requirements</div>
+          <h2 style="color:var(--white);font-size:28px;font-weight:800;margin:0 0 24px">What Part 61 Requires</h2>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px">
+              <div style="font-size:28px;font-weight:800;color:var(--gold)">50</div>
+              <div style="color:var(--white);font-weight:600;font-size:14px;margin-top:2px">XC PIC hours</div>
+              <div style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:4px">Prerequisite to begin</div>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px">
+              <div style="font-size:28px;font-weight:800;color:var(--gold)">40</div>
+              <div style="color:var(--white);font-weight:600;font-size:14px;margin-top:2px">Instrument hours</div>
+              <div style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:4px">Actual or simulated IMC</div>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px">
+              <div style="font-size:28px;font-weight:800;color:var(--gold)">20</div>
+              <div style="color:var(--white);font-weight:600;font-size:14px;margin-top:2px">AATD hours allowed</div>
+              <div style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:4px">Under §61.65(i)</div>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px">
+              <div style="font-size:28px;font-weight:800;color:var(--gold)">15</div>
+              <div style="color:var(--white);font-weight:600;font-size:14px;margin-top:2px">Dual instruction</div>
+              <div style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:4px">Hours with CFII required</div>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px">
+              <div style="font-size:28px;font-weight:800;color:var(--gold)">3</div>
+              <div style="color:var(--white);font-weight:600;font-size:14px;margin-top:2px">Dual in last 60 days</div>
+              <div style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:4px">Pre-checkride requirement</div>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px">
+              <div style="font-size:28px;font-weight:800;color:var(--gold)">ILS</div>
+              <div style="color:var(--white);font-weight:600;font-size:14px;margin-top:2px">at KHYI</div>
+              <div style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:4px">Real precision approaches</div>
+            </div>
           </div>
         </div>
 
-        <h2 style="color:var(--white);font-size:26px;font-weight:800;margin:40px 0 16px">Why the Simulator Is Central to Instrument Training</h2>
-        <p style="margin-bottom:20px">The simulator is where you can fail safely — and fail often enough to make the correct response automatic. Partial panel flying, unusual attitude recovery, engine-out ILS approaches: these are scenarios you need to practice repeatedly until they're procedural memory, not something you're figuring out under pressure. You can fly the same approach five times in a single session in the sim. In the aircraft, that's not realistic.</p>
-        <p style="margin-bottom:20px">Austin's weather is, honestly, one of the best reasons to fly here. But that same clear Texas sky means actual IMC for IFR training is genuinely hard to find. Waiting for instrument conditions adds weeks to a training timeline and makes scenario repetition nearly impossible. The AATD solves both problems — you fly in simulated IMC every session, on demand, with exactly the conditions your training requires.</p>
-        <p style="margin-bottom:40px">There's also a straightforward cost argument: 25 hours in the simulator at $90/hr versus 25 hours in the aircraft at $145+/hr represents a meaningful difference in what you spend to reach the same competency standard. We'd rather spend those hours in the sim doing five holds in a row than burning fuel to fly straight and level over Central Texas.</p>
-
-        <div style="background:rgba(255,255,255,0.05);border-radius:12px;border-left:4px solid #F4B400;padding:28px 32px;margin:40px 0">
-          <div style="font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#F4B400;margin-bottom:8px">Ground School</div>
-          <h3 style="color:var(--white);font-size:22px;font-weight:800;margin:0 0 12px">The Apex Advantage: Instrument Series</h3>
-          <p style="color:rgba(255,255,255,0.65);line-height:1.75;margin-bottom:20px">The IFR knowledge base is dense — regulations, approach plates, weather, avionics, and more. The Apex Advantage Instrument Series covers it all in live daily sessions with a real instructor. Attend each module on your schedule, and earn your IRA knowledge test endorsement when the series is complete.</p>
-          <a href="apex-advantage.html" class="btn btn--primary" style="display:inline-flex">Explore Apex Advantage &#8594;</a>
+        <!-- PACKAGE CARD -->
+        <div style="margin-bottom:64px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">The Apex Package · Most Popular</div>
+          <h2 style="color:var(--white);font-size:28px;font-weight:800;margin:0 0 24px">Maximum Sim. Minimum Spend.</h2>
+          <div style="background:linear-gradient(135deg,#162C4F 0%,#0d1e35 100%);border:2px solid var(--gold);border-radius:16px;padding:36px;max-width:560px;box-shadow:0 0 48px rgba(244,180,0,0.12)">
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);margin-bottom:16px">Part 61 · Most Popular</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.08)">
+              <span style="color:rgba(255,255,255,0.75);font-size:15px">Flight instruction</span>
+              <span style="font-weight:700;color:var(--white);font-size:16px">30 hrs</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.08)">
+              <span style="color:rgba(255,255,255,0.75);font-size:15px">AATD simulator time</span>
+              <span style="font-weight:700;color:var(--gold);font-size:16px">25 hrs</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 0 4px">
+              <span style="font-weight:800;font-size:20px;color:var(--white)">Total</span>
+              <span style="font-weight:800;font-size:24px;color:var(--gold)">55 hrs</span>
+            </div>
+            <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:16px;margin-top:16px">
+              <div style="font-size:13px;color:rgba(255,255,255,0.5);line-height:1.7">Simulator: <strong style="color:rgba(255,255,255,0.8)">$90/hr</strong> &nbsp;·&nbsp; Instruction: <strong style="color:rgba(255,255,255,0.8)">$75/hr</strong> &nbsp;·&nbsp; Aircraft: <strong style="color:rgba(255,255,255,0.8)">$145/hr</strong></div>
+              <div style="font-size:13px;color:rgba(255,255,255,0.45);margin-top:6px">Full package pricing announced before January 2027. <a href="pricing.html" style="color:var(--gold)">View pricing →</a></div>
+            </div>
+          </div>
         </div>
 
-        <div style="text-align:center;padding:40px 0;border-top:1px solid rgba(0,0,0,0.08)">
-          <h3 style="color:var(--white);font-size:22px;font-weight:800;margin:0 0 24px">Ready to Earn Your Instrument Rating?</h3>
+        <!-- WHAT YOU'LL LEARN -->
+        <div style="margin-bottom:64px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Curriculum</div>
+          <h2 style="color:var(--white);font-size:28px;font-weight:800;margin:0 0 24px">What You'll Master</h2>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:18px 20px;display:flex;align-items:center;gap:14px">
+              <span style="color:var(--gold);font-size:20px;flex-shrink:0">🎯</span>
+              <span style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Precision &amp; non-precision approaches</span>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:18px 20px;display:flex;align-items:center;gap:14px">
+              <span style="color:var(--gold);font-size:20px;flex-shrink:0">🔄</span>
+              <span style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Holds, intercepts &amp; procedure turns</span>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:18px 20px;display:flex;align-items:center;gap:14px">
+              <span style="color:var(--gold);font-size:20px;flex-shrink:0">📡</span>
+              <span style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">VOR, ILS, RNAV / GPS navigation</span>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:18px 20px;display:flex;align-items:center;gap:14px">
+              <span style="color:var(--gold);font-size:20px;flex-shrink:0">🧭</span>
+              <span style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Partial panel &amp; unusual attitude recovery</span>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:18px 20px;display:flex;align-items:center;gap:14px">
+              <span style="color:var(--gold);font-size:20px;flex-shrink:0">🗣</span>
+              <span style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">IFR clearances &amp; ATC communication</span>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:18px 20px;display:flex;align-items:center;gap:14px">
+              <span style="color:var(--gold);font-size:20px;flex-shrink:0">⛈</span>
+              <span style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Weather analysis &amp; IMC decision-making</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- APEX ADVANTAGE CALLOUT -->
+        <div style="background:rgba(244,180,0,0.06);border:1px solid rgba(244,180,0,0.25);border-radius:16px;padding:36px;margin-bottom:48px;display:flex;gap:32px;align-items:center;flex-wrap:wrap">
+          <div style="flex:1;min-width:240px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:10px">Ground School · Sept 2026</div>
+            <h3 style="color:var(--white);font-size:22px;font-weight:800;margin:0 0 12px">Start with the Apex Advantage</h3>
+            <p style="color:rgba(255,255,255,0.65);line-height:1.75;margin:0">Master the instrument syllabus in live virtual sessions before the sim opens. Earn your IRA knowledge test endorsement and arrive ready to fly, not catch up.</p>
+          </div>
+          <a href="apex-advantage.html" class="btn btn--primary" style="white-space:nowrap;flex-shrink:0">Explore Ground School &rarr;</a>
+        </div>
+
+        <!-- BOTTOM CTA -->
+        <div style="text-align:center;padding:48px 32px;background:linear-gradient(135deg,#162C4F,#0d1e35);border-radius:16px;border:1px solid rgba(255,255,255,0.06)">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Opening January 2027</div>
+          <h3 style="color:var(--white);font-size:28px;font-weight:800;margin:0 0 12px">Ready to fly IFR?</h3>
+          <p style="color:rgba(255,255,255,0.6);margin:0 auto 28px;max-width:440px;line-height:1.7">Join the founding member waitlist and lock in your spot before public enrollment opens.</p>
           <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
-            <a href="contact.html" class="btn btn--primary">Book a Discovery Call</a>
+            <a href="home.html#waitlist" class="btn btn--primary">Join the Waitlist</a>
             <a href="pricing.html" class="btn btn--outline">View Pricing</a>
           </div>
         </div>
