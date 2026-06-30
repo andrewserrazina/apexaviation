@@ -22,6 +22,48 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="pages.css" />
+  <style>
+    /* ── Private Pilot Training — mobile overrides ── */
+    @media (max-width: 640px) {
+      /* Apex Method: stack text + step cards vertically */
+      .ppt-method-grid {
+        grid-template-columns: 1fr !important;
+        gap: 28px !important;
+      }
+      /* Curriculum: stack to single column */
+      .ppt-curriculum-grid {
+        grid-template-columns: 1fr !important;
+      }
+      /* Section spacing */
+      .ppt-section-block {
+        margin-bottom: 40px !important;
+      }
+      /* Who This Is For card: tighten padding */
+      .ppt-for-card {
+        padding: 28px 20px !important;
+      }
+      /* Apex Advantage callout: tighten padding */
+      .ppt-callout {
+        padding: 24px 20px !important;
+        gap: 20px !important;
+      }
+      /* Bottom CTA: tighten padding */
+      .ppt-cta {
+        padding: 36px 20px !important;
+      }
+      .ppt-cta h3 {
+        font-size: 22px !important;
+      }
+      /* Section headings */
+      .ppt-h2 {
+        font-size: 22px !important;
+      }
+      /* Apex Method headline */
+      .ppt-method-headline {
+        font-size: 24px !important;
+      }
+    }
+  </style>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -127,10 +169,10 @@
       <div style="max-width:860px;margin:0 auto">
 
         <!-- HOW APEX TRAINS -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:center;margin-bottom:64px">
+        <div class="ppt-method-grid ppt-section-block" style="display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:center;margin-bottom:64px">
           <div>
             <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">The Apex Method</div>
-            <h2 style="color:var(--white);font-size:30px;font-weight:800;line-height:1.2;margin:0 0 16px">Sim first.<br/>Aircraft to confirm.</h2>
+            <h2 class="ppt-method-headline" style="color:var(--white);font-size:30px;font-weight:800;line-height:1.2;margin:0 0 16px">Sim first.<br/>Aircraft to confirm.</h2>
             <p style="color:rgba(255,255,255,0.65);line-height:1.85;margin-bottom:16px">Every maneuver, procedure, and emergency scenario is introduced in our AATD first. You learn without pressure, repeat without burning fuel, and debrief after every pass. By the time we take a skill to the aircraft, you already know what to do.</p>
             <p style="color:rgba(255,255,255,0.65);line-height:1.85">The airplane is where you <em style="color:var(--white);font-style:normal;font-weight:600">apply and confirm</em> what the simulator taught you — not where you learn it for the first time. This produces faster progress, higher retention, and pilots who arrive at the checkride genuinely prepared.</p>
           </div>
@@ -160,9 +202,9 @@
         </div>
 
         <!-- FAA REQUIREMENTS -->
-        <div style="margin-bottom:64px">
+        <div class="ppt-section-block" style="margin-bottom:64px">
           <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">FAA Requirements</div>
-          <h2 style="color:var(--white);font-size:28px;font-weight:800;margin:0 0 24px">What Part 61 Requires</h2>
+          <h2 class="ppt-h2" style="color:var(--white);font-size:28px;font-weight:800;margin:0 0 24px">What Part 61 Requires</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
             <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px">
               <div style="font-size:28px;font-weight:800;color:var(--gold)">40</div>
@@ -200,10 +242,10 @@
         </div>
 
         <!-- WHAT YOU'LL LEARN -->
-        <div style="margin-bottom:64px">
+        <div class="ppt-section-block" style="margin-bottom:64px">
           <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Curriculum</div>
-          <h2 style="color:var(--white);font-size:28px;font-weight:800;margin:0 0 24px">What You'll Learn</h2>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <h2 class="ppt-h2" style="color:var(--white);font-size:28px;font-weight:800;margin:0 0 24px">What You'll Learn</h2>
+          <div class="ppt-curriculum-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:18px 20px;display:flex;align-items:center;gap:14px">
               <span style="color:var(--gold);font-size:20px;flex-shrink:0">✈</span>
               <span style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Aircraft systems &amp; aerodynamics</span>
@@ -232,7 +274,7 @@
         </div>
 
         <!-- WHO THIS IS FOR -->
-        <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:40px;margin-bottom:48px">
+        <div class="ppt-for-card" style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:40px;margin-bottom:48px">
           <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Is This For You?</div>
           <h2 style="color:var(--white);font-size:26px;font-weight:800;margin:0 0 16px">Built for people with real lives.</h2>
           <p style="color:rgba(255,255,255,0.65);line-height:1.85;margin-bottom:16px">If you've been thinking about learning to fly for years — or decades — and life keeps getting in the way, Apex is designed around you. Our simulator sessions don't depend on good weather, aircraft availability, or a two-hour block in the middle of a workday. We schedule around your life, not the other way around.</p>
@@ -240,19 +282,19 @@
         </div>
 
         <!-- APEX ADVANTAGE CALLOUT -->
-        <div style="background:rgba(244,180,0,0.06);border:1px solid rgba(244,180,0,0.25);border-radius:16px;padding:36px;margin-bottom:48px;display:flex;gap:32px;align-items:center;flex-wrap:wrap">
-          <div style="flex:1;min-width:240px">
+        <div class="ppt-callout" style="background:rgba(244,180,0,0.06);border:1px solid rgba(244,180,0,0.25);border-radius:16px;padding:36px;margin-bottom:48px;display:flex;gap:32px;align-items:center;flex-wrap:wrap">
+          <div style="flex:1;min-width:200px">
             <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:10px">Ground School · Sept 2026</div>
             <h3 style="color:var(--white);font-size:22px;font-weight:800;margin:0 0 12px">Start with the Apex Advantage</h3>
             <p style="color:rgba(255,255,255,0.65);line-height:1.75;margin:0">Live virtual sessions with Andrew — attend each module on your schedule, earn your PAR endorsement before the sim opens.</p>
           </div>
-          <a href="apex-advantage-private-pilot.html" class="btn btn--primary" style="white-space:nowrap;flex-shrink:0">Explore Private Pilot Ground School &rarr;</a>
+          <a href="apex-advantage-private-pilot.html" class="btn btn--primary" style="flex-shrink:0;text-align:center">Explore Private Pilot Ground School &rarr;</a>
         </div>
 
         <!-- BOTTOM CTA -->
-        <div style="text-align:center;padding:48px 32px;background:linear-gradient(135deg,#162C4F,#0d1e35);border-radius:16px;border:1px solid rgba(255,255,255,0.06)">
+        <div class="ppt-cta" style="text-align:center;padding:48px 32px;background:linear-gradient(135deg,#162C4F,#0d1e35);border-radius:16px;border:1px solid rgba(255,255,255,0.06)">
           <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Opening January 2027</div>
-          <h3 style="color:var(--white);font-size:28px;font-weight:800;margin:0 0 12px">Ready to earn your wings?</h3>
+          <h3 class="ppt-cta" style="color:var(--white);font-size:28px;font-weight:800;margin:0 0 12px">Ready to earn your wings?</h3>
           <p style="color:rgba(255,255,255,0.6);margin:0 auto 28px;max-width:440px;line-height:1.7">Join the founding member waitlist and lock in your spot before public enrollment opens.</p>
           <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
             <a href="home.html#waitlist" class="btn btn--primary">Join the Waitlist</a>
