@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Private Pilot Ground School | Apex Advantage — Apex Aviation</title>
+  <meta name="description" content="The Apex Advantage Private Pilot Ground School prepares you for the FAA Knowledge Exam, checkride oral, and real-world flying — not just memorization. Live virtual sessions. Launching September 2026." />
+  <meta property="og:title" content="Private Pilot Ground School | Apex Advantage" />
+  <meta property="og:description" content="21 modules. 7 phases. One standard: real proficiency. Live virtual ground school for aspiring private pilots. Launching September 2026." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://apexaviationtx.com/apex-advantage-private-pilot.html" />
+  <meta property="og:image" content="https://apexaviationtx.com/apexwhite.png" />
+  <meta property="og:site_name" content="Apex Aviation" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Private Pilot Ground School | Apex Advantage" />
+  <meta name="twitter:description" content="21 modules. 7 phases. Live virtual ground school built for real-world proficiency — not just passing the written. Launching September 2026." />
+  <meta name="twitter:image" content="https://apexaviationtx.com/apexwhite.png" />
+  <link rel="canonical" href="https://apexaviationtx.com/apex-advantage-private-pilot.html" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="pages.css" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Course",
+    "name": "Apex Advantage Private Pilot Ground School",
+    "description": "A 21-module, 7-phase live virtual ground school covering aerodynamics, airspace, navigation, weather, performance, risk management, and checkride preparation for aspiring private pilots.",
+    "provider": {
+      "@type": "EducationalOrganization",
+      "name": "Apex Aviation",
+      "url": "https://apexaviationtx.com"
+    },
+    "offers": {
+      "@type": "Offer",
+      "price": "25",
+      "priceCurrency": "USD",
+      "priceSpecification": {
+        "@type": "UnitPriceSpecification",
+        "price": "25",
+        "priceCurrency": "USD",
+        "unitText": "session"
+      },
+      "availability": "https://schema.org/PreOrder",
+      "validFrom": "2026-09-01"
+    },
+    "educationalCredentialAwarded": "FAA PAR Knowledge Test Endorsement",
+    "courseMode": "online",
+    "availableLanguage": "English",
+    "inLanguage": "en-US",
+    "teaches": ["Aerodynamics","Aircraft Systems","Airspace","FARs","VFR Navigation","Aviation Weather","Weight and Balance","Risk Management","Aeronautical Decision Making","Checkride Preparation"],
+    "url": "https://apexaviationtx.com/apex-advantage-private-pilot.html"
+  }
+  </script>
+  <!-- Google Analytics 4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-JFPBCF2GXE"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-JFPBCF2GXE');
+  </script>
+  <!-- Microsoft Clarity -->
+  <script>
+    (function(c,l,a,r,i,t,y){
+      c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+      t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+      y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window,document,'clarity','script','x95g0qe0g6');
+  </script>
+  <style>
+    /* ── Page-specific additions ── */
+    .phase-timeline {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 0;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .phase-card {
+      background: #162C4F;
+      padding: 28px 24px;
+      border-right: 1px solid rgba(255,255,255,0.07);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      position: relative;
+      transition: background 0.2s;
+    }
+    .phase-card:last-child { border-right: none; }
+    .phase-card:hover { background: #1c3660; }
+    .phase-num {
+      font-size: 38px;
+      font-weight: 800;
+      color: rgba(244,180,0,0.18);
+      line-height: 1;
+      margin-bottom: 8px;
+      font-family: 'Montserrat', sans-serif;
+    }
+    .phase-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .phase-sub {
+      font-size: 12px;
+      color: rgba(255,255,255,0.45);
+      margin-top: 4px;
+    }
+
+    /* Curriculum accordion */
+    .phase-section {
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .phase-section__header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 22px 28px;
+      background: #162C4F;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.2s;
+    }
+    .phase-section__header:hover { background: #1c3660; }
+    .phase-section__header[aria-expanded="true"] { background: #1c3660; }
+    .phase-section__num {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--gold);
+      color: #080f1e;
+      font-size: 14px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .phase-section__label {
+      flex: 1;
+    }
+    .phase-section__label-eyebrow {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 2px;
+    }
+    .phase-section__label-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .phase-section__chevron {
+      transition: transform 0.25s;
+      flex-shrink: 0;
+    }
+    .phase-section__header[aria-expanded="true"] .phase-section__chevron {
+      transform: rotate(180deg);
+    }
+    .phase-section__body {
+      display: none;
+      padding: 0 28px 28px;
+      background: #0f2240;
+    }
+    .phase-section__body.open { display: block; }
+
+    .module-card {
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
+      padding: 20px 22px;
+      margin-top: 14px;
+      background: #162C4F;
+    }
+    .module-card__title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .module-card__badge {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gold);
+      background: rgba(244,180,0,0.1);
+      padding: 2px 8px;
+      border-radius: 100px;
+    }
+    .module-topics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .module-topics li {
+      font-size: 12px;
+      color: rgba(255,255,255,0.65);
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 6px;
+      padding: 3px 10px;
+    }
+
+    /* Difference cards */
+    .diff-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+    }
+    .diff-card {
+      background: #162C4F;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 30px 26px;
+    }
+    .diff-card__icon {
+      width: 46px;
+      height: 46px;
+      border-radius: 12px;
+      background: rgba(244,180,0,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+    .diff-card h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      margin: 0 0 8px;
+    }
+    .diff-card p {
+      font-size: 14px;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.75;
+      margin: 0;
+    }
+
+    /* Who it's for list */
+    .for-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .for-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      background: #162C4F;
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
+      padding: 18px 20px;
+      color: rgba(255,255,255,0.85);
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .for-list li span.check {
+      color: var(--gold);
+      font-size: 16px;
+      margin-top: 1px;
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 640px) {
+      .phase-timeline { grid-template-columns: 1fr 1fr; }
+      .phase-section__header { padding: 18px 20px; }
+      .phase-section__body { padding: 0 20px 24px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="nav" id="nav">
+    <div class="container nav__inner">
+      <a href="home.html" class="nav__logo">
+        <img src="apexwhite.png" alt="Apex Aviation" height="40" style="display:block;width:auto" />
+      </a>
+      <nav class="nav__links">
+        <a href="programs.html">Services</a>
+        <div class="nav__dropdown" id="trainingDropdown">
+          <button class="nav__dropdown-toggle" aria-expanded="false" aria-haspopup="true">
+            Training
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="nav__dropdown-menu">
+            <a href="private-pilot-training.html">Private Pilot</a>
+            <a href="instrument-rating-training.html">Instrument Rating</a>
+            <a href="commercial-pilot-training.html">Commercial Pilot</a>
+            <a href="apex-advantage.html">Apex Advantage</a>
+          </div>
+        </div>
+        <a href="fleet.html">Simulator</a>
+        <a href="about.html">About</a>
+        <a href="instructors.html">Team</a>
+        <a href="pricing.html">Pricing</a>
+        <a href="contact.html" class="btn btn--nav">Book a Session</a>
+      </nav>
+      <button class="nav__hamburger" id="hamburger" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <div class="nav__mobile" id="mobileMenu">
+      <a href="programs.html">Services</a>
+      <a href="private-pilot-training.html">Private Pilot Training</a>
+      <a href="instrument-rating-training.html">Instrument Rating</a>
+      <a href="commercial-pilot-training.html">Commercial Pilot</a>
+      <a href="apex-advantage.html">Apex Advantage Ground School</a>
+      <a href="fleet.html">Simulator</a>
+      <a href="about.html">About</a>
+      <a href="instructors.html">Team</a>
+      <a href="pricing.html">Pricing</a>
+      <a href="contact.html">Book a Session</a>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       HERO
+  ════════════════════════════════════════════════════════════ -->
+  <section class="page-hero" style="min-height:560px;display:flex;align-items:center">
+    <div class="page-hero__bg-text">GROUND SCHOOL</div>
+    <div class="container page-hero__inner" style="padding-top:80px;padding-bottom:80px">
+      <div class="section__eyebrow">Apex Advantage · Private Pilot Series · Launching September 2026</div>
+      <h1 class="page-hero__title" style="max-width:700px">Train Beyond<br /><span>the Checkride.&#8482;</span></h1>
+      <p class="page-hero__sub" style="max-width:620px">The Apex Advantage Private Pilot Ground School is designed to prepare aspiring pilots for the FAA Knowledge Exam, practical test, and the real-world decision-making skills required to fly safely and confidently.</p>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:36px">
+        <a href="home.html#waitlist" class="btn btn--primary">Start Training</a>
+        <a href="contact.html" class="btn btn--ghost">Schedule a Discovery Call</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       FEATURE STRIP
+  ════════════════════════════════════════════════════════════ -->
+  <div style="background:rgba(244,180,0,0.07);border-top:1px solid rgba(244,180,0,0.15);border-bottom:1px solid rgba(244,180,0,0.15)">
+    <div class="container" style="display:flex;flex-wrap:wrap;gap:0;justify-content:center">
+      <div style="display:flex;align-items:center;gap:10px;padding:18px 36px;border-right:1px solid rgba(244,180,0,0.12)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 6v6l4 2" stroke="#F4B400" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="10" stroke="#F4B400" stroke-width="2"/></svg>
+        <span style="font-size:13px;font-weight:600;color:#fff">21 Structured Modules</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:18px 36px;border-right:1px solid rgba(244,180,0,0.12)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span style="font-size:13px;font-weight:600;color:#fff">100% Live &amp; Virtual</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:18px 36px;border-right:1px solid rgba(244,180,0,0.12)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span style="font-size:13px;font-weight:600;color:#fff">$25 Per Session</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:18px 36px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span style="font-size:13px;font-weight:600;color:#fff">PAR Endorsement Included</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       INTRODUCTION / PHILOSOPHY
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--light">
+    <div class="container">
+      <div style="max-width:900px;margin:0 auto">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center">
+          <div>
+            <div class="section__eyebrow">Why It's Different</div>
+            <h2 style="color:var(--white);font-size:30px;font-weight:800;line-height:1.25;margin:0 0 20px">Most ground schools teach you to pass.<br/><span style="color:var(--gold)">We teach you to fly.</span></h2>
+            <p style="color:rgba(255,255,255,0.65);line-height:1.85;margin-bottom:16px">The typical ground school is built around one goal: getting you through the written exam. Video lectures. Practice quizzes. Move on. What's missing is the deeper understanding required to make good decisions in the actual airplane.</p>
+            <p style="color:rgba(255,255,255,0.65);line-height:1.85;margin-bottom:24px">Apex Advantage is live, instructor-led, and scenario-driven. Every module connects theory to real-world application so that by the time you sit for your oral exam — and long after your checkride — you understand aviation the way a safe pilot should.</p>
+            <blockquote style="border-left:3px solid var(--gold);padding:14px 20px;margin:0;background:rgba(244,180,0,0.06);border-radius:0 10px 10px 0">
+              <p style="color:var(--white);font-size:16px;font-style:italic;font-weight:600;line-height:1.6;margin:0">"At Apex Aviation, we believe great pilots are built through understanding, not memorization."</p>
+            </blockquote>
+          </div>
+          <div style="display:grid;gap:12px">
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:14px">
+              <div style="color:var(--gold);font-size:18px;flex-shrink:0">✈</div>
+              <div style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">FAA Knowledge Exam preparation</div>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:14px">
+              <div style="color:var(--gold);font-size:18px;flex-shrink:0">📋</div>
+              <div style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Oral exam &amp; checkride preparation</div>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:14px">
+              <div style="color:var(--gold);font-size:18px;flex-shrink:0">🧭</div>
+              <div style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Real-world aeronautical decision-making</div>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:14px">
+              <div style="color:var(--gold);font-size:18px;flex-shrink:0">🎯</div>
+              <div style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Scenario-based learning every session</div>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:14px">
+              <div style="color:var(--gold);font-size:18px;flex-shrink:0">🖥</div>
+              <div style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Simulator-enhanced training available</div>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:14px">
+              <div style="color:var(--gold);font-size:18px;flex-shrink:0">👨‍✈️</div>
+              <div style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Direct instructor access throughout</div>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:14px">
+              <div style="color:var(--gold);font-size:18px;flex-shrink:0">🔬</div>
+              <div style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Modern, technique-driven instruction</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PROGRAM OVERVIEW — 7 PHASES
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section" style="background:#0b1627">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Program Overview</div>
+        <h2 class="section__title">Seven phases.<br/><em class="accent">One complete pilot.</em></h2>
+        <p class="section__desc">Students progress through seven structured training phases — from the fundamentals of flight to checkride-day confidence — building on each layer as they go.</p>
+      </div>
+      <div class="phase-timeline" style="max-width:1040px;margin:0 auto">
+        <div class="phase-card">
+          <div class="phase-num">01</div>
+          <div class="phase-title">Pilot Foundations</div>
+          <div class="phase-sub">Aero · Systems · Certificates</div>
+        </div>
+        <div class="phase-card">
+          <div class="phase-num">02</div>
+          <div class="phase-title">Airspace &amp; Regulations</div>
+          <div class="phase-sub">FARs · Airspace · Airports</div>
+        </div>
+        <div class="phase-card">
+          <div class="phase-num">03</div>
+          <div class="phase-title">Navigation</div>
+          <div class="phase-sub">Charts · DR · GPS · VOR</div>
+        </div>
+        <div class="phase-card">
+          <div class="phase-num">04</div>
+          <div class="phase-title">Weather</div>
+          <div class="phase-sub">Theory · Products · ADM</div>
+        </div>
+        <div class="phase-card">
+          <div class="phase-num">05</div>
+          <div class="phase-title">Performance &amp; Planning</div>
+          <div class="phase-sub">W&amp;B · Charts · XC Planning</div>
+        </div>
+        <div class="phase-card">
+          <div class="phase-num">06</div>
+          <div class="phase-title">Risk Management</div>
+          <div class="phase-sub">ADM · Human Factors · Emerg.</div>
+        </div>
+        <div class="phase-card" style="border-right:none">
+          <div class="phase-num">07</div>
+          <div class="phase-title">Checkride Success</div>
+          <div class="phase-sub">ACS · Mock Oral · Test Day</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       DETAILED CURRICULUM — ACCORDION
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--light" id="curriculum">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Full Curriculum</div>
+        <h2 class="section__title">21 modules.<br/><em class="accent">Nothing left out.</em></h2>
+        <p class="section__desc">Each phase expands into detailed modules that cover theory, practical application, and real-world scenarios. Select any phase below to explore what's covered.</p>
+      </div>
+
+      <div style="max-width:860px;margin:0 auto" id="curriculumAccordion">
+
+        <!-- PHASE 1 -->
+        <div class="phase-section">
+          <div class="phase-section__header" role="button" tabindex="0" aria-expanded="false" data-phase="1">
+            <div class="phase-section__num">1</div>
+            <div class="phase-section__label">
+              <div class="phase-section__label-eyebrow">Phase 1 · 3 Modules</div>
+              <div class="phase-section__label-title">Pilot Foundations</div>
+            </div>
+            <svg class="phase-section__chevron" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="phase-section__body">
+            <div class="module-card">
+              <div class="module-card__title"><span class="module-card__badge">Module 1</span> Becoming a Pilot</div>
+              <ul class="module-topics">
+                <li>Certificates &amp; ratings</li><li>Medical requirements</li><li>Student pilot privileges</li><li>Training process</li><li>Pilot responsibilities</li>
+              </ul>
+            </div>
+            <div class="module-card">
+              <div class="module-card__title"><span class="module-card__badge">Module 2</span> Aerodynamics</div>
+              <ul class="module-topics">
+                <li>Four forces of flight</li><li>Stability &amp; control</li><li>Stalls &amp; spins</li><li>Load factors</li><li>Aircraft performance fundamentals</li>
+              </ul>
+            </div>
+            <div class="module-card">
+              <div class="module-card__title"><span class="module-card__badge">Module 3</span> Aircraft Systems</div>
+              <ul class="module-topics">
+                <li>Engine systems</li><li>Fuel systems</li><li>Electrical systems</li><li>Pitot-static systems</li><li>Gyroscopic instruments</li><li>Propellers</li><li>Aircraft components</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- PHASE 2 -->
+        <div class="phase-section">
+          <div class="phase-section__header" role="button" tabindex="0" aria-expanded="false" data-phase="2">
+            <div class="phase-section__num">2</div>
+            <div class="phase-section__label">
+              <div class="phase-section__label-eyebrow">Phase 2 · 3 Modules</div>
+              <div class="phase-section__label-title">Airspace &amp; Regulations</div>
+            </div>
+            <svg class="phase-section__chevron" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="phase-section__body">
+            <div class="module-card">
+              <div class="module-card__title"><span class="module-card__badge">Module 4</span> FARs Simplified</div>
+              <ul class="module-topics">
+                <li>Required documents</li><li>Required inspections</li><li>Required equipment</li><li>Inoperative equipment</li><li>Pilot privileges &amp; limitations</li><li>Practical application</li>
+              </ul>
+            </div>
+            <div class="module-card">
+              <div class="module-card__title"><span class="module-card__badge">Module 5</span> Airspace Mastery</div>
+              <ul class="module-topics">
+                <li>Class A, B, C, D, E &amp; G</li><li>Airspace requirements</li><li>Weather minimums</li><li>Airspace transitions</li><li>Real-world scenarios</li>
+              </ul>
+            </div>
+            <div class="module-card">
+              <div class="module-card__title"><span class="module-card__badge">Module 6</span> Airport Operations</div>
+              <ul class="module-topics">
+                <li>Airport signs &amp; markings</li><li>Lighting systems</li><li>Radio communications</li><li>Traffic patterns</li><li>Towered airport ops</li><li>Non-towered airport ops</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- PHASE 3 -->
+        <div class="phase-section">
+          <div class="phase-section__header" role="button" tabindex="0" aria-expanded="false" data-phase="3">
+            <div class="phase-section__num">3</div>
+            <div class="phase-section__label">
+              <div class="phase-section__label-eyebrow">Phase 3 · 3 Modules</div>
+              <div class="phase-section__label-title">Navigation</div>
+            </div>
+            <svg class="phase-section__chevron" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="phase-section__body">
+            <div class="module-card">
+              <div class="module-card__title"><span class="module-card__badge">Module 7</span> Sectional Charts</div>
+              <ul class="module-topics">
+                <li>Reading sectionals</li><li>Airspace interpretation</li><li>Terrain awareness</li><li>Obstacle identification</li><li>Airport information</li>
+              </ul>
+            </div>
+            <div class="module-card">
+              <div class="module-card__title"><span class="module-card__badge">Module 8</span> Pilotage &amp; Dead Reckoning</div>
+              <ul class="module-topics">
+                <li>Flight planning</li><li>Wind correction</li><li>Time &amp; distance calculations</li><li>Fuel planning</li><li>Navigation fundamentals</li>
+              </ul>
+            </div>
+            <div class="module-card">
+              <div class="module-card__title"><span class="module-card__badge">Module 9</span> Navigation Systems</div>
+              <ul class="module-topics">
+                <li>VOR navigation</li><li>GPS navigation</li><li>ADS-B systems</li><li>Electronic Flight Bags</li><li>Modern cockpit navigation</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- PHASE 4 -->
+        <div class="phase-section">
+          <div class="phase-section__header" role="button" tabindex="0" aria-expanded="false" data-phase="4">
+            <div class="phase-section__num">4</div>
+            <div class="phase-section__label">
+              <div class="phase-section__label-eyebrow">Phase 4 · 3 Modules</div>
+              <div class="phase-section__label-title">Weather</div>
+            </div>
+            <svg class="phase-section__chevron" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="phase-section__body">
+            <div class="module-card">
+              <div class="module-card__title"><span class="module-card__badge">Module 10</span> Weather Theory</div>
+              <ul class="module-topics">
+                <li>The atmosphere</li><li>Pressure systems</li><li>Fronts</li><li>Stability</li><li>Cloud formation</li><li>Aviation weather concepts</li>
+              </ul>
+            </div>
+            <div class="module-card">
+              <div class="module-card__title"><span class="module-card__badge">Module 11</span> Weather Products</div>
+              <ul class="module-topics">
+                <li>METARs</li><li>TAFs</li><li>PIREPs</li><li>AIRMETs</li><li>SIGMETs</li><li>Graphical weather products</li>
+              </ul>
+            </div>
+            <div class="module-card">
+              <div class="module-card__title"><span class="module-card__badge">Module 12</span> Weather Decision Making</div>
+              <ul class="module-topics">
+                <li>Go/no-go decisions</li><li>Crosswind evaluation</li><li>Thunderstorm avoidance</li><li>Marginal weather ops</li><li>Real-world scenarios</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- PHASE 5 -->
+        <div class="phase-section">
+          <div class="phase-section__header" role="button" tabindex="0" aria-expanded="false" data-phase="5">
+            <div class="phase-section__num">5</div>
+            <div class="phase-section__label">
+              <div class="phase-section__label-eyebrow">Phase 5 · 3 Modules</div>
+              <div class="phase-section__label-title">Performance &amp; Flight Planning</div>
+            </div>
+            <svg class="phase-section__chevron" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="phase-section__body">
+            <div class="module-card">
+              <div class="module-card__title"><span class="module-card__badge">Module 13</span> Weight &amp; Balance</div>
+              <ul class="module-topics">
+                <li>Center of gravity</li><li>Loading calculations</li><li>Safety implications</li><li>Practical examples</li>
+              </ul>
+            </div>
+            <div class="module-card">
+              <div class="module-card__title"><span class="module-card__badge">Module 14</span> Aircraft Performance</div>
+              <ul class="module-topics">
+                <li>Takeoff performance</li><li>Landing performance</li><li>Climb performance</li><li>Density altitude</li><li>Performance charts</li>
+              </ul>
+            </div>
+            <div class="module-card">
+              <div class="module-card__title"><span class="module-card__badge">Module 15</span> Cross-Country Planning</div>
+              <ul class="module-topics">
+                <li>Route planning</li><li>Weather analysis</li><li>Fuel requirements</li><li>Alternate planning</li><li>Risk assessment</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- PHASE 6 -->
+        <div class="phase-section">
+          <div class="phase-section__header" role="button" tabindex="0" aria-expanded="false" data-phase="6">
+            <div class="phase-section__num">6</div>
+            <div class="phase-section__label">
+              <div class="phase-section__label-eyebrow">Phase 6 · 3 Modules</div>
+              <div class="phase-section__label-title">Risk Management</div>
+            </div>
+            <svg class="phase-section__chevron" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="phase-section__body">
+            <div class="module-card">
+              <div class="module-card__title"><span class="module-card__badge">Module 16</span> Aeronautical Decision Making</div>
+              <ul class="module-topics">
+                <li>PAVE checklist</li><li>3P Model</li><li>Risk assessment</li><li>Decision-making techniques</li>
+              </ul>
+            </div>
+            <div class="module-card">
+              <div class="module-card__title"><span class="module-card__badge">Module 17</span> Human Factors</div>
+              <ul class="module-topics">
+                <li>Fatigue</li><li>Stress</li><li>Situational awareness</li><li>Automation management</li><li>Human performance limits</li>
+              </ul>
+            </div>
+            <div class="module-card">
+              <div class="module-card__title"><span class="module-card__badge">Module 18</span> Emergency Procedures</div>
+              <ul class="module-topics">
+                <li>Engine failures</li><li>Electrical failures</li><li>Lost communications</li><li>Diversions</li><li>Inadvertent IMC</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- PHASE 7 -->
+        <div class="phase-section">
+          <div class="phase-section__header" role="button" tabindex="0" aria-expanded="false" data-phase="7">
+            <div class="phase-section__num">7</div>
+            <div class="phase-section__label">
+              <div class="phase-section__label-eyebrow">Phase 7 · 3 Modules</div>
+              <div class="phase-section__label-title">Checkride Success</div>
+            </div>
+            <svg class="phase-section__chevron" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="phase-section__body">
+            <div class="module-card">
+              <div class="module-card__title"><span class="module-card__badge">Module 19</span> ACS Mastery</div>
+              <ul class="module-topics">
+                <li>Airman Certification Standards</li><li>Examiner expectations</li><li>Common checkride mistakes</li>
+              </ul>
+            </div>
+            <div class="module-card">
+              <div class="module-card__title"><span class="module-card__badge">Module 20</span> Mock Oral Exam</div>
+              <ul class="module-topics">
+                <li>Structured oral preparation</li><li>Practice scenarios</li><li>Confidence building</li>
+              </ul>
+            </div>
+            <div class="module-card">
+              <div class="module-card__title"><span class="module-card__badge">Module 21</span> Practical Test Success</div>
+              <ul class="module-topics">
+                <li>Checkride strategies</li><li>Stress management</li><li>Test-day preparation</li><li>Professional pilot habits</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       THE APEX ADVANTAGE DIFFERENCE
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section" style="background:#0b1627">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">What Sets It Apart</div>
+        <h2 class="section__title">The Apex Advantage<br/><em class="accent">difference.</em></h2>
+      </div>
+      <div class="diff-grid" style="max-width:1040px;margin:0 auto">
+
+        <div class="diff-card">
+          <div class="diff-card__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0L9 7" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <h3>Scenario-Based Learning</h3>
+          <p>Students learn through realistic aviation situations rather than rote memorization — the same way experienced pilots actually think in the cockpit.</p>
+        </div>
+
+        <div class="diff-card">
+          <div class="diff-card__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <h3>Instructor Support</h3>
+          <p>Access to experienced, certificated instructors throughout training — not a chatbot, not a forum. Real people who can answer the question you actually have.</p>
+        </div>
+
+        <div class="diff-card">
+          <div class="diff-card__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <h3>Simulator Integration</h3>
+          <p>Apply concepts in realistic training scenarios using advanced aviation training devices — then bring that same understanding into the actual airplane.</p>
+        </div>
+
+        <div class="diff-card">
+          <div class="diff-card__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <h3>Real-World Readiness</h3>
+          <p>Develop the judgment, situational awareness, and decision-making skills required for safe flying long after the certificate is in your wallet.</p>
+        </div>
+
+        <div class="diff-card">
+          <div class="diff-card__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <h3>Checkride Confidence</h3>
+          <p>Structured preparation for both the FAA Knowledge Exam and the practical test — including mock orals, ACS deep-dives, and test-day strategies.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       WHO THIS IS FOR
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--light">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Is This For You?</div>
+        <h2 class="section__title">Built for every pilot<br/><em class="accent">at every stage.</em></h2>
+      </div>
+      <ul class="for-list" style="max-width:860px;margin:0 auto">
+        <li><span class="check">✓</span> New aspiring pilots who are ready to begin their journey</li>
+        <li><span class="check">✓</span> Students currently working toward their Private Pilot Certificate</li>
+        <li><span class="check">✓</span> Individuals preparing specifically for the FAA Knowledge Exam</li>
+        <li><span class="check">✓</span> Students seeking stronger support before their checkride</li>
+        <li><span class="check">✓</span> Pilots who want a deeper knowledge foundation to fly safer</li>
+      </ul>
+      <p style="text-align:center;color:rgba(255,255,255,0.45);font-size:13px;margin-top:24px">Apex Advantage is 100% virtual — available to aspiring pilots anywhere in the country.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       ANDREW CREDIBILITY
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section" style="background:#0b1627">
+    <div class="container">
+      <div style="max-width:860px;margin:0 auto;display:flex;gap:48px;align-items:center;flex-wrap:wrap">
+        <div style="flex-shrink:0">
+          <div style="width:120px;height:120px;border-radius:50%;overflow:hidden;border:3px solid var(--gold)">
+            <img src="images/AndrewHeadshot.JPG" alt="Andrew Serrazina — CFI, CFII, AGI" style="width:100%;height:100%;object-fit:cover;object-position:center top" />
+          </div>
+        </div>
+        <div style="flex:1;min-width:260px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Your Instructor</div>
+          <h2 style="font-size:24px;font-weight:800;color:var(--white);margin:0 0 6px">Andrew Serrazina</h2>
+          <p style="font-size:13px;color:var(--gold);font-weight:600;margin:0 0 16px;text-transform:uppercase;letter-spacing:0.06em">CFI · CFII · AGI · Comm. ASEL · Comm. AMEL</p>
+          <p style="color:rgba(255,255,255,0.75);line-height:1.8;font-size:15px;margin:0 0 16px">Andrew designed Apex Advantage because he saw how most ground schools fail student pilots — passive, generic, and completely disconnected from what it actually takes to fly safely. Every module is taught live, built around how real pilots think, and grounded in scenario-based application.</p>
+          <p style="color:rgba(255,255,255,0.55);font-size:13px;font-weight:600">2.5M+ content views · Hundreds of students endorsed</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       BOTTOM CTA
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--light">
+    <div class="container">
+      <div style="text-align:center;padding:64px 32px;background:linear-gradient(135deg,#162C4F,#0d1e35);border-radius:20px;border:1px solid rgba(255,255,255,0.06);max-width:720px;margin:0 auto">
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:16px">Launching September 2026 · Nationwide</div>
+        <h2 style="color:var(--white);font-size:34px;font-weight:800;line-height:1.2;margin:0 0 16px">Start Your Aviation Journey<br/>with Confidence</h2>
+        <p style="color:rgba(255,255,255,0.65);margin:0 auto 12px;max-width:500px;line-height:1.8;font-size:16px">Join the Apex Advantage Private Pilot Ground School and build the knowledge, skills, and confidence needed to become a safe, capable pilot — not just a certificated one.</p>
+        <p style="color:rgba(255,255,255,0.4);font-size:13px;margin-bottom:36px">24 founding member slots. No payment required to join.</p>
+        <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
+          <a href="home.html#waitlist" class="btn btn--primary">Enroll Now — Join Waitlist</a>
+          <a href="contact.html" class="btn btn--ghost">Speak With an Instructor</a>
+        </div>
+      </div>
+
+      <!-- Back to Apex Advantage -->
+      <div style="text-align:center;margin-top:32px">
+        <a href="apex-advantage.html" style="color:rgba(255,255,255,0.4);font-size:13px;text-decoration:none">
+          ← Back to all Apex Advantage series
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container footer__inner">
+      <div class="footer__brand">
+        <a href="home.html" class="nav__logo">
+          <img src="apexwhite.png" alt="Apex Aviation" height="40" style="display:block;width:auto" />
+        </a>
+        <p>Train Beyond the Checkride. Premium simulator-based aviation training opening in Austin, Texas — January 2027.</p>
+        <div class="footer__social">
+          <a href="https://www.facebook.com/profile.php?id=61590455400224" target="_blank" rel="noopener" aria-label="Facebook"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></a>
+          <a href="https://www.instagram.com/apexaviationtx" target="_blank" rel="noopener" aria-label="Instagram"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.5" cy="6.5" r="1.5"/></svg></a>
+          <a href="https://www.youtube.com/@apexaviationtx" target="_blank" rel="noopener" aria-label="YouTube"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M22.54 6.42a2.78 2.78 0 00-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46a2.78 2.78 0 00-1.95 1.96A29 29 0 001 12a29 29 0 00.46 5.58a2.78 2.78 0 001.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 001.95-1.96A29 29 0 0023 12a29 29 0 00-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="white"/></svg></a>
+          <a href="https://www.tiktok.com/@apexaviationtx" target="_blank" rel="noopener" aria-label="TikTok"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/></svg></a>
+          <a href="https://www.linkedin.com/company/apex-aviation-tx" target="_blank" rel="noopener" aria-label="LinkedIn"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg></a>
+        </div>
+      </div>
+      <div class="footer__links">
+        <div>
+          <h4>Training</h4>
+          <a href="apex-advantage.html">Apex Advantage</a>
+          <a href="programs.html#learning">Virtual Ground School</a>
+          <a href="programs.html#learning">Checkride Prep</a>
+          <a href="programs.html#recurrent">IPC &amp; Instrument</a>
+          <a href="programs.html#recurrent">Flight Reviews</a>
+        </div>
+        <div>
+          <h4>Company</h4>
+          <a href="about.html">About Apex</a>
+          <a href="instructors.html">Our Instructors</a>
+          <a href="fleet.html">The Simulator</a>
+          <a href="about.html#founder">Andrew Serrazina</a>
+          <a href="home.html#waitlist">Founding Members</a>
+        </div>
+        <div>
+          <h4>Contact</h4>
+          <a href="mailto:info@apexaviationtx.com">info@apexaviationtx.com</a>
+          <a href="contact.html">Book a Session</a>
+          <span style="color:var(--gray-2);font-size:14px">Austin, Texas</span>
+        </div>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <div class="container">
+        <p>&copy; 2027 Apex Aviation. All rights reserved. · <a href="privacy.html" style="color:var(--gray-2)">Privacy Policy</a></p>
+        <p>Train Beyond the Checkride. · Austin, Texas</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+  <script>
+    // Curriculum accordion
+    document.querySelectorAll('.phase-section__header').forEach(function(header) {
+      header.addEventListener('click', function() {
+        var isOpen = this.getAttribute('aria-expanded') === 'true';
+        // close all
+        document.querySelectorAll('.phase-section__header').forEach(function(h) {
+          h.setAttribute('aria-expanded', 'false');
+          h.nextElementSibling.classList.remove('open');
+        });
+        // open clicked if it was closed
+        if (!isOpen) {
+          this.setAttribute('aria-expanded', 'true');
+          this.nextElementSibling.classList.add('open');
+        }
+      });
+      header.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.click(); }
+      });
+    });
+  </script>
+</body>
+</html>
