@@ -112,116 +112,180 @@
 
   <section class="section section--light">
     <div class="container">
-      <div style="max-width:800px;margin:0 auto;color:rgba(255,255,255,0.65);line-height:1.9;font-size:16px">
+      <!-- STAT STRIP -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:rgba(255,255,255,0.06);border-radius:14px;overflow:hidden;margin-bottom:64px">
+        <div style="background:#0b1627;padding:28px 24px;text-align:center">
+          <div style="font-size:36px;font-weight:800;color:var(--gold);line-height:1">40</div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-top:6px">FAA Minimum Hours</div>
+        </div>
+        <div style="background:#0b1627;padding:28px 24px;text-align:center">
+          <div style="font-size:36px;font-weight:800;color:var(--gold);line-height:1">7.5</div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-top:6px">AATD Sim Hours</div>
+        </div>
+        <div style="background:#0b1627;padding:28px 24px;text-align:center">
+          <div style="font-size:36px;font-weight:800;color:var(--gold);line-height:1">55</div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-top:6px">Apex Package Hours</div>
+        </div>
+        <div style="background:#0b1627;padding:28px 24px;text-align:center">
+          <div style="font-size:36px;font-weight:800;color:var(--gold);line-height:1">1</div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-top:6px">Checkride. Done Right.</div>
+        </div>
+      </div>
 
-        <h2 style="color:var(--white);font-size:26px;font-weight:800;margin:0 0 16px">How Apex Trains Private Pilots</h2>
-        <p style="margin-bottom:16px">At Apex, the simulator is the primary teaching environment — not a supplement. Every maneuver, procedure, and emergency scenario is introduced in our AATD first. You learn without pressure, repeat without burning fuel, and debrief after every pass. By the time we take a skill to the aircraft, you already know what to do. The airplane is where you apply and confirm what the simulator taught you. Apex flies a FlightDesign CTSW based at San Marcos Regional Airport (KHYI).</p>
-        <p style="margin-bottom:24px">This approach produces faster progress, higher retention, and pilots who arrive at the checkride genuinely prepared — not just minimally current.</p>
+      <div style="max-width:860px;margin:0 auto">
 
-        <h2 style="color:var(--white);font-size:26px;font-weight:800;margin:32px 0 16px">FAA Requirements for the Private Pilot Certificate</h2>
-        <p style="margin-bottom:24px">Under FAA Part 61, the private pilot certificate requires a minimum of 40 total flight hours — including 20 hours of dual instruction and 10 hours of supervised solo flight. Those minimums include 3 hours of instrument training, 3 hours of night flying, and 3 hours of cross-country dual. The national average, however, is closer to 60–70 hours. Building in realistic buffer time isn't pessimism — it's what keeps checkride prep from becoming a scramble.</p>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;background:rgba(255,255,255,0.05);border-radius:10px;padding:24px;margin-bottom:32px">
+        <!-- HOW APEX TRAINS -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:center;margin-bottom:64px">
           <div>
-            <div style="color:rgba(255,255,255,0.65);font-size:14px;margin-bottom:2px">Minimum total time</div>
-            <div style="color:var(--white);font-weight:700">40 hrs <span style="font-weight:400;font-size:14px">(national avg: 60–70 hrs)</span></div>
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">The Apex Method</div>
+            <h2 style="color:var(--white);font-size:30px;font-weight:800;line-height:1.2;margin:0 0 16px">Sim first.<br/>Aircraft to confirm.</h2>
+            <p style="color:rgba(255,255,255,0.65);line-height:1.85;margin-bottom:16px">Every maneuver, procedure, and emergency scenario is introduced in our AATD first. You learn without pressure, repeat without burning fuel, and debrief after every pass. By the time we take a skill to the aircraft, you already know what to do.</p>
+            <p style="color:rgba(255,255,255,0.65);line-height:1.85">The airplane is where you <em style="color:var(--white);font-style:normal;font-weight:600">apply and confirm</em> what the simulator taught you — not where you learn it for the first time. This produces faster progress, higher retention, and pilots who arrive at the checkride genuinely prepared.</p>
           </div>
-          <div>
-            <div style="color:rgba(255,255,255,0.65);font-size:14px;margin-bottom:2px">Dual instruction</div>
-            <div style="color:var(--white);font-weight:700">20 hrs minimum</div>
-          </div>
-          <div>
-            <div style="color:rgba(255,255,255,0.65);font-size:14px;margin-bottom:2px">Solo flight time</div>
-            <div style="color:var(--white);font-weight:700">10 hrs minimum</div>
-          </div>
-          <div>
-            <div style="color:rgba(255,255,255,0.65);font-size:14px;margin-bottom:2px">Night flying</div>
-            <div style="color:var(--white);font-weight:700">3 hrs dual</div>
-          </div>
-          <div>
-            <div style="color:rgba(255,255,255,0.65);font-size:14px;margin-bottom:2px">Instrument training</div>
-            <div style="color:var(--white);font-weight:700">3 hrs dual under the hood</div>
-          </div>
-          <div>
-            <div style="color:rgba(255,255,255,0.65);font-size:14px;margin-bottom:2px">Cross-country</div>
-            <div style="color:var(--white);font-weight:700">3 hrs dual + solo XC of 150 nm</div>
-          </div>
-          <div>
-            <div style="color:rgba(255,255,255,0.65);font-size:14px;margin-bottom:2px">Written exam (PAR)</div>
-            <div style="color:var(--white);font-weight:700">Must pass before checkride</div>
-          </div>
-          <div>
-            <div style="color:rgba(255,255,255,0.65);font-size:14px;margin-bottom:2px">Practical test</div>
-            <div style="color:var(--white);font-weight:700">Oral + flight with DPE</div>
+          <div style="display:grid;gap:12px">
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px 24px;display:flex;align-items:flex-start;gap:16px">
+              <div style="background:var(--gold);color:#080f1e;font-weight:800;font-size:13px;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+              <div>
+                <div style="color:var(--white);font-weight:700;margin-bottom:4px">Learn it in the sim</div>
+                <div style="color:rgba(255,255,255,0.6);font-size:14px">Zero pressure. Pause, reset, repeat until it's automatic.</div>
+              </div>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px 24px;display:flex;align-items:flex-start;gap:16px">
+              <div style="background:var(--gold);color:#080f1e;font-weight:800;font-size:13px;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
+              <div>
+                <div style="color:var(--white);font-weight:700;margin-bottom:4px">Apply it in the aircraft</div>
+                <div style="color:rgba(255,255,255,0.6);font-size:14px">Every flight hour counts — the groundwork is already done.</div>
+              </div>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px 24px;display:flex;align-items:flex-start;gap:16px">
+              <div style="background:var(--gold);color:#080f1e;font-weight:800;font-size:13px;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
+              <div>
+                <div style="color:var(--white);font-weight:700;margin-bottom:4px">Pass the checkride</div>
+                <div style="color:rgba(255,255,255,0.6);font-size:14px">Prepared, not just current. One shot, done right.</div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <h2 style="color:var(--white);font-size:26px;font-weight:800;margin:40px 0 16px">The Apex Private Pilot Package</h2>
-        <p style="margin-bottom:24px">We maximize simulator hours so that aircraft time is spent applying skills you've already built — not learning them for the first time. Every hour in the AATD is focused, repeatable, and weather-independent. When you're in the aircraft, every moment counts because the groundwork is already done.</p>
-
-        <div style="background:#162C4F;color:#fff;border-radius:10px;padding:28px;max-width:480px;margin:24px auto">
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
-            <span style="color:rgba(255,255,255,0.8)">Flight instruction</span>
-            <span style="font-weight:700;color:#F4B400">47.5 hrs</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
-            <span style="color:rgba(255,255,255,0.8)">AATD simulator</span>
-            <span style="font-weight:700;color:#F4B400">7.5 hrs</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0 10px;border-top:2px solid #F4B400;margin-top:4px">
-            <span style="font-weight:800;font-size:18px">Total</span>
-            <span style="font-weight:800;font-size:18px;color:#F4B400">55 hrs</span>
-          </div>
-          <p style="font-size:13px;color:rgba(255,255,255,0.65);margin:12px 0 0;line-height:1.6">2.5 hrs AATD credit allowed under FAA Part 61 toward instrument training requirements</p>
-        </div>
-
-        <p style="text-align:center;font-size:15px;margin:20px 0 8px;color:rgba(255,255,255,0.65)">Simulator: <strong>$90/hr</strong> &nbsp;|&nbsp; Instruction: <strong>$75/hr</strong> &nbsp;|&nbsp; Aircraft: <strong>$145/hr</strong></p>
-        <p style="text-align:center;font-size:14px;color:rgba(255,255,255,0.65);margin-bottom:32px">Full package pricing announced before January 2027. <a href="pricing.html" style="color:var(--gold)">View pricing</a>.</p>
-
-        <h2 style="color:var(--white);font-size:26px;font-weight:800;margin:40px 0 16px">What You'll Learn</h2>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:32px">
-          <div style="display:flex;align-items:flex-start;gap:10px">
-            <span style="color:#F4B400;font-weight:800;font-size:18px;line-height:1.4">&#10003;</span>
-            <span>Aircraft systems &amp; aerodynamics</span>
-          </div>
-          <div style="display:flex;align-items:flex-start;gap:10px">
-            <span style="color:#F4B400;font-weight:800;font-size:18px;line-height:1.4">&#10003;</span>
-            <span>VFR navigation &amp; sectional charts</span>
-          </div>
-          <div style="display:flex;align-items:flex-start;gap:10px">
-            <span style="color:#F4B400;font-weight:800;font-size:18px;line-height:1.4">&#10003;</span>
-            <span>Weather decision-making</span>
-          </div>
-          <div style="display:flex;align-items:flex-start;gap:10px">
-            <span style="color:#F4B400;font-weight:800;font-size:18px;line-height:1.4">&#10003;</span>
-            <span>Night operations &amp; cross-country planning</span>
-          </div>
-          <div style="display:flex;align-items:flex-start;gap:10px">
-            <span style="color:#F4B400;font-weight:800;font-size:18px;line-height:1.4">&#10003;</span>
-            <span>Emergency procedures &amp; aeronautical decision-making</span>
-          </div>
-          <div style="display:flex;align-items:flex-start;gap:10px">
-            <span style="color:#F4B400;font-weight:800;font-size:18px;line-height:1.4">&#10003;</span>
-            <span>Checkride oral prep &amp; ACS standards</span>
+        <!-- FAA REQUIREMENTS -->
+        <div style="margin-bottom:64px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">FAA Requirements</div>
+          <h2 style="color:var(--white);font-size:28px;font-weight:800;margin:0 0 24px">What Part 61 Requires</h2>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px">
+              <div style="font-size:28px;font-weight:800;color:var(--gold)">40</div>
+              <div style="color:var(--white);font-weight:600;font-size:14px;margin-top:2px">Total hours</div>
+              <div style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:4px">National avg: 60–70 hrs</div>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px">
+              <div style="font-size:28px;font-weight:800;color:var(--gold)">20</div>
+              <div style="color:var(--white);font-weight:600;font-size:14px;margin-top:2px">Dual instruction</div>
+              <div style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:4px">Hours minimum with CFI</div>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px">
+              <div style="font-size:28px;font-weight:800;color:var(--gold)">10</div>
+              <div style="color:var(--white);font-weight:600;font-size:14px;margin-top:2px">Solo flight time</div>
+              <div style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:4px">Minimum required</div>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px">
+              <div style="font-size:28px;font-weight:800;color:var(--gold)">3</div>
+              <div style="color:var(--white);font-weight:600;font-size:14px;margin-top:2px">Night hours</div>
+              <div style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:4px">Dual, including 10 T&Gs</div>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px">
+              <div style="font-size:28px;font-weight:800;color:var(--gold)">3</div>
+              <div style="color:var(--white);font-weight:600;font-size:14px;margin-top:2px">Instrument hours</div>
+              <div style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:4px">Dual under the hood</div>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px">
+              <div style="font-size:28px;font-weight:800;color:var(--gold)">150</div>
+              <div style="color:var(--white);font-weight:600;font-size:14px;margin-top:2px">nm solo XC</div>
+              <div style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:4px">3 points, 1 leg 50+ nm</div>
+            </div>
           </div>
         </div>
 
-        <h2 style="color:var(--white);font-size:26px;font-weight:800;margin:40px 0 16px">Who This Is For</h2>
-        <p style="margin-bottom:20px">If you've been thinking about learning to fly for years — or decades — and life keeps getting in the way, Apex is designed around you. Our simulator sessions don't depend on good weather, aircraft availability, or a two-hour block in the middle of a workday. We schedule around your life, not the other way around.</p>
-        <p style="margin-bottom:20px">The private pilot certificate is the right next step for anyone who wants to fly for personal travel, weekend adventures, or simply the freedom that comes with it. Whether you're planning to stop at private pilot or eventually work toward instrument and commercial ratings, a solid foundation is what everything else is built on.</p>
-        <p style="margin-bottom:40px">At Apex, we don't train to the minimum. We train to proficiency — scenario-based from day one, with an emphasis on judgment and decision-making alongside stick-and-rudder skills. If you want to do it right the first time, this is the program.</p>
-
-                <div style="background:rgba(255,255,255,0.05);border-radius:12px;border-left:4px solid #F4B400;padding:28px 32px;margin:40px 0">
-          <div style="font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#F4B400;margin-bottom:8px">Ground School</div>
-          <h3 style="color:var(--white);font-size:22px;font-weight:800;margin:0 0 12px">Start with the Apex Advantage</h3>
-          <p style="color:rgba(255,255,255,0.65);line-height:1.75;margin-bottom:20px">Before you ever step into a simulator or aircraft, the Apex Advantage ground school gives you the aeronautical knowledge foundation every private pilot needs. Live sessions run daily — attend each module on your own schedule, and earn your PAR knowledge test endorsement when you've completed the series.</p>
-          <a href="apex-advantage.html" class="btn btn--primary" style="display:inline-flex">Explore Apex Advantage &#8594;</a>
+        <!-- PACKAGE CARD -->
+        <div style="margin-bottom:64px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">The Apex Package</div>
+          <h2 style="color:var(--white);font-size:28px;font-weight:800;margin:0 0 24px">Built Around Your Budget</h2>
+          <div style="background:linear-gradient(135deg,#162C4F 0%,#0d1e35 100%);border:1px solid rgba(244,180,0,0.3);border-radius:16px;padding:36px;max-width:560px;box-shadow:0 0 40px rgba(244,180,0,0.08)">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.08)">
+              <span style="color:rgba(255,255,255,0.75);font-size:15px">Flight instruction</span>
+              <span style="font-weight:700;color:var(--white);font-size:16px">47.5 hrs</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.08)">
+              <span style="color:rgba(255,255,255,0.75);font-size:15px">AATD simulator time</span>
+              <span style="font-weight:700;color:var(--gold);font-size:16px">7.5 hrs</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 0 4px">
+              <span style="font-weight:800;font-size:20px;color:var(--white)">Total</span>
+              <span style="font-weight:800;font-size:24px;color:var(--gold)">55 hrs</span>
+            </div>
+            <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:16px;margin-top:16px">
+              <div style="font-size:13px;color:rgba(255,255,255,0.5);line-height:1.7">Simulator: <strong style="color:rgba(255,255,255,0.8)">$90/hr</strong> &nbsp;·&nbsp; Instruction: <strong style="color:rgba(255,255,255,0.8)">$75/hr</strong> &nbsp;·&nbsp; Aircraft: <strong style="color:rgba(255,255,255,0.8)">$145/hr</strong></div>
+              <div style="font-size:13px;color:rgba(255,255,255,0.45);margin-top:6px">Full package pricing announced before January 2027. <a href="pricing.html" style="color:var(--gold)">View pricing →</a></div>
+            </div>
+          </div>
         </div>
-        <div style="text-align:center;padding:40px 0;border-top:1px solid rgba(0,0,0,0.08)">
-          <h3 style="color:var(--white);font-size:22px;font-weight:800;margin:0 0 24px">Ready to Start Your Private Pilot Journey?</h3>
+
+        <!-- WHAT YOU'LL LEARN -->
+        <div style="margin-bottom:64px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Curriculum</div>
+          <h2 style="color:var(--white);font-size:28px;font-weight:800;margin:0 0 24px">What You'll Learn</h2>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:18px 20px;display:flex;align-items:center;gap:14px">
+              <span style="color:var(--gold);font-size:20px;flex-shrink:0">✈</span>
+              <span style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Aircraft systems &amp; aerodynamics</span>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:18px 20px;display:flex;align-items:center;gap:14px">
+              <span style="color:var(--gold);font-size:20px;flex-shrink:0">🗺</span>
+              <span style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">VFR navigation &amp; sectional charts</span>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:18px 20px;display:flex;align-items:center;gap:14px">
+              <span style="color:var(--gold);font-size:20px;flex-shrink:0">⛅</span>
+              <span style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Weather decision-making</span>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:18px 20px;display:flex;align-items:center;gap:14px">
+              <span style="color:var(--gold);font-size:20px;flex-shrink:0">🌙</span>
+              <span style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Night operations &amp; cross-country planning</span>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:18px 20px;display:flex;align-items:center;gap:14px">
+              <span style="color:var(--gold);font-size:20px;flex-shrink:0">⚠</span>
+              <span style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Emergency procedures &amp; aeronautical decision-making</span>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:18px 20px;display:flex;align-items:center;gap:14px">
+              <span style="color:var(--gold);font-size:20px;flex-shrink:0">📋</span>
+              <span style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Checkride oral prep &amp; ACS standards</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- WHO THIS IS FOR -->
+        <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:40px;margin-bottom:48px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Is This For You?</div>
+          <h2 style="color:var(--white);font-size:26px;font-weight:800;margin:0 0 16px">Built for people with real lives.</h2>
+          <p style="color:rgba(255,255,255,0.65);line-height:1.85;margin-bottom:16px">If you've been thinking about learning to fly for years — or decades — and life keeps getting in the way, Apex is designed around you. Our simulator sessions don't depend on good weather, aircraft availability, or a two-hour block in the middle of a workday. We schedule around your life, not the other way around.</p>
+          <p style="color:rgba(255,255,255,0.65);line-height:1.85">At Apex, we don't train to the minimum. We train to proficiency — scenario-based from day one, with an emphasis on judgment and decision-making alongside stick-and-rudder skills. If you want to do it right the first time, this is the program.</p>
+        </div>
+
+        <!-- APEX ADVANTAGE CALLOUT -->
+        <div style="background:rgba(244,180,0,0.06);border:1px solid rgba(244,180,0,0.25);border-radius:16px;padding:36px;margin-bottom:48px;display:flex;gap:32px;align-items:center;flex-wrap:wrap">
+          <div style="flex:1;min-width:240px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:10px">Ground School · Sept 2026</div>
+            <h3 style="color:var(--white);font-size:22px;font-weight:800;margin:0 0 12px">Start with the Apex Advantage</h3>
+            <p style="color:rgba(255,255,255,0.65);line-height:1.75;margin:0">Live virtual sessions with Andrew — attend each module on your schedule, earn your PAR endorsement before the sim opens.</p>
+          </div>
+          <a href="apex-advantage.html" class="btn btn--primary" style="white-space:nowrap;flex-shrink:0">Explore Ground School &rarr;</a>
+        </div>
+
+        <!-- BOTTOM CTA -->
+        <div style="text-align:center;padding:48px 32px;background:linear-gradient(135deg,#162C4F,#0d1e35);border-radius:16px;border:1px solid rgba(255,255,255,0.06)">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Opening January 2027</div>
+          <h3 style="color:var(--white);font-size:28px;font-weight:800;margin:0 0 12px">Ready to earn your wings?</h3>
+          <p style="color:rgba(255,255,255,0.6);margin:0 auto 28px;max-width:440px;line-height:1.7">Join the founding member waitlist and lock in your spot before public enrollment opens.</p>
           <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
-            <a href="contact.html" class="btn btn--primary">Book a Discovery Call</a>
+            <a href="home.html#waitlist" class="btn btn--primary">Join the Waitlist</a>
             <a href="pricing.html" class="btn btn--outline">View Pricing</a>
           </div>
         </div>
