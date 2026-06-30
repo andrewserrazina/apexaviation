@@ -1,0 +1,22 @@
+[[redirects]]
+  from = "/"
+  to = "/home.html"
+  status = 301
+
+[[redirects]]
+  from = "/index.html"
+  to = "/home.html"
+  status = 301
+
+[build]
+  publish = "."
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[template.environment]
+  CUSTOM_404 = "/404.html"
