@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Download Your Checkride Prep Pack | Apex Aviation</title>
+  <!-- Keep this page off search engines -->
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Google Analytics 4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-JFPBCF2GXE"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-JFPBCF2GXE');
+    gtag('event', 'purchase_download_page_view', { event_category: 'ecommerce', event_label: 'checkride_prep_pack' });
+  </script>
+  <!-- Microsoft Clarity -->
+  <script>
+    (function(c,l,a,r,i,t,y){
+      c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+      t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+      y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window,document,'clarity','script','x95g0qe0g6');
+  </script>
+  <style>
+    body {
+      background: #080f1e;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      font-family: 'Montserrat', sans-serif;
+    }
+
+    .dl-logo {
+      margin-bottom: 48px;
+    }
+
+    .dl-card {
+      background: linear-gradient(145deg, #162C4F, #0d1e35);
+      border: 1px solid rgba(244,180,0,0.25);
+      border-radius: 20px;
+      padding: 52px 48px;
+      max-width: 560px;
+      width: 100%;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+    }
+    .dl-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, #F4B400, transparent);
+    }
+
+    .dl-check {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: rgba(244,180,0,0.12);
+      border: 2px solid rgba(244,180,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+    }
+
+    .dl-eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #F4B400;
+      margin-bottom: 12px;
+    }
+
+    .dl-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.25;
+      margin: 0 0 12px;
+    }
+
+    .dl-sub {
+      font-size: 15px;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.75;
+      margin: 0 0 36px;
+    }
+
+    .dl-product-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.4);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+
+    /* Download button */
+    .btn-download {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: #F4B400;
+      color: #080f1e;
+      font-weight: 800;
+      font-size: 16px;
+      padding: 18px 36px;
+      border-radius: 10px;
+      text-decoration: none;
+      width: 100%;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px rgba(244,180,0,0.35);
+      margin-bottom: 14px;
+    }
+    .btn-download:hover {
+      background: #f5be10;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(244,180,0,0.45);
+    }
+    .btn-download:active { transform: translateY(0); }
+
+    .dl-note {
+      font-size: 12px;
+      color: rgba(255,255,255,0.3);
+      margin: 0 0 36px;
+    }
+
+    .dl-divider {
+      border: none;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      margin: 0 0 28px;
+    }
+
+    .dl-tips {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      text-align: left;
+    }
+    .dl-tips li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.55);
+      line-height: 1.6;
+    }
+    .dl-tips li::before {
+      content: '→';
+      color: #F4B400;
+      flex-shrink: 0;
+      font-weight: 700;
+    }
+
+    .dl-support {
+      font-size: 13px;
+      color: rgba(255,255,255,0.35);
+      line-height: 1.7;
+    }
+    .dl-support a {
+      color: rgba(244,180,0,0.7);
+      text-decoration: none;
+    }
+    .dl-support a:hover { color: #F4B400; }
+
+    @media (max-width: 600px) {
+      .dl-card { padding: 36px 24px; }
+      .dl-title { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="dl-logo">
+    <a href="home.html">
+      <img src="apexwhite.png" alt="Apex Aviation" height="36" style="display:block;width:auto" />
+    </a>
+  </div>
+
+  <div class="dl-card">
+
+    <div class="dl-check">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+        <path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <div class="dl-eyebrow">Purchase Complete</div>
+    <h1 class="dl-title">Your Checkride Prep Pack<br/>is ready to download.</h1>
+    <p class="dl-sub">Thank you for your purchase. Click below to download your copy of the Apex Advantage™ Private Pilot Checkride Prep Pack.</p>
+
+    <div class="dl-product-name">Apex Advantage™ · Private Pilot</div>
+
+    <!-- TODO: Replace PDF_DOWNLOAD_LINK_HERE with the actual hosted PDF URL (e.g. a Stripe-hosted file, your CDN, or a direct path like /downloads/checkride-prep-pack.pdf) -->
+    <a href="PDF_DOWNLOAD_LINK_HERE" class="btn-download" download>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <path d="M12 3v13M5 16l7 7 7-7M3 21h18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Download Checkride Prep Pack (PDF)
+    </a>
+    <p class="dl-note">PDF · Instant download · No account required</p>
+
+    <hr class="dl-divider" />
+
+    <ul class="dl-tips">
+      <li>Save a copy to your phone or tablet for easy access on checkride day.</li>
+      <li>Work through each module in the order that matches your weak spots.</li>
+      <li>Practice answering out loud — the format is designed for verbal prep.</li>
+    </ul>
+
+    <p class="dl-support">
+      Questions or trouble downloading?<br/>
+      Email us at <a href="mailto:info@apexaviationtx.com">info@apexaviationtx.com</a> and we'll get you sorted.
+    </p>
+
+  </div>
+
+</body>
+</html>
