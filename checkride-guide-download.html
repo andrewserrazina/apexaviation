@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Checkride Guide Is Ready | Apex Aviation</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Google Analytics 4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-JFPBCF2GXE"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-JFPBCF2GXE');
+    gtag('event', 'lead_gen_download_page_view', { event_category: 'lead_gen', event_label: 'checkride_guide_download' });
+  </script>
+  <!-- Microsoft Clarity -->
+  <script>
+    (function(c,l,a,r,i,t,y){
+      c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+      t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+      y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window,document,'clarity','script','x95g0qe0g6');
+  </script>
+  <style>
+    /* ── Checkride Guide Download — page-specific styles ── */
+
+    body { background: #080f1e; }
+
+    /* Slim nav */
+    .gd-nav {
+      padding: 16px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .gd-nav__inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Success hero */
+    .gd-hero {
+      padding: 72px 0 80px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .gd-hero::before {
+      content: '';
+      position: absolute;
+      top: -100px; left: 50%;
+      transform: translateX(-50%);
+      width: 600px; height: 400px;
+      background: radial-gradient(ellipse, rgba(244,180,0,0.07) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .gd-hero__inner {
+      position: relative;
+      z-index: 1;
+      max-width: 620px;
+      margin: 0 auto;
+    }
+    .gd-hero__check {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      background: rgba(244,180,0,0.12);
+      border: 2px solid rgba(244,180,0,0.3);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 28px;
+    }
+    .gd-hero__eyebrow {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 12px;
+    }
+    .gd-hero__title {
+      font-size: clamp(30px, 5vw, 48px);
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin: 0 0 16px;
+    }
+    .gd-hero__sub {
+      font-size: 17px;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.75;
+      margin: 0 0 40px;
+    }
+
+    /* Download button */
+    .btn-download-guide {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: var(--gold);
+      color: #080f1e;
+      font-family: var(--font);
+      font-weight: 800;
+      font-size: 17px;
+      padding: 20px 44px;
+      border-radius: 12px;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 6px 28px rgba(244,180,0,0.4);
+      margin-bottom: 12px;
+    }
+    .btn-download-guide:hover {
+      background: #f5be10;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 36px rgba(244,180,0,0.5);
+    }
+    .btn-download-guide:active { transform: translateY(0); }
+    .gd-hero__dl-note {
+      font-size: 12px;
+      color: rgba(255,255,255,0.3);
+      margin: 0 0 40px;
+    }
+    .gd-hero__inbox-note {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 100px;
+      padding: 8px 18px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.45);
+    }
+    .gd-hero__inbox-note svg { color: var(--gold); flex-shrink: 0; }
+
+    /* Divider */
+    .gd-divider {
+      border: none;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      max-width: 560px;
+      margin: 64px auto;
+    }
+
+    /* Next step section */
+    .gd-next {
+      padding: 0 0 80px;
+      text-align: center;
+    }
+    .gd-next__inner { max-width: 760px; margin: 0 auto; }
+    .gd-next__eyebrow {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 12px;
+    }
+    .gd-next__title {
+      font-size: clamp(26px, 4vw, 38px);
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.2;
+      margin: 0 0 16px;
+    }
+    .gd-next__sub {
+      font-size: 16px;
+      color: rgba(255,255,255,0.55);
+      line-height: 1.75;
+      margin: 0 0 48px;
+    }
+
+    /* Comparison table */
+    .gd-compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 48px;
+    }
+    .gd-compare__col {
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .gd-compare__col--free {
+      background: #0d1e35;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .gd-compare__col--paid {
+      background: linear-gradient(145deg, #162C4F, #0d1e35);
+      border: 2px solid rgba(244,180,0,0.35);
+      position: relative;
+    }
+    .gd-compare__col--paid::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    }
+    .gd-compare__header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .gd-compare__label {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.4);
+      margin-bottom: 6px;
+    }
+    .gd-compare__col--paid .gd-compare__label { color: var(--gold); }
+    .gd-compare__name {
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+      margin: 0;
+    }
+    .gd-compare__price {
+      font-size: 13px;
+      color: rgba(255,255,255,0.35);
+      margin-top: 4px;
+    }
+    .gd-compare__col--paid .gd-compare__price { color: rgba(244,180,0,0.7); font-weight: 700; }
+    .gd-compare__list {
+      list-style: none;
+      padding: 20px 24px;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .gd-compare__list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.5;
+    }
+    .gd-compare__list li svg { flex-shrink: 0; margin-top: 2px; }
+    .gd-compare__col--paid .gd-compare__list li { color: rgba(255,255,255,0.8); }
+
+    /* Feature cards */
+    .gd-features {
+      background: #0b1627;
+      padding: 80px 0;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .gd-features__grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-top: 44px;
+    }
+    .gd-feature-card {
+      background: #162C4F;
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 14px;
+      padding: 26px 22px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .gd-feature-card__icon {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      background: rgba(244,180,0,0.12);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .gd-feature-card h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      margin: 0 0 6px;
+    }
+    .gd-feature-card p {
+      font-size: 13px;
+      color: rgba(255,255,255,0.5);
+      line-height: 1.65;
+      margin: 0;
+    }
+    .gd-features__cta {
+      text-align: center;
+      margin-top: 44px;
+    }
+    .btn-explore {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: transparent;
+      color: var(--gold);
+      border: 2px solid rgba(244,180,0,0.4);
+      font-family: var(--font);
+      font-size: 15px;
+      font-weight: 700;
+      padding: 15px 32px;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: background 0.2s, border-color 0.2s, transform 0.15s;
+    }
+    .btn-explore:hover {
+      background: rgba(244,180,0,0.08);
+      border-color: var(--gold);
+      transform: translateY(-2px);
+    }
+
+    /* Final CTA banner */
+    .gd-banner {
+      background: linear-gradient(135deg, #0B1F3A 0%, #162C4F 100%);
+      border-top: 1px solid rgba(244,180,0,0.15);
+      padding: 80px 0;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .gd-banner::before {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 600px; height: 300px;
+      background: radial-gradient(ellipse, rgba(244,180,0,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .gd-banner__inner {
+      position: relative;
+      z-index: 1;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+    .gd-banner__tagline {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-style: italic;
+      font-size: 22px;
+      color: var(--gold);
+      margin-bottom: 16px;
+    }
+    .gd-banner__title {
+      font-size: clamp(26px, 4vw, 38px);
+      font-weight: 800;
+      color: #fff;
+      margin: 0 0 16px;
+      line-height: 1.2;
+    }
+    .gd-banner__sub {
+      font-size: 16px;
+      color: rgba(255,255,255,0.55);
+      margin: 0 0 36px;
+      line-height: 1.75;
+    }
+    .btn-banner-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--gold);
+      color: #080f1e;
+      font-family: var(--font);
+      font-size: 16px;
+      font-weight: 800;
+      padding: 18px 40px;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 6px 24px rgba(244,180,0,0.35);
+    }
+    .btn-banner-cta:hover {
+      background: #f5be10;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 32px rgba(244,180,0,0.45);
+    }
+
+    /* Footer */
+    .gd-footer {
+      background: #080f1e;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      padding: 28px 0;
+      text-align: center;
+    }
+    .gd-footer p {
+      font-size: 12px;
+      color: rgba(255,255,255,0.22);
+      margin: 4px 0;
+    }
+    .gd-footer a { color: rgba(244,180,0,0.55); }
+    .gd-footer a:hover { color: var(--gold); }
+
+    /* Responsive */
+    @media (max-width: 700px) {
+      .gd-compare { grid-template-columns: 1fr; }
+      .gd-hero { padding: 48px 0 56px; }
+      .btn-download-guide { padding: 17px 28px; font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <header class="gd-nav">
+    <div class="container gd-nav__inner">
+      <a href="home.html">
+        <img src="apexwhite.png" alt="Apex Aviation" height="32" style="display:block;width:auto" />
+      </a>
+    </div>
+  </header>
+
+  <!-- SUCCESS HERO -->
+  <section class="gd-hero">
+    <div class="container">
+      <div class="gd-hero__inner">
+
+        <div class="gd-hero__check">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <div class="gd-hero__eyebrow">You're All Set</div>
+        <h1 class="gd-hero__title">Your Guide Is Ready</h1>
+        <p class="gd-hero__sub">Check your inbox for a copy — and download it directly below. Study it before your next ground session.</p>
+
+        <!--
+          Replace [PDF_DOWNLOAD_LINK] with the actual Google Drive or hosted PDF URL
+          when the free guide PDF is finalized.
+        -->
+        <a href="[PDF_DOWNLOAD_LINK]" class="btn-download-guide" target="_blank" rel="noopener">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M12 3v13M5 16l7 7 7-7M3 21h18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Download the Guide (PDF)
+        </a>
+        <p class="gd-hero__dl-note">PDF · Free · No account required</p>
+
+        <div class="gd-hero__inbox-note">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 6l-10 7L2 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          A copy has also been sent to your inbox
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <hr class="gd-divider" />
+
+  <!-- NEXT STEP: UPSELL -->
+  <section class="gd-next">
+    <div class="container">
+      <div class="gd-next__inner">
+
+        <div class="gd-next__eyebrow">Ready for More?</div>
+        <h2 class="gd-next__title">The guide is a start.<br /><span style="font-family:'Playfair Display',serif;font-style:italic;color:var(--gold)">The Prep Pack goes deeper.</span></h2>
+        <p class="gd-next__sub">The free guide covers 10 common DPE questions. The Apex Advantage Private Pilot Checkride Prep Pack is the full system — built to take you from nervous to ready.</p>
+
+        <!-- Comparison table -->
+        <div class="gd-compare">
+
+          <div class="gd-compare__col gd-compare__col--free">
+            <div class="gd-compare__header">
+              <div class="gd-compare__label">You Just Got</div>
+              <div class="gd-compare__name">Free Checkride Guide</div>
+              <div class="gd-compare__price">Free</div>
+            </div>
+            <ul class="gd-compare__list">
+              <li>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="rgba(255,255,255,0.35)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                10 DPE-Style Questions
+              </li>
+              <li>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="rgba(255,255,255,0.35)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                5 Bonus Apex Challenge Questions
+              </li>
+              <li>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="rgba(255,255,255,0.35)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Basic Model Explanations
+              </li>
+            </ul>
+          </div>
+
+          <div class="gd-compare__col gd-compare__col--paid">
+            <div class="gd-compare__header">
+              <div class="gd-compare__label">Upgrade To</div>
+              <div class="gd-compare__name">Checkride Prep Pack</div>
+              <div class="gd-compare__price">$29 — Launch Price</div>
+            </div>
+            <ul class="gd-compare__list">
+              <li>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                150+ ACS-Aligned Questions
+              </li>
+              <li>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Detailed Model Answers
+              </li>
+              <li>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                DPE Insights &amp; What They're Evaluating
+              </li>
+              <li>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Scenario-Based Practice
+              </li>
+              <li>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Common Applicant Mistakes
+              </li>
+              <li>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Quick Reference Study Sheets
+              </li>
+            </ul>
+          </div>
+
+        </div>
+
+        <a href="checkride-prep.html" class="btn-explore">
+          Explore the Checkride Prep Pack
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURE CARDS -->
+  <section class="gd-features">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow" style="display:block;text-align:center">What You Get</div>
+        <h2 class="section__title" style="color:#fff;margin-top:16px">Built for how DPEs<br /><span class="accent">actually run oral exams.</span></h2>
+      </div>
+
+      <div class="gd-features__grid">
+
+        <div class="gd-feature-card">
+          <div class="gd-feature-card__icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div>
+            <h4>ACS-Aligned Content</h4>
+            <p>Every question maps directly to the Airman Certification Standards so you're studying the right material.</p>
+          </div>
+        </div>
+
+        <div class="gd-feature-card">
+          <div class="gd-feature-card__icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div>
+            <h4>Built by Active Flight Instructors</h4>
+            <p>Not a textbook publisher — a CFI who sits across from students and DPEs and knows what actually gets tested.</p>
+          </div>
+        </div>
+
+        <div class="gd-feature-card">
+          <div class="gd-feature-card__icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div>
+            <h4>Designed for Real-World Understanding</h4>
+            <p>Answers teach you how to think through a scenario, not just recite the regulation.</p>
+          </div>
+        </div>
+
+        <div class="gd-feature-card">
+          <div class="gd-feature-card__icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div>
+            <h4>Instant Digital Download</h4>
+            <p>Get access the moment you purchase. Study on your phone, tablet, or print the quick-reference sheets.</p>
+          </div>
+        </div>
+
+        <div class="gd-feature-card">
+          <div class="gd-feature-card__icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div>
+            <h4>Study at Your Own Pace</h4>
+            <p>Work through modules in any order. Focused on weak spots? Jump straight there.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="gd-features__cta">
+        <a href="checkride-prep.html" class="btn-explore">
+          View the Checkride Prep Pack
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL CTA BANNER -->
+  <section class="gd-banner">
+    <div class="container">
+      <div class="gd-banner__inner">
+        <div class="gd-banner__tagline">Train Beyond the Checkride.</div>
+        <h2 class="gd-banner__title">Prepare with confidence.<br />Walk in ready.</h2>
+        <p class="gd-banner__sub">The full Checkride Prep Pack gives you everything you need to approach your oral exam as a confident pilot-in-command — not a student hoping to get lucky.</p>
+        <a href="checkride-prep.html" class="btn-banner-cta">
+          View the Checkride Prep Pack
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="gd-footer">
+    <div class="container">
+      <a href="home.html">
+        <img src="apexwhite.png" alt="Apex Aviation" height="26" style="display:block;width:auto;margin:0 auto 12px" />
+      </a>
+      <p>Train Beyond the Checkride. &copy; 2026 Apex Aviation. Austin, Texas.</p>
+      <p><a href="privacy.html">Privacy Policy</a> &nbsp;·&nbsp; <a href="mailto:info@apexaviationtx.com">info@apexaviationtx.com</a></p>
+    </div>
+  </footer>
+
+</body>
+</html>
