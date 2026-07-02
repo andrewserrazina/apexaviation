@@ -109,6 +109,16 @@
   color: #F4B400;
   margin-bottom: 12px;
 }
+.section__eyebrow::before,
+.section__eyebrow::after {
+  content: '';
+  display: inline-block;
+  width: 28px;
+  height: 1.5px;
+  background: #F4B400;
+  flex-shrink: 0;
+  align-self: center;
+}
 
 .section__title {
   font-size: clamp(1.75rem, 4vw, 2.5rem);
