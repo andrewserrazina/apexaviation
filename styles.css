@@ -122,7 +122,8 @@ a { text-decoration: none; color: inherit; }
   color: var(--gold);
   margin-bottom: 16px;
 }
-.section__eyebrow::before {
+.section__eyebrow::before,
+.section__eyebrow::after {
   content: '';
   display: inline-block;
   width: 28px;
@@ -138,7 +139,8 @@ a { text-decoration: none; color: inherit; }
 }
 .section--dark .section__title { color: var(--white); }
 .section--dark .section__eyebrow { color: var(--gold-light); }
-.section--dark .section__eyebrow::before { background: var(--gold-light); }
+.section--dark .section__eyebrow::before,
+.section--dark .section__eyebrow::after { background: var(--gold-light); }
 .section__desc {
   font-size: 17px;
   color: var(--gray);
