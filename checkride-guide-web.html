@@ -1,0 +1,1639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>10 Questions DPEs Love to Ask — Apex Aviation</title>
+  <link rel="icon" type="image/png" href="ApexLogo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet">
+
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-JFPBCF2GXE"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-JFPBCF2GXE');
+  </script>
+  <!-- Microsoft Clarity -->
+  <script type="text/javascript">
+    (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","x95g0qe0g6");
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #080f1e;
+      --navy-alt: #0b1627;
+      --card: #162C4F;
+      --gold: #F4B400;
+      --gold-light: #FFD84D;
+      --white: #ffffff;
+      --text-muted: rgba(255,255,255,0.65);
+      --radius: 10px;
+    }
+
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background: var(--navy);
+      color: var(--white);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ─── GATE LAYERS ─── */
+    .gate {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: var(--navy);
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .gate.active { display: flex; }
+
+    .gate-card {
+      background: var(--card);
+      border: 1px solid rgba(244,180,0,0.2);
+      border-radius: 16px;
+      padding: 48px 40px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+    }
+    .gate-logo {
+      width: 56px;
+      height: 56px;
+      object-fit: contain;
+      margin: 0 auto 20px;
+      display: block;
+    }
+    .gate-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .gate-title {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: clamp(22px, 4vw, 28px);
+      color: var(--white);
+      margin-bottom: 10px;
+      line-height: 1.25;
+    }
+    .gate-sub {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 28px;
+      line-height: 1.6;
+    }
+
+    .gate-input {
+      width: 100%;
+      padding: 14px 18px;
+      background: rgba(255,255,255,0.06);
+      border: 1.5px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      color: var(--white);
+      font-family: 'Montserrat', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-align: center;
+      text-transform: uppercase;
+      outline: none;
+      transition: border-color 0.2s;
+      margin-bottom: 14px;
+    }
+    .gate-input::placeholder { text-transform: none; letter-spacing: normal; font-weight: 400; color: rgba(255,255,255,0.35); }
+    .gate-input:focus { border-color: var(--gold); }
+    .gate-input.error { border-color: #e74c3c; animation: shake 0.3s ease; }
+    @keyframes shake {
+      0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)}
+    }
+
+    .gate-error {
+      font-size: 13px;
+      color: #e74c3c;
+      margin-bottom: 12px;
+      min-height: 18px;
+    }
+
+    .btn-gate {
+      width: 100%;
+      padding: 15px;
+      background: var(--gold);
+      color: var(--navy);
+      border: none;
+      border-radius: 8px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .btn-gate:hover { background: var(--gold-light); transform: translateY(-1px); }
+
+    /* ─── EMAIL GATE FORM ─── */
+    .email-gate-form .name-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .email-gate-form .gate-input { margin-bottom: 10px; }
+    .email-gate-form .gate-input.full { width: 100%; }
+    .gate-privacy {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 12px;
+    }
+
+    /* ─── MAIN CONTENT (hidden until unlocked) ─── */
+    #main-content { display: none; }
+    #main-content.unlocked { display: block; }
+
+    /* ─── NAV ─── */
+    .portal-nav {
+      background: rgba(8,15,30,0.97);
+      border-bottom: 1px solid rgba(244,180,0,0.15);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .portal-nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+    .portal-nav-brand img { width: 36px; height: 36px; object-fit: contain; }
+    .portal-nav-brand span {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--white);
+    }
+    .portal-badge {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gold);
+      background: rgba(244,180,0,0.1);
+      border: 1px solid rgba(244,180,0,0.3);
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+
+    /* ─── HERO ─── */
+    .hero {
+      background: linear-gradient(135deg, #0b1627 0%, #080f1e 100%);
+      border-bottom: 1px solid rgba(244,180,0,0.12);
+      padding: 64px 24px;
+      text-align: center;
+    }
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 20px;
+    }
+    .hero-eyebrow::before, .hero-eyebrow::after {
+      content: '';
+      display: inline-block;
+      width: 24px;
+      height: 1.5px;
+      background: var(--gold);
+      align-self: center;
+    }
+    .hero h1 {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: clamp(28px, 5vw, 44px);
+      color: var(--white);
+      line-height: 1.2;
+      max-width: 720px;
+      margin: 0 auto 16px;
+    }
+    .hero h1 em { color: var(--gold); font-style: italic; }
+    .hero-sub {
+      font-size: 16px;
+      color: var(--text-muted);
+      max-width: 560px;
+      margin: 0 auto 32px;
+      line-height: 1.7;
+    }
+    .hero-stats {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 32px;
+      flex-wrap: wrap;
+    }
+    .hero-stat {
+      text-align: center;
+    }
+    .hero-stat-num {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--gold);
+      display: block;
+    }
+    .hero-stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .hero-divider {
+      width: 1px;
+      height: 36px;
+      background: rgba(255,255,255,0.15);
+    }
+
+    /* ─── SECTIONS ─── */
+    section { padding: 64px 24px; }
+    .container { max-width: 860px; margin: 0 auto; }
+    .container-wide { max-width: 1040px; margin: 0 auto; }
+
+    .section-eyebrow {
+      display: block;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 14px;
+    }
+    .section-title {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: clamp(24px, 4vw, 36px);
+      color: var(--white);
+      text-align: center;
+      margin-bottom: 16px;
+      line-height: 1.25;
+    }
+    .section-sub {
+      font-size: 15px;
+      color: var(--text-muted);
+      text-align: center;
+      max-width: 600px;
+      margin: 0 auto 48px;
+      line-height: 1.7;
+    }
+
+    /* ─── INTRO ─── */
+    .intro-section { background: var(--navy-alt); }
+    .intro-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: start;
+    }
+    .intro-text p {
+      font-size: 15px;
+      color: var(--text-muted);
+      line-height: 1.8;
+      margin-bottom: 16px;
+    }
+    .intro-text p:last-child { margin-bottom: 0; }
+    .intro-text strong { color: var(--white); font-weight: 700; }
+    .andrew-card {
+      background: var(--card);
+      border: 1px solid rgba(244,180,0,0.2);
+      border-radius: 14px;
+      padding: 28px;
+    }
+    .andrew-card-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    .andrew-avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--gold);
+      background: rgba(244,180,0,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .andrew-avatar img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .andrew-name { font-weight: 700; font-size: 15px; color: var(--white); }
+    .andrew-title { font-size: 12px; color: var(--gold); font-weight: 600; }
+    .andrew-quote {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.75;
+      font-style: italic;
+    }
+    .andrew-quote::before { content: '"'; color: var(--gold); font-size: 20px; line-height: 1; }
+    .andrew-quote::after { content: '"'; color: var(--gold); font-size: 20px; line-height: 1; }
+
+    /* ─── QUESTIONS ─── */
+    .questions-section { background: var(--navy); }
+
+    .progress-bar-wrap {
+      background: rgba(255,255,255,0.06);
+      border-radius: 20px;
+      height: 6px;
+      max-width: 520px;
+      margin: 0 auto 48px;
+      position: relative;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--gold);
+      border-radius: 20px;
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+    .progress-label {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 8px;
+      margin-bottom: 0;
+    }
+
+    .accordion-item {
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius);
+      margin-bottom: 12px;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .accordion-item.open { border-color: rgba(244,180,0,0.35); }
+
+    .accordion-trigger {
+      width: 100%;
+      background: none;
+      border: none;
+      padding: 20px 24px;
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      cursor: pointer;
+      text-align: left;
+      color: var(--white);
+      font-family: 'Montserrat', sans-serif;
+    }
+    .accordion-trigger:hover { background: rgba(255,255,255,0.03); }
+
+    .q-number {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(244,180,0,0.12);
+      border: 1.5px solid rgba(244,180,0,0.3);
+      color: var(--gold);
+      font-size: 12px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .accordion-item.open .q-number {
+      background: var(--gold);
+      color: var(--navy);
+      border-color: var(--gold);
+    }
+
+    .q-meta { flex: 1; }
+    .q-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 4px;
+    }
+    .q-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--white);
+      line-height: 1.3;
+      margin-bottom: 4px;
+    }
+    .q-scenario {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      font-style: italic;
+    }
+
+    .accordion-arrow {
+      font-size: 18px;
+      color: var(--gold);
+      margin-left: 8px;
+      margin-top: 6px;
+      transition: transform 0.3s;
+      flex-shrink: 0;
+    }
+    .accordion-item.open .accordion-arrow { transform: rotate(180deg); }
+
+    .accordion-body {
+      display: none;
+      padding: 0 24px 24px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .accordion-item.open .accordion-body { display: block; }
+
+    .answer-block { padding-top: 20px; }
+    .answer-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 8px;
+    }
+    .answer-text {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.75;
+      margin-bottom: 20px;
+    }
+    .answer-text strong { color: var(--white); font-weight: 700; }
+
+    .pro-tip-box {
+      background: rgba(244,180,0,0.07);
+      border-left: 3px solid var(--gold);
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+    }
+    .pro-tip-box .tip-label {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 6px;
+    }
+    .pro-tip-box p {
+      font-size: 13px;
+      color: var(--white);
+      line-height: 1.6;
+      font-style: italic;
+    }
+
+    .reg-tag {
+      display: inline-block;
+      background: rgba(244,180,0,0.12);
+      border: 1px solid rgba(244,180,0,0.3);
+      color: var(--gold);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 4px;
+      letter-spacing: 0.04em;
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+
+    .mark-read-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 16px;
+      padding: 10px 18px;
+      background: rgba(244,180,0,0.1);
+      border: 1.5px solid rgba(244,180,0,0.3);
+      border-radius: 6px;
+      color: var(--gold);
+      font-family: 'Montserrat', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .mark-read-btn:hover { background: rgba(244,180,0,0.18); }
+    .mark-read-btn.completed {
+      background: rgba(34,197,94,0.1);
+      border-color: rgba(34,197,94,0.4);
+      color: #4ade80;
+    }
+
+    /* ─── INLINE CTA ─── */
+    .inline-cta {
+      background: linear-gradient(135deg, rgba(244,180,0,0.08) 0%, rgba(22,44,79,0.6) 100%);
+      border: 1px solid rgba(244,180,0,0.25);
+      border-radius: 12px;
+      padding: 24px 28px;
+      margin: 32px 0;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .inline-cta-text { flex: 1; min-width: 220px; }
+    .inline-cta-text strong {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--white);
+      display: block;
+      margin-bottom: 4px;
+    }
+    .inline-cta-text span { font-size: 13px; color: var(--text-muted); }
+    .btn-inline-cta {
+      padding: 12px 22px;
+      background: var(--gold);
+      color: var(--navy);
+      border: none;
+      border-radius: 7px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      white-space: nowrap;
+      text-decoration: none;
+      display: inline-block;
+      transition: background 0.2s;
+    }
+    .btn-inline-cta:hover { background: var(--gold-light); }
+
+    /* ─── DPE INSIGHTS ─── */
+    .insights-section { background: var(--navy-alt); }
+    .insights-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .insight-card {
+      background: var(--card);
+      border: 1px solid rgba(244,180,0,0.15);
+      border-radius: 14px;
+      padding: 28px;
+      position: relative;
+    }
+    .insight-card::before {
+      content: '"';
+      position: absolute;
+      top: 16px;
+      left: 22px;
+      font-family: 'Playfair Display', serif;
+      font-size: 60px;
+      color: rgba(244,180,0,0.2);
+      line-height: 1;
+    }
+    .insight-text {
+      font-size: 15px;
+      color: var(--white);
+      line-height: 1.75;
+      font-style: italic;
+      padding-top: 24px;
+      margin-bottom: 16px;
+    }
+    .insight-source {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+
+    /* ─── CHALLENGE QUESTIONS ─── */
+    .challenge-section { background: var(--navy); }
+    .challenge-grid {
+      display: grid;
+      gap: 16px;
+    }
+    .challenge-card {
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
+      padding: 20px 24px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    .challenge-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(244,180,0,0.1);
+      border: 1.5px solid rgba(244,180,0,0.3);
+      color: var(--gold);
+      font-size: 12px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .challenge-q {
+      font-size: 14px;
+      color: var(--white);
+      line-height: 1.6;
+      font-style: italic;
+    }
+    .challenge-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      font-style: normal;
+    }
+
+    /* ─── CHECKLIST ─── */
+    .checklist-section { background: var(--navy-alt); }
+    .checklist-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+    }
+    .checklist-group {
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px;
+      padding: 24px;
+    }
+    .checklist-group-title {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(244,180,0,0.15);
+    }
+    .checklist-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .checklist-item:last-child { margin-bottom: 0; }
+    .check-box {
+      width: 20px;
+      height: 20px;
+      border-radius: 5px;
+      border: 2px solid rgba(244,180,0,0.4);
+      background: transparent;
+      flex-shrink: 0;
+      margin-top: 1px;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .check-box:checked {
+      background: var(--gold);
+      border-color: var(--gold);
+    }
+    .check-box:checked::after {
+      content: '✓';
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--navy);
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .check-label {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .check-box:checked + .check-label {
+      color: rgba(255,255,255,0.4);
+      text-decoration: line-through;
+    }
+
+    .checklist-progress {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .checklist-progress-bar-wrap {
+      background: rgba(255,255,255,0.06);
+      border-radius: 20px;
+      height: 6px;
+      max-width: 400px;
+      margin: 0 auto 8px;
+      overflow: hidden;
+    }
+    .checklist-progress-fill {
+      height: 100%;
+      background: #4ade80;
+      border-radius: 20px;
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+    .checklist-progress-label {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* ─── FINAL CTA ─── */
+    .final-cta-section {
+      background: linear-gradient(135deg, #0b1627 0%, #080f1e 100%);
+      border-top: 1px solid rgba(244,180,0,0.15);
+      text-align: center;
+    }
+    .final-cta-section .section-title { margin-bottom: 12px; }
+    .final-cta-section .section-sub { margin-bottom: 36px; }
+    .final-cta-price {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 6px;
+      margin-bottom: 28px;
+    }
+    .final-cta-price .amount {
+      font-size: 48px;
+      font-weight: 800;
+      color: var(--gold);
+      line-height: 1;
+    }
+    .final-cta-price .period {
+      font-size: 15px;
+      color: var(--text-muted);
+    }
+    .final-cta-includes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 32px;
+    }
+    .include-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .include-tag .check { color: var(--gold); }
+    .btn-final {
+      display: inline-block;
+      padding: 18px 40px;
+      background: var(--gold);
+      color: var(--navy);
+      border: none;
+      border-radius: 8px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    }
+    .btn-final:hover {
+      background: var(--gold-light);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(244,180,0,0.3);
+    }
+    .final-guarantee {
+      margin-top: 20px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* ─── FOOTER ─── */
+    .portal-footer {
+      background: var(--navy);
+      border-top: 1px solid rgba(255,255,255,0.06);
+      padding: 28px 24px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .portal-footer a { color: var(--gold); text-decoration: none; }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 680px) {
+      .intro-grid { grid-template-columns: 1fr; }
+      .gate-card { padding: 36px 24px; }
+      .email-gate-form .name-row { grid-template-columns: 1fr; }
+      .hero-divider { display: none; }
+      .inline-cta { flex-direction: column; gap: 14px; }
+      .accordion-trigger { padding: 16px 18px; }
+      .accordion-body { padding: 0 18px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─── PASSWORD GATE ─── -->
+  <div class="gate active" id="password-gate">
+    <div class="gate-card">
+      <img src="ApexLogo.png" alt="Apex Aviation" class="gate-logo" onerror="this.style.display='none'">
+      <div class="gate-label">Apex Aviation — Member Access</div>
+      <h1 class="gate-title">Welcome to the Apex Advantage</h1>
+      <p class="gate-sub">Enter your access code below to unlock your private training guide.</p>
+      <input
+        type="text"
+        id="password-input"
+        class="gate-input"
+        placeholder="Enter access code"
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="false"
+      >
+      <div class="gate-error" id="password-error"></div>
+      <button class="btn-gate" onclick="checkPassword()">Unlock Guide</button>
+    </div>
+  </div>
+
+  <!-- ─── EMAIL GATE ─── -->
+  <div class="gate" id="email-gate">
+    <div class="gate-card">
+      <img src="ApexLogo.png" alt="Apex Aviation" class="gate-logo" onerror="this.style.display='none'">
+      <div class="gate-label">One more step</div>
+      <h1 class="gate-title">Where should we send updates?</h1>
+      <p class="gate-sub">Drop your email to access the full guide and get notified when we release new materials.</p>
+      <form class="email-gate-form ml-block-form" action="https://assets.mailerlite.com/jsonp/2486714/forms/191979298183185498/subscribe" method="post" onsubmit="handleEmailGate(event)">
+        <div class="name-row">
+          <input type="text" name="fields[name]" class="gate-input" placeholder="First name" required>
+          <input type="text" name="fields[last_name]" class="gate-input" placeholder="Last name">
+        </div>
+        <input type="email" name="fields[email]" class="gate-input full" placeholder="Your email address" required>
+        <input type="hidden" name="ml-submit" value="1">
+        <input type="hidden" name="anticsrf" value="true">
+        <div class="gate-error" id="email-error"></div>
+        <button type="submit" class="btn-gate">Access the Guide →</button>
+        <p class="gate-privacy">No spam. Unsubscribe anytime. We respect your inbox.</p>
+      </form>
+    </div>
+  </div>
+
+  <!-- ─── MAIN CONTENT ─── -->
+  <div id="main-content">
+
+    <!-- NAV -->
+    <nav class="portal-nav">
+      <a href="index.html" class="portal-nav-brand">
+        <img src="ApexLogo.png" alt="Apex" onerror="this.style.display='none'">
+        <span>Apex Aviation</span>
+      </a>
+      <span class="portal-badge">Private Guide</span>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero">
+      <div class="container">
+        <div class="hero-eyebrow">Private Training Portal</div>
+        <h1>10 Questions DPEs Love to Ask — <em>and how to answer every one.</em></h1>
+        <p class="hero-sub">Inside-the-room insight from an experienced CFI who knows exactly what examiners are looking for — and what makes candidates freeze.</p>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <span class="hero-stat-num">10</span>
+            <span class="hero-stat-label">Real DPE Questions</span>
+          </div>
+          <div class="hero-divider"></div>
+          <div class="hero-stat">
+            <span class="hero-stat-num">5</span>
+            <span class="hero-stat-label">Challenge Scenarios</span>
+          </div>
+          <div class="hero-divider"></div>
+          <div class="hero-stat">
+            <span class="hero-stat-num">1</span>
+            <span class="hero-stat-label">Interactive Checklist</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- INTRO -->
+    <section class="intro-section">
+      <div class="container">
+        <div class="intro-grid">
+          <div class="intro-text">
+            <p>Most checkride failures aren't knowledge failures. Applicants fail because they haven't seen the question before — and when the pressure is on, their thinking process locks up.</p>
+            <p>This guide won't make you memorize answers. It's going to give you something better: <strong>a framework for thinking through any scenario a DPE puts in front of you.</strong></p>
+            <p>Work through each question. Read the reasoning. Internalize the structure. Then close the guide and explain it out loud — the way you will on your actual checkride.</p>
+            <p>That's the rep that transfers to the real thing.</p>
+          </div>
+          <div class="andrew-card">
+            <div class="andrew-card-header">
+              <div class="andrew-avatar">
+                <img src="andrew-headshot.jpg" alt="Andrew" onerror="this.parentElement.textContent='✈'">
+              </div>
+              <div>
+                <div class="andrew-name">Andrew Serrazina</div>
+                <div class="andrew-title">CFI · Apex Aviation</div>
+              </div>
+            </div>
+            <div class="andrew-quote">The best pilots I've trained don't memorize answers — they learn how to think through situations. That's the difference between passing a checkride and actually being ready to fly alone. Train Beyond the Checkride isn't a slogan for us. It's the entire teaching philosophy.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 QUESTIONS -->
+    <section class="questions-section">
+      <div class="container">
+        <div class="section-eyebrow">The Core 10</div>
+        <h2 class="section-title">Questions DPEs Love to Ask</h2>
+        <p class="section-sub">Open each question, read the full scenario and reasoning, then mark it complete when you can explain it in your own words.</p>
+
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" id="q-progress-fill"></div>
+        </div>
+        <p class="progress-label" id="q-progress-label">0 of 10 completed</p>
+
+        <div id="accordion" style="margin-top:32px;">
+
+          <!-- Q1 -->
+          <div class="accordion-item" id="q-item-1">
+            <button class="accordion-trigger" onclick="toggleAccordion(1)">
+              <div class="q-number">1</div>
+              <div class="q-meta">
+                <div class="q-label">Question 1 of 10</div>
+                <div class="q-title">The Inoperative Landing Light</div>
+                <div class="q-scenario">"You arrive at the airport for a daytime VFR flight and discover the landing light is inoperative. Can you legally fly?"</div>
+              </div>
+              <span class="accordion-arrow">▾</span>
+            </button>
+            <div class="accordion-body">
+              <div class="answer-block">
+                <div class="answer-section-title">The Regulation</div>
+                <div class="answer-text">
+                  <span class="reg-tag">14 CFR 91.213</span><span class="reg-tag">14 CFR 91.205</span>
+                  <br><br>
+                  Landing lights are <strong>not required equipment for daytime VFR flight</strong> under 14 CFR 91.205. However, you can't simply ignore an inoperative instrument or piece of equipment. You need to go through the proper process.
+                  <br><br>
+                  <strong>The MEL Process (14 CFR 91.213):</strong> First, check whether the aircraft has an FAA-approved Minimum Equipment List (MEL). If it does, defer the item per the MEL and its associated procedures. If there's no MEL, check: is this equipment listed in 14 CFR 91.205, required by airworthiness directive, or required by the aircraft's type certificate data sheet? If not, you can placard it "inoperative" and fly — provided the inoperative item doesn't compromise airworthiness.
+                </div>
+                <div class="pro-tip-box">
+                  <div class="tip-label">Pro Tip</div>
+                  <p>Say the process out loud in order: <em>"MEL → 91.205 / type cert / AD → placard-and-fly or ground-and-fix."</em> DPEs want to see the process, not just the destination.</p>
+                </div>
+                <button class="mark-read-btn" id="mark-1" onclick="markComplete(1)">
+                  <span>Mark as complete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Q2 -->
+          <div class="accordion-item" id="q-item-2">
+            <button class="accordion-trigger" onclick="toggleAccordion(2)">
+              <div class="q-number">2</div>
+              <div class="q-meta">
+                <div class="q-label">Question 2 of 10</div>
+                <div class="q-title">The Generous Friend</div>
+                <div class="q-scenario">"Your friend offers to pay the entire aircraft rental cost for a flight you were already planning to take. Can you accept?"</div>
+              </div>
+              <span class="accordion-arrow">▾</span>
+            </button>
+            <div class="accordion-body">
+              <div class="answer-block">
+                <div class="answer-section-title">Compensation and Private Pilot Privileges</div>
+                <div class="answer-text">
+                  <span class="reg-tag">14 CFR 61.113</span>
+                  <br><br>
+                  Private pilots may <strong>not</strong> act as PIC for compensation or hire. However, there is an exception for <strong>pro rata share of operating expenses.</strong>
+                  <br><br>
+                  The key question is: do you and your friend share a <strong>common purpose</strong> for this flight? If you were already planning to take this exact flight, and your friend is coming along and sharing the cost — including your own proportionate share — that is a pro rata cost share with a common purpose, which is legal.
+                  <br><br>
+                  If your friend is essentially <strong>paying you to fly them somewhere you wouldn't otherwise be going</strong> — that's compensation, and it requires at least a commercial certificate.
+                </div>
+                <div class="pro-tip-box">
+                  <div class="tip-label">Pro Tip</div>
+                  <p>The phrase the DPE wants to hear: <em>"pro rata share with a common purpose."</em> Define both parts. If only one is present, it likely doesn't qualify.</p>
+                </div>
+                <button class="mark-read-btn" id="mark-2" onclick="markComplete(2)">
+                  <span>Mark as complete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Q3 -->
+          <div class="accordion-item" id="q-item-3">
+            <button class="accordion-trigger" onclick="toggleAccordion(3)">
+              <div class="q-number">3</div>
+              <div class="q-meta">
+                <div class="q-label">Question 3 of 10</div>
+                <div class="q-title">Water in the Fuel</div>
+                <div class="q-scenario">"During preflight you discover water in the fuel sample. What do you do next?"</div>
+              </div>
+              <span class="accordion-arrow">▾</span>
+            </button>
+            <div class="accordion-body">
+              <div class="answer-block">
+                <div class="answer-section-title">Risk Management, Not Just Checklist</div>
+                <div class="answer-text">
+                  The wrong answer here is a reflexive "drain more sumps until it clears." The right answer shows <strong>reasoning and risk management awareness.</strong>
+                  <br><br>
+                  You drain additional samples from every sump, note how much water you're finding, and assess whether the volume and location is consistent with condensation contamination or something more serious (fuel truck contamination, tank breach, etc.).
+                  <br><br>
+                  If water continues to appear, or appears in unexpected locations, <strong>you do not fly</strong> — you ground the aircraft and contact maintenance. No flight is worth a fuel-starved engine. You also have a duty to inform other pilots and the FBO.
+                </div>
+                <div class="pro-tip-box">
+                  <div class="tip-label">Pro Tip</div>
+                  <p>Narrate your reasoning, not just your actions: <em>"I want to understand what I'm seeing before I make a go/no-go decision."</em> That's what DPEs are evaluating.</p>
+                </div>
+                <button class="mark-read-btn" id="mark-3" onclick="markComplete(3)">
+                  <span>Mark as complete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- INLINE CTA AFTER Q3 -->
+          <div class="inline-cta">
+            <div class="inline-cta-text">
+              <strong>Want to practice these questions with a CFI?</strong>
+              <span>Book a mock oral session — 45 minutes of focused, scenario-based question and answer.</span>
+            </div>
+            <a href="contact.html" class="btn-inline-cta">Book Mock Oral</a>
+          </div>
+
+          <!-- Q4 -->
+          <div class="accordion-item" id="q-item-4">
+            <button class="accordion-trigger" onclick="toggleAccordion(4)">
+              <div class="q-number">4</div>
+              <div class="q-meta">
+                <div class="q-label">Question 4 of 10</div>
+                <div class="q-title">The Alternator Failure</div>
+                <div class="q-scenario">"You're cruising cross-country when you notice the ammeter has drifted into discharge. What's your assessment?"</div>
+              </div>
+              <span class="accordion-arrow">▾</span>
+            </button>
+            <div class="accordion-body">
+              <div class="answer-block">
+                <div class="answer-section-title">Battery, Load Shedding, Time Management</div>
+                <div class="answer-text">
+                  An alternator failure means the battery is now <strong>your only electrical source</strong> — and it's draining. This is an abnormal procedure, not an emergency, but it becomes an emergency if you don't manage it well.
+                  <br><br>
+                  <strong>Immediate priorities:</strong>
+                  <ol style="margin-left:18px;margin-top:8px;margin-bottom:8px;color:rgba(255,255,255,0.65);font-size:14px;line-height:1.8;">
+                    <li>Verify — check the ammeter, alternator circuit breaker, and alternator switch (might be a nuisance trip)</li>
+                    <li>Reduce electrical load immediately — non-essential avionics, lights, and equipment off</li>
+                    <li>Estimate remaining battery life — most GA batteries give 30–60 minutes depending on load</li>
+                    <li>Navigate toward the nearest suitable airport with ATC assistance (squawk 7600 if comms fail)</li>
+                    <li>Declare emergency if warranted</li>
+                  </ol>
+                  Night flight changes the math significantly — you need landing and position lights, which accelerates battery drain.
+                </div>
+                <div class="pro-tip-box">
+                  <div class="tip-label">Pro Tip</div>
+                  <p><em>"An alternator failure gives me time to think — I'm going to use it, not panic through it."</em> This sentence communicates pilot-in-command mindset under pressure.</p>
+                </div>
+                <button class="mark-read-btn" id="mark-4" onclick="markComplete(4)">
+                  <span>Mark as complete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Q5 -->
+          <div class="accordion-item" id="q-item-5">
+            <button class="accordion-trigger" onclick="toggleAccordion(5)">
+              <div class="q-number">5</div>
+              <div class="q-meta">
+                <div class="q-label">Question 5 of 10</div>
+                <div class="q-title">Standby for Class Bravo</div>
+                <div class="q-scenario">"ATC says 'standby' and nothing else. You're now three miles out. Can you enter?"</div>
+              </div>
+              <span class="accordion-arrow">▾</span>
+            </button>
+            <div class="accordion-body">
+              <div class="answer-block">
+                <div class="answer-section-title">Clearance Isn't Implied</div>
+                <div class="answer-text">
+                  <span class="reg-tag">14 CFR 91.131</span>
+                  <br><br>
+                  <strong>No.</strong> "Standby" is <strong>not a clearance to enter Class Bravo.</strong> Class B airspace requires an explicit, specific clearance to enter — "cleared into the Bravo" — not an acknowledgment of your request.
+                  <br><br>
+                  At three miles out, you need to take positive action: turn away from the Bravo, descend below it, or hold outside until you receive a clearance. Proceeding inbound while "standing by" is a pilot deviation waiting to happen.
+                  <br><br>
+                  If ATC never gets back to you: remain outside the Bravo and try again on guard or a different frequency if necessary.
+                </div>
+                <div class="pro-tip-box">
+                  <div class="tip-label">Pro Tip</div>
+                  <p>Don't just say "I can't enter." Describe your avoidance plan — <em>"I'd turn X degrees, descend below the shelf, and re-request."</em> DPEs want to see the action, not just the rule.</p>
+                </div>
+                <button class="mark-read-btn" id="mark-5" onclick="markComplete(5)">
+                  <span>Mark as complete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Q6 -->
+          <div class="accordion-item" id="q-item-6">
+            <button class="accordion-trigger" onclick="toggleAccordion(6)">
+              <div class="q-number">6</div>
+              <div class="q-meta">
+                <div class="q-label">Question 6 of 10</div>
+                <div class="q-title">The Document Check</div>
+                <div class="q-scenario">"Walk me through what you'd hand me and why each one matters."</div>
+              </div>
+              <span class="accordion-arrow">▾</span>
+            </button>
+            <div class="accordion-body">
+              <div class="answer-block">
+                <div class="answer-section-title">ARROW — What Each Document Proves</div>
+                <div class="answer-text">
+                  <span class="reg-tag">14 CFR 91.9</span><span class="reg-tag">14 CFR 91.203</span>
+                  <br><br>
+                  The mnemonic is ARROW. But the advanced answer isn't just knowing the acronym — it's knowing <strong>what each document proves about the aircraft's airworthiness and legal status.</strong>
+                  <br><br>
+                  <strong style="color:var(--gold)">A</strong> — Airworthiness Certificate: Proves the FAA found this aircraft to be airworthy at time of manufacture. It's permanent unless revoked.<br><br>
+                  <strong style="color:var(--gold)">R</strong> — Registration: Proves legal ownership and US registration. Expires every 3 years — check the date.<br><br>
+                  <strong style="color:var(--gold)">R</strong> — Radio Station License: Required when flying internationally (FCC). Optional domestically.<br><br>
+                  <strong style="color:var(--gold)">O</strong> — Operating Handbook (AFM/POH): FAA-approved operating limitations are in here — Vne, weight limits, required equipment.<br><br>
+                  <strong style="color:var(--gold)">W</strong> — Weight and Balance: Current W&B data must be onboard and accurate for this configuration.
+                </div>
+                <div class="pro-tip-box">
+                  <div class="tip-label">Pro Tip</div>
+                  <p>For each document say: <em>"This document proves ___."</em> Not just what it is — what it <em>means</em> for the legal and safe operation of the aircraft. That framing separates prepared applicants from memorizers.</p>
+                </div>
+                <button class="mark-read-btn" id="mark-6" onclick="markComplete(6)">
+                  <span>Mark as complete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- INLINE CTA AFTER Q6 -->
+          <div class="inline-cta">
+            <div class="inline-cta-text">
+              <strong>Ready for the full Checkride Prep Pack?</strong>
+              <span>Study guides, scenario banks, oral practice questions, and pre-checkride coaching — everything in one place.</span>
+            </div>
+            <a href="checkride-prep.html" class="btn-inline-cta">See the Prep Pack</a>
+          </div>
+
+          <!-- Q7 -->
+          <div class="accordion-item" id="q-item-7">
+            <button class="accordion-trigger" onclick="toggleAccordion(7)">
+              <div class="q-number">7</div>
+              <div class="q-meta">
+                <div class="q-label">Question 7 of 10</div>
+                <div class="q-title">Stall at Any Airspeed</div>
+                <div class="q-scenario">"Can an airplane stall at any airspeed?"</div>
+              </div>
+              <span class="accordion-arrow">▾</span>
+            </button>
+            <div class="accordion-body">
+              <div class="answer-block">
+                <div class="answer-section-title">Angle of Attack — Not Airspeed</div>
+                <div class="answer-text">
+                  <strong>Yes.</strong> A stall is an <strong>angle-of-attack event, not an airspeed event.</strong>
+                  <br><br>
+                  When the wing's critical angle of attack is exceeded, airflow over the wing separates and lift collapses — regardless of how fast the airplane is moving. This is why accelerated stalls (occurring at higher-than-normal airspeeds due to load factor) are possible and why they're more dangerous — they happen faster and with less warning.
+                  <br><br>
+                  Load factor increases stall speed. In a 60° banked turn, you're pulling 2Gs — stall speed increases by approximately 41%. At cruise airspeed, if you pull hard enough to exceed critical AoA, you will stall.
+                </div>
+                <div class="pro-tip-box">
+                  <div class="tip-label">Pro Tip</div>
+                  <p>Open with the punchline: <em>"A stall is an angle-of-attack event, not an airspeed event."</em> Then explain why. DPEs respect concise, accurate lead answers followed by supporting reasoning.</p>
+                </div>
+                <button class="mark-read-btn" id="mark-7" onclick="markComplete(7)">
+                  <span>Mark as complete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Q8 -->
+          <div class="accordion-item" id="q-item-8">
+            <button class="accordion-trigger" onclick="toggleAccordion(8)">
+              <div class="q-number">8</div>
+              <div class="q-meta">
+                <div class="q-label">Question 8 of 10</div>
+                <div class="q-title">The Building Storm</div>
+                <div class="q-scenario">"A convective SIGMET has been issued for your route. You check the weather and it looks clear at your destination. What do you do?"</div>
+              </div>
+              <span class="accordion-arrow">▾</span>
+            </button>
+            <div class="accordion-body">
+              <div class="answer-block">
+                <div class="answer-section-title">Continuous Reassessment and Margin of Safety</div>
+                <div class="answer-text">
+                  A convective SIGMET is not a soft advisory. It's an urgent weather warning issued for severe convective activity — thunderstorms, hail, tornadoes, or embedded convection. A private pilot flying VFR has <strong>no business being near a convective SIGMET area</strong> unless they have a clear, wide route deviation plan.
+                  <br><br>
+                  The smart answer here isn't just to go or not go — it's to demonstrate <strong>the mindset of a weather-aware pilot:</strong> check current satellite and radar, not just METARs; look at where the cells are moving; and if there's any doubt, don't go.
+                  <br><br>
+                  If you do fly, maintain a <strong>20 nautical mile lateral berth</strong> from any visible convective activity. Radar and visual aren't always consistent — the VFR cloud clearances don't apply to thunderstorms.
+                </div>
+                <div class="pro-tip-box">
+                  <div class="tip-label">Pro Tip</div>
+                  <p>Show the DPE your margin of safety: <em>"I want 20 miles between me and any cell, and I'd rather land short and wait than push through."</em> Decisive conservatism is a pass. Wishful thinking is a fail.</p>
+                </div>
+                <button class="mark-read-btn" id="mark-8" onclick="markComplete(8)">
+                  <span>Mark as complete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Q9 -->
+          <div class="accordion-item" id="q-item-9">
+            <button class="accordion-trigger" onclick="toggleAccordion(9)">
+              <div class="q-number">9</div>
+              <div class="q-meta">
+                <div class="q-label">Question 9 of 10</div>
+                <div class="q-title">Losing Position</div>
+                <div class="q-scenario">"You're on a cross-country and you realize you're not sure exactly where you are. What do you do?"</div>
+              </div>
+              <span class="accordion-arrow">▾</span>
+            </button>
+            <div class="accordion-body">
+              <div class="answer-block">
+                <div class="answer-section-title">The 4 C's</div>
+                <div class="answer-text">
+                  Getting temporarily unsure of your position is not an emergency — refusing to acknowledge it is what makes it one. Use the 4 C's:
+                  <br><br>
+                  <strong style="color:var(--gold)">Climb</strong> — Better visibility, better radio coverage, more options. Buy time and altitude.<br><br>
+                  <strong style="color:var(--gold)">Communicate</strong> — Contact ATC on 121.5 MHz (guard) or the nearest FSS. Radar contact gives you an instant position fix.<br><br>
+                  <strong style="color:var(--gold)">Confess</strong> — Tell ATC you're unsure of your position. This is not a career-ending admission. It's what safe pilots do.<br><br>
+                  <strong style="color:var(--gold)">Comply</strong> — Follow ATC instructions once you're in contact. They do this all day.
+                </div>
+                <div class="pro-tip-box">
+                  <div class="tip-label">Pro Tip</div>
+                  <p><em>"There's no professional downside to telling ATC I'm unsure of my position."</em> Frame it proactively — it shows you understand the system and have zero ego about using it. That's what DPEs want to see.</p>
+                </div>
+                <button class="mark-read-btn" id="mark-9" onclick="markComplete(9)">
+                  <span>Mark as complete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- INLINE CTA AFTER Q9 -->
+          <div class="inline-cta">
+            <div class="inline-cta-text">
+              <strong>Train the way you'll fly.</strong>
+              <span>Our Redbird simulator and structured ground instruction are designed to build exactly this kind of thinking.</span>
+            </div>
+            <a href="contact.html" class="btn-inline-cta">Schedule a Lesson</a>
+          </div>
+
+          <!-- Q10 -->
+          <div class="accordion-item" id="q-item-10">
+            <button class="accordion-trigger" onclick="toggleAccordion(10)">
+              <div class="q-number">10</div>
+              <div class="q-meta">
+                <div class="q-label">Question 10 of 10</div>
+                <div class="q-title">Legal, But Not Comfortable</div>
+                <div class="q-scenario">"The weather is technically legal — 3 miles visibility, 1,200 ft ceiling, VFR. But you've never flown in those conditions before. Do you go?"</div>
+              </div>
+              <span class="accordion-arrow">▾</span>
+            </button>
+            <div class="accordion-body">
+              <div class="answer-block">
+                <div class="answer-section-title">Personal Minimums vs. Legal Floor</div>
+                <div class="answer-text">
+                  Legal minimums are the floor — <strong>not the standard.</strong> A private pilot with 65 hours has no business flying in conditions that challenge instrument-rated pilots.
+                  <br><br>
+                  The answer the DPE wants to hear is that you <strong>have real, specific personal minimums</strong> — and that you understand why they exist above the legal floor.
+                  <br><br>
+                  A strong applicant can name their personal minimums: <em>"I don't fly VFR below 2,000 feet AGL or 5 miles visibility until I have more experience in marginal conditions — ideally with an instructor first."</em>
+                  <br><br>
+                  This isn't timidity. It's aeronautical decision-making. The DPE wants to know you'll still be flying in a year — and that you understand the difference between can and should.
+                </div>
+                <div class="pro-tip-box">
+                  <div class="tip-label">Pro Tip</div>
+                  <p>Have a real, specific number ready. Not "I'd probably wait" — give them your ceiling and visibility floor. Specificity signals that you've actually thought this through, not just rehearsed the right sounding answer.</p>
+                </div>
+                <button class="mark-read-btn" id="mark-10" onclick="markComplete(10)">
+                  <span>Mark as complete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- #accordion -->
+      </div>
+    </section>
+
+    <!-- DPE INSIGHTS -->
+    <section class="insights-section">
+      <div class="container-wide">
+        <div class="section-eyebrow">Inside the Room</div>
+        <h2 class="section-title">What DPEs Actually Think</h2>
+        <p class="section-sub">Perspectives from experienced examiners on what separates the applicants who pass from the ones who don't.</p>
+        <div class="insights-grid">
+          <div class="insight-card">
+            <div class="insight-text">Most applicants don't struggle because they don't know the regulation. They struggle because they're seeing the scenario for the first time — in the exam.</div>
+            <div class="insight-source">— DPE Perspective</div>
+          </div>
+          <div class="insight-card">
+            <div class="insight-text">Many applicants focus on finding the right answer. Strong applicants focus on explaining their reasoning — that's what actually gets evaluated.</div>
+            <div class="insight-source">— DPE Perspective</div>
+          </div>
+          <div class="insight-card">
+            <div class="insight-text">A confident wrong answer worries me more than a hesitant right one. I'm not grading speed — I'm grading whether your process gets you to a defensible decision.</div>
+            <div class="insight-source">— DPE Perspective</div>
+          </div>
+          <div class="insight-card">
+            <div class="insight-text">Uncertainty isn't the failure. Freezing on uncertainty is. I want to see a pilot who has a next step ready.</div>
+            <div class="insight-source">— DPE Perspective</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHALLENGE QUESTIONS -->
+    <section class="challenge-section">
+      <div class="container">
+        <div class="section-eyebrow">Go Deeper</div>
+        <h2 class="section-title">Challenge Scenarios</h2>
+        <p class="section-sub">These questions have no clean, single answer. They're designed to stress-test your decision-making process — the same way a DPE will.</p>
+        <div class="challenge-grid">
+          <div class="challenge-card">
+            <div class="challenge-num">1</div>
+            <div>
+              <div class="challenge-q">Your alternator fails one hour into a night cross-country. You've shed all non-essential load. How long do you have, and what are your priorities in order?</div>
+              <div class="challenge-hint">Think about night-specific electrical loads you can't shed — and what that does to your timeline.</div>
+            </div>
+          </div>
+          <div class="challenge-card">
+            <div class="challenge-num">2</div>
+            <div>
+              <div class="challenge-q">A friend offers to pay you $200 to fly them to a meeting in a city you weren't planning to visit. Can you accept as a private pilot?</div>
+              <div class="challenge-hint">Contrast this with the Generous Friend scenario — what's different, and why does it matter?</div>
+            </div>
+          </div>
+          <div class="challenge-card">
+            <div class="challenge-num">3</div>
+            <div>
+              <div class="challenge-q">Your Knowledge Test showed two missed questions in the airspace category. The DPE asks what you did to address those weak areas before today. What do you say?</div>
+              <div class="challenge-hint">The DPE isn't looking for a perfect score — they're looking for evidence of self-awareness and continued learning.</div>
+            </div>
+          </div>
+          <div class="challenge-card">
+            <div class="challenge-num">4</div>
+            <div>
+              <div class="challenge-q">The runway is 2,200 feet long. Your calculated takeoff distance is 1,850 feet. It's a hot afternoon with a light tailwind. Do you go?</div>
+              <div class="challenge-hint">The numbers technically work. Walk through density altitude, tailwind correction, and your personal margin requirements.</div>
+            </div>
+          </div>
+          <div class="challenge-card">
+            <div class="challenge-num">5</div>
+            <div>
+              <div class="challenge-q">You load the airplane with four passengers near max gross. The CG is at the aft limit. How does this affect your stall characteristics and aircraft controllability?</div>
+              <div class="challenge-hint">Connect CG position to pitch authority, stall behavior, and recovery margins — not just the numbers.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- INTERACTIVE CHECKLIST -->
+    <section class="checklist-section">
+      <div class="container-wide">
+        <div class="section-eyebrow">Pre-Checkride</div>
+        <h2 class="section-title">Your Checkride Readiness Checklist</h2>
+        <p class="section-sub">Check each item as you complete it. The gauge tells you where you stand.</p>
+
+        <div class="checklist-progress">
+          <div class="checklist-progress-bar-wrap">
+            <div class="checklist-progress-fill" id="checklist-fill"></div>
+          </div>
+          <div class="checklist-progress-label" id="checklist-label">0% ready</div>
+        </div>
+
+        <div class="checklist-grid">
+
+          <div class="checklist-group">
+            <div class="checklist-group-title">What to Bring</div>
+            <label class="checklist-item"><input type="checkbox" class="check-box checklist-check" onchange="updateChecklist()"><span class="check-label">Government-issued photo ID</span></label>
+            <label class="checklist-item"><input type="checkbox" class="check-box checklist-check" onchange="updateChecklist()"><span class="check-label">Medical certificate</span></label>
+            <label class="checklist-item"><input type="checkbox" class="check-box checklist-check" onchange="updateChecklist()"><span class="check-label">IACRA 8710-1 application (completed)</span></label>
+            <label class="checklist-item"><input type="checkbox" class="check-box checklist-check" onchange="updateChecklist()"><span class="check-label">Logbook with all endorsements</span></label>
+            <label class="checklist-item"><input type="checkbox" class="check-box checklist-check" onchange="updateChecklist()"><span class="check-label">Knowledge Test Report</span></label>
+            <label class="checklist-item"><input type="checkbox" class="check-box checklist-check" onchange="updateChecklist()"><span class="check-label">Aircraft ARROW documents</span></label>
+            <label class="checklist-item"><input type="checkbox" class="check-box checklist-check" onchange="updateChecklist()"><span class="check-label">Aircraft maintenance logs</span></label>
+            <label class="checklist-item"><input type="checkbox" class="check-box checklist-check" onchange="updateChecklist()"><span class="check-label">Charts, plotter, E6B, XC plan</span></label>
+            <label class="checklist-item"><input type="checkbox" class="check-box checklist-check" onchange="updateChecklist()"><span class="check-label">Examiner's fee (cash or per their preference)</span></label>
+          </div>
+
+          <div class="checklist-group">
+            <div class="checklist-group-title">Day Before</div>
+            <label class="checklist-item"><input type="checkbox" class="check-box checklist-check" onchange="updateChecklist()"><span class="check-label">Check weather and NOTAMs</span></label>
+            <label class="checklist-item"><input type="checkbox" class="check-box checklist-check" onchange="updateChecklist()"><span class="check-label">Gather and review all documents</span></label>
+            <label class="checklist-item"><input type="checkbox" class="check-box checklist-check" onchange="updateChecklist()"><span class="check-label">Finalize and review your XC plan</span></label>
+            <label class="checklist-item"><input type="checkbox" class="check-box checklist-check" onchange="updateChecklist()"><span class="check-label">Review weak areas — don't learn new material</span></label>
+            <label class="checklist-item"><input type="checkbox" class="check-box checklist-check" onchange="updateChecklist()"><span class="check-label">Get a full night's sleep</span></label>
+          </div>
+
+          <div class="checklist-group">
+            <div class="checklist-group-title">Morning Of</div>
+            <label class="checklist-item"><input type="checkbox" class="check-box checklist-check" onchange="updateChecklist()"><span class="check-label">Eat a real meal before the exam</span></label>
+            <label class="checklist-item"><input type="checkbox" class="check-box checklist-check" onchange="updateChecklist()"><span class="check-label">Arrive at least 15 minutes early</span></label>
+            <label class="checklist-item"><input type="checkbox" class="check-box checklist-check" onchange="updateChecklist()"><span class="check-label">Complete IMSAFE personal check</span></label>
+            <label class="checklist-item"><input type="checkbox" class="check-box checklist-check" onchange="updateChecklist()"><span class="check-label">Trust your instructor's endorsement — you're ready</span></label>
+          </div>
+
+          <div class="checklist-group">
+            <div class="checklist-group-title">During the Exam</div>
+            <label class="checklist-item"><input type="checkbox" class="check-box checklist-check" onchange="updateChecklist()"><span class="check-label">Say "I'm not sure, let me check" when needed</span></label>
+            <label class="checklist-item"><input type="checkbox" class="check-box checklist-check" onchange="updateChecklist()"><span class="check-label">Give complete, organized answers</span></label>
+            <label class="checklist-item"><input type="checkbox" class="check-box checklist-check" onchange="updateChecklist()"><span class="check-label">Remember: one missed question is recoverable</span></label>
+            <label class="checklist-item"><input type="checkbox" class="check-box checklist-check" onchange="updateChecklist()"><span class="check-label">Use box breathing if nerves spike</span></label>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- FINAL CTA -->
+    <section class="final-cta-section">
+      <div class="container">
+        <div class="section-eyebrow">Ready to Go Further?</div>
+        <h2 class="section-title">The Checkride Prep Pack</h2>
+        <p class="section-sub">Everything in this guide — plus structured study materials, scenario banks, oral practice questions, and access to a mock oral session with a CFI.</p>
+        <div class="final-cta-price">
+          <span class="amount">$29</span>
+          <span class="period">launch price</span>
+        </div>
+        <div class="final-cta-includes">
+          <span class="include-tag"><span class="check">✓</span> Full study guide</span>
+          <span class="include-tag"><span class="check">✓</span> Scenario bank</span>
+          <span class="include-tag"><span class="check">✓</span> Oral practice questions</span>
+          <span class="include-tag"><span class="check">✓</span> Pre-checkride coaching call</span>
+          <span class="include-tag"><span class="check">✓</span> Instant access</span>
+        </div>
+        <a href="checkride-prep.html" class="btn-final">Get the Prep Pack →</a>
+        <p class="final-guarantee">30-day money-back guarantee. If it doesn't help, you pay nothing.</p>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="portal-footer">
+      <p>&copy; 2025 Apex Aviation LLC · <a href="index.html">Home</a> · <a href="contact.html">Contact</a></p>
+      <p style="margin-top:6px;">This guide is for educational purposes. Always verify regulations with current FAA publications.</p>
+    </footer>
+
+  </div><!-- #main-content -->
+
+  <script>
+    // ─── GATE STATE ───
+    var passwordVerified = sessionStorage.getItem('apex_pw') === '1';
+    var emailVerified = sessionStorage.getItem('apex_email') === '1';
+
+    function init() {
+      if (!passwordVerified) {
+        showGate('password-gate');
+      } else if (!emailVerified) {
+        showGate('email-gate');
+      } else {
+        showContent();
+      }
+    }
+
+    function showGate(id) {
+      document.querySelectorAll('.gate').forEach(function(g){ g.classList.remove('active'); });
+      document.getElementById(id).classList.add('active');
+    }
+
+    function showContent() {
+      document.querySelectorAll('.gate').forEach(function(g){ g.classList.remove('active'); });
+      document.getElementById('main-content').classList.add('unlocked');
+    }
+
+    function checkPassword() {
+      var val = document.getElementById('password-input').value.trim().toUpperCase();
+      var input = document.getElementById('password-input');
+      var errEl = document.getElementById('password-error');
+      if (val === 'CHECKRIDE') {
+        sessionStorage.setItem('apex_pw', '1');
+        passwordVerified = true;
+        if (emailVerified) {
+          showContent();
+        } else {
+          showGate('email-gate');
+        }
+      } else {
+        input.classList.add('error');
+        errEl.textContent = 'Incorrect access code. Check your email for the code.';
+        setTimeout(function(){ input.classList.remove('error'); }, 400);
+      }
+    }
+
+    document.getElementById('password-input').addEventListener('keydown', function(e){
+      if (e.key === 'Enter') checkPassword();
+    });
+
+    function handleEmailGate(e) {
+      e.preventDefault();
+      var form = e.target;
+      var email = form.querySelector('input[type="email"]').value.trim();
+      if (!email) {
+        document.getElementById('email-error').textContent = 'Please enter your email address.';
+        return;
+      }
+      // Submit to MailerLite via fetch
+      var data = new FormData(form);
+      fetch(form.action, { method: 'POST', body: data, mode: 'no-cors' }).catch(function(){});
+      sessionStorage.setItem('apex_email', '1');
+      emailVerified = true;
+      showContent();
+    }
+
+    // ─── ACCORDION ───
+    function toggleAccordion(n) {
+      var item = document.getElementById('q-item-' + n);
+      var wasOpen = item.classList.contains('open');
+      // close all
+      document.querySelectorAll('.accordion-item').forEach(function(el){ el.classList.remove('open'); });
+      if (!wasOpen) item.classList.add('open');
+    }
+
+    // ─── MARK COMPLETE ───
+    var completed = {};
+
+    function markComplete(n) {
+      completed[n] = true;
+      var btn = document.getElementById('mark-' + n);
+      btn.classList.add('completed');
+      btn.querySelector('span').textContent = 'Completed';
+      btn.disabled = true;
+      updateQProgress();
+    }
+
+    function updateQProgress() {
+      var count = Object.keys(completed).length;
+      var pct = (count / 10) * 100;
+      document.getElementById('q-progress-fill').style.width = pct + '%';
+      document.getElementById('q-progress-label').textContent = count + ' of 10 completed';
+      // Update number circles
+      for (var k in completed) {
+        var num = document.querySelector('#q-item-' + k + ' .q-number');
+        if (num) num.textContent = '✓';
+      }
+    }
+
+    // ─── CHECKLIST ───
+    function updateChecklist() {
+      var boxes = document.querySelectorAll('.checklist-check');
+      var total = boxes.length;
+      var checked = document.querySelectorAll('.checklist-check:checked').length;
+      var pct = Math.round((checked / total) * 100);
+      document.getElementById('checklist-fill').style.width = pct + '%';
+      document.getElementById('checklist-label').textContent = pct + '% ready — ' + checked + ' of ' + total + ' items complete';
+    }
+
+    init();
+  </script>
+
+  <!-- MailerLite -->
+  <script>
+    function ml_webform_success_43350285() {}
+  </script>
+  <script src="https://groot.mailerlite.com/js/w/webforms.min.js?v83147fa8ce2d95cb73ece7f28b469519" type="text/javascript"></script>
+</body>
+</html>
