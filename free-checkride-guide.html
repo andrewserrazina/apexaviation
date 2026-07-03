@@ -662,8 +662,8 @@
           After submission, MailerLite should redirect to: /checkride-guide-download
         -->
         <form
-          class="fg-form"
-          action="https://assets.mailerlite.com/jsonp/YOUR_MAILERLITE_FORM_ID/forms/YOUR_FORM_NUMBER/subscribe"
+          class="fg-form ml-block-form"
+          action="https://assets.mailerlite.com/jsonp/2486714/forms/191979298183185498/subscribe"
           method="POST"
           id="fg-lead-form"
         >
@@ -867,8 +867,8 @@
 
       <div class="fg-form-card" style="text-align:left">
         <form
-          class="fg-form"
-          action="https://assets.mailerlite.com/jsonp/YOUR_MAILERLITE_FORM_ID/forms/YOUR_FORM_NUMBER/subscribe"
+          class="fg-form ml-block-form"
+          action="https://assets.mailerlite.com/jsonp/2486714/forms/191979298183185498/subscribe"
           method="POST"
         >
           <div>
@@ -985,6 +985,19 @@
       <p><a href="privacy.html">Privacy Policy</a> &nbsp;·&nbsp; <a href="mailto:info@apexaviationtx.com">info@apexaviationtx.com</a></p>
     </div>
   </footer>
+
+  <!-- MailerLite — success redirect -->
+  <script>
+    function ml_webform_success_43350285() {
+      try {
+        window.top.location.href = 'https://apexaviationtx.com/checkride-guide-download';
+      } catch(e) {
+        window.location.href = 'https://apexaviationtx.com/checkride-guide-download';
+      }
+    }
+  </script>
+  <script src="https://groot.mailerlite.com/js/w/webforms.min.js?v83147fa8ce2d95cb73ece7f28b469519" type="text/javascript"></script>
+  <script>fetch("https://assets.mailerlite.com/jsonp/2486714/forms/191979298183185498/takel")</script>
 
   <script>
     // FAQ accordion
