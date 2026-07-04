@@ -17,6 +17,7 @@
         memberSince: profile && profile.created_at
       };
       populateMember();
+      return initPortalData();
     });
   }).catch(function (e) { if (e !== 'no-session') console.error(e); });
 
@@ -125,19 +126,85 @@
 
   /* ══════════════════════════════════════════════════════════════
      PERSISTED STATE — studied / favorites / last-viewed / lesson completion
-     Source: Apex Advantage — Private Pilot Checkride Prep Pack (PDF)
+     Now backed by Supabase (portal_question_progress, portal_scenario_progress,
+     portal_lesson_progress, portal_study_activity, portal_achievements).
+     See supabase-portal-schema.sql for the table definitions + RLS.
+     Source content: Apex Advantage — Private Pilot Checkride Prep Pack (PDF)
      ══════════════════════════════════════════════════════════════ */
-  function loadMap(key) { try { return JSON.parse(localStorage.getItem(key)) || {}; } catch (e) { return {}; } }
-  function saveMap(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
+  var studied = {};
+  var favorites = {};
+  var lastViewed = {};
+  var lessonComplete = {};
+  var viewCounts = {};
+  var answeredCounts = {};
+  var firstViewed = {};
+  var studyDays = {};          // 'YYYY-MM-DD' -> seconds studied that day
+  var earnedAchievements = {};
+  var checkrideModeDone = false;
 
-  var studied = loadMap('apex_portal_studied');
-  var favorites = loadMap('apex_portal_favorites');
-  var lastViewed = loadMap('apex_portal_lastviewed');
-  var lessonComplete = loadMap('apex_portal_lesson_complete');
+  function progressTableFor(id) {
+    if (id.indexOf('scenario-') === 0) return { table: 'portal_scenario_progress', idField: 'scenario_id' };
+    if (id.indexOf('lesson-') === 0) return { table: 'portal_lesson_progress', idField: 'lesson_id' };
+    return { table: 'portal_question_progress', idField: 'question_id' };
+  }
 
-  function toggleStudied(id) { studied[id] = !studied[id]; saveMap('apex_portal_studied', studied); }
-  function toggleFavorite(id) { favorites[id] = !favorites[id]; saveMap('apex_portal_favorites', favorites); }
-  function touchLastViewed(id) { lastViewed[id] = Date.now(); saveMap('apex_portal_lastviewed', lastViewed); }
+  function upsertRow(table, idField, id, patch) {
+    if (!member) return Promise.resolve();
+    var row = { profile_id: member.id, updated_at: new Date().toISOString() };
+    row[idField] = id;
+    Object.keys(patch).forEach(function (k) { row[k] = patch[k]; });
+    return apexSupabase.from(table).upsert(row, { onConflict: 'profile_id,' + idField });
+  }
+
+  function getTodayStr() {
+    var d = new Date();
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  function bumpStudyDay(extraSeconds) {
+    if (!member) return;
+    var today = getTodayStr();
+    var isNewDay = !(today in studyDays);
+    var newTotal = (studyDays[today] || 0) + (extraSeconds || 0);
+    studyDays[today] = newTotal;
+    apexSupabase.from('portal_study_activity')
+      .upsert({ profile_id: member.id, activity_date: today, seconds: newTotal }, { onConflict: 'profile_id,activity_date' })
+      .then(function () {
+        renderStreak();
+        renderReadiness();
+        if (isNewDay) checkAchievements();
+      });
+  }
+
+  function toggleStudied(id) {
+    studied[id] = !studied[id];
+    var conf = progressTableFor(id);
+    upsertRow(conf.table, conf.idField, id, { completed: studied[id] });
+    bumpStudyDay(0);
+    checkAchievements();
+  }
+
+  function toggleFavorite(id) {
+    favorites[id] = !favorites[id];
+    var conf = progressTableFor(id);
+    upsertRow(conf.table, conf.idField, id, { favorited: favorites[id] });
+  }
+
+  function touchLastViewed(id) {
+    var now = Date.now();
+    lastViewed[id] = now;
+    var conf = progressTableFor(id);
+    var patch = { last_viewed_at: new Date(now).toISOString() };
+    if (conf.table !== 'portal_lesson_progress') {
+      viewCounts[id] = (viewCounts[id] || 0) + 1;
+      patch.viewed_count = viewCounts[id];
+      if (!firstViewed[id]) { firstViewed[id] = now; patch.first_viewed_at = new Date(now).toISOString(); }
+    }
+    upsertRow(conf.table, conf.idField, id, patch);
+    bumpStudyDay(0);
+  }
+
   function timeAgo(ts) {
     if (!ts) return '';
     var diff = Math.round((Date.now() - ts) / 60000);
@@ -147,6 +214,57 @@
     if (hrs < 24) return hrs + 'h ago';
     return Math.round(hrs / 24) + 'd ago';
   }
+
+  /* ── Load all progress from Supabase, then render everything ──── */
+  function loadProgress() {
+    return Promise.all([
+      apexSupabase.from('portal_question_progress').select('*').eq('profile_id', member.id),
+      apexSupabase.from('portal_scenario_progress').select('*').eq('profile_id', member.id),
+      apexSupabase.from('portal_lesson_progress').select('*').eq('profile_id', member.id),
+      apexSupabase.from('portal_study_activity').select('*').eq('profile_id', member.id),
+      apexSupabase.from('portal_achievements').select('*').eq('profile_id', member.id),
+      apexSupabase.from('portal_practice_attempts').select('mode,completed_at').eq('profile_id', member.id).eq('mode', 'checkride').not('completed_at', 'is', null).limit(1)
+    ]).then(function (results) {
+      (results[0].data || []).forEach(function (r) {
+        studied[r.question_id] = r.completed;
+        favorites[r.question_id] = r.favorited;
+        if (r.last_viewed_at) lastViewed[r.question_id] = new Date(r.last_viewed_at).getTime();
+        viewCounts[r.question_id] = r.viewed_count || 0;
+        answeredCounts[r.question_id] = r.answered_count || 0;
+        if (r.first_viewed_at) firstViewed[r.question_id] = new Date(r.first_viewed_at).getTime();
+      });
+      (results[1].data || []).forEach(function (r) {
+        studied[r.scenario_id] = r.completed;
+        favorites[r.scenario_id] = r.favorited;
+        if (r.last_viewed_at) lastViewed[r.scenario_id] = new Date(r.last_viewed_at).getTime();
+        viewCounts[r.scenario_id] = r.viewed_count || 0;
+      });
+      (results[2].data || []).forEach(function (r) {
+        lessonComplete[r.lesson_id] = r.completed;
+        if (r.last_viewed_at) lastViewed[r.lesson_id] = new Date(r.last_viewed_at).getTime();
+      });
+      (results[3].data || []).forEach(function (r) { studyDays[r.activity_date] = r.seconds || 0; });
+      (results[4].data || []).forEach(function (r) { earnedAchievements[r.achievement_key] = true; });
+      checkrideModeDone = (results[5].data || []).length > 0;
+    }).catch(function (e) { console.error('Failed to load portal progress', e); });
+  }
+
+  /* ── Study time tracking (feeds Readiness Score + Admin Analytics) */
+  var activeSeconds = 0;
+  setInterval(function () {
+    if (document.visibilityState === 'visible') activeSeconds += 1;
+  }, 1000);
+  function flushStudyTime() {
+    if (activeSeconds < 5 || !member) return;
+    var toFlush = activeSeconds;
+    activeSeconds = 0;
+    bumpStudyDay(toFlush);
+  }
+  setInterval(flushStudyTime, 30000);
+  window.addEventListener('beforeunload', flushStudyTime);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') flushStudyTime();
+  });
 
   /* ══════════════════════════════════════════════════════════════
      SECTION 1 — CHECKRIDE SUCCESS FRAMEWORK
@@ -885,9 +1003,12 @@
     });
     el.querySelector('.portal-lesson__complete input').addEventListener('change', function (e) {
       lessonComplete[lessonId] = e.target.checked;
-      saveMap('apex_portal_lesson_complete', lessonComplete);
+      upsertRow('portal_lesson_progress', 'lesson_id', lessonId, { completed: e.target.checked });
+      bumpStudyDay(0);
+      checkAchievements();
       renderProgress();
       renderDashboardStats();
+      renderReadiness();
     });
     return el;
   }
@@ -1152,10 +1273,14 @@
       }).join('') + '</div>';
     lessonCard.querySelectorAll('[data-lesson]').forEach(function (cb) {
       cb.addEventListener('change', function (e) {
-        lessonComplete[e.target.dataset.lesson] = e.target.checked;
-        saveMap('apex_portal_lesson_complete', lessonComplete);
+        var lessonId = e.target.dataset.lesson;
+        lessonComplete[lessonId] = e.target.checked;
+        upsertRow('portal_lesson_progress', 'lesson_id', lessonId, { completed: e.target.checked });
+        bumpStudyDay(0);
+        checkAchievements();
         renderProgress();
         renderDashboardStats();
+        renderReadiness();
       });
     });
     progressTracksEl.appendChild(lessonCard);
@@ -1194,11 +1319,436 @@
     document.getElementById('statOverallPct').textContent = Math.round((overallDone / overallItems) * 100) + '%';
   }
 
-  /* ── Init ───────────────────────────────────────────────────── */
-  renderLessons();
-  renderQuickRef();
-  renderDpeLibrary();
-  renderScenarios();
-  renderProgress();
-  renderDashboardStats();
+  /* ══════════════════════════════════════════════════════════════
+     STUDY STREAKS
+     ══════════════════════════════════════════════════════════════ */
+  function computeStreaks() {
+    var dates = Object.keys(studyDays).sort();
+    var daysStudied = dates.length;
+    if (!daysStudied) return { current: 0, longest: 0, daysStudied: 0 };
+
+    var dateSet = {};
+    dates.forEach(function (d) { dateSet[d] = true; });
+
+    var longest = 1, run = 1;
+    for (var i = 1; i < dates.length; i++) {
+      var prev = new Date(dates[i - 1] + 'T00:00:00');
+      var cur = new Date(dates[i] + 'T00:00:00');
+      var diffDays = Math.round((cur - prev) / 86400000);
+      run = (diffDays === 1) ? run + 1 : 1;
+      if (run > longest) longest = run;
+    }
+
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+    var current = 0;
+    var cursor = new Date();
+    cursor.setHours(0, 0, 0, 0);
+    if (!dateSet[getTodayStr()]) cursor.setDate(cursor.getDate() - 1);
+    while (true) {
+      var cStr = cursor.getFullYear() + '-' + pad(cursor.getMonth() + 1) + '-' + pad(cursor.getDate());
+      if (dateSet[cStr]) { current++; cursor.setDate(cursor.getDate() - 1); } else break;
+    }
+
+    return { current: current, longest: longest, daysStudied: daysStudied };
+  }
+
+  function renderStreak() {
+    var s = computeStreaks();
+    document.getElementById('streakCurrent').textContent = s.current;
+    document.getElementById('streakLongest').textContent = s.longest;
+    document.getElementById('streakDaysStudied').textContent = s.daysStudied;
+    document.getElementById('streakFlame').classList.toggle('active', s.current > 0);
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     APEX CHECKRIDE READINESS SCORE
+     ══════════════════════════════════════════════════════════════ */
+  function categoryPct(cat) {
+    var items = DPE_DATA.filter(function (d) { return d.section === cat; });
+    if (!items.length) return 0;
+    var done = items.filter(function (d) { return studied[d.id]; }).length;
+    return done / items.length;
+  }
+
+  function computeReadiness() {
+    var qPct = DPE_DATA.filter(function (d) { return studied[d.id]; }).length / DPE_DATA.length;
+    var sPct = SCENARIOS.filter(function (s) { return studied[s.id]; }).length / SCENARIOS.length;
+    var cats = Object.keys(CATEGORY_META);
+    var acsCoverage = cats.reduce(function (sum, c) { return sum + categoryPct(c); }, 0) / cats.length;
+    var streaks = computeStreaks();
+    var consistency = Math.min(streaks.current / 14, 1);
+    var totalSeconds = Object.keys(studyDays).reduce(function (sum, d) { return sum + (studyDays[d] || 0); }, 0);
+    var timePct = Math.min(totalSeconds / (5 * 3600), 1);
+    var score = Math.round(100 * (0.30 * qPct + 0.20 * sPct + 0.25 * acsCoverage + 0.15 * consistency + 0.10 * timePct));
+    return Math.max(0, Math.min(100, score));
+  }
+
+  function renderReadiness() {
+    var score = computeReadiness();
+    document.getElementById('readinessPct').textContent = score;
+    var circumference = 352;
+    document.getElementById('readinessRing').style.strokeDashoffset = circumference - (circumference * score / 100);
+    var label = score >= 90 ? 'Checkride ready' : score >= 70 ? 'Almost there' : score >= 40 ? 'Building momentum' : 'Just getting started';
+    document.getElementById('readinessLabel').textContent = label;
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     WEAK AREA DETECTION + ACS COVERAGE MAP
+     ══════════════════════════════════════════════════════════════ */
+  function goToCategory(cat) {
+    showSection('dpe-library');
+    setDpeCategory(cat);
+  }
+
+  function renderWeakAreas() {
+    var el = document.getElementById('weakAreasList');
+    var cats = Object.keys(CATEGORY_META).map(function (cat) {
+      return { cat: cat, label: CATEGORY_META[cat].label, pct: Math.round(categoryPct(cat) * 100) };
+    }).filter(function (c) { return c.pct < 100; }).sort(function (a, b) { return a.pct - b.pct; }).slice(0, 3);
+
+    if (!cats.length) {
+      el.innerHTML = '<p style="color:rgba(255,255,255,0.5);font-size:13px">All ACS areas complete. Outstanding work.</p>';
+      return;
+    }
+    el.innerHTML = cats.map(function (c) {
+      return '<div class="portal-weakarea-item" data-cat="' + c.cat + '"><span class="name">' + c.label + '</span><span class="pct">' + c.pct + '%</span></div>';
+    }).join('');
+    el.querySelectorAll('[data-cat]').forEach(function (row) {
+      row.addEventListener('click', function () { goToCategory(row.dataset.cat); });
+    });
+  }
+
+  function renderAcsCoverage() {
+    var el = document.getElementById('acsCoverageList');
+    el.innerHTML = Object.keys(CATEGORY_META).map(function (cat) {
+      var pct = Math.round(categoryPct(cat) * 100);
+      return '<div class="portal-acs-row" data-cat="' + cat + '">' +
+        '<div class="portal-acs-row__head"><span class="name">' + CATEGORY_META[cat].label + '</span><span class="pct">' + pct + '%</span></div>' +
+        '<div class="portal-progress-bar"><div class="portal-progress-bar__fill" style="width:' + pct + '%"></div></div>' +
+      '</div>';
+    }).join('');
+    el.querySelectorAll('[data-cat]').forEach(function (row) {
+      row.addEventListener('click', function () { goToCategory(row.dataset.cat); });
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     QUESTION OF THE DAY
+     ══════════════════════════════════════════════════════════════ */
+  function dayOfYear() {
+    var now = new Date();
+    var start = new Date(now.getFullYear(), 0, 0);
+    return Math.floor((now - start) / 86400000);
+  }
+  var qotdQuestion = DPE_DATA[dayOfYear() % DPE_DATA.length];
+
+  function updateQotdButtons() {
+    var studiedBtn = document.getElementById('qotdStudiedBtn');
+    var favBtn = document.getElementById('qotdFavBtn');
+    studiedBtn.textContent = studied[qotdQuestion.id] ? '✓ Studied' : 'Mark as Studied';
+    studiedBtn.classList.toggle('active', !!studied[qotdQuestion.id]);
+    favBtn.textContent = favorites[qotdQuestion.id] ? '★ Starred' : '☆ Star for review';
+    favBtn.classList.toggle('active', !!favorites[qotdQuestion.id]);
+  }
+
+  function renderQotd() {
+    document.getElementById('qotdCategory').textContent = qotdQuestion.sectionLabel;
+    document.getElementById('qotdQuestion').textContent = qotdQuestion.q;
+    document.getElementById('qotdModel').textContent = qotdQuestion.model;
+    document.getElementById('qotdEvaluating').textContent = qotdQuestion.evaluating;
+    document.getElementById('qotdApplication').textContent = qotdQuestion.application;
+
+    var alreadyRevealed = !!answeredCounts[qotdQuestion.id];
+    document.getElementById('qotdPrompt').style.display = alreadyRevealed ? 'none' : '';
+    document.getElementById('qotdAnswer').style.display = alreadyRevealed ? 'block' : 'none';
+    updateQotdButtons();
+  }
+
+  document.getElementById('qotdRevealBtn').addEventListener('click', function () {
+    document.getElementById('qotdPrompt').style.display = 'none';
+    document.getElementById('qotdAnswer').style.display = 'block';
+    touchLastViewed(qotdQuestion.id);
+    answeredCounts[qotdQuestion.id] = (answeredCounts[qotdQuestion.id] || 0) + 1;
+    upsertRow('portal_question_progress', 'question_id', qotdQuestion.id, { answered_count: answeredCounts[qotdQuestion.id] });
+  });
+  document.getElementById('qotdStudiedBtn').addEventListener('click', function () {
+    toggleStudied(qotdQuestion.id);
+    updateQotdButtons();
+    renderProgress(); renderDashboardStats(); renderReadiness(); renderAcsCoverage(); renderWeakAreas(); renderDpeLibrary();
+  });
+  document.getElementById('qotdFavBtn').addEventListener('click', function () {
+    toggleFavorite(qotdQuestion.id);
+    updateQotdButtons();
+    renderDpeLibrary();
+  });
+
+  /* ══════════════════════════════════════════════════════════════
+     CHECKRIDE MODE + DPE RAPID FIRE
+     ══════════════════════════════════════════════════════════════ */
+  var practiceState = null;
+
+  function shuffle(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+    }
+    return a;
+  }
+
+  function formatTimer(ms) {
+    var totalSec = Math.max(0, Math.ceil(ms / 1000));
+    var m = Math.floor(totalSec / 60), s = totalSec % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function startPractice(mode) {
+    var queue = shuffle(DPE_DATA);
+    practiceState = {
+      mode: mode,
+      queue: mode === 'checkride' ? queue.slice(0, 20) : queue,
+      index: 0,
+      score: 0,
+      answered: 0,
+      seenIds: [],
+      endTime: mode === 'rapidfire' ? Date.now() + 5 * 60 * 1000 : null,
+      timerInterval: null
+    };
+    document.getElementById('practiceOverlay').hidden = false;
+    renderPractice();
+    if (mode === 'rapidfire') {
+      practiceState.timerInterval = setInterval(function () {
+        var remaining = practiceState.endTime - Date.now();
+        var timerEl = document.getElementById('practiceTimer');
+        if (timerEl) timerEl.textContent = formatTimer(remaining);
+        if (remaining <= 0) { clearInterval(practiceState.timerInterval); endPractice(); }
+      }, 1000);
+    }
+  }
+
+  function currentPracticeQuestion() {
+    if (practiceState.mode === 'rapidfire' && practiceState.index >= practiceState.queue.length) {
+      practiceState.queue = practiceState.queue.concat(shuffle(DPE_DATA));
+    }
+    return practiceState.queue[practiceState.index];
+  }
+
+  function renderPractice() {
+    var overlay = document.getElementById('practiceOverlay');
+    var q = currentPracticeQuestion();
+    var isCheckride = practiceState.mode === 'checkride';
+    var totalLabel = isCheckride ? (practiceState.index + 1) + ' / 20' : practiceState.answered + ' answered';
+    overlay.innerHTML =
+      '<div class="portal-practice-panel">' +
+        '<button class="portal-practice-panel__close" id="practiceCloseBtn" type="button">' +
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
+        '</button>' +
+        '<div class="portal-practice-meta">' +
+          '<span>' + (isCheckride ? 'Checkride Mode' : 'DPE Rapid Fire') + ' · ' + totalLabel + '</span>' +
+          (practiceState.mode === 'rapidfire'
+            ? '<span class="portal-practice-meta__timer" id="practiceTimer">' + formatTimer(practiceState.endTime - Date.now()) + '</span>'
+            : '<span>Score: ' + practiceState.score + '</span>') +
+        '</div>' +
+        '<div class="portal-practice-question">' + q.q + '</div>' +
+        '<div class="portal-practice-answer" id="practiceAnswerBox"><p>' + q.model + '</p></div>' +
+        '<div class="portal-practice-actions" id="practiceActions">' +
+          '<button class="btn btn--primary" id="practiceRevealBtn">Reveal Answer</button>' +
+        '</div>' +
+      '</div>';
+
+    document.getElementById('practiceCloseBtn').addEventListener('click', closePractice);
+    document.getElementById('practiceRevealBtn').addEventListener('click', revealPracticeAnswer);
+    practiceState.seenIds.push(q.id);
+  }
+
+  function revealPracticeAnswer() {
+    document.getElementById('practiceAnswerBox').classList.add('show');
+    document.getElementById('practiceActions').innerHTML =
+      '<button class="btn btn--correct" id="practiceCorrectBtn">✓ I got it</button>' +
+      '<button class="btn btn--missed" id="practiceMissedBtn">✗ Missed it</button>';
+    document.getElementById('practiceCorrectBtn').addEventListener('click', function () { advancePractice(true); });
+    document.getElementById('practiceMissedBtn').addEventListener('click', function () { advancePractice(false); });
+  }
+
+  function advancePractice(correct) {
+    practiceState.answered++;
+    if (correct) practiceState.score++;
+    practiceState.index++;
+    if (practiceState.mode === 'checkride' && practiceState.index >= practiceState.queue.length) { endPractice(); return; }
+    renderPractice();
+  }
+
+  function endPractice() {
+    if (practiceState.timerInterval) clearInterval(practiceState.timerInterval);
+    var overlay = document.getElementById('practiceOverlay');
+    var mode = practiceState.mode, score = practiceState.score, total = practiceState.answered;
+
+    if (member) {
+      apexSupabase.from('portal_practice_attempts').insert({
+        profile_id: member.id, mode: mode, question_ids: practiceState.seenIds,
+        score: score, total: total, completed_at: new Date().toISOString()
+      }).then(function () {
+        if (mode === 'checkride') { checkrideModeDone = true; checkAchievements(); }
+      });
+    }
+    bumpStudyDay(0);
+
+    overlay.innerHTML =
+      '<div class="portal-practice-panel"><div class="portal-practice-summary">' +
+        '<div class="portal-practice-summary__score">' + score + ' / ' + total + '</div>' +
+        '<p>' + (mode === 'checkride' ? 'Checkride Mode complete.' : 'Rapid Fire session complete.') + ' Nice work.</p>' +
+        '<div class="portal-practice-summary__actions">' +
+          '<button class="btn btn--primary" id="practiceAgainBtn">Play Again</button>' +
+          '<button class="btn btn--ghost" id="practiceExitBtn">Close</button>' +
+        '</div>' +
+      '</div></div>';
+    document.getElementById('practiceAgainBtn').addEventListener('click', function () { startPractice(mode); });
+    document.getElementById('practiceExitBtn').addEventListener('click', closePractice);
+  }
+
+  function closePractice() {
+    if (practiceState && practiceState.timerInterval) clearInterval(practiceState.timerInterval);
+    document.getElementById('practiceOverlay').hidden = true;
+    practiceState = null;
+  }
+
+  document.getElementById('launchCheckrideMode').addEventListener('click', function () { startPractice('checkride'); });
+  document.getElementById('launchRapidFire').addEventListener('click', function () { startPractice('rapidfire'); });
+
+  /* ══════════════════════════════════════════════════════════════
+     ACHIEVEMENTS
+     ══════════════════════════════════════════════════════════════ */
+  var ACHIEVEMENT_DEFS = [
+    { key: 'first_question', icon: '🥇', label: 'First Question Completed', test: function () { return DPE_DATA.some(function (d) { return studied[d.id]; }); } },
+    { key: 'fifty_questions', icon: '5️⃣0️⃣', label: '50 Questions Completed', test: function () { return DPE_DATA.filter(function (d) { return studied[d.id]; }).length >= 50; } },
+    { key: 'hundred_questions', icon: '💯', label: '100 Questions Completed', test: function () { return DPE_DATA.filter(function (d) { return studied[d.id]; }).length >= 100; } },
+    { key: 'seven_day_streak', icon: '🔥', label: '7 Day Streak', test: function () { return computeStreaks().longest >= 7; } },
+    { key: 'all_weather_complete', icon: '⛈️', label: 'All Weather Questions Complete', test: function () { return DPE_DATA.filter(function (d) { return d.section === 'weather'; }).every(function (d) { return studied[d.id]; }); } },
+    { key: 'checkride_mode_completed', icon: '🎯', label: 'Checkride Mode Completed', test: function () { return checkrideModeDone; } }
+  ];
+
+  function renderAchievements() {
+    var el = document.getElementById('achievementsGrid');
+    el.innerHTML = ACHIEVEMENT_DEFS.map(function (def) {
+      var earned = !!earnedAchievements[def.key];
+      return '<div class="portal-achievement' + (earned ? ' earned' : '') + '"><div class="portal-achievement__icon">' + def.icon + '</div><div class="portal-achievement__label">' + def.label + '</div></div>';
+    }).join('');
+  }
+
+  function checkAchievements() {
+    var newlyEarned = [];
+    ACHIEVEMENT_DEFS.forEach(function (def) {
+      if (earnedAchievements[def.key] || !def.test()) return;
+      earnedAchievements[def.key] = true;
+      newlyEarned.push(def);
+      if (member) apexSupabase.from('portal_achievements').upsert({ profile_id: member.id, achievement_key: def.key }, { onConflict: 'profile_id,achievement_key' });
+    });
+    if (newlyEarned.length) {
+      renderAchievements();
+      toast('🏅 Achievement unlocked: ' + newlyEarned[0].label);
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     ADMIN ANALYTICS (role = admin only)
+     ══════════════════════════════════════════════════════════════ */
+  function metricCard(label, value) {
+    return '<div class="portal-card portal-stat"><div class="portal-stat__value">' + value + '</div><div class="portal-stat__label">' + label + '</div></div>';
+  }
+  function adminTable(rows, keyField, valField) {
+    if (!rows.length) return '<p style="color:rgba(255,255,255,0.4);font-size:13px">No data yet.</p>';
+    return '<table class="portal-admin-table"><tbody>' + rows.map(function (r) {
+      return '<tr><td>' + r[keyField] + '</td><td>' + r[valField] + '</td></tr>';
+    }).join('') + '</tbody></table>';
+  }
+
+  function loadAdminDashboard() {
+    var el = document.getElementById('adminDashboard');
+    Promise.all([
+      apexSupabase.from('profiles').select('id', { count: 'exact', head: true }),
+      apexSupabase.from('invoices').select('amount_cents,status'),
+      apexSupabase.from('portal_question_progress').select('question_id,completed,favorited'),
+      apexSupabase.from('portal_scenario_progress').select('scenario_id,viewed_count'),
+      apexSupabase.from('portal_study_activity').select('profile_id,activity_date,seconds')
+    ]).then(function (results) {
+      var totalUsers = results[0].count || 0;
+      var invoices = results[1].data || [];
+      var paidInvoices = invoices.filter(function (i) { return i.status === 'paid'; });
+      var totalRevenueCents = paidInvoices.reduce(function (sum, i) { return sum + (i.amount_cents || 0); }, 0);
+
+      var qRows = results[2].data || [];
+      var questionsCompleted = qRows.filter(function (r) { return r.completed; }).length;
+      var favByQuestion = {};
+      qRows.forEach(function (r) { if (r.favorited) favByQuestion[r.question_id] = (favByQuestion[r.question_id] || 0) + 1; });
+      var mostDifficult = Object.keys(favByQuestion).map(function (id) {
+        var q = DPE_DATA.filter(function (d) { return d.id === id; })[0];
+        return { q: q ? q.q : id, count: favByQuestion[id] };
+      }).sort(function (a, b) { return b.count - a.count; }).slice(0, 5);
+
+      var sRows = results[3].data || [];
+      var viewsByScenario = {};
+      sRows.forEach(function (r) { viewsByScenario[r.scenario_id] = (viewsByScenario[r.scenario_id] || 0) + (r.viewed_count || 0); });
+      var mostViewedScenarios = Object.keys(viewsByScenario).map(function (id) {
+        var s = SCENARIOS.filter(function (x) { return x.id === id; })[0];
+        return { title: s ? s.title : id, views: viewsByScenario[id] };
+      }).sort(function (a, b) { return b.views - a.views; }).slice(0, 5);
+
+      var actRows = results[4].data || [];
+      var totalSeconds = actRows.reduce(function (sum, r) { return sum + (r.seconds || 0); }, 0);
+      var activeUsers30d = {};
+      var cutoff = Date.now() - 30 * 24 * 3600 * 1000;
+      actRows.forEach(function (r) { if (new Date(r.activity_date).getTime() >= cutoff) activeUsers30d[r.profile_id] = true; });
+
+      el.innerHTML =
+        '<div class="portal-admin-metrics">' +
+          metricCard('Total Users', totalUsers) +
+          metricCard('Paid Invoices', paidInvoices.length + ' ($' + (totalRevenueCents / 100).toLocaleString() + ')') +
+          metricCard('Questions Completed', questionsCompleted) +
+          metricCard('Active Students (30d)', Object.keys(activeUsers30d).length) +
+        '</div>' +
+        '<div class="portal-grid portal-grid--2">' +
+          '<div class="portal-card"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:14px">Most Difficult Questions (most starred)</h3>' + adminTable(mostDifficult, 'q', 'count') + '</div>' +
+          '<div class="portal-card"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:14px">Most Viewed Scenarios</h3>' + adminTable(mostViewedScenarios, 'title', 'views') + '</div>' +
+        '</div>' +
+        '<div class="portal-card" style="margin-top:20px"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">Total Study Time (all students)</h3><p style="color:var(--gold);font-size:24px;font-weight:800">' + Math.round(totalSeconds / 3600) + ' hours</p></div>';
+    }).catch(function (e) {
+      el.innerHTML = '<p style="color:#ff8b8b;font-size:14px">Could not load admin data: ' + e.message + '</p>';
+    });
+  }
+
+  function renderAdminIfApplicable() {
+    if (!member || member.role !== 'admin') return;
+    document.getElementById('adminNavItem').hidden = false;
+    loadAdminDashboard();
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     DASHBOARD STATS
+     ══════════════════════════════════════════════════════════════ */
+  function renderDashboardStats() {
+    var qStudied = DPE_DATA.filter(function (d) { return studied[d.id]; }).length;
+    var overallItems = DPE_DATA.length + SCENARIOS.length + LESSON_LIST.length;
+    var overallDone = qStudied + SCENARIOS.filter(function (s) { return studied[s.id]; }).length + LESSON_LIST.filter(function (id) { return lessonComplete[id]; }).length;
+    document.getElementById('statOverallPct').textContent = Math.round((overallDone / overallItems) * 100) + '%';
+  }
+
+  /* ── Init — waits for the real Supabase session + profile ────── */
+  function initPortalData() {
+    return loadProgress().then(function () {
+      renderLessons();
+      renderQuickRef();
+      renderDpeLibrary();
+      renderScenarios();
+      renderProgress();
+      renderDashboardStats();
+      renderReadiness();
+      renderStreak();
+      renderWeakAreas();
+      renderAcsCoverage();
+      renderQotd();
+      renderAchievements();
+      checkAchievements();
+      renderAdminIfApplicable();
+    });
+  }
 })();
