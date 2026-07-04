@@ -383,6 +383,104 @@
 .portal-qref-table td:nth-child(3) { color: rgba(255,255,255,0.55); }
 .portal-qref-card[hidden] { display: none; }
 
+/* ─── Readiness gauge ────────────────────────────────────────────── */
+.portal-readiness { display: flex; align-items: center; gap: 22px; }
+.portal-readiness__gauge { position: relative; flex-shrink: 0; width: 128px; height: 128px; }
+.portal-readiness__gauge svg circle#readinessRing { transition: stroke-dashoffset 0.6s ease; }
+.portal-readiness__value {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 26px; font-weight: 800; color: #fff;
+}
+
+/* ─── Study streak ───────────────────────────────────────────────── */
+.portal-streak { display: flex; align-items: center; gap: 16px; }
+.portal-streak__flame { font-size: 40px; line-height: 1; filter: grayscale(1) opacity(0.35); transition: filter 0.3s ease; }
+.portal-streak__flame.active { filter: none; }
+.portal-streak__current { font-size: 20px; font-weight: 800; color: #fff; }
+.portal-streak__meta { font-size: 12.5px; color: rgba(255,255,255,0.45); margin-top: 4px; }
+
+/* ─── Weak areas ─────────────────────────────────────────────────── */
+.portal-weakarea-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.06); cursor: pointer;
+}
+.portal-weakarea-item:last-child { border-bottom: none; }
+.portal-weakarea-item span.name { font-size: 13.5px; color: rgba(255,255,255,0.75); font-weight: 600; }
+.portal-weakarea-item span.pct { font-size: 12.5px; color: var(--gold); font-weight: 700; }
+
+/* ─── Question of the Day ───────────────────────────────────────────*/
+.portal-qotd__head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.portal-qotd__cat { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.06); padding: 4px 11px; border-radius: 100px; }
+.portal-qotd__actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.portal-qotd__actions .btn.active { background: rgba(244,180,0,0.15); border-color: var(--gold); color: var(--gold-light); }
+
+/* ─── ACS Coverage Map ───────────────────────────────────────────── */
+.portal-acs-row { margin-bottom: 14px; cursor: pointer; }
+.portal-acs-row:last-child { margin-bottom: 0; }
+.portal-acs-row__head { display: flex; justify-content: space-between; margin-bottom: 6px; }
+.portal-acs-row__head span.name { font-size: 13.5px; font-weight: 600; color: rgba(255,255,255,0.8); }
+.portal-acs-row__head span.pct { font-size: 13px; font-weight: 700; color: var(--gold); }
+
+/* ─── Checkride Mode / Rapid Fire launch cards ───────────────────── */
+.portal-practice-launch { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+.portal-practice-card {
+  display: flex; align-items: center; gap: 16px; text-align: left; cursor: pointer;
+  background: linear-gradient(120deg, rgba(244,180,0,0.1), rgba(11,31,58,0.3));
+  border: 1px solid rgba(244,180,0,0.25); border-radius: var(--radius-lg); padding: 20px 24px;
+  transition: all var(--transition); font-family: var(--font);
+}
+.portal-practice-card:hover { transform: translateY(-2px); border-color: rgba(244,180,0,0.45); }
+.portal-practice-card__icon { font-size: 28px; flex-shrink: 0; }
+.portal-practice-card h3 { color: #fff; font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.portal-practice-card p { color: rgba(255,255,255,0.55); font-size: 13px; line-height: 1.5; }
+
+/* ─── Practice overlay (Checkride Mode / Rapid Fire flow) ────────── */
+.portal-practice-overlay {
+  position: fixed; inset: 0; z-index: 300; background: rgba(6,14,28,0.97);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+.portal-practice-overlay[hidden] { display: none; }
+.portal-practice-panel {
+  width: 100%; max-width: 620px; background: #101f38; border: 1px solid rgba(255,255,255,0.09);
+  border-radius: var(--radius-lg); padding: 36px; box-shadow: var(--shadow-lg); position: relative;
+}
+.portal-practice-panel__close {
+  position: absolute; top: 18px; right: 18px; background: none; border: none; cursor: pointer;
+  color: rgba(255,255,255,0.4); padding: 6px;
+}
+.portal-practice-panel__close:hover { color: #fff; }
+.portal-practice-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; font-size: 13px; color: rgba(255,255,255,0.5); font-weight: 600; }
+.portal-practice-meta__timer { color: var(--gold-light); font-variant-numeric: tabular-nums; }
+.portal-practice-question { font-size: 20px; font-weight: 700; color: #fff; line-height: 1.5; margin-bottom: 24px; min-height: 90px; }
+.portal-practice-answer { display: none; margin-bottom: 20px; }
+.portal-practice-answer.show { display: block; }
+.portal-practice-answer p { color: rgba(255,255,255,0.65); line-height: 1.7; font-size: 14.5px; }
+.portal-practice-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.portal-practice-actions .btn--correct { background: rgba(80,200,120,0.15); border-color: rgba(80,200,120,0.4); color: #7fe0a0; }
+.portal-practice-actions .btn--missed { background: rgba(220,60,60,0.12); border-color: rgba(220,60,60,0.35); color: #ff8b8b; }
+.portal-practice-summary { text-align: center; padding: 20px 0; }
+.portal-practice-summary__score { font-size: 44px; font-weight: 800; color: var(--gold); margin-bottom: 8px; }
+.portal-practice-summary p { color: rgba(255,255,255,0.55); font-size: 14px; margin-bottom: 24px; }
+.portal-practice-summary__actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+/* ─── Achievements ───────────────────────────────────────────────── */
+.portal-achievements { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.portal-achievement {
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;
+  padding: 18px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03);
+  opacity: 0.4; filter: grayscale(1);
+}
+.portal-achievement.earned { opacity: 1; filter: none; background: rgba(244,180,0,0.08); border-color: rgba(244,180,0,0.3); }
+.portal-achievement__icon { font-size: 28px; }
+.portal-achievement__label { font-size: 12.5px; font-weight: 700; color: #fff; line-height: 1.4; }
+
+/* ─── Admin dashboard ────────────────────────────────────────────── */
+.portal-admin-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.portal-admin-table { width: 100%; border-collapse: collapse; }
+.portal-admin-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255,255,255,0.4); padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.portal-admin-table td { font-size: 13.5px; color: rgba(255,255,255,0.7); padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.portal-admin-table td:last-child { text-align: right; font-weight: 700; color: var(--gold); }
+
 /* ─── Sidebar overlay (mobile) ──────────────────────────────────── */
 .portal-sidebar-overlay {
   display: none; position: fixed; inset: 0; top: 64px; background: rgba(0,0,0,0.5); z-index: 140;
@@ -393,6 +491,7 @@
 @media (max-width: 1024px) {
   .portal-grid--4 { grid-template-columns: repeat(2, 1fr); }
   .portal-grid--3 { grid-template-columns: repeat(2, 1fr); }
+  .portal-admin-metrics { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 900px) {
   .portal-sidebar-toggle { display: flex; }
@@ -409,4 +508,9 @@
   .portal-welcome { flex-direction: column; align-items: flex-start; }
   .portal-main { padding: 24px 16px 56px; }
   .portal-header h1 { font-size: 24px; }
+  .portal-practice-launch { grid-template-columns: 1fr; }
+  .portal-achievements { grid-template-columns: repeat(2, 1fr); }
+  .portal-admin-metrics { grid-template-columns: 1fr; }
+  .portal-readiness { flex-direction: column; text-align: center; }
+  .portal-practice-panel { padding: 24px; }
 }
