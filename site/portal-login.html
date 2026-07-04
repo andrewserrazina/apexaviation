@@ -51,11 +51,17 @@
     .login-forgot button { background: none; border: none; cursor: pointer; font-size: 13px; color: rgba(255,255,255,0.45); font-family: var(--font); }
     .login-forgot button:hover { color: var(--gold); }
     .login-note { text-align: center; font-size: 12.5px; color: rgba(255,255,255,0.35); margin-top: 20px; line-height: 1.6; }
-    .login-note a { color: var(--gold); font-weight: 600; }
+    .login-note a, .login-note button { color: var(--gold); font-weight: 600; background: none; border: none; cursor: pointer; font-family: inherit; font-size: inherit; padding: 0; }
     .login-back { display: flex; justify-content: center; margin-top: 24px; }
     .login-back a { font-size: 13px; color: rgba(255,255,255,0.45); display: flex; align-items: center; gap: 6px; }
     .login-back a:hover { color: #fff; }
-    [data-view="forgot"] { display: none; }
+    .signup-price-badge {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      background: rgba(244,180,0,0.1); border: 1px solid rgba(244,180,0,0.3);
+      border-radius: 100px; padding: 8px 16px; font-size: 13px; font-weight: 700;
+      color: var(--gold-light); margin-bottom: 22px; text-align: center;
+    }
+    [data-view="forgot"], [data-view="signup"] { display: none; }
   </style>
 </head>
 <body>
@@ -89,7 +95,33 @@
           <button type="button" id="forgotToggle">Forgot password?</button>
         </div>
 
-        <p class="login-note">Don't have an account yet? Accounts are set up by Apex Aviation staff when you enroll — <a href="contact.html">contact us</a> to get started.</p>
+        <p class="login-note">New here? <button type="button" id="goToSignup">Join Apex Advantage</button> to get portal access.</p>
+      </div>
+
+      <!-- ─── SIGN UP / PAY ─── -->
+      <div data-view="signup">
+        <h1>Join Apex Advantage.</h1>
+        <div class="signup-price-badge">⚡ Founding pilot pricing — $29 for the first 25 members, then $49</div>
+        <p class="sub">Get full access to the member portal — Checkride Prep Pack, DPE Question Library, Scenario Training Center, and every training tool inside.</p>
+
+        <div class="login-error" id="signupError"></div>
+
+        <form id="signupForm" novalidate>
+          <div class="form-group">
+            <label for="signupName">Full name</label>
+            <input type="text" id="signupName" placeholder="Jane Doe" autocomplete="name" required />
+          </div>
+          <div class="form-group">
+            <label for="signupEmail">Email</label>
+            <input type="email" id="signupEmail" placeholder="you@email.com" autocomplete="email" required />
+          </div>
+          <button type="submit" class="btn btn--primary btn--full" id="signupSubmit">Continue to Payment</button>
+        </form>
+        <p class="login-note" style="margin-top:12px">Secure checkout via Stripe. You'll get an email to set your password right after payment.</p>
+
+        <div class="login-forgot">
+          <button type="button" id="backToSignInFromSignup">← Back to Sign In</button>
+        </div>
       </div>
 
       <!-- ─── FORGOT PASSWORD ─── -->
@@ -133,6 +165,10 @@
     var forgotSuccess = document.getElementById('forgotSuccess');
     var forgotSubmit = document.getElementById('forgotSubmit');
 
+    var signupForm = document.getElementById('signupForm');
+    var signupError = document.getElementById('signupError');
+    var signupSubmit = document.getElementById('signupSubmit');
+
     function showView(name) {
       document.querySelectorAll('[data-view]').forEach(function (el) {
         el.style.display = el.dataset.view === name ? 'block' : 'none';
@@ -140,6 +176,12 @@
     }
     document.getElementById('forgotToggle').addEventListener('click', function () { showView('forgot'); });
     document.getElementById('backToSignIn').addEventListener('click', function () { showView('signin'); });
+    document.getElementById('goToSignup').addEventListener('click', function () { showView('signup'); });
+    document.getElementById('backToSignInFromSignup').addEventListener('click', function () { showView('signin'); });
+
+    // Deep link support: portal-login.html?view=signup or #signup
+    var requestedView = (new URLSearchParams(window.location.search)).get('view') || window.location.hash.replace('#', '');
+    if (requestedView === 'signup') showView('signup');
 
     // Already signed in? Skip straight to the portal.
     apexSupabase.auth.getSession().then(function (res) {
@@ -187,6 +229,35 @@
         }
         forgotForm.style.display = 'none';
         forgotSuccess.classList.add('show');
+      });
+    });
+
+    signupForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      signupError.classList.remove('show');
+      var name = document.getElementById('signupName').value.trim();
+      var email = document.getElementById('signupEmail').value.trim();
+      if (!name || !email) return;
+
+      signupSubmit.disabled = true;
+      signupSubmit.textContent = 'Redirecting to secure checkout…';
+
+      apexSupabase.functions.invoke('create-checkout-session', {
+        body: { name: name, email: email, origin: window.location.origin }
+      }).then(function (res) {
+        if (res.error || !res.data || !res.data.url) {
+          signupSubmit.disabled = false;
+          signupSubmit.textContent = 'Continue to Payment';
+          signupError.textContent = (res.error && res.error.message) || 'Could not start checkout. Please try again.';
+          signupError.classList.add('show');
+          return;
+        }
+        window.location.href = res.data.url;
+      }).catch(function (err) {
+        signupSubmit.disabled = false;
+        signupSubmit.textContent = 'Continue to Payment';
+        signupError.textContent = 'Could not start checkout. Please try again.';
+        signupError.classList.add('show');
       });
     });
   </script>
