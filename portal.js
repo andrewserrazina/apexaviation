@@ -1,18 +1,28 @@
 (function () {
   'use strict';
 
-  /* ── Auth guard ─────────────────────────────────────────────── */
-  var raw = localStorage.getItem('apex_portal_member');
-  if (!raw) {
-    window.location.href = 'portal-login.html';
-    return;
-  }
-  var member;
-  try { member = JSON.parse(raw); } catch (e) { member = null; }
-  if (!member || !member.name) {
-    window.location.href = 'portal-login.html';
-    return;
-  }
+  /* ── Auth guard — real Supabase session + profile ────────────── */
+  var member = null;
+  var authReady = apexSupabase.auth.getSession().then(function (res) {
+    var session = res.data.session;
+    if (!session) { window.location.href = 'portal-login.html'; return Promise.reject('no-session'); }
+    return apexSupabase.from('profiles').select('*').eq('id', session.user.id).single().then(function (profRes) {
+      var profile = profRes.data;
+      member = {
+        id: session.user.id,
+        name: (profile && profile.full_name) || session.user.email,
+        email: (profile && profile.email) || session.user.email,
+        role: profile && profile.role,
+        certificateStatus: (profile && profile.certificate_status) || 'None',
+        memberSince: profile && profile.created_at
+      };
+      populateMember();
+    });
+  }).catch(function (e) { if (e !== 'no-session') console.error(e); });
+
+  apexSupabase.auth.onAuthStateChange(function (event) {
+    if (event === 'SIGNED_OUT') window.location.href = 'portal-login.html';
+  });
 
   function initials(name) {
     var parts = name.trim().split(/\s+/);
@@ -32,13 +42,12 @@
     document.getElementById('accountAvatar').textContent = initials(member.name);
     document.getElementById('accountName').textContent = member.name;
     document.getElementById('accountEmail').textContent = member.email;
+    document.getElementById('accountRole').textContent = member.role ? member.role.charAt(0).toUpperCase() + member.role.slice(1) : '—';
     document.getElementById('accFullName').value = member.name;
-    document.getElementById('accEmail').value = member.email;
-    document.getElementById('accCertGoal').value = member.certGoal || 'private';
+    document.getElementById('accCertGoal').value = member.certificateStatus;
     var since = member.memberSince ? new Date(member.memberSince) : new Date();
     document.getElementById('memberSince').textContent = since.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   }
-  populateMember();
 
   /* ── Toast ──────────────────────────────────────────────────── */
   var toastEl = document.getElementById('portalToast');
@@ -87,8 +96,9 @@
 
   /* ── Sign out ───────────────────────────────────────────────── */
   function signOut() {
-    localStorage.removeItem('apex_portal_member');
-    window.location.href = 'portal-login.html';
+    apexSupabase.auth.signOut().then(function () {
+      window.location.href = 'portal-login.html';
+    });
   }
   document.getElementById('signOutBtn').addEventListener('click', signOut);
   var signOutBtn2 = document.getElementById('signOutBtn2');
@@ -97,12 +107,20 @@
   /* ── Account form ───────────────────────────────────────────── */
   document.getElementById('accountForm').addEventListener('submit', function (e) {
     e.preventDefault();
-    member.name = document.getElementById('accFullName').value.trim() || member.name;
-    member.email = document.getElementById('accEmail').value.trim() || member.email;
-    member.certGoal = document.getElementById('accCertGoal').value;
-    localStorage.setItem('apex_portal_member', JSON.stringify(member));
-    populateMember();
-    toast('Profile updated.');
+    var btn = e.target.querySelector('[type="submit"]');
+    var newName = document.getElementById('accFullName').value.trim() || member.name;
+    var newCert = document.getElementById('accCertGoal').value;
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    apexSupabase.from('profiles').update({ full_name: newName, certificate_status: newCert }).eq('id', member.id).then(function (res) {
+      btn.disabled = false;
+      btn.textContent = 'Save Changes';
+      if (res.error) { toast('Could not save: ' + res.error.message); return; }
+      member.name = newName;
+      member.certificateStatus = newCert;
+      populateMember();
+      toast('Profile updated.');
+    });
   });
 
   /* ══════════════════════════════════════════════════════════════

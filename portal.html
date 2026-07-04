@@ -301,20 +301,20 @@
                 <label for="accFullName" style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px">Full name</label>
                 <input type="text" id="accFullName" style="width:100%;padding:12px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none" />
               </div>
-              <div class="form-group" style="margin-bottom:16px">
-                <label for="accEmail" style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px">Email</label>
-                <input type="email" id="accEmail" style="width:100%;padding:12px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none" />
-              </div>
               <div class="form-group" style="margin-bottom:20px">
-                <label for="accCertGoal" style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px">Currently training for</label>
+                <label for="accCertGoal" style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px">Certificate status</label>
                 <select id="accCertGoal" style="width:100%;padding:12px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none">
-                  <option value="private">Private Pilot</option>
-                  <option value="instrument">Instrument Rating</option>
-                  <option value="commercial">Commercial Pilot</option>
+                  <option value="None">None</option>
+                  <option value="Student Pilot">Student Pilot</option>
+                  <option value="Private Pilot">Private Pilot</option>
+                  <option value="Instrument Rating">Instrument Rating</option>
+                  <option value="Commercial Pilot">Commercial Pilot</option>
+                  <option value="ATP">ATP</option>
                 </select>
               </div>
               <button type="submit" class="btn btn--primary">Save Changes</button>
             </form>
+            <p style="font-size:12.5px;color:rgba(255,255,255,0.35);margin-top:14px">Need to change your email or password? <a href="portal-login.html" style="color:var(--gold)">Use the forgot-password link</a> on the sign-in page, or contact Apex Aviation staff.</p>
           </div>
 
           <div class="portal-card">
@@ -322,6 +322,10 @@
             <div class="portal-membership-row">
               <strong>Plan</strong>
               <span>Apex Advantage — Founding Member</span>
+            </div>
+            <div class="portal-membership-row">
+              <strong>Role</strong>
+              <span id="accountRole">—</span>
             </div>
             <div class="portal-membership-row">
               <strong>Member since</strong>
@@ -347,6 +351,8 @@
 
   <div class="portal-toast" id="portalToast"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="portal-supabase.js"></script>
   <script src="portal.js"></script>
 </body>
 </html>

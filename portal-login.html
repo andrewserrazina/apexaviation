@@ -30,23 +30,32 @@
     .login-card > p.sub { text-align: center; color: rgba(255,255,255,0.55); font-size: 14px; margin-bottom: 28px; line-height: 1.6; }
     .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
     .form-group label { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.6); }
-    .form-group input, .form-group select {
+    .form-group input {
       padding: 13px 14px; border: 1.5px solid rgba(255,255,255,0.1); border-radius: 8px;
       font-family: var(--font); font-size: 15px; color: #fff; background: rgba(11,31,58,0.6);
       outline: none; transition: border-color var(--transition), box-shadow var(--transition);
     }
-    .form-group input:focus, .form-group select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(244,180,0,0.18); }
+    .form-group input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(244,180,0,0.18); }
     .form-group input::placeholder { color: rgba(255,255,255,0.22); }
     .login-error {
       display: none; background: rgba(220,60,60,0.12); border: 1px solid rgba(220,60,60,0.35);
       color: #ff8b8b; font-size: 13px; font-weight: 600; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px;
     }
     .login-error.show { display: block; }
+    .login-success {
+      display: none; background: rgba(80,200,120,0.1); border: 1px solid rgba(80,200,120,0.3);
+      color: #7fe0a0; font-size: 13px; font-weight: 600; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px;
+    }
+    .login-success.show { display: block; }
+    .login-forgot { text-align: center; margin-top: 16px; }
+    .login-forgot button { background: none; border: none; cursor: pointer; font-size: 13px; color: rgba(255,255,255,0.45); font-family: var(--font); }
+    .login-forgot button:hover { color: var(--gold); }
     .login-note { text-align: center; font-size: 12.5px; color: rgba(255,255,255,0.35); margin-top: 20px; line-height: 1.6; }
     .login-note a { color: var(--gold); font-weight: 600; }
     .login-back { display: flex; justify-content: center; margin-top: 24px; }
     .login-back a { font-size: 13px; color: rgba(255,255,255,0.45); display: flex; align-items: center; gap: 6px; }
     .login-back a:hover { color: #fff; }
+    [data-view="forgot"] { display: none; }
   </style>
 </head>
 <body>
@@ -56,32 +65,53 @@
       <div class="login-eyebrow">
         <span>◆</span> Apex Advantage Member Portal
       </div>
-      <h1>Welcome back.</h1>
-      <p class="sub">Sign in with the name and email you used when you enrolled to access your Checkride Prep Pack, DPE Question Library, and training tools.</p>
 
-      <div class="login-error" id="loginError">Please enter your full name and a valid email address.</div>
+      <!-- ─── SIGN IN ─── -->
+      <div data-view="signin">
+        <h1>Welcome back.</h1>
+        <p class="sub">Sign in with your Apex Advantage account to access your Checkride Prep Pack, DPE Question Library, and training tools.</p>
 
-      <form id="loginForm" novalidate>
-        <div class="form-group">
-          <label for="fullName">Full name</label>
-          <input type="text" id="fullName" name="fullName" placeholder="Jane Doe" autocomplete="name" required />
-        </div>
-        <div class="form-group">
-          <label for="email">Email</label>
-          <input type="email" id="email" name="email" placeholder="you@email.com" autocomplete="email" required />
-        </div>
-        <div class="form-group">
-          <label for="certGoal">Currently training for</label>
-          <select id="certGoal" name="certGoal">
-            <option value="private">Private Pilot</option>
-            <option value="instrument">Instrument Rating</option>
-            <option value="commercial">Commercial Pilot</option>
-          </select>
-        </div>
-        <button type="submit" class="btn btn--primary btn--full">Enter Member Portal</button>
-      </form>
+        <div class="login-error" id="loginError"></div>
 
-      <p class="login-note">Not a member yet? <a href="apex-advantage.html">Learn about Apex Advantage</a> or <a href="contact.html">contact us</a> to enroll.</p>
+        <form id="loginForm" novalidate>
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" placeholder="you@email.com" autocomplete="email" required />
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" required />
+          </div>
+          <button type="submit" class="btn btn--primary btn--full" id="loginSubmit">Sign In</button>
+        </form>
+
+        <div class="login-forgot">
+          <button type="button" id="forgotToggle">Forgot password?</button>
+        </div>
+
+        <p class="login-note">Don't have an account yet? Accounts are set up by Apex Aviation staff when you enroll — <a href="contact.html">contact us</a> to get started.</p>
+      </div>
+
+      <!-- ─── FORGOT PASSWORD ─── -->
+      <div data-view="forgot">
+        <h1>Reset your password.</h1>
+        <p class="sub">Enter your account email and we'll send you a link to set a new password.</p>
+
+        <div class="login-error" id="forgotError"></div>
+        <div class="login-success" id="forgotSuccess">Check your email for a password reset link.</div>
+
+        <form id="forgotForm" novalidate>
+          <div class="form-group">
+            <label for="forgotEmail">Email</label>
+            <input type="email" id="forgotEmail" name="email" placeholder="you@email.com" autocomplete="email" required />
+          </div>
+          <button type="submit" class="btn btn--primary btn--full" id="forgotSubmit">Send Reset Link</button>
+        </form>
+
+        <div class="login-forgot">
+          <button type="button" id="backToSignIn">← Back to Sign In</button>
+        </div>
+      </div>
     </div>
     <div class="login-back">
       <a href="home.html">
@@ -91,36 +121,73 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="portal-supabase.js"></script>
   <script>
-    var form = document.getElementById('loginForm');
-    var errorBox = document.getElementById('loginError');
+    var loginForm = document.getElementById('loginForm');
+    var loginError = document.getElementById('loginError');
+    var loginSubmit = document.getElementById('loginSubmit');
 
-    // If already signed in, skip straight to the portal.
-    if (localStorage.getItem('apex_portal_member')) {
-      window.location.href = 'portal.html';
+    var forgotForm = document.getElementById('forgotForm');
+    var forgotError = document.getElementById('forgotError');
+    var forgotSuccess = document.getElementById('forgotSuccess');
+    var forgotSubmit = document.getElementById('forgotSubmit');
+
+    function showView(name) {
+      document.querySelectorAll('[data-view]').forEach(function (el) {
+        el.style.display = el.dataset.view === name ? 'block' : 'none';
+      });
     }
+    document.getElementById('forgotToggle').addEventListener('click', function () { showView('forgot'); });
+    document.getElementById('backToSignIn').addEventListener('click', function () { showView('signin'); });
 
-    form.addEventListener('submit', function (e) {
+    // Already signed in? Skip straight to the portal.
+    apexSupabase.auth.getSession().then(function (res) {
+      if (res.data.session) window.location.href = 'portal.html';
+    });
+
+    loginForm.addEventListener('submit', function (e) {
       e.preventDefault();
-      var name = document.getElementById('fullName').value.trim();
+      loginError.classList.remove('show');
+      loginSubmit.disabled = true;
+      loginSubmit.textContent = 'Signing in…';
+
       var email = document.getElementById('email').value.trim();
-      var certGoal = document.getElementById('certGoal').value;
-      var emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      var password = document.getElementById('password').value;
 
-      if (!name || !emailValid) {
-        errorBox.classList.add('show');
-        return;
-      }
-      errorBox.classList.remove('show');
+      apexSupabase.auth.signInWithPassword({ email: email, password: password }).then(function (res) {
+        loginSubmit.disabled = false;
+        loginSubmit.textContent = 'Sign In';
+        if (res.error) {
+          loginError.textContent = res.error.message;
+          loginError.classList.add('show');
+          return;
+        }
+        window.location.href = 'portal.html';
+      });
+    });
 
-      var member = {
-        name: name,
-        email: email,
-        certGoal: certGoal,
-        memberSince: new Date().toISOString()
-      };
-      localStorage.setItem('apex_portal_member', JSON.stringify(member));
-      window.location.href = 'portal.html';
+    forgotForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      forgotError.classList.remove('show');
+      forgotSuccess.classList.remove('show');
+      forgotSubmit.disabled = true;
+      forgotSubmit.textContent = 'Sending…';
+
+      var email = document.getElementById('forgotEmail').value.trim();
+      apexSupabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/portal-reset-password.html'
+      }).then(function (res) {
+        forgotSubmit.disabled = false;
+        forgotSubmit.textContent = 'Send Reset Link';
+        if (res.error) {
+          forgotError.textContent = res.error.message;
+          forgotError.classList.add('show');
+          return;
+        }
+        forgotForm.style.display = 'none';
+        forgotSuccess.classList.add('show');
+      });
     });
   </script>
 </body>
