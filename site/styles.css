@@ -98,6 +98,24 @@ a { text-decoration: none; color: inherit; }
   font-size: 14px;
   border-radius: 6px;
 }
+.btn--nav-outline {
+  background: transparent;
+  color: var(--blue);
+  border-color: var(--blue);
+  padding: 10px 20px;
+  font-size: 14px;
+  border-radius: 6px;
+}
+.btn--nav-outline:hover { background: var(--blue); color: var(--white); }
+.btn--nav-ghost {
+  background: transparent;
+  color: var(--white);
+  border-color: rgba(255,255,255,0.4);
+  padding: 10px 20px;
+  font-size: 14px;
+  border-radius: 6px;
+}
+.btn--nav-ghost:hover { background: rgba(255,255,255,0.1); border-color: var(--white); }
 .btn--nav:hover { background: var(--blue-2); }
 .btn--full { width: 100%; }
 
