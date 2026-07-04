@@ -481,6 +481,64 @@
 .portal-admin-table td { font-size: 13.5px; color: rgba(255,255,255,0.7); padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); }
 .portal-admin-table td:last-child { text-align: right; font-weight: 700; color: var(--gold); }
 
+/* ─── Checkride Countdown ────────────────────────────────────────── */
+.portal-countdown__value { font-size: 34px; font-weight: 800; color: var(--gold); line-height: 1.1; }
+.portal-countdown--urgent .portal-countdown__value { color: #ff8b8b; }
+.portal-countdown--soon .portal-countdown__value { color: var(--gold-light); }
+.portal-mockoral { display: flex; flex-direction: column; }
+
+/* ─── Referral program ───────────────────────────────────────────── */
+.portal-referral-code {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px; padding: 12px 14px;
+}
+.portal-referral-code code { color: var(--gold); font-size: 14px; font-weight: 700; flex: 1; word-break: break-all; }
+.portal-referral-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; }
+.portal-referral-row:last-child { border-bottom: none; }
+.portal-referral-row span.email { color: rgba(255,255,255,0.75); }
+.portal-referral-row span.status { color: rgba(255,255,255,0.4); text-transform: capitalize; font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em; }
+
+/* ─── Passed checkride banner + celebration ──────────────────────── */
+.portal-passed-banner { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; background: linear-gradient(120deg, rgba(244,180,0,0.1), rgba(11,31,58,0.3)); border-color: rgba(244,180,0,0.25); }
+.portal-celebration { text-align: center; padding: 20px 0; }
+.portal-celebration__emoji { font-size: 64px; margin-bottom: 8px; }
+.portal-celebration h2 { color: #fff; font-size: 26px; font-weight: 800; margin-bottom: 10px; }
+.portal-celebration p { color: rgba(255,255,255,0.6); font-size: 15px; margin-bottom: 24px; }
+
+/* ─── Success Wall ───────────────────────────────────────────────── */
+.portal-success-card { padding: 24px; text-align: center; }
+.portal-success-card__badge { font-size: 32px; margin-bottom: 10px; }
+.portal-success-card h3 { color: #fff; font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.portal-success-card p { color: rgba(255,255,255,0.45); font-size: 12.5px; }
+.portal-testimonial-card { padding: 22px; }
+.portal-testimonial-card p.quote { color: rgba(255,255,255,0.75); font-size: 14px; line-height: 1.7; font-style: italic; margin-bottom: 14px; }
+.portal-testimonial-card p.name { color: var(--gold); font-size: 13px; font-weight: 700; }
+
+/* ─── Ask Andrew ─────────────────────────────────────────────────── */
+.portal-ask-andrew { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 14px; margin-top: 4px; }
+.portal-ask-andrew__toggle { background: none; border: none; color: var(--gold); font-size: 13px; font-weight: 700; cursor: pointer; font-family: var(--font); padding: 0; }
+.portal-ask-andrew__form { display: none; margin-top: 12px; }
+.portal-ask-andrew__form.open { display: block; }
+.portal-ask-andrew__form textarea {
+  width: 100%; padding: 10px 12px; border: 1.5px solid rgba(255,255,255,0.1); border-radius: 8px;
+  font-family: var(--font); font-size: 13.5px; color: #fff; background: rgba(11,31,58,0.6); outline: none; resize: vertical; margin-bottom: 8px;
+}
+.portal-ask-andrew__faq { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.portal-ask-andrew__faq-item { background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px 12px; }
+.portal-ask-andrew__faq-item .q { font-size: 12.5px; font-weight: 700; color: rgba(255,255,255,0.7); margin-bottom: 4px; }
+.portal-ask-andrew__faq-item .a { font-size: 12.5px; color: rgba(255,255,255,0.55); line-height: 1.6; }
+
+/* ─── Admin inbox lists ──────────────────────────────────────────── */
+.portal-admin-inbox-item { padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.07); }
+.portal-admin-inbox-item:last-child { border-bottom: none; }
+.portal-admin-inbox-item .meta { font-size: 11.5px; color: rgba(255,255,255,0.4); margin-bottom: 4px; }
+.portal-admin-inbox-item .msg { font-size: 13.5px; color: rgba(255,255,255,0.75); margin-bottom: 10px; line-height: 1.6; }
+.portal-admin-inbox-item textarea {
+  width: 100%; padding: 9px 11px; border: 1.5px solid rgba(255,255,255,0.1); border-radius: 7px;
+  font-family: var(--font); font-size: 13px; color: #fff; background: rgba(11,31,58,0.6); outline: none; resize: vertical; margin-bottom: 8px;
+}
+
 /* ─── Sidebar overlay (mobile) ──────────────────────────────────── */
 .portal-sidebar-overlay {
   display: none; position: fixed; inset: 0; top: 64px; background: rgba(0,0,0,0.5); z-index: 140;

@@ -66,6 +66,10 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 15a4 4 0 004-4V6a4 4 0 10-8 0v5a4 4 0 004 4zm0 0v5m-6-9a6 6 0 0012 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Download Vault
         </button>
+        <button class="portal-nav__item" data-section="success-wall">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.6 6.9 7.4.5-5.7 4.8 1.9 7.2-6.2-4-6.2 4 1.9-7.2L2 9.4l7.4-.5L12 2z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Success Wall
+        </button>
 
         <div class="portal-nav__section-label">Account</div>
         <button class="portal-nav__item" data-section="account">
@@ -97,6 +101,43 @@
             <p>Here's where you left off in your Apex Advantage training.</p>
           </div>
           <a href="#" class="btn btn--primary" data-goto="scenarios">Continue Training</a>
+        </div>
+
+        <!-- Checkride Countdown + Mock Oral Booking -->
+        <div class="portal-grid portal-grid--2" style="margin-bottom:24px">
+          <div class="portal-card portal-countdown" id="checkrideCountdownCard">
+            <div id="checkrideCountdownSet" style="display:none">
+              <div class="portal-header__eyebrow" style="margin-bottom:8px">Checkride Countdown</div>
+              <div class="portal-countdown__value" id="checkrideCountdownValue">—</div>
+              <button class="btn btn--ghost" id="checkrideDateEditBtn" style="margin-top:12px">Change date</button>
+            </div>
+            <div id="checkrideCountdownUnset">
+              <div class="portal-header__eyebrow" style="margin-bottom:8px">Checkride Countdown</div>
+              <p style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:14px">Add your expected checkride date to see a live countdown and get more urgency-aware reminders.</p>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                <input type="date" id="checkrideDateInput" style="padding:11px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none" />
+                <button class="btn btn--primary" id="checkrideDateSaveBtn">Save Date</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="portal-card portal-mockoral">
+            <div class="portal-header__eyebrow" style="margin-bottom:8px">Mock Oral Exam</div>
+            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Book a Mock Oral</h3>
+            <p style="color:rgba(255,255,255,0.55);font-size:14px;line-height:1.6;margin-bottom:16px">Sit a full practice oral exam with an Apex instructor before the real thing.</p>
+            <button class="btn btn--primary" id="bookMockOralBtn">Book a Mock Oral</button>
+          </div>
+        </div>
+
+        <!-- Testimonial prompt (shown once readiness > 80%) -->
+        <div class="portal-card" id="testimonialPromptCard" style="display:none;margin-bottom:24px">
+          <div class="portal-header__eyebrow" style="margin-bottom:8px">Quick Question</div>
+          <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:10px">How has Apex Advantage helped you?</h3>
+          <textarea id="testimonialText" rows="3" placeholder="Share a few sentences about your experience…" style="width:100%;padding:12px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none;resize:vertical;margin-bottom:12px"></textarea>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn--primary" id="testimonialSubmitBtn">Submit</button>
+            <button class="btn btn--ghost" id="testimonialDismissBtn">Not now</button>
+          </div>
         </div>
 
         <!-- Readiness + Streak + Weak Areas -->
@@ -358,6 +399,22 @@
         </div>
       </section>
 
+      <!-- ─────────── SUCCESS WALL ─────────── -->
+      <section class="portal-section" id="section-success-wall">
+        <div class="portal-header">
+          <div class="portal-header__eyebrow">Success Wall</div>
+          <h1>Recent students who passed.</h1>
+          <p>Real Apex Advantage students, real checkrides. You're next.</p>
+        </div>
+        <div class="portal-grid portal-grid--3" id="successWallGrid" style="margin-bottom:32px">
+          <p style="color:rgba(255,255,255,0.4);font-size:14px">Loading…</p>
+        </div>
+        <h3 style="font-size:16px;font-weight:700;color:#fff;margin-bottom:16px">What students say</h3>
+        <div class="portal-grid portal-grid--3" id="testimonialWallGrid">
+          <p style="color:rgba(255,255,255,0.4);font-size:14px">Loading…</p>
+        </div>
+      </section>
+
       <!-- ─────────── ACCOUNT MANAGEMENT ─────────── -->
       <section class="portal-section" id="section-account">
         <div class="portal-header">
@@ -424,12 +481,41 @@
           </div>
         </div>
 
-        <div class="portal-card" style="margin-top:20px">
-          <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">Achievements</h3>
-          <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:18px">Badges you've earned working through Apex Advantage.</p>
-          <div class="portal-achievements" id="achievementsGrid"><!-- populated by JS --></div>
+        <div class="portal-grid portal-grid--2" style="margin-top:20px">
+          <div class="portal-card">
+            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">Achievements</h3>
+            <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:18px">Badges you've earned working through Apex Advantage.</p>
+            <div class="portal-achievements" id="achievementsGrid"><!-- populated by JS --></div>
+          </div>
+
+          <div class="portal-card">
+            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">Refer a Friend</h3>
+            <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:16px">Get a free mock oral, bonus study material, and future discounts for every friend who enrolls.</p>
+            <div class="portal-referral-code">
+              <code id="referralCode">—</code>
+              <button class="btn btn--ghost" id="referralCopyBtn">Copy Link</button>
+            </div>
+            <form id="referralForm" style="margin-top:16px">
+              <div class="form-group" style="margin-bottom:12px">
+                <label for="referralEmail" style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px">Friend's email</label>
+                <input type="email" id="referralEmail" required style="width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none" />
+              </div>
+              <button type="submit" class="btn btn--primary">Refer Them</button>
+            </form>
+            <div id="referralList" style="margin-top:16px"></div>
+          </div>
+        </div>
+
+        <div class="portal-card portal-passed-banner" style="margin-top:20px" id="passedBanner">
+          <div>
+            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">Passed your checkride?</h3>
+            <p style="color:rgba(255,255,255,0.5);font-size:13px">Tell us about it — you'll get a spot on the Success Wall.</p>
+          </div>
+          <button class="btn btn--primary" id="openPassedFormBtn">🎉 I Passed My Checkride</button>
         </div>
       </section>
+
+      <div id="passedOverlay" class="portal-practice-overlay" hidden></div>
 
       <!-- ─────────── ADMIN ANALYTICS (admin role only) ─────────── -->
       <section class="portal-section" id="section-admin">

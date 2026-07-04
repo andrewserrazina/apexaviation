@@ -73,6 +73,9 @@
     window.scrollTo(0, 0);
     if (history.replaceState) history.replaceState(null, '', '#' + id);
     closeSidebar();
+    if (!member) return;
+    if (id === 'admin' && member.role === 'admin') loadAdminDashboard();
+    if (id === 'success-wall') renderSuccessWall();
   }
   window.apexShowSection = showSection;
 
@@ -216,6 +219,15 @@
   }
 
   /* ── Load all progress from Supabase, then render everything ──── */
+  var loggedEventTypes = {};
+  var emailedTypes = {};          // email_type -> most recent sent_at (ms), for throttling
+  var askAndrewData = {};         // question_id -> array of {message, answer, status, mine}
+  var referralCode = null;
+  var referrals = [];
+  var checkrideDate = null;
+  var testimonialSubmitted = false;
+  var checkrideResult = null;
+
   function loadProgress() {
     return Promise.all([
       apexSupabase.from('portal_question_progress').select('*').eq('profile_id', member.id),
@@ -223,7 +235,15 @@
       apexSupabase.from('portal_lesson_progress').select('*').eq('profile_id', member.id),
       apexSupabase.from('portal_study_activity').select('*').eq('profile_id', member.id),
       apexSupabase.from('portal_achievements').select('*').eq('profile_id', member.id),
-      apexSupabase.from('portal_practice_attempts').select('mode,completed_at').eq('profile_id', member.id).eq('mode', 'checkride').not('completed_at', 'is', null).limit(1)
+      apexSupabase.from('portal_practice_attempts').select('mode,completed_at').eq('profile_id', member.id).eq('mode', 'checkride').not('completed_at', 'is', null).limit(1),
+      apexSupabase.from('portal_events').select('event_type').eq('profile_id', member.id),
+      apexSupabase.from('portal_email_log').select('email_type,sent_at').eq('profile_id', member.id),
+      apexSupabase.from('portal_question_discussions').select('*').or('status.eq.answered,profile_id.eq.' + member.id),
+      apexSupabase.from('portal_referral_codes').select('*').eq('profile_id', member.id).maybeSingle(),
+      apexSupabase.from('portal_referrals').select('*').eq('referrer_id', member.id).order('created_at', { ascending: false }),
+      apexSupabase.from('portal_checkride_date').select('*').eq('profile_id', member.id).maybeSingle(),
+      apexSupabase.from('portal_testimonials').select('id').eq('profile_id', member.id).limit(1),
+      apexSupabase.from('portal_checkride_results').select('*').eq('profile_id', member.id).maybeSingle()
     ]).then(function (results) {
       (results[0].data || []).forEach(function (r) {
         studied[r.question_id] = r.completed;
@@ -246,6 +266,20 @@
       (results[3].data || []).forEach(function (r) { studyDays[r.activity_date] = r.seconds || 0; });
       (results[4].data || []).forEach(function (r) { earnedAchievements[r.achievement_key] = true; });
       checkrideModeDone = (results[5].data || []).length > 0;
+      (results[6].data || []).forEach(function (r) { loggedEventTypes[r.event_type] = true; });
+      (results[7].data || []).forEach(function (r) {
+        var t = new Date(r.sent_at).getTime();
+        if (!emailedTypes[r.email_type] || t > emailedTypes[r.email_type]) emailedTypes[r.email_type] = t;
+      });
+      (results[8].data || []).forEach(function (r) {
+        if (!askAndrewData[r.question_id]) askAndrewData[r.question_id] = [];
+        askAndrewData[r.question_id].push(r);
+      });
+      referralCode = results[9].data ? results[9].data.code : null;
+      referrals = results[10].data || [];
+      checkrideDate = results[11].data ? results[11].data.checkride_date : null;
+      testimonialSubmitted = (results[12].data || []).length > 0;
+      checkrideResult = results[13].data || null;
     }).catch(function (e) { console.error('Failed to load portal progress', e); });
   }
 
@@ -1105,6 +1139,59 @@
     return '<div class="portal-qitem__field"><div class="portal-qitem__field-label">' + label + '</div><p>' + text + '</p></div>';
   }
 
+  /* ══════════════════════════════════════════════════════════════
+     ASK ANDREW — question discussions (under every DPE question)
+     ══════════════════════════════════════════════════════════════ */
+  function renderAskAndrewFaq(container, questionId) {
+    var entries = askAndrewData[questionId] || [];
+    if (!entries.length) { container.innerHTML = ''; return; }
+    container.innerHTML = entries.map(function (e) {
+      var mine = e.profile_id === member.id;
+      if (e.status === 'answered') {
+        return '<div class="portal-ask-andrew__faq-item"><div class="q">' + (mine ? 'You asked: ' : 'A student asked: ') + e.message + '</div><div class="a">Andrew: ' + e.answer + '</div></div>';
+      }
+      if (mine) {
+        return '<div class="portal-ask-andrew__faq-item"><div class="q">You asked: ' + e.message + '</div><div class="a">Waiting on Andrew\'s reply…</div></div>';
+      }
+      return '';
+    }).join('');
+  }
+
+  function wireAskAndrew(qitem, questionId) {
+    var toggle = qitem.querySelector('[data-ask-toggle]');
+    var form = qitem.querySelector('[data-ask-form]');
+    var input = qitem.querySelector('[data-ask-input]');
+    var submitBtn = qitem.querySelector('[data-ask-submit]');
+    var faqEl = qitem.querySelector('[data-ask-faq]');
+
+    renderAskAndrewFaq(faqEl, questionId);
+
+    toggle.addEventListener('click', function (e) {
+      e.stopPropagation();
+      form.classList.toggle('open');
+    });
+    submitBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var message = input.value.trim();
+      if (!message || !member) return;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending…';
+      apexSupabase.from('portal_question_discussions').insert({
+        profile_id: member.id, question_id: questionId, message: message, status: 'open'
+      }).then(function (res) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send to Andrew';
+        if (res.error) { toast('Could not send: ' + res.error.message); return; }
+        if (!askAndrewData[questionId]) askAndrewData[questionId] = [];
+        askAndrewData[questionId].push({ profile_id: member.id, question_id: questionId, message: message, status: 'open' });
+        input.value = '';
+        form.classList.remove('open');
+        renderAskAndrewFaq(faqEl, questionId);
+        toast('Sent to Andrew — you\'ll see the answer here once he replies.');
+      });
+    });
+  }
+
   function renderDpeLibrary() {
     var term = dpeSearch.value.trim().toLowerCase();
     var byCat = {};
@@ -1154,6 +1241,14 @@
             fieldBlock('What the DPE Is Evaluating', item.evaluating) +
             fieldBlock('Real-World Application', item.application) +
             '<div class="portal-qitem__field"><div class="portal-qitem__field-label">ACS Connection</div><span class="portal-qitem__acs">' + item.acs + '</span></div>' +
+            '<div class="portal-ask-andrew">' +
+              '<button class="portal-ask-andrew__toggle" type="button" data-ask-toggle>Ask Andrew about this question</button>' +
+              '<div class="portal-ask-andrew__form" data-ask-form>' +
+                '<textarea rows="2" placeholder="What\'s still unclear about this one?" data-ask-input></textarea>' +
+                '<button class="btn btn--ghost" type="button" data-ask-submit>Send to Andrew</button>' +
+              '</div>' +
+              '<div class="portal-ask-andrew__faq" data-ask-faq></div>' +
+            '</div>' +
           '</div></div>' +
           '<div class="portal-qitem__meta">' +
             '<div class="portal-qitem__meta-left">' +
@@ -1163,7 +1258,7 @@
           '</div>';
 
         qitem.querySelector('.portal-qitem__q').addEventListener('click', function (e) {
-          if (e.target.closest('[data-star]')) return;
+          if (e.target.closest('[data-star]') || e.target.closest('.portal-ask-andrew')) return;
           var wasOpen = qitem.classList.contains('open');
           qitem.classList.toggle('open');
           if (!wasOpen) {
@@ -1176,6 +1271,7 @@
           toggleFavorite(item.id);
           renderDpeLibrary();
         });
+        wireAskAndrew(qitem, item.id);
         qitem.querySelector('[data-studied]').addEventListener('change', function () {
           toggleStudied(item.id);
           renderProgress();
@@ -1390,6 +1486,10 @@
     document.getElementById('readinessRing').style.strokeDashoffset = circumference - (circumference * score / 100);
     var label = score >= 90 ? 'Checkride ready' : score >= 70 ? 'Almost there' : score >= 40 ? 'Building momentum' : 'Just getting started';
     document.getElementById('readinessLabel').textContent = label;
+    if (member) {
+      checkLifecycleMilestones();
+      renderTestimonialPrompt();
+    }
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -1669,7 +1769,11 @@
       apexSupabase.from('invoices').select('amount_cents,status'),
       apexSupabase.from('portal_question_progress').select('question_id,completed,favorited'),
       apexSupabase.from('portal_scenario_progress').select('scenario_id,viewed_count'),
-      apexSupabase.from('portal_study_activity').select('profile_id,activity_date,seconds')
+      apexSupabase.from('portal_study_activity').select('profile_id,activity_date,seconds'),
+      apexSupabase.from('portal_question_discussions').select('*').eq('status', 'open').order('created_at', { ascending: false }),
+      apexSupabase.from('portal_testimonials').select('*').eq('status', 'pending').order('created_at', { ascending: false }),
+      apexSupabase.from('portal_referrals').select('*').order('created_at', { ascending: false }).limit(20),
+      apexSupabase.from('profiles').select('id,full_name,email')
     ]).then(function (results) {
       var totalUsers = results[0].count || 0;
       var invoices = results[1].data || [];
@@ -1699,6 +1803,12 @@
       var cutoff = Date.now() - 30 * 24 * 3600 * 1000;
       actRows.forEach(function (r) { if (new Date(r.activity_date).getTime() >= cutoff) activeUsers30d[r.profile_id] = true; });
 
+      var openDiscussions = results[5].data || [];
+      var pendingTestimonials = results[6].data || [];
+      var recentReferrals = results[7].data || [];
+      var profileMap = {};
+      (results[8].data || []).forEach(function (p) { profileMap[p.id] = p; });
+
       el.innerHTML =
         '<div class="portal-admin-metrics">' +
           metricCard('Total Users', totalUsers) +
@@ -1710,16 +1820,447 @@
           '<div class="portal-card"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:14px">Most Difficult Questions (most starred)</h3>' + adminTable(mostDifficult, 'q', 'count') + '</div>' +
           '<div class="portal-card"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:14px">Most Viewed Scenarios</h3>' + adminTable(mostViewedScenarios, 'title', 'views') + '</div>' +
         '</div>' +
-        '<div class="portal-card" style="margin-top:20px"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">Total Study Time (all students)</h3><p style="color:var(--gold);font-size:24px;font-weight:800">' + Math.round(totalSeconds / 3600) + ' hours</p></div>';
+        '<div class="portal-card" style="margin-top:20px"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">Total Study Time (all students)</h3><p style="color:var(--gold);font-size:24px;font-weight:800">' + Math.round(totalSeconds / 3600) + ' hours</p></div>' +
+        '<div class="portal-card" style="margin-top:20px"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">Ask Andrew — Open Questions (' + openDiscussions.length + ')</h3><p style="color:rgba(255,255,255,0.4);font-size:12.5px;margin-bottom:14px">These are exactly the topics your students want content on — FAQs, reels, ground school material.</p><div id="adminAskInbox"></div></div>' +
+        '<div class="portal-card" style="margin-top:20px"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:14px">Testimonials Awaiting Approval (' + pendingTestimonials.length + ')</h3><div id="adminTestimonialInbox"></div></div>' +
+        '<div class="portal-card" style="margin-top:20px"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:14px">Recent Referrals</h3><div id="adminReferralList"></div></div>';
+
+      renderAdminAskInbox(openDiscussions, profileMap);
+      renderAdminTestimonialInbox(pendingTestimonials, profileMap);
+      renderAdminReferralList(recentReferrals, profileMap);
     }).catch(function (e) {
       el.innerHTML = '<p style="color:#ff8b8b;font-size:14px">Could not load admin data: ' + e.message + '</p>';
     });
+  }
+
+  function renderAdminAskInbox(rows, profileMap) {
+    var el = document.getElementById('adminAskInbox');
+    if (!rows.length) { el.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:13px">No open questions right now.</p>'; return; }
+    el.innerHTML = rows.map(function (r) {
+      var q = DPE_DATA.filter(function (d) { return d.id === r.question_id; })[0];
+      var studentName = (profileMap[r.profile_id] && profileMap[r.profile_id].full_name) || 'A student';
+      return '<div class="portal-admin-inbox-item" data-discussion="' + r.id + '">' +
+        '<div class="meta">' + studentName + ' · on: "' + (q ? q.q : r.question_id) + '"</div>' +
+        '<div class="msg">' + r.message + '</div>' +
+        '<textarea rows="2" placeholder="Type your answer…" data-answer-input></textarea>' +
+        '<button class="btn btn--primary" data-answer-submit>Send Answer</button>' +
+      '</div>';
+    }).join('');
+    el.querySelectorAll('[data-discussion]').forEach(function (item) {
+      item.querySelector('[data-answer-submit]').addEventListener('click', function () {
+        var id = item.dataset.discussion;
+        var answer = item.querySelector('[data-answer-input]').value.trim();
+        if (!answer) return;
+        apexSupabase.from('portal_question_discussions').update({
+          status: 'answered', answer: answer, answered_at: new Date().toISOString()
+        }).eq('id', id).then(function (res) {
+          if (res.error) { toast('Could not save answer: ' + res.error.message); return; }
+          item.remove();
+          toast('Answer sent.');
+        });
+      });
+    });
+  }
+
+  function renderAdminTestimonialInbox(rows, profileMap) {
+    var el = document.getElementById('adminTestimonialInbox');
+    if (!rows.length) { el.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:13px">Nothing pending.</p>'; return; }
+    el.innerHTML = rows.map(function (r) {
+      return '<div class="portal-admin-inbox-item" data-testimonial="' + r.id + '">' +
+        '<div class="meta">' + (r.display_name || 'Student') + ' · readiness ' + (r.readiness_score_at_submission || '—') + '%</div>' +
+        '<div class="msg">"' + r.content + '"</div>' +
+        '<button class="btn btn--correct" data-approve>Approve</button> ' +
+        '<button class="btn btn--missed" data-reject>Reject</button>' +
+      '</div>';
+    }).join('');
+    el.querySelectorAll('[data-testimonial]').forEach(function (item) {
+      var id = item.dataset.testimonial;
+      item.querySelector('[data-approve]').addEventListener('click', function () {
+        apexSupabase.from('portal_testimonials').update({ status: 'approved' }).eq('id', id).then(function () { item.remove(); toast('Approved.'); });
+      });
+      item.querySelector('[data-reject]').addEventListener('click', function () {
+        apexSupabase.from('portal_testimonials').update({ status: 'rejected' }).eq('id', id).then(function () { item.remove(); toast('Rejected.'); });
+      });
+    });
+  }
+
+  function renderAdminReferralList(rows, profileMap) {
+    var el = document.getElementById('adminReferralList');
+    if (!rows.length) { el.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:13px">No referrals yet.</p>'; return; }
+    el.innerHTML = rows.map(function (r) {
+      var referrerName = (profileMap[r.referrer_id] && profileMap[r.referrer_id].full_name) || 'A student';
+      return '<div class="portal-referral-row"><span class="email">' + referrerName + ' → ' + r.referred_email + '</span><span class="status">' + r.status + '</span></div>';
+    }).join('');
   }
 
   function renderAdminIfApplicable() {
     if (!member || member.role !== 'admin') return;
     document.getElementById('adminNavItem').hidden = false;
     loadAdminDashboard();
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     EMAIL ENGINE — reuses the apexadvantage `send-email` Edge
+     Function (Resend). Milestone/recommendation emails fire directly
+     from the client since they're tied to real-time user actions;
+     7-day inactivity is handled by a separate scheduled Edge Function
+     (supabase/functions/portal-inactivity-nudge in the apexadvantage repo)
+     since there's no client open to trigger it from.
+     ══════════════════════════════════════════════════════════════ */
+  function emailTemplate(contentHtml) {
+    return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>' +
+      '<body style="margin:0;padding:32px 16px;background:#06080f;font-family:\'Helvetica Neue\',Arial,sans-serif;color:#e0e0e0;">' +
+      '<div style="max-width:560px;margin:0 auto;">' +
+      '<div style="margin-bottom:28px;"><span style="font-size:22px;font-weight:900;letter-spacing:3px;color:#fff;">APEX</span>' +
+      '<span style="font-size:22px;font-style:italic;color:#F4B400;font-family:Georgia,serif;"> Advantage</span></div>' +
+      contentHtml +
+      '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:32px 0 16px;">' +
+      '<p style="font-size:12px;color:rgba(255,255,255,0.3);margin:0;">Apex Aviation · San Marcos, TX (KHYI)</p>' +
+      '</div></body></html>';
+  }
+
+  function sendPortalEmail(to, subject, contentHtml) {
+    if (!to) return Promise.resolve();
+    return apexSupabase.functions.invoke('send-email', {
+      body: { to: to, subject: subject, html: emailTemplate(contentHtml) }
+    }).catch(function (e) { console.warn('Email send failed', e); });
+  }
+
+  function logEventOnce(type, metadata) {
+    if (!member || loggedEventTypes[type]) return;
+    loggedEventTypes[type] = true;
+    apexSupabase.from('portal_events').insert({ profile_id: member.id, event_type: type, metadata: metadata || {} });
+  }
+
+  function daysSinceEmail(emailType) {
+    if (!emailedTypes[emailType]) return Infinity;
+    return (Date.now() - emailedTypes[emailType]) / (24 * 3600 * 1000);
+  }
+
+  function sendThrottledEmail(emailType, to, subject, contentHtml, minDays) {
+    if (!member || daysSinceEmail(emailType) < minDays) return;
+    emailedTypes[emailType] = Date.now();
+    sendPortalEmail(to, subject, contentHtml);
+    apexSupabase.from('portal_email_log').insert({ profile_id: member.id, email_type: emailType });
+  }
+
+  /* ── Lifecycle milestone emails ───────────────────────────────── */
+  function checkLifecycleMilestones() {
+    if (!member) return;
+
+    logEventOnce('first_login');
+
+    if (DPE_DATA.some(function (d) { return studied[d.id]; })) {
+      var wasNew = !loggedEventTypes['first_question_completed'];
+      logEventOnce('first_question_completed');
+      if (wasNew) {
+        sendPortalEmail(member.email, 'You completed your first question 🎉', emailTemplate1FirstQuestion());
+      }
+    }
+
+    var score = computeReadiness();
+    [25, 50, 75, 90].forEach(function (threshold) {
+      var key = 'readiness_' + threshold;
+      if (score >= threshold && !loggedEventTypes[key]) {
+        logEventOnce(key);
+        sendPortalEmail(member.email, score + '% Checkride Ready', emailTemplateMilestone(threshold));
+      }
+    });
+
+    if (checkrideModeDone && !loggedEventTypes['checkride_mode_completed_email']) {
+      logEventOnce('checkride_mode_completed_email');
+      sendPortalEmail(member.email, 'Checkride Mode: complete', emailTemplateCheckrideModeDone());
+    }
+  }
+
+  function emailTemplate1FirstQuestion() {
+    return '<h2 style="color:#F4B400;margin:0 0 4px;">First question, done.</h2>' +
+      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">That\'s one down, 71 to go — and every one after this gets a little more familiar. Keep the momentum going.</p>' +
+      '<a href="https://apexaviationtx.com/portal.html#dpe-library" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Keep Studying →</a>';
+  }
+  function emailTemplateMilestone(threshold) {
+    var copy = {
+      25: 'You\'re a quarter of the way to checkride-ready. The hardest part — starting — is behind you.',
+      50: 'Halfway there. Your ACS coverage is filling in and it shows.',
+      75: 'Three-quarters of the way to checkride-ready. Time to start tightening up your weakest areas.',
+      90: 'You are checkride-ready in every way that matters. Book a mock oral and go show a DPE what you know.'
+    }[threshold];
+    return '<h2 style="color:#F4B400;margin:0 0 4px;">' + threshold + '% Checkride Ready</h2>' +
+      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">' + copy + '</p>' +
+      '<a href="https://apexaviationtx.com/portal.html" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">View Your Dashboard →</a>';
+  }
+  function emailTemplateCheckrideModeDone() {
+    return '<h2 style="color:#F4B400;margin:0 0 4px;">Checkride Mode: complete</h2>' +
+      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">You just simulated a real oral exam — 20 questions, no labels, no hints. That\'s exactly the kind of pressure practice that makes checkride day feel routine.</p>';
+  }
+
+  /* ── Weak-area recommendation emails ──────────────────────────── */
+  var WEAK_AREA_CONTENT = {
+    eligibility: { subject: "Don't Let Paperwork Delay Your Checkride", body: 'Missing endorsements and expired medicals are the single most avoidable reason checkrides get delayed. A quick review of Eligibility &amp; Documents now saves you a bad surprise later.' },
+    airworthiness: { subject: 'The ARROW Documents DPEs Always Check First', body: 'Examiners routinely ask you to physically produce ARROW documents in the aircraft — not just recite the acronym. A few minutes reviewing Airworthiness pays off fast.' },
+    privileges: { subject: 'The Pro Rata Rule Most Students Get Wrong', body: 'Precision matters in Privileges &amp; Limitations — examiners probe the edges of what a private pilot can and can\'t do. Worth another pass.' },
+    airspace: { subject: 'Class Bravo Scenarios That Fail Applicants', body: 'Confusing Class B\'s clearance requirement with Class C/D\'s communication requirement is one of the most common real deviations — and a common oral exam trap.' },
+    weather: { subject: '5 Weather Questions Students Miss Most', body: 'METAR decoding, AIRMET vs. SIGMET, and icing conditions come up in almost every oral exam. A quick weather review goes a long way.' },
+    performance: { subject: 'Why DPEs Always Ask About Aft CG', body: 'Weight and balance questions test more than arithmetic — examiners want to see you connect CG location to stall speed and control authority.' },
+    aeromedical: { subject: 'The IMSAFE Check Most Pilots Skip', body: 'Aeromedical Factors is the most personal, judgment-based section of the exam. Worth revisiting before checkride day.' },
+    crosscountry: { subject: "The Four C's That Save a Lost Pilot", body: 'Cross-Country Planning ties together everything else in the guide — and it\'s often where the oral exam\'s scenario-based structure becomes most obvious.' },
+    emergency: { subject: "The 'Impossible Turn' Question Every DPE Asks", body: 'Emergency Operations questions test whether calm, procedural thinking is already automatic for you. A quick review before checkride day is always worth it.' }
+  };
+
+  function checkWeakAreaEmail() {
+    if (!member) return;
+    var weakest = Object.keys(CATEGORY_META).map(function (cat) {
+      return { cat: cat, pct: categoryPct(cat) };
+    }).sort(function (a, b) { return a.pct - b.pct; })[0];
+    if (!weakest || weakest.pct >= 1) return;
+    var content = WEAK_AREA_CONTENT[weakest.cat];
+    if (!content) return;
+    var html = '<h2 style="color:#F4B400;margin:0 0 4px;">' + content.subject + '</h2>' +
+      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">' + content.body + '</p>' +
+      '<a href="https://apexaviationtx.com/portal.html#dpe-library" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Review ' + CATEGORY_META[weakest.cat].label + ' →</a>';
+    sendThrottledEmail('weak_area_' + weakest.cat, member.email, content.subject, html, 14);
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     CHECKRIDE DATE + COUNTDOWN
+     ══════════════════════════════════════════════════════════════ */
+  function renderCheckrideCountdown() {
+    var setEl = document.getElementById('checkrideCountdownSet');
+    var unsetEl = document.getElementById('checkrideCountdownUnset');
+    var card = document.getElementById('checkrideCountdownCard');
+    if (!checkrideDate) {
+      setEl.style.display = 'none';
+      unsetEl.style.display = 'block';
+      card.className = 'portal-card portal-countdown';
+      return;
+    }
+    unsetEl.style.display = 'none';
+    setEl.style.display = 'block';
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var target = new Date(checkrideDate + 'T00:00:00');
+    var days = Math.round((target - today) / 86400000);
+    var valueEl = document.getElementById('checkrideCountdownValue');
+    card.className = 'portal-card portal-countdown';
+    if (days < 0) { valueEl.textContent = 'Checkride day has passed'; }
+    else if (days === 0) { valueEl.textContent = 'Checkride is today!'; card.className += ' portal-countdown--urgent'; }
+    else {
+      valueEl.textContent = days + ' Day' + (days === 1 ? '' : 's') + ' Until Checkride';
+      if (days <= 7) card.className += ' portal-countdown--urgent';
+      else if (days <= 30) card.className += ' portal-countdown--soon';
+    }
+  }
+
+  document.getElementById('checkrideDateSaveBtn').addEventListener('click', function () {
+    var val = document.getElementById('checkrideDateInput').value;
+    if (!val || !member) return;
+    apexSupabase.from('portal_checkride_date').upsert({ profile_id: member.id, checkride_date: val, updated_at: new Date().toISOString() }, { onConflict: 'profile_id' }).then(function (res) {
+      if (res.error) { toast('Could not save date: ' + res.error.message); return; }
+      checkrideDate = val;
+      renderCheckrideCountdown();
+      toast('Checkride date saved.');
+    });
+  });
+  document.getElementById('checkrideDateEditBtn').addEventListener('click', function () {
+    document.getElementById('checkrideCountdownSet').style.display = 'none';
+    document.getElementById('checkrideCountdownUnset').style.display = 'block';
+    if (checkrideDate) document.getElementById('checkrideDateInput').value = checkrideDate;
+  });
+
+  /* ══════════════════════════════════════════════════════════════
+     MOCK ORAL BOOKING
+     ══════════════════════════════════════════════════════════════ */
+  // Set this once a Calendly (or other scheduling) link exists.
+  var MOCK_ORAL_BOOKING_URL = '';
+
+  document.getElementById('bookMockOralBtn').addEventListener('click', function () {
+    if (member) {
+      apexSupabase.from('portal_mock_oral_bookings').insert({ profile_id: member.id });
+      logEventOnce('mock_oral_requested_' + Date.now(), {}); // always log the request itself (not deduped)
+    }
+    if (MOCK_ORAL_BOOKING_URL) {
+      window.open(MOCK_ORAL_BOOKING_URL, '_blank', 'noopener');
+    } else {
+      window.location.href = 'contact.html';
+    }
+  });
+
+  /* ══════════════════════════════════════════════════════════════
+     REFERRAL PROGRAM
+     ══════════════════════════════════════════════════════════════ */
+  function makeReferralCode() {
+    var base = (member.name || 'PILOT').split(/\s+/)[0].toUpperCase().replace(/[^A-Z]/g, '').slice(0, 8) || 'PILOT';
+    return base + Math.floor(1000 + Math.random() * 9000);
+  }
+
+  function renderReferralProgram() {
+    var codeEl = document.getElementById('referralCode');
+    var link = referralCode ? ('https://apexaviationtx.com/contact.html?ref=' + referralCode) : '—';
+    codeEl.textContent = link;
+
+    var listEl = document.getElementById('referralList');
+    if (!referrals.length) { listEl.innerHTML = ''; }
+    else {
+      listEl.innerHTML = referrals.map(function (r) {
+        return '<div class="portal-referral-row"><span class="email">' + r.referred_email + '</span><span class="status">' + r.status + '</span></div>';
+      }).join('');
+    }
+  }
+
+  document.getElementById('referralCopyBtn').addEventListener('click', function () {
+    if (!referralCode) { toast('Generating your referral link — try again in a moment.'); return; }
+    var link = 'https://apexaviationtx.com/contact.html?ref=' + referralCode;
+    navigator.clipboard.writeText(link).then(function () { toast('Referral link copied.'); }).catch(function () { toast(link); });
+  });
+
+  document.getElementById('referralForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var email = document.getElementById('referralEmail').value.trim();
+    if (!email || !member) return;
+    apexSupabase.from('portal_referrals').insert({ referrer_id: member.id, referred_email: email }).then(function (res) {
+      if (res.error) { toast('Could not save referral: ' + res.error.message); return; }
+      referrals.unshift({ referred_email: email, status: 'pending' });
+      renderReferralProgram();
+      document.getElementById('referralEmail').value = '';
+      toast('Thanks! We\'ll follow up with your friend.');
+    });
+  });
+
+  function ensureReferralCode() {
+    if (referralCode || !member) { renderReferralProgram(); return; }
+    var code = makeReferralCode();
+    apexSupabase.from('portal_referral_codes').upsert({ profile_id: member.id, code: code }, { onConflict: 'profile_id' }).then(function (res) {
+      referralCode = (res.data && res.data[0] && res.data[0].code) || code;
+      renderReferralProgram();
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     TESTIMONIAL COLLECTION (prompted once readiness > 80%)
+     ══════════════════════════════════════════════════════════════ */
+  var testimonialDismissedThisSession = false;
+
+  function renderTestimonialPrompt() {
+    var card = document.getElementById('testimonialPromptCard');
+    var score = computeReadiness();
+    var shouldShow = score > 80 && !testimonialSubmitted && !testimonialDismissedThisSession;
+    card.style.display = shouldShow ? 'block' : 'none';
+  }
+
+  document.getElementById('testimonialSubmitBtn').addEventListener('click', function () {
+    var content = document.getElementById('testimonialText').value.trim();
+    if (!content || !member) return;
+    apexSupabase.from('portal_testimonials').insert({
+      profile_id: member.id,
+      display_name: firstName(member.name) + ' ' + (member.name.trim().split(/\s+/).slice(-1)[0] || '').charAt(0) + '.',
+      content: content,
+      readiness_score_at_submission: computeReadiness()
+    }).then(function (res) {
+      if (res.error) { toast('Could not submit: ' + res.error.message); return; }
+      testimonialSubmitted = true;
+      renderTestimonialPrompt();
+      toast('Thank you! We may feature this on the Success Wall.');
+    });
+  });
+  document.getElementById('testimonialDismissBtn').addEventListener('click', function () {
+    testimonialDismissedThisSession = true;
+    renderTestimonialPrompt();
+  });
+
+  /* ══════════════════════════════════════════════════════════════
+     SUCCESS TRACKING — "I Passed My Checkride"
+     ══════════════════════════════════════════════════════════════ */
+  function renderPassedBanner() {
+    var banner = document.getElementById('passedBanner');
+    if (checkrideResult) banner.style.display = 'none';
+    else banner.style.display = 'flex';
+  }
+
+  document.getElementById('openPassedFormBtn').addEventListener('click', function () {
+    var overlay = document.getElementById('passedOverlay');
+    overlay.hidden = false;
+    overlay.innerHTML =
+      '<div class="portal-practice-panel">' +
+        '<button class="portal-practice-panel__close" id="passedCloseBtn" type="button">' +
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
+        '</button>' +
+        '<h3 style="color:#fff;font-size:19px;font-weight:700;margin-bottom:18px">🎉 You passed your checkride!</h3>' +
+        '<div class="form-group" style="margin-bottom:14px"><label style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px">Exam date</label>' +
+          '<input type="date" id="passedDate" style="width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none" /></div>' +
+        '<div class="form-group" style="margin-bottom:14px"><label style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px">Examiner</label>' +
+          '<input type="text" id="passedExaminer" style="width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none" /></div>' +
+        '<div class="form-group" style="margin-bottom:20px"><label style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px">Aircraft</label>' +
+          '<input type="text" id="passedAircraft" placeholder="e.g. Cessna 172" style="width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none" /></div>' +
+        '<button class="btn btn--primary btn--full" id="passedSubmitBtn">Save &amp; Celebrate</button>' +
+      '</div>';
+    document.getElementById('passedCloseBtn').addEventListener('click', function () { overlay.hidden = true; });
+    document.getElementById('passedSubmitBtn').addEventListener('click', function () {
+      var examDate = document.getElementById('passedDate').value || getTodayStr();
+      var examiner = document.getElementById('passedExaminer').value.trim();
+      var aircraft = document.getElementById('passedAircraft').value.trim();
+      apexSupabase.from('portal_checkride_results').upsert({
+        profile_id: member.id,
+        display_name: firstName(member.name) + ' ' + (member.name.trim().split(/\s+/).slice(-1)[0] || '').charAt(0) + '.',
+        passed: true, exam_date: examDate, examiner_name: examiner, aircraft: aircraft
+      }, { onConflict: 'profile_id' }).then(function (res) {
+        if (res.error) { toast('Could not save: ' + res.error.message); return; }
+        checkrideResult = { exam_date: examDate, examiner_name: examiner, aircraft: aircraft, passed: true };
+        renderPassedBanner();
+        renderSuccessWall();
+        logEventOnce('checkride_passed');
+        sendPortalEmail(member.email, 'Congratulations on passing your checkride! 🎉', emailTemplatePassed());
+        showCelebration();
+      });
+    });
+  });
+
+  function emailTemplatePassed() {
+    return '<h2 style="color:#F4B400;margin:0 0 4px;">You did it. Congratulations!</h2>' +
+      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Every question, every scenario, every study streak led here. Welcome to the ranks of certificated pilots — fly safe out there.</p>';
+  }
+
+  function showCelebration() {
+    var overlay = document.getElementById('passedOverlay');
+    overlay.hidden = false;
+    overlay.innerHTML =
+      '<div class="portal-practice-panel"><div class="portal-celebration">' +
+        '<div class="portal-celebration__emoji">🎉🛩️🎓</div>' +
+        '<h2>You passed your checkride!</h2>' +
+        '<p>Congratulations from everyone at Apex Aviation. You\'ll now show up on the Success Wall for other students to see.</p>' +
+        '<button class="btn btn--primary" id="celebrationCloseBtn">Close</button>' +
+      '</div></div>';
+    document.getElementById('celebrationCloseBtn').addEventListener('click', function () { overlay.hidden = true; });
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     SUCCESS WALL
+     ══════════════════════════════════════════════════════════════ */
+  function renderSuccessWall() {
+    var wallGrid = document.getElementById('successWallGrid');
+    var testimonialGrid = document.getElementById('testimonialWallGrid');
+    Promise.all([
+      apexSupabase.from('portal_checkride_results').select('*').eq('passed', true).order('exam_date', { ascending: false }).limit(12),
+      apexSupabase.from('portal_testimonials').select('*').eq('status', 'approved').order('created_at', { ascending: false }).limit(9)
+    ]).then(function (results) {
+      var passes = results[0].data || [];
+      var testimonials = results[1].data || [];
+
+      wallGrid.innerHTML = passes.length ? passes.map(function (p) {
+        return '<div class="portal-card portal-success-card">' +
+          '<div class="portal-success-card__badge">🎓</div>' +
+          '<h3>' + (p.display_name || 'Apex Student') + '</h3>' +
+          '<p>' + (p.aircraft ? p.aircraft + ' · ' : '') + new Date(p.exam_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + '</p>' +
+        '</div>';
+      }).join('') : '<p style="color:rgba(255,255,255,0.4);font-size:14px">No results yet — be the first on the wall.</p>';
+
+      testimonialGrid.innerHTML = testimonials.length ? testimonials.map(function (t) {
+        return '<div class="portal-card portal-testimonial-card">' +
+          '<p class="quote">"' + t.content + '"</p>' +
+          '<p class="name">' + (t.display_name || 'Apex Student') + '</p>' +
+        '</div>';
+      }).join('') : '<p style="color:rgba(255,255,255,0.4);font-size:14px">No testimonials yet.</p>';
+    }).catch(function (e) {
+      wallGrid.innerHTML = '<p style="color:#ff8b8b;font-size:14px">Could not load: ' + e.message + '</p>';
+    });
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -1749,6 +2290,11 @@
       renderAchievements();
       checkAchievements();
       renderAdminIfApplicable();
+      renderCheckrideCountdown();
+      ensureReferralCode();
+      renderPassedBanner();
+      renderSuccessWall();
+      checkWeakAreaEmail();
     });
   }
 })();
