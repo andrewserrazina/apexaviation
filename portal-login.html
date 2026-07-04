@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Member Sign In | Apex Advantage Portal</title>
+  <meta name="description" content="Sign in to the Apex Advantage member portal — Checkride Prep Pack, DPE Question Library, Scenario Training Center, and progress tracking." />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="canonical" href="https://apexaviationtx.com/portal-login.html" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    body { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at top, #0f2340 0%, #080f1e 60%); padding: 24px; }
+    .login-wrap { width: 100%; max-width: 420px; }
+    .login-logo { display: flex; justify-content: center; margin-bottom: 28px; }
+    .login-logo img { height: 42px; width: auto; }
+    .login-card {
+      background: #101f38; border: 1px solid rgba(255,255,255,0.09);
+      border-radius: var(--radius-lg); padding: 40px 36px; box-shadow: var(--shadow-lg);
+    }
+    .login-eyebrow {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 14px;
+    }
+    .login-card h1 { font-size: 24px; font-weight: 800; color: #fff; text-align: center; margin-bottom: 8px; }
+    .login-card > p.sub { text-align: center; color: rgba(255,255,255,0.55); font-size: 14px; margin-bottom: 28px; line-height: 1.6; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+    .form-group label { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.6); }
+    .form-group input, .form-group select {
+      padding: 13px 14px; border: 1.5px solid rgba(255,255,255,0.1); border-radius: 8px;
+      font-family: var(--font); font-size: 15px; color: #fff; background: rgba(11,31,58,0.6);
+      outline: none; transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .form-group input:focus, .form-group select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(244,180,0,0.18); }
+    .form-group input::placeholder { color: rgba(255,255,255,0.22); }
+    .login-error {
+      display: none; background: rgba(220,60,60,0.12); border: 1px solid rgba(220,60,60,0.35);
+      color: #ff8b8b; font-size: 13px; font-weight: 600; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px;
+    }
+    .login-error.show { display: block; }
+    .login-note { text-align: center; font-size: 12.5px; color: rgba(255,255,255,0.35); margin-top: 20px; line-height: 1.6; }
+    .login-note a { color: var(--gold); font-weight: 600; }
+    .login-back { display: flex; justify-content: center; margin-top: 24px; }
+    .login-back a { font-size: 13px; color: rgba(255,255,255,0.45); display: flex; align-items: center; gap: 6px; }
+    .login-back a:hover { color: #fff; }
+  </style>
+</head>
+<body>
+  <div class="login-wrap">
+    <a href="home.html" class="login-logo"><img src="apexwhite.png" alt="Apex Aviation" /></a>
+    <div class="login-card">
+      <div class="login-eyebrow">
+        <span>◆</span> Apex Advantage Member Portal
+      </div>
+      <h1>Welcome back.</h1>
+      <p class="sub">Sign in with the name and email you used when you enrolled to access your Checkride Prep Pack, DPE Question Library, and training tools.</p>
+
+      <div class="login-error" id="loginError">Please enter your full name and a valid email address.</div>
+
+      <form id="loginForm" novalidate>
+        <div class="form-group">
+          <label for="fullName">Full name</label>
+          <input type="text" id="fullName" name="fullName" placeholder="Jane Doe" autocomplete="name" required />
+        </div>
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" placeholder="you@email.com" autocomplete="email" required />
+        </div>
+        <div class="form-group">
+          <label for="certGoal">Currently training for</label>
+          <select id="certGoal" name="certGoal">
+            <option value="private">Private Pilot</option>
+            <option value="instrument">Instrument Rating</option>
+            <option value="commercial">Commercial Pilot</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn--primary btn--full">Enter Member Portal</button>
+      </form>
+
+      <p class="login-note">Not a member yet? <a href="apex-advantage.html">Learn about Apex Advantage</a> or <a href="contact.html">contact us</a> to enroll.</p>
+    </div>
+    <div class="login-back">
+      <a href="home.html">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M19 12H5m0 0l7 7m-7-7l7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Back to apexaviationtx.com
+      </a>
+    </div>
+  </div>
+
+  <script>
+    var form = document.getElementById('loginForm');
+    var errorBox = document.getElementById('loginError');
+
+    // If already signed in, skip straight to the portal.
+    if (localStorage.getItem('apex_portal_member')) {
+      window.location.href = 'portal.html';
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var name = document.getElementById('fullName').value.trim();
+      var email = document.getElementById('email').value.trim();
+      var certGoal = document.getElementById('certGoal').value;
+      var emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+      if (!name || !emailValid) {
+        errorBox.classList.add('show');
+        return;
+      }
+      errorBox.classList.remove('show');
+
+      var member = {
+        name: name,
+        email: email,
+        certGoal: certGoal,
+        memberSince: new Date().toISOString()
+      };
+      localStorage.setItem('apex_portal_member', JSON.stringify(member));
+      window.location.href = 'portal.html';
+    });
+  </script>
+</body>
+</html>

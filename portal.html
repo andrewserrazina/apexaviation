@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Member Portal | Apex Advantage</title>
+  <meta name="description" content="Apex Advantage member portal — Checkride Prep Pack, DPE Question Library, Scenario Training Center, progress tracking, and download vault." />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="canonical" href="https://apexaviationtx.com/portal.html" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="portal.css" />
+</head>
+<body class="portal-body">
+
+  <!-- ═══ TOP BAR ═══ -->
+  <header class="portal-topbar">
+    <div class="portal-topbar__left">
+      <button class="portal-sidebar-toggle" id="portalSidebarToggle" aria-label="Toggle menu"><span></span><span></span><span></span></button>
+      <a href="home.html" class="portal-topbar__logo"><img src="apexwhite.png" alt="Apex Aviation" /></a>
+      <div class="portal-topbar__divider"></div>
+      <span class="portal-topbar__badge">Apex Advantage Portal</span>
+    </div>
+    <div class="portal-topbar__right">
+      <a href="home.html" class="portal-topbar__exit">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Exit to site
+      </a>
+      <div class="portal-topbar__user">
+        <div class="portal-avatar" id="topbarAvatar">A</div>
+        <span id="topbarName">Member</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="portal-sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="portal-shell">
+    <!-- ═══ SIDEBAR NAV ═══ -->
+    <aside class="portal-sidebar" id="portalSidebar">
+      <nav class="portal-nav">
+        <button class="portal-nav__item" data-section="dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+          Dashboard
+        </button>
+        <button class="portal-nav__item" data-section="checkride-prep">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.976-.83 3.42 3.42 0 014.478 0 3.42 3.42 0 001.976.83 3.42 3.42 0 013.166 3.166 3.42 3.42 0 00.83 1.976 3.42 3.42 0 010 4.478 3.42 3.42 0 00-.83 1.976 3.42 3.42 0 01-3.166 3.166 3.42 3.42 0 00-1.976.83 3.42 3.42 0 01-4.478 0 3.42 3.42 0 00-1.976-.83 3.42 3.42 0 01-3.166-3.166 3.42 3.42 0 00-.83-1.976 3.42 3.42 0 010-4.478 3.42 3.42 0 00.83-1.976 3.42 3.42 0 013.166-3.166z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Checkride Prep Pack
+        </button>
+        <button class="portal-nav__item" data-section="dpe-library">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 6.253v13M12 6.253C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          DPE Questions Library
+        </button>
+        <button class="portal-nav__item" data-section="scenarios">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Scenario Training Center
+        </button>
+        <button class="portal-nav__item" data-section="progress">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Progress Tracking
+        </button>
+        <button class="portal-nav__item" data-section="vault">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 15a4 4 0 004-4V6a4 4 0 10-8 0v5a4 4 0 004 4zm0 0v5m-6-9a6 6 0 0012 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Download Vault
+        </button>
+
+        <div class="portal-nav__section-label">Account</div>
+        <button class="portal-nav__item" data-section="account">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Account Management
+        </button>
+        <button class="portal-nav__item" id="signOutBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Sign Out
+        </button>
+      </nav>
+      <div class="portal-sidebar__footer">
+        <p>Apex Advantage<br/>Live Instructor-Led Ground School</p>
+      </div>
+    </aside>
+
+    <!-- ═══ MAIN CONTENT ═══ -->
+    <main class="portal-main">
+
+      <!-- ─────────── DASHBOARD ─────────── -->
+      <section class="portal-section" id="section-dashboard">
+        <div class="portal-welcome">
+          <div>
+            <h2 id="welcomeHeading">Welcome back.</h2>
+            <p>Here's where you left off in your Apex Advantage training.</p>
+          </div>
+          <a href="#" class="btn btn--primary" data-goto="scenarios">Continue Training</a>
+        </div>
+
+        <div class="portal-grid portal-grid--4" style="margin-bottom:32px">
+          <div class="portal-card portal-stat">
+            <div class="portal-stat__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div class="portal-stat__value" id="statOverallPct">0%</div>
+            <div class="portal-stat__label">Overall Checklist Progress</div>
+          </div>
+          <div class="portal-card portal-stat">
+            <div class="portal-stat__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 6.253v13M12 6.253C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div class="portal-stat__value">35</div>
+            <div class="portal-stat__label">DPE Questions Available</div>
+          </div>
+          <div class="portal-card portal-stat">
+            <div class="portal-stat__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7l6-3 5.447 2.724A1 1 0 0121 7.618v10.764a1 1 0 01-1.447.894L15 17l-6 3z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div class="portal-stat__value">6</div>
+            <div class="portal-stat__label">Training Scenarios</div>
+          </div>
+          <div class="portal-card portal-stat">
+            <div class="portal-stat__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zM16 9V7a4 4 0 10-8 0v2" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div class="portal-stat__value">5</div>
+            <div class="portal-stat__label">Resources in Vault</div>
+          </div>
+        </div>
+
+        <h3 style="font-size:16px;font-weight:700;color:#fff;margin-bottom:16px">Jump back in</h3>
+        <div class="portal-grid portal-grid--4">
+          <button class="portal-card portal-quicklink" data-goto="checkride-prep">
+            <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div><h3>Checkride Prep Pack</h3><p>Study guides &amp; endorsement checklists</p></div>
+          </button>
+          <button class="portal-card portal-quicklink" data-goto="dpe-library">
+            <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 6.253v13M12 6.253C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div><h3>DPE Questions Library</h3><p>Practice real oral exam questions</p></div>
+          </button>
+          <button class="portal-card portal-quicklink" data-goto="scenarios">
+            <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div><h3>Scenario Training</h3><p>Work through real-world decision scenarios</p></div>
+          </button>
+          <button class="portal-card portal-quicklink" data-goto="vault">
+            <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zM16 9V7a4 4 0 10-8 0v2" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div><h3>Download Vault</h3><p>All your PDFs &amp; checklists in one place</p></div>
+          </button>
+        </div>
+      </section>
+
+      <!-- ─────────── CHECKRIDE PREP PACK ─────────── -->
+      <section class="portal-section" id="section-checkride-prep">
+        <div class="portal-header">
+          <div class="portal-header__eyebrow">Checkride Prep Pack</div>
+          <h1>Everything you need for checkride day.</h1>
+          <p>Certificate-specific study guides built around what your DPE will actually ask — organized so you can study by area of operation, not by chapter number.</p>
+        </div>
+
+        <div class="portal-grid portal-grid--3">
+          <div class="portal-card">
+            <div class="portal-stat__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.976-.83 3.42 3.42 0 014.478 0 3.42 3.42 0 001.976.83 3.42 3.42 0 013.166 3.166 3.42 3.42 0 00.83 1.976 3.42 3.42 0 010 4.478 3.42 3.42 0 00-.83 1.976 3.42 3.42 0 01-3.166 3.166 3.42 3.42 0 00-1.976.83 3.42 3.42 0 01-4.478 0 3.42 3.42 0 00-1.976-.83 3.42 3.42 0 01-3.166-3.166 3.42 3.42 0 00-.83-1.976 3.42 3.42 0 010-4.478 3.42 3.42 0 00.83-1.976 3.42 3.42 0 013.166-3.166z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Private Pilot Prep Pack</h3>
+            <p style="color:rgba(255,255,255,0.55);font-size:14px;line-height:1.65;margin-bottom:18px">Aerodynamics, airspace, weather, regulations, and a full oral exam walkthrough organized by ACS area of operation.</p>
+            <a href="https://drive.google.com/uc?export=download&id=1Pp9vN4q9Swuc92cXIiOAblXrlZOuZr1s" class="btn btn--primary btn--full" target="_blank" rel="noopener">Download PDF</a>
+          </div>
+          <div class="portal-card">
+            <div class="portal-stat__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.976-.83 3.42 3.42 0 014.478 0 3.42 3.42 0 001.976.83 3.42 3.42 0 013.166 3.166 3.42 3.42 0 00.83 1.976 3.42 3.42 0 010 4.478 3.42 3.42 0 00-.83 1.976 3.42 3.42 0 01-3.166 3.166 3.42 3.42 0 00-1.976.83 3.42 3.42 0 01-4.478 0 3.42 3.42 0 00-1.976-.83 3.42 3.42 0 01-3.166-3.166 3.42 3.42 0 00-.83-1.976 3.42 3.42 0 010-4.478 3.42 3.42 0 00.83-1.976 3.42 3.42 0 013.166-3.166z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Instrument Rating Prep Pack</h3>
+            <p style="color:rgba(255,255,255,0.55);font-size:14px;line-height:1.65;margin-bottom:18px">IFR regulations, approach procedures, holding, IFR weather, and lost comm scenarios explained the way examiners test them.</p>
+            <span class="portal-badge-locked" style="margin-bottom:12px;display:inline-block">Coming Soon</span>
+            <button class="btn btn--ghost btn--full" disabled style="opacity:0.5;cursor:not-allowed">Notify Me</button>
+          </div>
+          <div class="portal-card">
+            <div class="portal-stat__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.976-.83 3.42 3.42 0 014.478 0 3.42 3.42 0 001.976.83 3.42 3.42 0 013.166 3.166 3.42 3.42 0 00.83 1.976 3.42 3.42 0 010 4.478 3.42 3.42 0 00-.83 1.976 3.42 3.42 0 01-3.166 3.166 3.42 3.42 0 00-1.976.83 3.42 3.42 0 01-4.478 0 3.42 3.42 0 00-1.976-.83 3.42 3.42 0 01-3.166-3.166 3.42 3.42 0 00-.83-1.976 3.42 3.42 0 010-4.478 3.42 3.42 0 00.83-1.976 3.42 3.42 0 013.166-3.166z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Commercial Pilot Prep Pack</h3>
+            <p style="color:rgba(255,255,255,0.55);font-size:14px;line-height:1.65;margin-bottom:18px">Advanced aerodynamics, commercial regs, complex aircraft systems, and performance planning for the CAX checkride.</p>
+            <span class="portal-badge-locked" style="margin-bottom:12px;display:inline-block">Coming Soon</span>
+            <button class="btn btn--ghost btn--full" disabled style="opacity:0.5;cursor:not-allowed">Notify Me</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────── DPE QUESTIONS LIBRARY ─────────── -->
+      <section class="portal-section" id="section-dpe-library">
+        <div class="portal-header">
+          <div class="portal-header__eyebrow">DPE Questions Library</div>
+          <h1>Real oral exam questions. Model answers.</h1>
+          <p>Practice the questions designated pilot examiners actually ask — organized by ACS area of operation. Tap a question to reveal a model answer.</p>
+        </div>
+
+        <div class="portal-search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <input type="text" id="dpeSearch" placeholder="Search questions (e.g. airspace, weather, stalls)…" />
+        </div>
+
+        <div class="portal-tabs" id="dpeTabs">
+          <button class="portal-tab active" data-cat="all">All Categories</button>
+          <button class="portal-tab" data-cat="regulations">Regulations</button>
+          <button class="portal-tab" data-cat="weather">Weather</button>
+          <button class="portal-tab" data-cat="airspace">Airspace</button>
+          <button class="portal-tab" data-cat="aerodynamics">Aerodynamics &amp; Systems</button>
+          <button class="portal-tab" data-cat="navigation">Navigation &amp; Flight Planning</button>
+          <button class="portal-tab" data-cat="emergencies">Emergencies</button>
+        </div>
+
+        <div id="dpeLibrary"><!-- populated by JS --></div>
+        <p id="dpeEmpty" style="display:none;color:rgba(255,255,255,0.4);font-size:14px;padding:20px 0">No questions match your search.</p>
+      </section>
+
+      <!-- ─────────── SCENARIO TRAINING CENTER ─────────── -->
+      <section class="portal-section" id="section-scenarios">
+        <div class="portal-header">
+          <div class="portal-header__eyebrow">Scenario Training Center</div>
+          <h1>Think like a pilot in command.</h1>
+          <p>Real-world decision-making scenarios modeled after ACS Task Areas and common checkride discussion points. Expand a scenario to work through the briefing, key decision points, and debrief.</p>
+        </div>
+        <div class="portal-grid portal-grid--2" id="scenarioGrid"><!-- populated by JS --></div>
+      </section>
+
+      <!-- ─────────── PROGRESS TRACKING ─────────── -->
+      <section class="portal-section" id="section-progress">
+        <div class="portal-header">
+          <div class="portal-header__eyebrow">Progress Tracking</div>
+          <h1>Your training checklist.</h1>
+          <p>Check off each item as you complete it. Your progress is saved automatically in this browser.</p>
+        </div>
+        <div id="progressTracks"><!-- populated by JS --></div>
+      </section>
+
+      <!-- ─────────── DOWNLOAD VAULT ─────────── -->
+      <section class="portal-section" id="section-vault">
+        <div class="portal-header">
+          <div class="portal-header__eyebrow">Download Vault</div>
+          <h1>All your resources, in one place.</h1>
+          <p>Every guide, checklist, and cheat sheet included with your Apex Advantage membership.</p>
+        </div>
+        <div class="portal-grid portal-grid--3">
+          <div class="portal-card portal-vault-card">
+            <div class="portal-vault-card__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <h3>Private Pilot Checkride Prep Pack</h3>
+            <p>Full oral exam study guide organized by ACS area of operation.</p>
+            <div class="portal-vault-card__meta">PDF · Updated for current ACS</div>
+            <a href="https://drive.google.com/uc?export=download&id=1Pp9vN4q9Swuc92cXIiOAblXrlZOuZr1s" class="btn btn--primary btn--full" target="_blank" rel="noopener">Download</a>
+          </div>
+          <div class="portal-card portal-vault-card">
+            <div class="portal-vault-card__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h7" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <h3>Weight &amp; Balance Cheat Sheet</h3>
+            <p>Quick-reference worksheet for W&amp;B and performance calculations.</p>
+            <span class="portal-badge-locked">Coming Soon</span>
+            <button class="btn btn--ghost btn--full" disabled style="opacity:0.5;cursor:not-allowed">Notify Me</button>
+          </div>
+          <div class="portal-card portal-vault-card">
+            <div class="portal-vault-card__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 6.253v13M12 6.253C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <h3>DPE Question Bank (Printable)</h3>
+            <p>Every question from the DPE Questions Library in a single printable PDF.</p>
+            <span class="portal-badge-locked">Coming Soon</span>
+            <button class="btn btn--ghost btn--full" disabled style="opacity:0.5;cursor:not-allowed">Notify Me</button>
+          </div>
+          <div class="portal-card portal-vault-card">
+            <div class="portal-vault-card__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <h3>IFR Currency Tracker</h3>
+            <p>Spreadsheet template for tracking approaches, holds, and currency.</p>
+            <span class="portal-badge-locked">Coming Soon</span>
+            <button class="btn btn--ghost btn--full" disabled style="opacity:0.5;cursor:not-allowed">Notify Me</button>
+          </div>
+          <div class="portal-card portal-vault-card">
+            <div class="portal-vault-card__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <h3>Maneuvers Guide &amp; Diagrams</h3>
+            <p>Illustrated breakdown of every ACS-required maneuver with common errors.</p>
+            <span class="portal-badge-locked">Coming Soon</span>
+            <button class="btn btn--ghost btn--full" disabled style="opacity:0.5;cursor:not-allowed">Notify Me</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────── ACCOUNT MANAGEMENT ─────────── -->
+      <section class="portal-section" id="section-account">
+        <div class="portal-header">
+          <div class="portal-header__eyebrow">Account Management</div>
+          <h1>Your profile.</h1>
+          <p>Manage your Apex Advantage membership details.</p>
+        </div>
+
+        <div class="portal-grid portal-grid--2">
+          <div class="portal-card">
+            <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">
+              <div class="portal-account-avatar" id="accountAvatar">A</div>
+              <div>
+                <h3 style="color:#fff;font-size:18px;font-weight:700" id="accountName">Member</h3>
+                <p style="color:rgba(255,255,255,0.5);font-size:13px" id="accountEmail">member@email.com</p>
+              </div>
+            </div>
+            <form id="accountForm">
+              <div class="form-group" style="margin-bottom:16px">
+                <label for="accFullName" style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px">Full name</label>
+                <input type="text" id="accFullName" style="width:100%;padding:12px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none" />
+              </div>
+              <div class="form-group" style="margin-bottom:16px">
+                <label for="accEmail" style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px">Email</label>
+                <input type="email" id="accEmail" style="width:100%;padding:12px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none" />
+              </div>
+              <div class="form-group" style="margin-bottom:20px">
+                <label for="accCertGoal" style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px">Currently training for</label>
+                <select id="accCertGoal" style="width:100%;padding:12px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none">
+                  <option value="private">Private Pilot</option>
+                  <option value="instrument">Instrument Rating</option>
+                  <option value="commercial">Commercial Pilot</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn--primary">Save Changes</button>
+            </form>
+          </div>
+
+          <div class="portal-card">
+            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:18px">Membership</h3>
+            <div class="portal-membership-row">
+              <strong>Plan</strong>
+              <span>Apex Advantage — Founding Member</span>
+            </div>
+            <div class="portal-membership-row">
+              <strong>Member since</strong>
+              <span id="memberSince">—</span>
+            </div>
+            <div class="portal-membership-row">
+              <strong>Billing</strong>
+              <span>$25 / session</span>
+            </div>
+            <div class="portal-membership-row">
+              <strong>Support</strong>
+              <span><a href="mailto:info@apexaviationtx.com" style="color:var(--gold)">info@apexaviationtx.com</a></span>
+            </div>
+            <div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.08)">
+              <button class="btn btn--ghost btn--full" id="signOutBtn2">Sign Out</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <div class="portal-toast" id="portalToast"></div>
+
+  <script src="portal.js"></script>
+</body>
+</html>
