@@ -223,9 +223,35 @@
 }
 .portal-qitem__q svg { flex-shrink: 0; color: var(--gold); transition: transform 0.2s; }
 .portal-qitem.open .portal-qitem__q svg { transform: rotate(180deg); }
-.portal-qitem__a { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
-.portal-qitem.open .portal-qitem__a { max-height: 400px; }
-.portal-qitem__a p { padding: 0 20px 18px; color: rgba(255,255,255,0.6); line-height: 1.75; font-size: 14px; }
+.portal-qitem__head { display: flex; align-items: center; gap: 4px; }
+.portal-qitem__a { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
+.portal-qitem.open .portal-qitem__a { max-height: 2400px; }
+.portal-qitem__a-inner { padding: 0 20px 20px; }
+.portal-qitem__field { margin-bottom: 14px; }
+.portal-qitem__field:last-child { margin-bottom: 0; }
+.portal-qitem__field-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--gold-light); margin-bottom: 5px;
+}
+.portal-qitem__field p { color: rgba(255,255,255,0.65); line-height: 1.7; font-size: 14px; margin: 0; }
+.portal-qitem__acs {
+  display: inline-block; font-size: 12px; color: rgba(255,255,255,0.45);
+  background: rgba(255,255,255,0.05); padding: 3px 10px; border-radius: 100px; margin-top: 2px;
+}
+.portal-qitem__meta {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 20px; border-top: 1px solid rgba(255,255,255,0.06); flex-wrap: wrap;
+}
+.portal-qitem__meta-left { display: flex; align-items: center; gap: 16px; }
+.portal-studied-label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: rgba(255,255,255,0.55); cursor: pointer; }
+.portal-studied-label input { width: 16px; height: 16px; accent-color: var(--gold); cursor: pointer; }
+.portal-star-btn {
+  background: none; border: none; cursor: pointer; padding: 2px; color: rgba(255,255,255,0.3);
+  display: flex; align-items: center; transition: color var(--transition), transform var(--transition);
+}
+.portal-star-btn:hover { transform: scale(1.15); }
+.portal-star-btn.active { color: var(--gold); }
+.portal-qitem__lastviewed { font-size: 12px; color: rgba(255,255,255,0.3); }
 .portal-qitem[hidden] { display: none; }
 
 /* ─── Scenario Training Center ──────────────────────────────────── */
@@ -303,6 +329,59 @@
   transform: translateY(20px); opacity: 0; pointer-events: none; transition: all 0.3s ease;
 }
 .portal-toast.show { transform: translateY(0); opacity: 1; }
+
+/* ─── Lessons (Checkride Prep Pack) ──────────────────────────────── */
+.portal-lesson { margin-bottom: 14px; overflow: hidden; }
+.portal-lesson__head {
+  width: 100%; display: flex; justify-content: space-between; align-items: center;
+  gap: 16px; padding: 20px 24px; background: none; border: none; cursor: pointer; text-align: left;
+}
+.portal-lesson__head-left { display: flex; align-items: center; gap: 14px; }
+.portal-lesson__num {
+  width: 30px; height: 30px; border-radius: 50%; background: rgba(244,180,0,0.12); color: var(--gold);
+  display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; flex-shrink: 0;
+}
+.portal-lesson__title { font-size: 15.5px; font-weight: 700; color: #fff; }
+.portal-lesson__meta { font-size: 12.5px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+.portal-lesson__head svg.chev { flex-shrink: 0; color: var(--gold); transition: transform 0.2s; }
+.portal-lesson.open .portal-lesson__head svg.chev { transform: rotate(180deg); }
+.portal-lesson__complete { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: rgba(255,255,255,0.5); flex-shrink: 0; }
+.portal-lesson__complete input { width: 16px; height: 16px; accent-color: var(--gold); cursor: pointer; }
+.portal-lesson__body { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; border-top: 1px solid rgba(255,255,255,0.08); }
+.portal-lesson.open .portal-lesson__body { max-height: 6000px; }
+.portal-lesson__body-inner { padding: 22px 24px; }
+.portal-lesson__body-inner p { color: rgba(255,255,255,0.65); line-height: 1.8; font-size: 14.5px; margin-bottom: 14px; }
+.portal-lesson__body-inner p:last-child { margin-bottom: 0; }
+.portal-lesson__body-inner h4 {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--gold-light); margin: 20px 0 10px;
+}
+.portal-lesson__body-inner h4:first-child { margin-top: 0; }
+.portal-lesson__body-inner ul { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.portal-lesson__body-inner ul li { font-size: 14px; color: rgba(255,255,255,0.65); padding-left: 20px; position: relative; line-height: 1.65; }
+.portal-lesson__body-inner ul li::before { content: '◆'; position: absolute; left: 0; color: var(--gold); font-size: 10px; top: 5px; }
+.portal-lesson__table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+.portal-lesson__table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255,255,255,0.4); padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.portal-lesson__table td { font-size: 13.5px; color: rgba(255,255,255,0.65); padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); vertical-align: top; line-height: 1.6; }
+.portal-lesson__tip {
+  background: rgba(244,180,0,0.08); border: 1px solid rgba(244,180,0,0.25); border-radius: 10px;
+  padding: 16px 18px; margin-top: 8px;
+}
+.portal-lesson__tip strong { color: var(--gold-light); font-size: 13px; display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+.portal-lesson__tip p { color: rgba(255,255,255,0.7); font-size: 14px; margin: 0; }
+.portal-lesson__study-link { margin-top: 8px; }
+
+/* ─── Quick Reference Appendix ───────────────────────────────────── */
+.portal-qref-card { margin-bottom: 20px; padding: 24px; }
+.portal-qref-card__title { font-size: 18px; font-weight: 800; color: var(--gold); letter-spacing: 0.02em; margin-bottom: 4px; }
+.portal-qref-card__subtitle { font-size: 13px; color: rgba(255,255,255,0.45); margin-bottom: 16px; }
+.portal-qref-table { width: 100%; border-collapse: collapse; }
+.portal-qref-table td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.07); font-size: 13.5px; vertical-align: top; line-height: 1.6; }
+.portal-qref-table tr:last-child td { border-bottom: none; }
+.portal-qref-table td:first-child { font-weight: 800; color: var(--gold); width: 42px; text-align: center; font-size: 15px; }
+.portal-qref-table td:nth-child(2) { font-weight: 700; color: #fff; width: 32%; }
+.portal-qref-table td:nth-child(3) { color: rgba(255,255,255,0.55); }
+.portal-qref-card[hidden] { display: none; }
 
 /* ─── Sidebar overlay (mobile) ──────────────────────────────────── */
 .portal-sidebar-overlay {
