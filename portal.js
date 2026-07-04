@@ -14,8 +14,6 @@
     return;
   }
 
-  var CERT_LABELS = { private: 'Private Pilot', instrument: 'Instrument Rating', commercial: 'Commercial Pilot' };
-
   function initials(name) {
     var parts = name.trim().split(/\s+/);
     var i = parts[0] ? parts[0][0] : '';
@@ -66,6 +64,7 @@
     if (history.replaceState) history.replaceState(null, '', '#' + id);
     closeSidebar();
   }
+  window.apexShowSection = showSection;
 
   function openSidebar() { sidebar.classList.add('open'); overlay.classList.add('show'); }
   function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
@@ -107,91 +106,941 @@
   });
 
   /* ══════════════════════════════════════════════════════════════
-     DPE QUESTIONS LIBRARY
+     PERSISTED STATE — studied / favorites / last-viewed / lesson completion
+     Source: Apex Advantage — Private Pilot Checkride Prep Pack (PDF)
      ══════════════════════════════════════════════════════════════ */
-  var DPE_DATA = [
-    { cat: 'regulations', q: 'What are the requirements for a private pilot to act as PIC under VFR at night?', a: 'You need a valid pilot certificate with the appropriate category/class rating, a current flight review within the last 24 calendar months, and — if carrying passengers at night — 3 takeoffs and 3 landings to a full stop within the preceding 90 days, done at night, per 14 CFR 61.57(b). You must also hold a current medical or qualify under BasicMed.' },
-    { cat: 'regulations', q: 'What documents are required to be aboard the aircraft?', a: 'Remember "ARROW": Airworthiness certificate, Registration, Radio station license (only for international flights), Operating limitations (POH/AFM), and Weight and balance data.' },
-    { cat: 'regulations', q: 'What are the currency requirements to carry passengers during the day?', a: 'Per 14 CFR 61.57(a), you need 3 takeoffs and 3 landings in the preceding 90 days in an aircraft of the same category, class, and if a type rating is required, the same type.' },
-    { cat: 'regulations', q: 'When is a flight review required and what does it consist of?', a: 'Every 24 calendar months per 14 CFR 61.56, consisting of a minimum of 1 hour of flight training and 1 hour of ground training, covering a review of current general operating and flight rules and maneuvers the instructor determines necessary.' },
-    { cat: 'regulations', q: 'What are the VFR fuel requirements?', a: 'Day VFR: enough fuel to fly to the first point of intended landing plus 30 minutes at normal cruise. Night VFR: same, but 45 minutes reserve, per 14 CFR 91.151.' },
-    { cat: 'weather', q: 'Explain the stability of an air mass and how it affects cloud formation.', a: 'A stable air mass resists vertical movement, producing stratiform clouds, smooth air, and poor visibility in haze or fog. An unstable air mass allows air to rise freely, producing cumuliform clouds, turbulence, and showery precipitation.' },
-    { cat: 'weather', q: 'What is a METAR and how do you decode the wind and visibility groups?', a: 'A METAR is a routine aviation weather report issued hourly. Wind is reported as a 3-digit true direction plus 2-3 digit speed in knots (e.g. 18010KT = 180° at 10 knots), with "G" indicating gusts. Visibility follows in statute miles.' },
-    { cat: 'weather', q: 'What hazards are associated with a frontal passage?', a: 'Cold fronts bring fast-moving, often severe weather — thunderstorms, gusty winds, and a sharp wind shift. Warm fronts bring widespread stratiform clouds, extended precipitation, and low ceilings/visibility, often with the risk of icing in winter.' },
-    { cat: 'weather', q: 'How do you obtain a preflight weather briefing and what should it include?', a: 'Through 1800wxbrief.com, ForeFlight, or Flight Service (1-800-WX-BRIEF). A standard briefing includes adverse conditions, a synopsis, current conditions, en route and destination forecasts, winds aloft, NOTAMs, and ATC delays.' },
-    { cat: 'weather', q: 'What conditions are favorable for structural icing?', a: 'Visible moisture (clouds, rain, or fog) combined with temperatures at or below freezing, most commonly between 0°C and -20°C. Freezing rain and freezing drizzle are especially hazardous because they can deposit ice rapidly.' },
-    { cat: 'airspace', q: 'What are the requirements to operate in Class C airspace?', a: 'Two-way radio communication established with ATC prior to entry, and an operable transponder with Mode C (altitude reporting) and ADS-B Out if required. No specific pilot certificate or equipment beyond that is required for VFR operations.' },
-    { cat: 'airspace', q: 'Describe the dimensions and requirements of Class B airspace.', a: 'Class B typically extends from the surface to 10,000 ft MSL around the nation\'s busiest airports, shaped like an inverted wedding cake. An explicit ATC clearance is required to enter, along with a Mode C transponder, ADS-B Out, and (for student pilots) specific endorsements.' },
-    { cat: 'airspace', q: 'What are the VFR cloud clearance and visibility requirements in Class E airspace below 10,000 ft MSL?', a: '3 statute miles visibility, 500 ft below, 1,000 ft above, and 2,000 ft horizontal from clouds.' },
-    { cat: 'airspace', q: 'How do you identify Special Use Airspace on a sectional chart, and what does each type mean?', a: 'Restricted, Prohibited, Warning, Alert, and MOAs are shown with distinct border patterns and area numbers. Restricted areas may contain hazards like artillery firing; Prohibited areas are barred to all aircraft; MOAs indicate military training activity where VFR traffic should exercise caution.' },
-    { cat: 'airspace', q: 'What is the difference between Class G and Class E airspace at low altitude?', a: 'Class G is uncontrolled airspace, generally from the surface up to the base of the overlying Class E (often 700 or 1,200 ft AGL), with reduced VFR weather minimums. Class E is controlled airspace where ATC provides separation services to IFR traffic.' },
-    { cat: 'aerodynamics', q: 'Explain the four forces acting on an aircraft in flight.', a: 'Lift (generated by the wings, acting perpendicular to the relative wind), weight (gravity, acting toward the center of the earth), thrust (produced by the engine/propeller), and drag (resistance opposing motion through the air). In steady, unaccelerated flight, these forces are in equilibrium.' },
-    { cat: 'aerodynamics', q: 'What causes a stall, and how is it recovered?', a: 'A stall occurs when the critical angle of attack is exceeded, regardless of airspeed or attitude, causing airflow separation over the wing and a loss of lift. Recovery requires reducing the angle of attack (relaxing back pressure), applying full power in most training aircraft, and leveling the wings before returning to a climb.' },
-    { cat: 'aerodynamics', q: 'Describe the relationship between angle of attack and coefficient of lift.', a: 'Lift coefficient increases roughly linearly with angle of attack up to the critical angle of attack, at which point airflow separates from the wing\'s upper surface and lift drops sharply — this is the stall.' },
-    { cat: 'aerodynamics', q: 'How does the fuel system on your training aircraft work?', a: 'This answer is aircraft-specific — describe your tanks, fuel selector positions, fuel pump(s), and how fuel flows from tank to engine, including any placards or limitations (e.g., "both" required for takeoff/landing).' },
-    { cat: 'aerodynamics', q: 'What is load factor and how does it relate to stall speed?', a: 'Load factor is the ratio of the load supported by the wings to the actual weight of the aircraft, expressed in G units. As load factor increases (in a bank or pull-up), stall speed increases by the square root of the load factor.' },
-    { cat: 'navigation', q: 'How do you calculate true airspeed from indicated airspeed?', a: 'Correct indicated airspeed for instrument and position error to get calibrated airspeed, then adjust for pressure altitude and non-standard temperature using an E6B or electronic flight computer (or a rule of thumb of roughly 2% per 1,000 ft of density altitude) to get true airspeed.' },
-    { cat: 'navigation', q: 'Walk me through how you planned this cross-country flight.', a: 'Discuss route selection considering airspace and terrain, checkpoints, magnetic course and heading corrected for wind, groundspeed and time/fuel calculations, fuel reserves, alternate airports, and weather/NOTAM review.' },
-    { cat: 'navigation', q: 'What is density altitude and why does it matter for performance planning?', a: 'Density altitude is pressure altitude corrected for non-standard temperature — it represents the altitude the aircraft "feels" it\'s performing at. High density altitude (hot, high, humid) reduces engine power, propeller efficiency, and lift, lengthening takeoff/landing distances and reducing climb performance.' },
-    { cat: 'navigation', q: 'How would you divert to an alternate airport in flight?', a: 'Identify the nearest suitable airport, determine a heading using the compass/chart or GPS, estimate time and fuel required, notify ATC if applicable, and continually reassess weather and fuel as you proceed.' },
-    { cat: 'emergencies', q: 'What is your immediate action for an engine failure after takeoff?', a: 'Pitch for best glide speed immediately, select a landing spot generally within 30° of your nose, run the appropriate emergency checklist if time and altitude permit, and communicate/squawk 7700 if able. Land straight ahead or with minimal turn unless a return to the runway has been briefed and is safely achievable.' },
-    { cat: 'emergencies', q: 'What would you do if you experienced a partial electrical failure in IMC?', a: 'Prioritize aircraft control using available instruments, isolate the failure (check circuit breakers, alternator/master switches), reduce electrical load by shedding non-essential equipment, and consider requesting a lower workload environment (e.g., vectors to the nearest suitable airport) from ATC.' },
-    { cat: 'emergencies', q: 'How do you handle an inadvertent encounter with IMC as a VFR-only pilot?', a: 'Maintain aircraft control using the attitude indicator and other primary instruments, avoid abrupt control inputs, consider a standard-rate 180° turn back toward known VMC, and communicate with ATC for assistance and vectors as needed.' },
-    { cat: 'emergencies', q: 'What are the signs of carbon monoxide poisoning in flight, and what is your response?', a: 'Symptoms include headache, dizziness, drowsiness, and impaired judgment. Immediately turn off the cabin heat, open fresh-air vents/windows if possible, and land as soon as practical.' }
+  function loadMap(key) { try { return JSON.parse(localStorage.getItem(key)) || {}; } catch (e) { return {}; } }
+  function saveMap(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
+
+  var studied = loadMap('apex_portal_studied');
+  var favorites = loadMap('apex_portal_favorites');
+  var lastViewed = loadMap('apex_portal_lastviewed');
+  var lessonComplete = loadMap('apex_portal_lesson_complete');
+
+  function toggleStudied(id) { studied[id] = !studied[id]; saveMap('apex_portal_studied', studied); }
+  function toggleFavorite(id) { favorites[id] = !favorites[id]; saveMap('apex_portal_favorites', favorites); }
+  function touchLastViewed(id) { lastViewed[id] = Date.now(); saveMap('apex_portal_lastviewed', lastViewed); }
+  function timeAgo(ts) {
+    if (!ts) return '';
+    var diff = Math.round((Date.now() - ts) / 60000);
+    if (diff < 1) return 'just now';
+    if (diff < 60) return diff + 'm ago';
+    var hrs = Math.round(diff / 60);
+    if (hrs < 24) return hrs + 'h ago';
+    return Math.round(hrs / 24) + 'd ago';
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     SECTION 1 — CHECKRIDE SUCCESS FRAMEWORK
+     ══════════════════════════════════════════════════════════════ */
+  var FRAMEWORK_LESSON = {
+    id: 'lesson-framework',
+    title: 'Checkride Success Framework',
+    meta: 'Section 1 · How the oral exam actually works',
+    parts: [
+      { h: 'Welcome Letter from Apex Aviation', body: [
+        `Welcome to the Apex Advantage Private Pilot Checkride Prep Pack — and congratulations on making it this far. If you're holding this guide, you've already put in the real work: the flight hours, the ground school, the long study nights. What you're looking for now isn't more information. It's confidence — the kind that comes from knowing exactly what to expect and exactly how to show up prepared.`,
+        `We built this guide the way we build every part of Apex Advantage: around a simple idea we call Train Beyond the Checkride. The oral exam isn't a memorization contest, and your examiner isn't trying to trip you up. A Designated Pilot Examiner is trying to find out one thing — are you the kind of pilot who can be trusted to make good decisions alone in an airplane? Every question in this guide is built to help you answer that question with real, durable understanding, not a script.`,
+        `This isn't a textbook, and it isn't a cram sheet. It's a study partner — the same kind of structured, scenario-based preparation our live students get in Apex Advantage ground school, distilled into a guide you can work through at your own pace. Use it well, and you won't just pass your checkride. You'll walk into it calm, because you'll already know you're ready.`,
+        `Fly safe, study well, and welcome to Apex. — The Apex Aviation Team`
+      ] },
+      { h: 'How to Use This Guide', list: [
+        `Work section by section, in order — the sections roughly follow the structure of a real oral exam, building from documents and regulations toward judgment and real-world scenarios.`,
+        `Don't just read the Model Answer — cover it, answer the question out loud in your own words first, then compare. Speaking your answer is what actually builds checkride-ready recall.`,
+        `Pay close attention to the Common Student Mistakes field for every question — these are the specific, predictable ways applicants lose confidence points, and knowing them in advance is half the battle.`,
+        `Use the ACS Connection field to cross-reference the current Airman Certification Standards directly — this guide is a companion to the ACS, not a replacement for reading it.`,
+        `Keep the Quick Reference Appendix close during your final week of study — it's built for fast review, not first-time learning.`,
+        `If a question or concept still feels shaky after working through this guide, that's useful information — bring it to your CFI directly rather than letting it go unresolved into checkride day.`
+      ] },
+      { h: 'Understanding the FAA ACS', body: [
+        `The Airman Certification Standards (ACS) is the actual rubric your DPE uses to evaluate you — not a general guideline, the specific, official standard. Every checkride question you'll ever be asked traces back to a specific Area of Operation and Task within the ACS.`,
+        `The ACS structure has three layers, and understanding this structure is itself checkride-relevant knowledge:`
+      ], list: [
+        `Areas of Operation — the broad phases of flight and knowledge domains (e.g., Preflight Preparation, Airspace, Slow Flight and Stalls).`,
+        `Tasks — specific, named skills or knowledge sets within each Area of Operation (e.g., Task B: Airworthiness Requirements).`,
+        `Elements — every Task breaks down into Knowledge, Risk Management, and Skill elements. This three-part structure is what distinguishes the modern ACS from the older Practical Test Standards (PTS): risk management is now explicitly, separately evaluated, not folded into a general skill assessment.`
+      ], tip: { label: 'Instructor Tip — Read the ACS Yourself', body: `This guide maps every question to its ACS reference on purpose — use that reference to go read the actual ACS language for that Task. A DPE is quoting from that exact document, and familiarity with its actual phrasing will make you sound like you know the standard, not just the topic.` } },
+      { h: 'How Oral Exams Are Evaluated', body: [
+        `The oral exam is not a test of whether you can recite facts — it's a structured, scenario-based conversation designed to reveal how you think. A DPE will typically open with a real or realistic scenario (a planned flight, a specific airport, a specific day's weather) and ask you to reason through it, weaving in regulatory and technical questions naturally as the scenario unfolds.`,
+        `Within each ACS Task, your examiner is listening for three things: Knowledge (do you know the correct information), Risk Management (can you identify and mitigate the relevant risks), and Skill (where applicable, can you demonstrate the associated physical or procedural skill, generally during the flight portion). A complete answer touches Knowledge and, where relevant, Risk Management — an answer that's only a fact recitation is often incomplete by ACS standards, even if factually correct.`,
+        `Examiners are also evaluating your process, not just your final answer: do you know where to look something up if you're not sure? Do you stay calm and structured when you don't immediately know an answer? Composure under a moment of uncertainty is itself part of what's being evaluated — a hesitant but structured 'let me check that' response often scores better than a fast, confidently wrong one.`
+      ] },
+      { h: 'What DPEs Are Looking For', list: [
+        `Genuine understanding over memorization — an examiner will almost always ask a 'why' or 'what if' follow-up to any definitional answer, specifically to test whether you understand the concept or just memorized a sentence.`,
+        `Accurate use of current references — knowing how to find an answer in the FAR/AIM, POH, or a chart, live, is treated as equally valuable to knowing the answer from memory.`,
+        `Sound aeronautical decision-making — your reasoning process when weighing a real risk (weather, performance, personal minimums) matters as much as the specific decision you land on.`,
+        `Professional communication — clear, organized, confident answers, delivered the way you'd actually brief a passenger or communicate with ATC.`,
+        `Honest self-assessment — examiners respond far better to 'I'm not certain, let me look that up,' than to guessing or bluffing.`
+      ] },
+      { h: 'Common Reasons Applicants Fail', table: {
+        headers: ['Common Failure Pattern', "What's Actually Happening"],
+        rows: [
+          ['Memorized answers that fall apart under a follow-up question', "The applicant learned a sentence, not the underlying concept — the first 'why' question exposes the gap."],
+          ['Treating the oral exam like a pop quiz instead of a conversation', 'Answering in isolated fragments instead of reasoning through the scenario the examiner is building.'],
+          [`Guessing instead of saying 'I don't know, let me check'`, 'Examiners consistently rate honest uncertainty higher than a confident wrong answer — guessing erodes trust fast.'],
+          ['Incomplete knowledge of personal documents and currency', 'Basic eligibility gaps (expired medical, missing endorsement) are avoidable, low-effort failure points that undermine an otherwise strong exam.'],
+          ['Underprepared risk management reasoning', "Applicants who can recite regulations but can't apply a framework like PAVE or IMSAFE to a real scenario struggle with the ACS's Risk Management elements specifically."],
+          ['Visible panic or shutting down under pressure', 'A single missed question is recoverable; losing composure and disengaging from the conversation is what actually derails an oral exam.']
+        ]
+      }, tip: { label: 'Checkride Success Tip — The Real Fix', body: `Every failure pattern above has the same root fix: work through real questions out loud, under mild time pressure, before checkride day — exactly what this guide and Apex Advantage's live Checkride Corner training are built to do.` } }
+    ]
+  };
+
+  /* ══════════════════════════════════════════════════════════════
+     SECTION 11 — CHECKRIDE DAY PREPARATION
+     ══════════════════════════════════════════════════════════════ */
+  var CHECKRIDE_DAY_LESSON = {
+    id: 'lesson-checkride-day',
+    title: 'Checkride Day Preparation',
+    meta: 'Section 11 · Documents, timing, and composure',
+    parts: [
+      { h: 'Overview', body: [
+        `Everything in this section is about removing avoidable friction from checkride day, so your energy goes entirely toward the exam itself — not toward finding a missing document or managing unnecessary stress.`
+      ] },
+      { h: 'What to Bring', list: [
+        'Government-issued photo ID',
+        'Student pilot certificate / medical certificate',
+        'Completed and signed IACRA application (Form 8710-1)',
+        'Logbook with all required endorsements',
+        'Knowledge Test Report',
+        'Aircraft airworthiness certificate, registration, operating limitations, and weight and balance data (ARROW)',
+        'Aircraft maintenance logs (or evidence of required inspections)',
+        'Current charts, plotter, E6B (electronic or manual), and your completed cross-country flight plan',
+        "Examiner's fee, in the payment method they specify in advance"
+      ] },
+      { h: 'Day-Before Checklist', list: [
+        'Confirm weather and NOTAMs for your planned checkride route one more time',
+        'Verify every document above is physically gathered in one place, not scattered',
+        'Review your cross-country flight plan and be ready to explain every number in it',
+        "Get a full night's sleep — treat this as seriously as you would before a flight lesson",
+        'Avoid last-minute cramming on brand-new material; focus instead on your weakest, already-identified areas'
+      ] },
+      { h: 'Morning-Of Checklist', list: [
+        'Eat a real meal — low blood sugar undermines focus exactly when you need it most',
+        'Arrive early, not just on time, to avoid any rushed, stressed start',
+        'Do a final honest IMSAFE check on yourself',
+        'Review your Quick Reference sheets one final time, calmly — not as new learning, just as a confidence check',
+        "Remind yourself: your instructor endorsed you because they believe you're ready. Trust that assessment."
+      ] },
+      { h: 'Common Mistakes on Checkride Day', list: [
+        'Arriving with incomplete paperwork, which can delay or cancel the exam entirely',
+        'Trying to learn new material the morning of, instead of reinforcing what\'s already solid',
+        "Guessing confidently instead of saying 'I'm not sure, let me check' when appropriate",
+        'Letting one missed question derail composure for the rest of the exam',
+        'Underestimating the professionalism component — how you communicate matters, not just what you know'
+      ] },
+      { h: 'Professionalism Tips', list: [
+        'Dress and present yourself the way you would for a professional interview — this sets a tone before you say a word.',
+        "Treat the DPE as a respected colleague evaluating your readiness, not an adversary trying to catch you out — because that's genuinely their role.",
+        "Speak in complete, organized answers rather than fragments — structure your response the way you'd brief a passenger.",
+        "If you don't know something, say so clearly and show how you'd find the answer — this is a strength, not a weakness, in a DPE's eyes."
+      ] },
+      { h: 'Stress Management Techniques', list: [
+        'Box breathing (inhale 4 seconds, hold 4, exhale 4, hold 4) before and during the exam if you feel your nerves spike — a genuinely effective, discreet technique.',
+        "Reframe the oral exam as a conversation with a fellow aviator, not an interrogation — because that's structurally closer to what it actually is.",
+        'If you blank on a question, pause, breathe, and restate the question back in your own words — this buys real thinking time without appearing evasive.',
+        'Remember that a single missed question is recoverable — examiners expect some hesitation and imperfection, and are evaluating your overall judgment, not a flawless performance.'
+      ], tip: { label: 'Checkride Success Tip — You Are More Ready Than You Feel', body: "Checkride anxiety is nearly universal, even among applicants who are genuinely well-prepared. Your instructor's endorsement means they believe, professionally, that you're ready — let that carry some of the weight on exam morning." } }
+    ]
+  };
+
+  /* ══════════════════════════════════════════════════════════════
+     SECTION 12 — QUICK REFERENCE APPENDIX (7 mnemonic sheets)
+     ══════════════════════════════════════════════════════════════ */
+  var QUICK_REF = [
+    { id: 'qr-arrow', title: 'ARROW', subtitle: 'Required aircraft documents', rows: [
+      ['A', 'Airworthiness Certificate', 'Must be displayed in the aircraft, visible to passengers/occupants.'],
+      ['R', 'Registration', 'Current FAA registration certificate.'],
+      ['R', 'Radio Station License', 'Generally not required for domestic U.S. operations; required for certain international flights.'],
+      ['O', 'Operating Limitations', 'POH/AFM, placards, or markings — whichever applies to the aircraft.'],
+      ['W', 'Weight and Balance Data', 'Current weight and balance report and equipment list.']
+    ] },
+    { id: 'qr-tomato', title: 'A TOMATO FLAMES', subtitle: 'Required equipment for day VFR flight — 14 CFR 91.205(b)', rows: [
+      ['A', 'Airspeed Indicator', ''],
+      ['T', 'Tachometer (for each engine)', ''],
+      ['O', 'Oil Pressure Gauge', 'For each engine using a pressure system.'],
+      ['M', 'Manifold Pressure Gauge', 'For each altitude engine (controllable pitch prop).'],
+      ['A', 'Altimeter', ''],
+      ['T', 'Temperature Gauge', 'For each liquid-cooled engine.'],
+      ['O', 'Oil Temperature Gauge', 'For each air-cooled engine.'],
+      ['F', 'Fuel Gauge', 'Indicating quantity in each tank.'],
+      ['L', 'Landing Gear Position Indicator', 'If retractable gear.'],
+      ['A', 'Anti-Collision Lights', 'For aircraft certificated after March 11, 1996.'],
+      ['M', 'Magnetic Compass', ''],
+      ['E', 'ELT', 'Emergency Locator Transmitter, per 91.207.'],
+      ['S', 'Seat Belts (and shoulder harnesses)', 'As required per occupant/seat.']
+    ] },
+    { id: 'qr-av1ates', title: 'AV1ATES', subtitle: 'Recurring aircraft inspections that keep it legal for flight', rows: [
+      ['A', 'Annual', 'Required every 12 calendar months, performed by an A&P mechanic holding an Inspection Authorization (IA).'],
+      ['V', 'VOR Check', 'Required every 30 days if the aircraft is flown IFR under VOR navigation.'],
+      ['1', '100-Hour', 'Required if the aircraft is used for hire or for flight instruction for hire.'],
+      ['A', 'Alt/Static System', 'Altimeter and static system check, required every 24 calendar months for IFR operations.'],
+      ['T', 'Transponder', 'Required every 24 calendar months.'],
+      ['E·S', 'ELT Inspections', 'Required every 12 calendar months, with battery replacement per manufacturer requirements or after one hour of cumulative use.']
+    ] },
+    { id: 'qr-imsafe', title: 'IMSAFE', subtitle: 'Personal fitness-to-fly self-assessment', rows: [
+      ['I', 'Illness', 'Any symptoms that could affect performance, even minor.'],
+      ['M', 'Medication', 'Prescription, over-the-counter, and their side effects.'],
+      ['S', 'Stress', 'Personal, professional, or checkride-related stress.'],
+      ['A', 'Alcohol', 'Apply the 8-hour/24-hour/BAC standard.'],
+      ['F', 'Fatigue', 'Both acute (last night\'s sleep) and chronic (sleep pattern over weeks).'],
+      ['E', 'Emotion', 'Emotional state and its effect on judgment and focus.']
+    ] },
+    { id: 'qr-pave', title: 'PAVE', subtitle: 'Risk management framework for every flight', rows: [
+      ['P', 'Pilot', 'Your own currency, proficiency, and IMSAFE status.'],
+      ['A', 'Aircraft', 'Airworthiness, performance, and equipment for the planned flight.'],
+      ['V', 'enVironment', 'Weather, airspace, terrain, and airport conditions.'],
+      ['E', 'External Pressures', 'Schedule, passengers, cost, or ego-driven pressure to fly.']
+    ] },
+    { id: 'qr-care', title: 'CARE', subtitle: 'Risk-factor identification model (used alongside TEAM)', rows: [
+      ['C', 'Consequences', "What's actually at stake if this risk materializes?"],
+      ['A', 'Alternatives', 'What other options exist besides the current plan?'],
+      ['R', 'Reality', 'Is your assessment of the situation actually accurate?'],
+      ['E', 'External Factors', 'What outside pressures might be distorting your judgment?']
+    ] },
+    { id: 'qr-nwkraft', title: 'NWKRAFT', subtitle: 'Preflight and cross-country briefing checklist', rows: [
+      ['N', 'NOTAMs', 'Check for current NOTAMs affecting your route, departure, and destination.'],
+      ['W', 'Weather', 'Full briefing — current conditions, forecasts, and any AIRMETs/SIGMETs along your route.'],
+      ['K', 'Known ATC Delays', 'Check for published ground stops, delays, or routing advisories.'],
+      ['R', 'Runway Lengths', 'Confirm available runway length at departure, destination, and any planned alternate.'],
+      ['A', 'Alternates', 'Identify suitable alternate airports along your route in case of a diversion.'],
+      ['F', 'Fuel Requirements', 'Calculate total fuel required including the appropriate day/night VFR reserve.'],
+      ['T', 'Takeoff and Landing Distances', "Calculate actual performance-based distances for the day's conditions, not just legal minimums."]
+    ] }
   ];
 
+  /* ══════════════════════════════════════════════════════════════
+     SECTIONS 2–10 — DPE QUESTIONS LIBRARY (72 questions, verbatim)
+     ══════════════════════════════════════════════════════════════ */
+  var CATEGORY_META = {
+    eligibility:   { label: 'Eligibility & Documents',    section: 'Section 2', intro: "Every oral exam opens here — documents, certificates, and eligibility. It's the lowest-difficulty section of the exam in terms of content, and also the section where avoidable, embarrassing mistakes (an expired medical, a missing endorsement) do the most unnecessary damage to an applicant's confidence and first impression." },
+    airworthiness: { label: 'Airworthiness',              section: 'Section 3', intro: "Airworthiness questions test whether you understand your responsibility, as PIC, to determine whether the specific aircraft you're about to fly is legal and safe — not just whether you can recite an inspection schedule from memory." },
+    privileges:    { label: 'Privileges & Limitations',   section: 'Section 4', intro: "This section tests whether you know exactly what a Private Pilot Certificate allows you to do — and just as importantly, what it doesn't. Precision matters here: examiners often probe the edges of a privilege, not just its general existence." },
+    airspace:      { label: 'Airspace',                   section: 'Section 5', intro: 'Airspace questions test whether you can instantly recall dimensions, entry requirements, and weather minimums — chart-independent, from memory — since real flight planning happens before you ever pull up a chart in the airplane.' },
+    weather:       { label: 'Weather',                    section: 'Section 6', intro: 'Weather questions test two things at once: can you decode the raw products, and can you translate that decoded information into a real go/no-go decision. Both matter — a DPE cares less about your ability to define a term than your ability to use it.' },
+    performance:   { label: 'Performance & W&B',          section: 'Section 7', intro: 'This section tests whether you can turn published aircraft numbers into an actual go/no-go decision for a specific day, specific loading, and specific runway — not just whether you can read a chart in isolation.' },
+    aeromedical:   { label: 'Aeromedical Factors',        section: 'Section 8', intro: "This section blends physiology with self-awareness. It's the one part of the exam that tests judgment about yourself, not just the airplane or the airspace — and it's a section many applicants under-prepare because it feels less technical than the rest." },
+    crosscountry:  { label: 'Cross-Country Planning',     section: 'Section 9', intro: "Cross-country planning ties together nearly everything else in this guide — airspace, weather, performance, and regulations — into a single, complete flight plan. This is often where the oral exam's scenario-based structure becomes most obvious." },
+    emergency:     { label: 'Emergency Operations',        section: 'Section 10', intro: 'Emergency questions test whether calm, procedural thinking is already built into your instincts — examiners are listening for structured response, not dramatic language. This section rewards the pilot who sounds like they\'ve genuinely rehearsed this, not just read about it.' }
+  };
+
+  var DPE_DATA = [
+    // Section 2 — Eligibility and Required Documents
+    { id: 'elig-1', section: 'eligibility', q: 'What are the eligibility requirements to apply for a Private Pilot Certificate?',
+      model: 'You must be at least 17 years old, be able to read, speak, write, and understand English, and hold at least a third-class medical certificate (or qualify under BasicMed for certain operations), along with the required aeronautical experience and endorsements.',
+      mistakes: 'Listing only age and medical requirements, omitting the English-language proficiency requirement or required endorsements.',
+      evaluating: 'Whether you can state a complete, accurate eligibility list — not just the parts that come to mind first.',
+      acs: 'Area of Operation I, Task A — Pilot Qualifications (Knowledge).',
+      application: 'This is almost always the opening question of an oral exam — a clean, complete answer sets a confident tone for everything that follows.' },
+    { id: 'elig-2', section: 'eligibility', q: 'What is the difference between a student pilot certificate and a medical certificate?',
+      model: 'The student pilot certificate authorizes you to act as pilot in command while training and solo; the medical certificate establishes your medical fitness to fly. They serve different purposes, even though newer applicants often receive them as a single combined document.',
+      mistakes: 'Treating the two as interchangeable, or assuming one document covers both functions.',
+      evaluating: 'Whether you understand the distinct legal purpose of each document, not just that you possess them.',
+      acs: 'Area of Operation I, Task A — Pilot Qualifications (Knowledge).',
+      application: 'If your medical lapses but your student certificate is still valid, you are no longer legal to act as PIC — understanding why matters, not just knowing you need both.' },
+    { id: 'elig-3', section: 'eligibility', q: 'What are the three classes of medical certificates, and what is BasicMed?',
+      model: 'First class (for ATP privileges), second class (for commercial privileges), and third class (for private/recreational privileges), each with different duration and examination requirements. BasicMed is an alternative to holding a traditional medical certificate for certain private pilot operations, requiring a physician\'s exam and an online medical education course rather than an FAA medical exam.',
+      mistakes: 'Describing BasicMed as a full exemption from medical oversight rather than a defined alternative pathway with its own requirements and limitations.',
+      evaluating: 'Whether you understand both pathways well enough to explain which one applies to your specific situation.',
+      acs: 'Area of Operation I, Task A — Pilot Qualifications (Knowledge).',
+      application: 'Many private pilots fly indefinitely under BasicMed after their last FAA medical — know your own certificate\'s expiration and which pathway you\'re currently operating under.' },
+    { id: 'elig-4', section: 'eligibility', q: 'What endorsements are required before you can take your Private Pilot checkride?',
+      model: 'Endorsements confirming you have received and logged the required aeronautical knowledge and flight training, that you are prepared for the required knowledge test and have satisfactory knowledge of any missed subject areas, and a final endorsement that you have received training and are prepared for the practical test.',
+      mistakes: 'Naming only the pre-solo endorsement, or forgetting the knowledge-test-related endorsements.',
+      evaluating: 'Whether your logbook and endorsement paperwork are actually complete — this is often verified by physically reviewing your logbook.',
+      acs: 'Area of Operation I, Task A — Pilot Qualifications (Knowledge).',
+      application: 'A DPE will check these endorsements against your logbook before the oral exam even begins — incomplete paperwork can delay or cancel a checkride entirely.' },
+    { id: 'elig-5', section: 'eligibility', q: 'What is IACRA, and what role does it play in the certification process?',
+      model: "IACRA (Integrated Airman Certification and Rating Application) is the FAA's online system for applying for pilot certificates and ratings, and for scheduling the Knowledge Test. Your application must be completed and often digitally signed by your instructor before your checkride.",
+      mistakes: 'Being unfamiliar with how to actually navigate or complete an IACRA application, since applicants often have an instructor complete this step for them.',
+      evaluating: 'Basic operational familiarity with the certification process itself, not just the flying content.',
+      acs: 'Area of Operation I, Task A — Pilot Qualifications (Knowledge).',
+      application: 'Practice logging into and navigating your own IACRA account before checkride day — paperwork problems on the day of your exam are entirely avoidable.' },
+    { id: 'elig-6', section: 'eligibility', q: 'What personal identification and documents must you bring to your checkride?',
+      model: 'A government-issued photo ID, your student pilot certificate (or combined certificate/medical), your completed IACRA application (Form 8710-1), your logbook with all required endorsements, and your Knowledge Test Report.',
+      mistakes: 'Forgetting the Knowledge Test Report specifically, or bringing an expired photo ID.',
+      evaluating: 'Basic checkride-day readiness and attention to logistics — a low-difficulty but high-consequence area to get wrong.',
+      acs: 'Area of Operation I, Task A — Pilot Qualifications (Knowledge).',
+      application: 'Build a physical checklist the week before your checkride and verify every item the night before — don\'t rely on memory on exam morning.' },
+    { id: 'elig-7', section: 'eligibility', q: 'What must be logged in a pilot logbook?',
+      model: 'Training and aeronautical experience used to meet certificate or rating requirements, and information required to show recency of experience — including date, aircraft, route, flight time, conditions of flight, and type of pilot experience (dual, solo, PIC, cross-country, night, instrument).',
+      mistakes: 'Believing every flight must be logged — only flights used to meet requirements or demonstrate recency are legally required, though most pilots log all flight time as good practice.',
+      evaluating: 'Whether you understand what logging is legally required versus simply customary.',
+      acs: 'Area of Operation I, Task A — Pilot Qualifications (Knowledge).',
+      application: 'Be ready to walk a DPE through your own logbook and explain how specific entries satisfy specific aeronautical experience requirements — not just that the hours exist.' },
+    { id: 'elig-8', section: 'eligibility', q: 'What is a Knowledge Test Report, and how does it connect to the ACS?',
+      model: "It's the report issued after completing the FAA Knowledge Test, listing ACS codes for any subject areas missed. Those codes map directly to specific ACS Tasks, which you and your instructor should use to focus review before the checkride.",
+      mistakes: 'Not knowing how to interpret the ACS codes on your own report, or not having reviewed missed areas before the oral exam.',
+      evaluating: 'Whether you took your own knowledge gaps seriously and can speak to how you addressed them.',
+      acs: 'Area of Operation I, Task A — Pilot Qualifications (Knowledge).',
+      application: 'Expect a DPE to specifically ask about any ACS codes you missed on your Knowledge Test — have a genuine, prepared answer, not a vague one.' },
+
+    // Section 3 — Aircraft Airworthiness
+    { id: 'aw-1', section: 'airworthiness', q: 'What does ARROW stand for, and why does it matter?',
+      model: 'ARROW is the required-documents mnemonic: Airworthiness certificate, Registration, Radio station license (only required for certain international operations), Operating limitations (POH/AFM or placards), and Weight and balance data. These documents must be aboard the aircraft for flight.',
+      mistakes: 'Forgetting that the radio station license is generally not required for domestic U.S. operations, or omitting weight and balance data.',
+      evaluating: 'Whether you can recite this from memory and correctly explain any nuance (like the radio license exception), not just the acronym alone.',
+      acs: 'Area of Operation I, Task B — Airworthiness Requirements (Knowledge).',
+      application: 'Be ready to physically locate each ARROW document in your training aircraft during the oral exam — DPEs frequently ask you to produce them, not just name them.' },
+    { id: 'aw-2', section: 'airworthiness', q: 'What makes an aircraft airworthy?',
+      model: 'An aircraft is airworthy when it conforms to its type certificate (or approved alterations) and is in a condition for safe operation. Both conditions must be true — an aircraft can conform to its type design but still be unsafe due to damage or missing maintenance.',
+      mistakes: 'Defining airworthiness only in terms of having a current annual inspection, which is necessary but not sufficient on its own.',
+      evaluating: 'Whether you understand this as a two-part legal definition, not a single checklist item.',
+      acs: 'Area of Operation I, Task B — Airworthiness Requirements (Knowledge).',
+      application: 'As PIC, you are legally responsible for determining airworthiness before every flight — this isn\'t just the mechanic\'s job.' },
+    { id: 'aw-3', section: 'airworthiness', q: 'What inspections does an aircraft need to remain legal for flight?',
+      model: 'An annual inspection (every 12 calendar months), a 100-hour inspection (if used for hire or flight instruction for hire), a transponder and altimeter/pitot-static system check (every 24 calendar months, for operations requiring them), and an ELT inspection (every 12 calendar months, with battery replacement per manufacturer requirements or after one hour of cumulative use).',
+      mistakes: 'Confusing the 24-month transponder/altimeter cycle with the 12-month annual cycle, or forgetting the ELT battery replacement rule.',
+      evaluating: "Whether you can locate the actual due dates for these inspections in your own aircraft's logbooks, not just recite the intervals.",
+      acs: 'Area of Operation I, Task B — Airworthiness Requirements (Knowledge).',
+      application: "Practice pulling up your training aircraft's actual maintenance logs and finding each inspection's due date before your checkride — this is a very commonly tested practical skill." },
+    { id: 'aw-4', section: 'airworthiness', q: 'What is required for an annual inspection, and who can perform it?',
+      model: 'Every aircraft must undergo an annual inspection within the preceding 12 calendar months, performed by an FAA-certificated Airframe and Powerplant (A&P) mechanic holding an Inspection Authorization (IA).',
+      mistakes: 'Believing any A&P mechanic can sign off an annual inspection — the Inspection Authorization is a specific, additional certification.',
+      evaluating: "Precision in distinguishing an A&P mechanic's general privileges from an IA holder's specific annual-inspection authority.",
+      acs: 'Area of Operation I, Task B — Airworthiness Requirements (Knowledge).',
+      application: 'If you ever purchase or manage an aircraft, knowing this distinction matters for scheduling maintenance with the right qualified person.' },
+    { id: 'aw-5', section: 'airworthiness', q: "When is a 100-hour inspection required, and what happens if it's exceeded?",
+      model: 'A 100-hour inspection is required for aircraft used to carry passengers for hire or used for flight instruction for hire. If the 100-hour limit is exceeded, the aircraft may be flown up to 10 additional hours to reach a location where the inspection can be performed, but those extra hours count toward the next 100-hour interval.',
+      mistakes: "Assuming the 10-hour overflight allowance is 'free' time rather than time that still counts against the next inspection cycle.",
+      evaluating: 'Whether you understand this as a limited operational allowance, not a loophole.',
+      acs: 'Area of Operation I, Task B — Airworthiness Requirements (Knowledge).',
+      application: "This rule is most relevant to flight school and rental aircraft — understand it even if you don't own the aircraft you train in." },
+    { id: 'aw-6', section: 'airworthiness', q: 'What is Airworthiness Directive (AD) compliance, and why does it matter?',
+      model: "An Airworthiness Directive is a legally enforceable FAA regulation addressing an unsafe condition in a specific aircraft, engine, or component. Compliance is mandatory, and AD compliance is tracked and documented in the aircraft's maintenance records.",
+      mistakes: 'Confusing an AD (mandatory) with a Service Bulletin (often optional, manufacturer-issued guidance).',
+      evaluating: 'Whether you understand ADs as a distinct, non-negotiable category of maintenance requirement.',
+      acs: 'Area of Operation I, Task B — Airworthiness Requirements (Knowledge).',
+      application: "A DPE may ask you to find evidence of AD compliance in the aircraft's logbooks — know generally where and how this is documented." },
+    { id: 'aw-7', section: 'airworthiness', q: 'What is the process under 14 CFR 91.213 when equipment is inoperative?',
+      model: "First check if the aircraft has an approved Minimum Equipment List (MEL) — if so, follow it. If there's no MEL, determine whether the inoperative item is required by the type certification, by 91.205, by an Airworthiness Directive, or is otherwise flight-critical; if not required by any of those, it may be removed or deactivated and placarded inoperative, or the flight may proceed if none of those conditions apply.",
+      mistakes: 'Skipping the MEL question first, or forgetting that inoperative equipment not covered by any required list may still need to be deactivated and placarded, not simply ignored.',
+      evaluating: 'Whether you can walk through this multi-step decision logic in the correct order, live, without skipping a step.',
+      acs: 'Area of Operation I, Task B — Airworthiness Requirements (Knowledge, Risk Management).',
+      application: 'This is one of the most commonly tested, multi-step regulatory questions on the exam — practice walking through it out loud until the sequence is automatic.' },
+    { id: 'aw-8', section: 'airworthiness', q: 'What are your responsibilities as PIC if you discover a discrepancy during preflight?',
+      model: 'You must determine whether the discrepancy affects airworthiness or required equipment, apply the 91.213 process if equipment is involved, and document or communicate the discrepancy appropriately — and ultimately, decide not to fly if you cannot establish the aircraft is airworthy.',
+      mistakes: 'Treating a discrepancy as automatically disqualifying without applying the actual regulatory decision process, or the opposite — dismissing a real discrepancy too quickly.',
+      evaluating: 'Sound risk management judgment, not just regulatory recall — this element blends Knowledge with Risk Management explicitly.',
+      acs: 'Area of Operation I, Task B — Airworthiness Requirements (Risk Management).',
+      application: "This exact judgment call — fly or don't fly, based on a real preflight discrepancy — is one you'll actually face as a certificated pilot, likely more than once." },
+
+    // Section 4 — Pilot Privileges and Limitations
+    { id: 'priv-1', section: 'privileges', q: 'What is required to remain current to carry passengers?',
+      model: 'Within the preceding 24 calendar months, you must complete a flight review (or equivalent) with an authorized instructor. To carry passengers, you must also have made three takeoffs and three landings in the preceding 90 days in an aircraft of the same category and class (and type, if required); for night currency, those takeoffs and landings must be to a full stop, between one hour after sunset and one hour before sunrise.',
+      mistakes: 'Forgetting the distinction between day currency (touch-and-go acceptable) and night currency (full stop required), or confusing the 24-month flight review cycle with the 90-day passenger currency cycle.',
+      evaluating: 'Precision across two different currency timeframes that are frequently confused with each other.',
+      acs: 'Area of Operation I, Task A — Pilot Qualifications (Knowledge).',
+      application: 'Track your own three-takeoffs-and-landings currency actively — many pilots are surprised to find themselves not current to carry a passenger simply from infrequent flying.' },
+    { id: 'priv-2', section: 'privileges', q: 'What is a flight review, and when is it required?',
+      model: 'A flight review is a minimum one-hour flight and one-hour ground review with an authorized instructor, required within the preceding 24 calendar months to act as PIC. It is not a test with a pass/fail outcome — it\'s a review, and the instructor endorses your logbook upon satisfactory completion.',
+      mistakes: 'Describing the flight review as a retest of checkride-level maneuvers, or believing it can be \'failed\' in the same sense as a practical test.',
+      evaluating: "Correct understanding of the flight review's actual regulatory purpose and tone.",
+      acs: 'Area of Operation I, Task A — Pilot Qualifications (Knowledge).',
+      application: 'Many activities (an additional certificate or rating, certain phase of an FAA safety program) can substitute for a flight review — know that flexibility exists.' },
+    { id: 'priv-3', section: 'privileges', q: 'What are the requirements and limitations of flying under BasicMed?',
+      model: "You must have held a valid medical certificate at some point after July 14, 2006, complete a physician's comprehensive medical exam using the FAA's checklist, and complete a free online medical education course. Under BasicMed, you're limited to aircraft with 6 or fewer seats and 6,000 lbs or less max takeoff weight, flying no higher than 18,000 feet MSL, no faster than 250 knots, and not for compensation or hire (with limited exceptions).",
+      mistakes: 'Forgetting the aircraft weight/seat limitations, or believing BasicMed has no altitude or airspeed limits.',
+      evaluating: "Detailed, specific knowledge of BasicMed's actual limitations, not just that the pathway exists.",
+      acs: 'Area of Operation I, Task A — Pilot Qualifications (Knowledge).',
+      application: 'If you plan to fly under BasicMed long-term, know these limits well — they directly affect what aircraft and altitudes are available to you.' },
+    { id: 'priv-4', section: 'privileges', q: 'Can a private pilot ever receive compensation for flying?',
+      model: 'Generally no — a private pilot may not act as PIC for compensation or hire. Limited exceptions exist, such as sharing operating expenses pro rata with passengers on a flight where the pilot has a common purpose, or certain charitable/search-and-rescue flights under specific conditions.',
+      mistakes: "Stating an absolute 'never' without acknowledging the pro rata share exception, or misapplying the exception to a flight that doesn't actually qualify.",
+      evaluating: 'Whether you understand this as a general prohibition with narrow, specific exceptions — not an absolute rule or a loophole.',
+      acs: 'Area of Operation I, Task A — Pilot Qualifications (Knowledge).',
+      application: 'The pro rata rule comes up constantly in real private flying — splitting fuel costs with friends on a trip is common, and knowing the rule precisely keeps that legal.' },
+    { id: 'priv-5', section: 'privileges', q: 'What is the pro rata share rule, and how does it work?',
+      model: 'A private pilot may share the operating expenses of a flight (fuel, oil, airport expenses, rental fees) with passengers, as long as the pilot pays at least an equal, pro rata share of those costs, and the pilot has their own reason for making the flight (not merely to earn compensation by carrying passengers).',
+      mistakes: 'Believing passengers can cover the entire cost of the flight, or that the pilot can pay less than an equal share.',
+      evaluating: 'Precise understanding of both conditions — pro rata payment AND a common purpose — not just one.',
+      acs: 'Area of Operation I, Task A — Pilot Qualifications (Knowledge).',
+      application: 'This is the regulation that makes it legal to split costs on a weekend trip with friends — know it precisely before you rely on it.' },
+    { id: 'priv-6', section: 'privileges', q: 'What preventive maintenance can a private pilot legally perform on their own aircraft?',
+      model: 'A list of specific, simple maintenance tasks defined in the FARs — such as servicing landing gear wheel bearings, replacing safety wire, servicing batteries, and changing tires — may be performed by a certificated private pilot on an aircraft they own or operate, with the work properly logged.',
+      mistakes: 'Believing any minor maintenance task qualifies, rather than only the specific items listed in the regulation.',
+      evaluating: 'Awareness that this is a defined, limited list — not general permission to perform maintenance.',
+      acs: 'Area of Operation I, Task A — Pilot Qualifications (Knowledge).',
+      application: "Relevant primarily to aircraft owners — know that this privilege exists and that it must be properly logged, even if you don't currently own an aircraft." },
+    { id: 'priv-7', section: 'privileges', q: 'What flight time can a private pilot log as pilot in command?',
+      model: 'You may log PIC time when you are the sole manipulator of the controls of an aircraft for which you are rated, or when you are the sole occupant, or when acting as PIC under the regulations even if not sole manipulator (such as certain instructional or safety pilot scenarios).',
+      mistakes: "Believing PIC time can only be logged when you are legally the PIC of record for the flight, conflating 'logging PIC time' with 'acting as PIC.'",
+      evaluating: 'Whether you understand that logging PIC time and acting as PIC are related but legally distinct concepts.',
+      acs: 'Area of Operation I, Task A — Pilot Qualifications (Knowledge).',
+      application: 'This distinction matters most once you begin flying with other pilots or working toward additional certificates — log time accurately from the start.' },
+    { id: 'priv-8', section: 'privileges', q: "What is the pilot in command's ultimate authority and responsibility under 14 CFR 91.3?",
+      model: 'The PIC is directly responsible for, and is the final authority as to, the operation of the aircraft. In an in-flight emergency requiring immediate action, the PIC may deviate from any rule to the extent required to meet that emergency.',
+      mistakes: 'Forgetting the emergency deviation authority, or overstating it as unlimited rather than limited to what the emergency actually requires.',
+      evaluating: 'Whether you understand both halves of 91.3 — the general authority and the specific emergency exception.',
+      acs: 'Area of Operation I, Task A — Pilot Qualifications (Knowledge).',
+      application: 'This regulation is the foundation of everything else in this guide — as PIC, the final call is always yours, and so is the responsibility.' },
+
+    // Section 5 — Airspace
+    { id: 'asp-1', section: 'airspace', q: 'What are the basic characteristics of Class A airspace?',
+      model: 'Class A airspace extends from 18,000 feet MSL up to and including FL600, covers the entire continental U.S., and requires operation under IFR with an appropriately rated pilot and equipped aircraft. VFR flight is not permitted in Class A airspace.',
+      mistakes: 'Believing VFR flight is permitted with special clearance — it is not permitted at all in Class A.',
+      evaluating: 'Whether you understand Class A as an absolute IFR-only environment, with no VFR exception.',
+      acs: 'Area of Operation III, Task A — Airspace (Knowledge).',
+      application: "As a private pilot flying VFR, Class A simply defines your operational ceiling — you'll plan cross-countries to stay well below it." },
+    { id: 'asp-2', section: 'airspace', q: 'What are the entry requirements for Class B airspace?',
+      model: 'You need an explicit ATC clearance to enter Class B airspace (not just two-way radio contact), a Mode C transponder with ADS-B Out where required, and for a private pilot, no additional certificate restrictions apply, though student pilots have specific training and airport restrictions.',
+      mistakes: "Confusing 'established two-way radio communication' (the Class C/D standard) with the stricter 'explicit clearance' requirement for Class B.",
+      evaluating: "Precision distinguishing Class B's clearance requirement from Class C/D's communication requirement.",
+      acs: 'Area of Operation III, Task A — Airspace (Knowledge).',
+      application: 'Misunderstanding this distinction is a real operational risk — entering Class B without an actual clearance, believing radio contact alone was sufficient, is a genuine pilot deviation.' },
+    { id: 'asp-3', section: 'airspace', q: 'What is required to operate in Class C airspace?',
+      model: 'Two-way radio communication must be established with ATC before entering (not necessarily a clearance), and the aircraft must have an operating Mode C transponder with ADS-B Out where required. Class C typically has a surface area and an outer shelf with different dimensions.',
+      mistakes: 'Believing a clearance is required, as in Class B, rather than simply established two-way communication.',
+      evaluating: "Correct, precise use of 'established two-way communication' as the specific legal standard.",
+      acs: 'Area of Operation III, Task A — Airspace (Knowledge).',
+      application: "Know exactly what 'established communication' means in practice — ATC using your call sign back to you, not just you calling in." },
+    { id: 'asp-4', section: 'airspace', q: 'What is required to operate in Class D airspace?',
+      model: 'Two-way radio communication must be established with the control tower before entering. Class D airspace typically extends from the surface up to 2,500 feet AGL around an airport with an operating control tower.',
+      mistakes: 'Assuming Class D always requires a transponder — equipment requirements depend on surrounding airspace, not Class D status alone.',
+      evaluating: "Whether you distinguish Class D's communication requirement from any separate equipment requirement that might apply based on nearby airspace.",
+      acs: 'Area of Operation III, Task A — Airspace (Knowledge).',
+      application: 'Class D airspace reverts to Class E or G when the tower is closed — know how to check tower operating hours during flight planning.' },
+    { id: 'asp-5', section: 'airspace', q: 'What are the VFR weather minimums in Class E airspace below 10,000 feet MSL?',
+      model: '3 statute miles visibility, and cloud clearance of 500 feet below, 1,000 feet above, and 2,000 feet horizontal from clouds.',
+      mistakes: 'Confusing these minimums with the higher minimums required above 10,000 feet MSL (5 miles visibility, 1,000 below/above, 1 mile horizontal).',
+      evaluating: 'Whether these specific numbers are truly memorized, not looked up — this is treated as baseline private pilot knowledge.',
+      acs: 'Area of Operation III, Task A — Airspace (Knowledge).',
+      application: 'These are the minimums you\'ll use on the overwhelming majority of real VFR cross-country flights — they should be completely automatic.' },
+    { id: 'asp-6', section: 'airspace', q: 'What defines Class G airspace, and what are its weather minimums?',
+      model: 'Class G is uncontrolled airspace, generally from the surface up to the base of the overlying Class E airspace. Weather minimums vary by altitude and day/night: below 1,200 feet AGL during the day, minimums are 1 statute mile visibility and clear of clouds; other Class G minimums scale up with altitude and at night.',
+      mistakes: 'Assuming Class G has no weather minimums at all, or applying the same minimums regardless of altitude and time of day.',
+      evaluating: "Whether you know Class G's minimums genuinely vary by altitude and day/night, not just a single blanket rule.",
+      acs: 'Area of Operation III, Task A — Airspace (Knowledge).',
+      application: "Class G's minimal requirements are exactly why 'uncontrolled' doesn't mean 'unregulated' — apply real judgment even where the legal bar is lower." },
+    { id: 'asp-7', section: 'airspace', q: 'What is special use airspace, and how do you check its status?',
+      model: 'Special use airspace includes restricted areas, prohibited areas, warning areas, military operations areas (MOAs), and alert areas — each with different entry rules. Status (active/inactive) can be checked via a flight briefing, NOTAMs, or overlays in an EFB like ForeFlight or Garmin Pilot.',
+      mistakes: 'Treating all special use airspace the same — prohibited areas are never enterable, while MOAs may be legally transited by VFR traffic with caution even when active.',
+      evaluating: 'Whether you distinguish between the different categories and their actual entry rules, not just that they all sound restrictive.',
+      acs: 'Area of Operation III, Task A — Airspace (Knowledge, Risk Management).',
+      application: 'Always check special use airspace status during real flight planning, not just note that it exists on the chart — an inactive MOA changes your routing decision entirely.' },
+    { id: 'asp-8', section: 'airspace', q: 'What is a TFR, and how do you check for one before a flight?',
+      model: 'A Temporary Flight Restriction is a short-term airspace restriction, often issued for security, disaster response, or VIP movement. Check for active TFRs via TFR.faa.gov, a standard weather briefing, or your EFB\'s NOTAM/TFR overlay, as part of routine flight planning for every flight.',
+      mistakes: "Checking for TFRs only when flying near a major city or event, rather than as a standard part of every flight's preflight planning.",
+      evaluating: 'Whether TFR checking is built into your habitual flight-planning process, not treated as an occasional special step.',
+      acs: 'Area of Operation III, Task A — Airspace (Knowledge, Risk Management).',
+      application: 'TFRs can appear with little notice — checking immediately before every flight, not just during initial planning days earlier, is the only reliable habit.' },
+
+    // Section 6 — Weather
+    { id: 'wx-1', section: 'weather', q: 'How do you decode a METAR?',
+      model: 'A METAR reports, in order: station identifier, date/time, wind, visibility, weather/obstructions, sky condition, temperature/dew point, altimeter setting, and remarks. Practice decoding full strings, in order, without a reference card.',
+      mistakes: 'Skipping straight to sky condition and altimeter, ignoring the remarks section, which often contains operationally important information.',
+      evaluating: 'Whether you can decode a real METAR live, cold, without hesitation — this is one of the most commonly tested live-decoding skills.',
+      acs: 'Area of Operation II, Task A — Weather Information (Knowledge).',
+      application: "You'll read a METAR before nearly every real flight you ever take — fluency here isn't optional, it's a daily-use skill." },
+    { id: 'wx-2', section: 'weather', q: 'How is a TAF different from a METAR?',
+      model: 'A METAR reports current conditions at a specific time; a TAF is a forecast of expected conditions at an airport over a future period (typically 24-30 hours), including expected changes using indicators like BECMG (becoming) and TEMPO (temporary).',
+      mistakes: 'Treating a TAF as a guarantee rather than a forecast, or missing the significance of a BECMG/TEMPO change group.',
+      evaluating: "Whether you understand a TAF's time-based structure, not just that it's 'the forecast version of a METAR.'",
+      acs: 'Area of Operation II, Task A — Weather Information (Knowledge).',
+      application: "Use the TAF specifically to evaluate your planned arrival time's forecast conditions — not just the conditions at departure." },
+    { id: 'wx-3', section: 'weather', q: 'What is a PIREP, and why is it valuable?',
+      model: 'A Pilot Report is a real-time, in-flight observation filed by a pilot, giving actual observed conditions (turbulence, icing, cloud tops, visibility) that forecasts alone cannot capture. PIREPs can be filed via radio to Flight Service or ATC.',
+      mistakes: 'Underweighting PIREPs relative to forecast products, when a recent, relevant PIREP is often more valuable than a general area forecast.',
+      evaluating: 'Whether you value real, observed data appropriately relative to predictive forecasts.',
+      acs: 'Area of Operation II, Task A — Weather Information (Knowledge).',
+      application: "File a PIREP yourself when you encounter significant conditions — you're both a consumer and a contributor to this system." },
+    { id: 'wx-4', section: 'weather', q: 'What is the difference between an AIRMET and a SIGMET?',
+      model: "An AIRMET (Airmen's Meteorological Information) covers weather significant to light aircraft or less experienced pilots — moderate icing, turbulence, or extensive mountain obscuration. A SIGMET covers more severe conditions significant to all aircraft, such as severe turbulence, severe icing, or dust storms; a Convective SIGMET specifically covers thunderstorm-related hazards.",
+      mistakes: 'Treating AIRMETs as unimportant compared to SIGMETs — for a light, non-icing-certified trainer, an AIRMET Zulu (icing) can be just as flight-critical as a SIGMET.',
+      evaluating: 'Whether you understand the severity distinction and correctly weigh both categories for your specific aircraft.',
+      acs: 'Area of Operation II, Task A — Weather Information (Knowledge, Risk Management).',
+      application: "As a light aircraft pilot, AIRMETs are often more directly relevant to you day-to-day than SIGMETs — don't skip past them in a briefing." },
+    { id: 'wx-5', section: 'weather', q: 'What are the primary hazards associated with thunderstorms?',
+      model: 'Severe turbulence, downbursts and microbursts, hail, lightning, heavy precipitation reducing visibility, and rapid, unpredictable wind shifts. Thunderstorms progress through cumulus, mature, and dissipating stages, with the mature stage producing the most severe hazards.',
+      mistakes: 'Focusing only on visible lightning/rain and underestimating the invisible hazards — wind shear and turbulence can extend well beyond the visible storm cell.',
+      evaluating: "Whether your mental model of thunderstorm risk includes hazards that extend beyond the storm's visible boundary.",
+      acs: 'Area of Operation II, Task A — Weather Information (Knowledge, Risk Management).',
+      application: 'Give any thunderstorm cell wide berth in real flight planning — the rule of thumb of 20 nautical miles exists because these hazards extend well past what you can see.' },
+    { id: 'wx-6', section: 'weather', q: 'What conditions favor structural icing, and what types exist?',
+      model: 'Structural icing requires visible moisture and temperatures at or below freezing. Rime ice forms in smaller water droplets/colder conditions and appears rough and opaque; clear ice forms in larger droplets/warmer near-freezing conditions and is smooth, dense, and harder to remove; mixed ice combines both.',
+      mistakes: 'Believing icing only occurs well below freezing — icing risk is often highest right around the freezing level, not at very cold temperatures.',
+      evaluating: "Whether you understand icing as most dangerous near 0°C, not simply 'the colder, the worse.'",
+      acs: 'Area of Operation II, Task A — Weather Information (Knowledge, Risk Management).',
+      application: 'Most VFR trainers are not certified for flight into known icing — treat any forecast or observed icing as an automatic no-go, not a risk to manage in flight.' },
+    { id: 'wx-7', section: 'weather', q: 'What are the main types of fog, and how do they form?',
+      model: 'Radiation fog forms overnight from ground cooling under clear skies and calm wind; advection fog forms when warm, moist air moves over a cooler surface; upslope fog forms as moist air rises and cools along rising terrain. Each has different typical burn-off behavior.',
+      mistakes: 'Assuming all fog burns off predictably by mid-morning — advection fog in particular can persist much longer than radiation fog.',
+      evaluating: 'Whether you can identify which fog type applies to a given scenario and reason about its likely persistence.',
+      acs: 'Area of Operation II, Task A — Weather Information (Knowledge, Risk Management).',
+      application: "A morning departure delayed by radiation fog often clears within an hour or two after sunrise; the same delay from advection fog might not clear all day — know the difference before you commit to waiting it out." },
+    { id: 'wx-8', section: 'weather', q: 'How do you use a winds and temperatures aloft forecast in flight planning?',
+      model: 'The forecast gives expected wind direction/speed and temperature at specific altitudes and reporting stations, used to select cruising altitude, estimate groundspeed and fuel burn, and check for icing-favorable temperatures at planned altitudes.',
+      mistakes: "Only using the forecast for headwind/tailwind planning, and overlooking the temperature data's relevance to icing risk at altitude.",
+      evaluating: 'Whether you use this single product for multiple planning purposes — performance and hazard awareness together.',
+      acs: 'Area of Operation IX, Task A — Navigation Systems and Flight Planning (Knowledge).',
+      application: 'Choosing a cruising altitude with a favorable tailwind but a freezing temperature and visible moisture is a real, avoidable planning mistake — cross-check both factors together.' },
+
+    // Section 7 — Performance and Weight & Balance
+    { id: 'perf-1', section: 'performance', q: 'What is density altitude, and how does it affect performance?',
+      model: "Density altitude is pressure altitude corrected for non-standard temperature — it represents the altitude the aircraft 'feels' it's performing at. Higher density altitude (hot, high, humid conditions) reduces engine power, propeller efficiency, and lift, increasing takeoff distance and reducing climb performance.",
+      mistakes: 'Confusing density altitude with pressure altitude, or forgetting that humidity also increases density altitude, not just temperature.',
+      evaluating: 'Whether you understand density altitude as a performance concept, not just a number to calculate.',
+      acs: 'Area of Operation V, Task A — Performance and Limitations (Knowledge).',
+      application: 'A hot summer afternoon at a high-elevation airport is exactly when density altitude turns a routine departure into a genuine performance-limited decision.' },
+    { id: 'perf-2', section: 'performance', q: 'Why does weight and balance matter beyond simply staying under max gross weight?',
+      model: 'Center of gravity (CG) location affects stall speed, stability, and control authority — an aircraft loaded outside its CG envelope may be uncontrollable even if under max gross weight. Both weight and CG location must be within limits.',
+      mistakes: 'Checking only total weight against max gross weight and skipping the CG calculation entirely.',
+      evaluating: 'Whether you treat weight and balance as two distinct checks, both required, not one combined check.',
+      acs: 'Area of Operation V, Task A — Performance and Limitations (Knowledge, Risk Management).',
+      application: 'A rear-loaded aircraft (aft CG) can become dangerously unstable in pitch — this is a real, not theoretical, loading risk in small trainers with baggage compartments.' },
+    { id: 'perf-3', section: 'performance', q: 'How does CG location affect stall speed and controllability?',
+      model: 'A more forward CG generally increases stall speed slightly and improves longitudinal stability; a more aft CG decreases stall speed slightly but reduces stability and can reduce elevator authority, particularly during the flare.',
+      mistakes: 'Believing CG location has no meaningful effect on stall speed, treating it as purely a stability issue.',
+      evaluating: 'Detailed understanding connecting CG directly to the aerodynamic concepts (stability, stall speed) tested elsewhere in the oral exam.',
+      acs: 'Area of Operation V, Task A — Performance and Limitations (Knowledge).',
+      application: 'This is a direct, practical bridge between your weight and balance knowledge and your aerodynamics knowledge — DPEs like connecting these two areas in one question.' },
+    { id: 'perf-4', section: 'performance', q: 'How do you use a performance chart correctly, including interpolation?',
+      model: 'Enter the chart with the actual conditions (pressure altitude, temperature, weight, wind), and if your exact values fall between published data points, interpolate between the two nearest values rather than simply rounding to the nearest chart line.',
+      mistakes: 'Always rounding to the nearest (and often more favorable) chart value instead of interpolating, which can understate actual required distance.',
+      evaluating: 'Whether you interpolate correctly and conservatively, since misreading a performance chart has real safety consequences.',
+      acs: 'Area of Operation V, Task A — Performance and Limitations (Skill, Knowledge).',
+      application: "Practice interpolating on your specific aircraft's real performance charts with realistic numbers — this is often demonstrated live during the oral exam, not just discussed." },
+    { id: 'perf-5', section: 'performance', q: 'What factors increase takeoff distance?',
+      model: 'High density altitude, higher aircraft weight, a tailwind component, an uphill or soft/contaminated runway surface, and reduced flap settings (below the optimal takeoff setting) all increase required takeoff distance.',
+      mistakes: 'Naming only density altitude and weight, forgetting runway surface, slope, and wind component factors.',
+      evaluating: 'Whether you can name a comprehensive list of factors, not just the two most commonly cited.',
+      acs: 'Area of Operation V, Task A — Performance and Limitations (Knowledge, Risk Management).',
+      application: 'Combine factors mentally before every real departure — hot day, uphill runway, and a slight tailwind together compound quickly into a genuine performance problem.' },
+    { id: 'perf-6', section: 'performance', q: 'What factors increase landing distance?',
+      model: 'High density altitude, higher aircraft weight, a tailwind component, a wet, contaminated, or downhill runway, and excess airspeed over the threshold all increase required landing distance.',
+      mistakes: 'Forgetting excess approach speed as a factor — landing fast, even briefly, meaningfully extends the landing roll.',
+      evaluating: "Whether your factor list matches the takeoff list's logic while correctly noting landing-specific factors like approach speed discipline.",
+      acs: 'Area of Operation V, Task A — Performance and Limitations (Knowledge, Risk Management).',
+      application: 'Approach speed discipline is one of the most controllable variables on this entire list — flying the correct speed on final directly manages your landing distance risk.' },
+    { id: 'perf-7', section: 'performance', q: 'How does wind component affect takeoff and landing performance?',
+      model: 'A headwind component reduces ground roll and required distance; a tailwind component significantly increases required distance — tailwind effects are disproportionately larger than headwind benefits for the same wind speed, so even a small tailwind matters.',
+      mistakes: 'Treating headwind and tailwind effects as symmetrical, when tailwind penalties are actually more severe for the same speed.',
+      evaluating: 'Whether you understand this asymmetry, which is a commonly tested nuance beyond the basic headwind/tailwind concept.',
+      acs: 'Area of Operation V, Task A — Performance and Limitations (Knowledge).',
+      application: 'Always calculate actual crosswind and headwind/tailwind components before a flight rather than eyeballing the windsock — the numbers matter more than they look.' },
+    { id: 'perf-8', section: 'performance', q: 'How does CG shift as fuel burns off during a flight?',
+      model: 'As fuel burns, weight decreases, and CG typically shifts based on where the fuel tanks are located relative to the CG — in most training aircraft with wing tanks near the CG, this shift is minor, but it should still be checked for flights near a CG limit.',
+      mistakes: 'Assuming CG never meaningfully changes in flight, when a flight loaded near a limit at departure could shift outside limits by the end of a long flight.',
+      evaluating: 'Whether you think about weight and balance as a full-flight consideration, not just a departure-moment calculation.',
+      acs: 'Area of Operation V, Task A — Performance and Limitations (Knowledge, Risk Management).',
+      application: "For any flight loaded close to a CG limit, calculate both a takeoff and a landing weight and balance — don't assume the departure check is sufficient for the whole flight." },
+
+    // Section 8 — Aeromedical Factors
+    { id: 'aeromed-1', section: 'aeromedical', q: 'What is hypoxia, and what are its stages and symptoms?',
+      model: 'Hypoxia is a deficiency of oxygen reaching body tissues. Symptoms progress from mild impairment (poor judgment, euphoria) to more severe cognitive and physical impairment as altitude or exposure increases, and can occur even below 10,000 feet MSL in susceptible individuals (smokers, fatigue, illness).',
+      mistakes: 'Believing hypoxia only becomes a concern at very high altitudes, ignoring individual susceptibility factors.',
+      evaluating: 'Whether you understand hypoxia risk as altitude-dependent but also individually variable, not a single fixed threshold.',
+      acs: 'Area of Operation VII, Task A — Aeromedical Factors (Knowledge).',
+      application: 'Supplemental oxygen use, or simply descending, are your practical tools here — know your own personal risk factors, not just the general altitude guidance.' },
+    { id: 'aeromed-2', section: 'aeromedical', q: 'How is hyperventilation different from hypoxia, and how do you tell them apart?',
+      model: 'Hyperventilation is excessive breathing rate, often triggered by stress or anxiety, causing symptoms (dizziness, tingling, lightheadedness) that closely mimic hypoxia. The key distinguishing action is deliberately slowing your breathing rate — if symptoms improve, it was hyperventilation; if not, treat it as hypoxia and take corrective action (oxygen, descent).',
+      mistakes: 'Assuming any dizziness in flight is automatically anxiety-related without also considering hypoxia as a possibility, especially at altitude.',
+      evaluating: 'Whether you have an actual decision process for distinguishing these two conditions in the moment, not just definitions of each.',
+      acs: 'Area of Operation VII, Task A — Aeromedical Factors (Knowledge, Risk Management).',
+      application: "This is a genuinely useful in-flight decision tool — know the actual test (controlled breathing) you'd perform, not just the textbook definitions." },
+    { id: 'aeromed-3', section: 'aeromedical', q: 'What are common spatial disorientation illusions, and how do you prevent them?',
+      model: 'Illusions include the leans, the graveyard spiral, and somatogravic illusion, among others — all caused by the inner ear and other senses providing false orientation information, especially in reduced visibility. Prevention relies on trusting flight instruments over physical sensation when visual references are limited.',
+      mistakes: 'Believing spatial disorientation only affects instrument-rated pilots in IMC — it can occur in degraded visual conditions (haze, night, featureless terrain) that a VFR-only pilot may encounter.',
+      evaluating: 'Whether you understand the practical prevention strategy (trust instruments), not just illusion names.',
+      acs: 'Area of Operation VII, Task A — Aeromedical Factors (Knowledge, Risk Management).',
+      application: 'This is why VFR-into-IMC is so dangerous even for skilled visual pilots — your body will lie to you convincingly, and only instrument trust reliably counters it.' },
+    { id: 'aeromed-4', section: 'aeromedical', q: 'What does the IMSAFE checklist stand for, and how do you use it?',
+      model: 'Illness, Medication, Stress, Alcohol, Fatigue, Emotion — a personal fitness-to-fly self-assessment performed before every flight, honestly evaluating each factor.',
+      mistakes: 'Treating IMSAFE as a one-time or occasional check rather than a habitual pre-flight self-assessment for every single flight.',
+      evaluating: 'Whether this is a genuine, internalized habit for you, not just a memorized acronym.',
+      acs: 'Area of Operation VII, Task A — Aeromedical Factors (Knowledge, Risk Management).',
+      application: 'Be ready to apply IMSAFE honestly to yourself, out loud, on checkride day — examiners sometimes ask directly, and a thoughtful real answer lands far better than a rushed recitation.' },
+    { id: 'aeromed-5', section: 'aeromedical', q: 'What are the FAA\'s regulations regarding alcohol and flying?',
+      model: 'You may not act as a crewmember within 8 hours of consuming alcohol, while under the influence of alcohol, or with a blood alcohol concentration of 0.04% or greater; some operators and the FAA also apply a stricter 24-hour guideline as best practice.',
+      mistakes: "Citing only the '8 hours' rule and forgetting the BAC limit and 'under the influence' standard, which can apply even beyond 8 hours.",
+      evaluating: 'Whether you know all three components of this regulation, not just the most commonly cited one.',
+      acs: 'Area of Operation VII, Task A — Aeromedical Factors (Knowledge).',
+      application: 'Apply the stricter, safer standard in your own personal minimums — the legal minimum and the genuinely safe minimum are not always the same number.' },
+    { id: 'aeromed-6', section: 'aeromedical', q: 'How does fatigue affect pilot performance, and how do you recognize it in yourself?',
+      model: "Fatigue degrades reaction time, judgment, attention, and decision-making, often without the pilot feeling overtly 'tired' — chronic fatigue from poor sleep patterns can be just as impairing as acute fatigue from a long, demanding day.",
+      mistakes: 'Believing fatigue only matters after an obviously exhausting day, missing the risk of cumulative, chronic fatigue from ordinary life stress or poor sleep habits.',
+      evaluating: 'Whether you recognize fatigue as a real IMSAFE factor deserving honest self-assessment, not something you\'d only notice if extreme.',
+      acs: 'Area of Operation VII, Task A — Aeromedical Factors (Knowledge, Risk Management).',
+      application: 'Track your own sleep before flight lessons and notice the honest correlation with your performance — this builds real self-awareness, not just textbook knowledge.' },
+    { id: 'aeromed-7', section: 'aeromedical', q: 'What are the sources and symptoms of carbon monoxide poisoning in a piston aircraft?',
+      model: 'CO can enter the cabin through a cracked or faulty exhaust/heater muff system, especially with cabin heat in use. Symptoms include headache, dizziness, confusion, and drowsiness — easily mistaken for fatigue or hypoxia, making it especially dangerous.',
+      mistakes: 'Assuming CO poisoning would be obviously noticeable, when its symptoms actually mimic other, less dangerous-sounding conditions.',
+      evaluating: 'Whether you know both the mechanical source and the deceptive symptom overlap with other aeromedical conditions.',
+      acs: 'Area of Operation VII, Task A — Aeromedical Factors (Knowledge, Risk Management).',
+      application: 'A cheap CO detector in the cabin is a genuinely worthwhile investment for any pilot flying an aircraft with a heater muff system, especially in winter.' },
+    { id: 'aeromed-8', section: 'aeromedical', q: 'Why is honest self-assessment more important than technical knowledge in this section?',
+      model: 'Aeromedical risks are the ones a pilot is uniquely positioned to catch — no checklist, chart, or ATC controller will notice your fatigue or stress level for you. This section of the ACS specifically tests whether you\'ll apply that self-awareness honestly, not just whether you can define the terms.',
+      mistakes: 'Answering aeromedical questions purely academically, without connecting them to genuine, personal self-assessment habits.',
+      evaluating: 'Maturity and honesty about your own limitations — this is arguably the most personal, judgment-based ACS content on the entire exam.',
+      acs: 'Area of Operation VII, Task A — Aeromedical Factors (Risk Management).',
+      application: 'The pilots who fly safely for decades are the ones who keep applying IMSAFE honestly at hour 5,000, not just during training — build the habit now.' },
+
+    // Section 9 — Cross-Country Planning
+    { id: 'xc-1', section: 'crosscountry', q: 'What are the essential components of a complete cross-country flight plan?',
+      model: 'A navigation log (course, heading, groundspeed, ETE, and fuel per leg), a weather briefing, a weight and balance calculation, a performance calculation for departure and destination, and selected cruising altitude(s) based on terrain, airspace, and direction of flight.',
+      mistakes: "Treating the nav log alone as 'the flight plan,' when a complete plan integrates weather, performance, and weight and balance together.",
+      evaluating: 'Whether you understand cross-country planning as an integration of multiple ACS knowledge areas, not an isolated task.',
+      acs: 'Area of Operation IX, Task A — Navigation Systems and Flight Planning (Knowledge, Skill).',
+      application: 'Bring a complete, real plan for an actual route to your checkride — expect to walk through it in detail as a central part of the oral exam.' },
+    { id: 'xc-2', section: 'crosscountry', q: 'What are the VFR fuel reserve requirements for day and night flight?',
+      model: 'For day VFR, you must have enough fuel to fly to the first point of intended landing and then, at normal cruising speed, fly for an additional 30 minutes. For night VFR, that reserve increases to 45 minutes.',
+      mistakes: 'Applying the day reserve requirement to a flight that will arrive after dark, or forgetting the reserve applies at normal cruising speed, not an economy setting.',
+      evaluating: 'Whether you correctly apply day versus night reserve based on actual arrival conditions, not just departure time.',
+      acs: 'Area of Operation IX, Task A — Navigation Systems and Flight Planning (Knowledge, Risk Management).',
+      application: 'Plan reserves generously beyond the legal minimum on real flights — the legal reserve is a floor, not a target.' },
+    { id: 'xc-3', section: 'crosscountry', q: 'What is your process for diverting to an alternate airport in flight?',
+      model: 'Identify the nearest suitable airport given current position, fuel, and weather; establish a heading and rough distance/time using pilotage or your EFB; communicate your intentions if appropriate; and continuously reassess as conditions develop.',
+      mistakes: 'Overcomplicating the process by trying to build a perfect new nav log in flight, rather than using a quick, practical heading-and-distance estimate.',
+      evaluating: 'Whether you have a genuinely practical, fast process for a real in-flight decision, not just a textbook answer.',
+      acs: 'Area of Operation IX, Task A — Navigation Systems and Flight Planning (Skill, Risk Management).',
+      application: "Practice this exact skill — picking a real diversion airport mid-flight and estimating heading/time — with your instructor before your checkride, since it's often demonstrated live." },
+    { id: 'xc-4', section: 'crosscountry', q: "What are the 'four C's' of lost procedures?",
+      model: "Climb (for a better view and radio/GPS reception), Communicate (contact ATC or Flight Service for help), Confess (state clearly that you're unsure of your position), and Comply (follow the guidance you're given).",
+      mistakes: "Being reluctant to actually 'confess' being lost, when clear communication of the situation is what allows ATC to help effectively and quickly.",
+      evaluating: "Whether you'd actually use this process in the moment, including the psychologically harder step of clearly stating you're lost.",
+      acs: 'Area of Operation IX, Task A — Navigation Systems and Flight Planning (Knowledge, Risk Management).',
+      application: "There's no professional downside to admitting uncertainty to ATC — controllers deal with this constantly and are there to help, not to judge." },
+    { id: 'xc-5', section: 'crosscountry', q: 'What is the difference between pilotage and dead reckoning?',
+      model: 'Pilotage is navigation by visually referencing landmarks against a chart; dead reckoning is navigation by calculating heading, groundspeed, and time based on planned course and forecast wind, without relying on visual checkpoints alone.',
+      mistakes: 'Treating these as mutually exclusive rather than complementary techniques typically used together on a real cross-country flight.',
+      evaluating: 'Whether you understand these as a combined skill set, not an either/or choice.',
+      acs: 'Area of Operation IX, Task A — Navigation Systems and Flight Planning (Knowledge, Skill).',
+      application: 'These are your backup navigation skills if GPS or electronics fail — practice them for real, not just as a theoretical checkride topic.' },
+    { id: 'xc-6', section: 'crosscountry', q: 'How do you use a VOR for navigation, and how do you verify its accuracy?',
+      model: 'Tune and identify the station via Morse code, center the CDI needle, and read the radial you\'re on or flying to/from using the TO/FROM indicator. VOR accuracy can be verified using a VOT test, a certified ground checkpoint, or a certified airborne checkpoint, generally within a specified tolerance.',
+      mistakes: 'Skipping station identification, or being unfamiliar with any of the three accuracy-check methods.',
+      evaluating: "Whether you can both operate a VOR practically and explain how its accuracy is verified — a two-part skill many applicants only prepare half of.",
+      acs: 'Area of Operation IX, Task A — Navigation Systems and Flight Planning (Knowledge, Skill).',
+      application: 'Even in a GPS-heavy cockpit, VOR remains a valuable backup — stay genuinely proficient, not just checkride-ready.' },
+    { id: 'xc-7', section: 'crosscountry', q: 'How do you select an appropriate cruising altitude for a cross-country flight?',
+      model: 'Apply the hemispheric rule (odd thousands + 500 feet for VFR flight on courses roughly 0-179° magnetic, even thousands + 500 feet for 180-359°), while also considering terrain clearance, airspace structure, and winds aloft.',
+      mistakes: "Applying the hemispheric rule mechanically without also checking it against terrain and airspace — the 'legal' altitude and the 'safe and practical' altitude must both be satisfied.",
+      evaluating: 'Whether you integrate the regulatory rule with real terrain and airspace judgment, not just recite the altitude formula.',
+      acs: 'Area of Operation IX, Task A — Navigation Systems and Flight Planning (Knowledge, Risk Management).',
+      application: 'In mountainous terrain especially, the hemispheric-rule altitude and the genuinely safe altitude can differ significantly — always cross-check both.' },
+    { id: 'xc-8', section: 'crosscountry', q: 'How do you file, activate, and close a VFR flight plan, and why does it matter?',
+      model: "File via Flight Service (1800wxbrief.com, phone, or many EFBs), activate it once airborne (it doesn't activate automatically), and close it upon landing, either by radio or phone — an unclosed flight plan triggers search-and-rescue procedures.",
+      mistakes: 'Forgetting the flight plan must be manually activated after filing, or forgetting to close it after landing, which triggers unnecessary search-and-rescue resources.',
+      evaluating: 'Whether you understand this as a full three-step process (file, activate, close), not just the filing step alone.',
+      acs: 'Area of Operation IX, Task A — Navigation Systems and Flight Planning (Knowledge, Risk Management).',
+      application: "A VFR flight plan isn't required, but it's genuinely good practice — it's the system that gets search-and-rescue looking for you quickly if something goes wrong." },
+
+    // Section 10 — Emergency Operations
+    { id: 'emerg-1', section: 'emergency', q: 'What is your procedure for an engine failure immediately after takeoff?',
+      model: 'Establish best glide (or the appropriate pitch attitude), land essentially straight ahead within a narrow range of turn, and avoid attempting to turn back to the runway at low altitude unless you have specifically trained for and are confident in that maneuver at sufficient altitude.',
+      mistakes: "Defaulting to 'turn back to the runway' as a general answer without acknowledging the significant altitude and airspeed risk this maneuver carries at low altitude — the so-called 'impossible turn.'",
+      evaluating: 'Whether your default response prioritizes a safe, controlled landing over an instinctive but risky return to the runway.',
+      acs: 'Area of Operation X, Task A — Emergency Procedures (Knowledge, Risk Management, Skill).',
+      application: "Discuss your specific aircraft's and airport's numbers with your instructor — the altitude at which a return-to-field turn becomes reasonable is aircraft- and situation-specific, not a universal rule." },
+    { id: 'emerg-2', section: 'emergency', q: 'What is your procedure for an engine failure in flight, away from the airport?',
+      model: 'Establish best glide speed immediately, select a suitable landing field within gliding distance, run through the appropriate engine restart checklist if time and altitude allow, communicate your situation (squawk 7700, radio call) if able, and prepare the cabin and passengers for landing.',
+      mistakes: 'Attempting an engine restart checklist before first establishing best glide and a landing site — the sequence matters, and aviate always comes before troubleshoot.',
+      evaluating: 'Whether you can state this procedure in the correct priority order, not just list the individual steps.',
+      acs: 'Area of Operation X, Task A — Emergency Procedures (Knowledge, Risk Management, Skill).',
+      application: "Memorize your specific aircraft's best glide speed and emergency checklist — this is exactly the kind of information that must be instantly available, not looked up." },
+    { id: 'emerg-3', section: 'emergency', q: 'What are the signs of an alternator failure, and what is your response?',
+      model: 'A low-voltage or alternator warning light/annunciator, and a battery ammeter showing discharge rather than charge. Response includes reducing electrical load (turning off non-essential equipment), checking circuit breakers, and monitoring battery voltage to preserve remaining electrical endurance for essential equipment.',
+      mistakes: 'Confusing an alternator failure with a complete electrical failure — with an alternator failure, the battery still provides limited remaining power, which should be conserved, not immediately abandoned.',
+      evaluating: 'Whether you understand this as a manageable, time-limited situation requiring load-shedding, not an immediate full emergency.',
+      acs: 'Area of Operation X, Task A — Emergency Procedures (Knowledge, Risk Management).',
+      application: 'Know which equipment in your specific aircraft draws the most electrical load, so you can prioritize shedding it first in a real alternator failure.' },
+    { id: 'emerg-4', section: 'emergency', q: 'What is the PIC\'s emergency authority under 14 CFR 91.3(b)?',
+      model: 'In an in-flight emergency requiring immediate action, the pilot in command may deviate from any rule in Part 91 to the extent required to meet that emergency, and may be required to submit a written report of that deviation if requested by the FAA.',
+      mistakes: 'Believing this authority is unlimited or requires no follow-up, when a written report may still be required after the fact.',
+      evaluating: 'Whether you understand both the authority and the accountability that follows it.',
+      acs: 'Area of Operation X, Task A — Emergency Procedures (Knowledge).',
+      application: 'This regulation exists so that, in a genuine emergency, you make the safest decision without hesitating over regulatory compliance — use it if you ever truly need it, and document afterward.' },
+    { id: 'emerg-5', section: 'emergency', q: 'What system malfunction indications should you recognize for a vacuum system failure?',
+      model: 'A vacuum failure typically shows as a flag or visible failure on the attitude indicator and/or heading indicator (the gyroscopic instruments driven by the vacuum system), while the airspeed indicator, altimeter, and VSI (pitot-static instruments) remain unaffected.',
+      mistakes: "Not knowing which specific instruments are vacuum-driven versus electrically or pitot-static driven in your specific aircraft's panel configuration.",
+      evaluating: "Whether you know your own aircraft's specific instrument power sources, not just a generic answer.",
+      acs: 'Area of Operation X, Task A — Emergency Procedures (Knowledge, Risk Management).',
+      application: 'In a vacuum failure, cross-check your remaining reliable instruments (airspeed, altimeter, turn coordinator if electric) rather than trusting a failed attitude indicator.' },
+    { id: 'emerg-6', section: 'emergency', q: 'What is the procedure for an emergency descent?',
+      model: "Reduce power, establish the appropriate descent configuration and airspeed per your aircraft's emergency procedures (often including a specific bank angle to increase descent rate while managing structural limits), and communicate your intentions if able.",
+      mistakes: "Not knowing your specific aircraft's published emergency descent procedure and airspeed, relying instead on a generic 'dive steeply' assumption.",
+      evaluating: 'Aircraft-specific procedural knowledge, not just a general concept of descending quickly.',
+      acs: 'Area of Operation X, Task A — Emergency Procedures (Knowledge, Skill).',
+      application: "Review your specific POH's emergency descent procedure — the correct technique balances speed of descent against structural and control limits." },
+    { id: 'emerg-7', section: 'emergency', q: 'What is the procedure for lost communications?',
+      model: 'Squawk 7600 to alert ATC of the radio failure, continue navigating per your last clearance or filed plan, and if in controlled airspace requiring communication, use light gun signals if near a tower, or proceed according to standard lost-comm procedures for the type of operation.',
+      mistakes: 'Forgetting to squawk 7600, or being unfamiliar with basic light gun signal meanings for arrival at a towered airport.',
+      evaluating: 'Whether you have a genuinely usable, memorized procedure for this specific and realistic failure mode.',
+      acs: 'Area of Operation X, Task A — Emergency Procedures (Knowledge).',
+      application: 'Review light gun signals specifically before your checkride — this is a commonly tested, easy-to-forget detail since most pilots never actually experience it.' },
+    { id: 'emerg-8', section: 'emergency', q: 'What are your basic reporting responsibilities after an aircraft accident or incident?',
+      model: 'Certain accidents and serious incidents must be reported to the NTSB as soon as practicable, and specific wreckage/records preservation requirements apply following a reportable accident, per NTSB Part 830.',
+      mistakes: 'Believing all incidents require NTSB notification, when the reporting threshold is specifically defined and not every abnormal event qualifies.',
+      evaluating: "Basic awareness that this reporting framework exists, even if full regulatory detail isn't expected at the private pilot level.",
+      acs: 'Area of Operation X, Task A — Emergency Procedures (Knowledge).',
+      application: 'Know that this requirement exists before you ever need it — in the unlikely event of a reportable incident, knowing your basic obligations reduces additional stress at an already difficult time.' }
+  ];
+
+  DPE_DATA.forEach(function (item) { item.sectionLabel = CATEGORY_META[item.section].label; });
+
+  /* ══════════════════════════════════════════════════════════════
+     SCENARIO TRAINING CENTER — sourced from Section 10 (Emergency
+     Operations, all 8) plus Section 9's diversion & lost-procedure
+     questions (2). Same verbatim fields as the DPE library.
+     ══════════════════════════════════════════════════════════════ */
+  var SCENARIO_IDS = ['emerg-1', 'emerg-2', 'emerg-3', 'emerg-5', 'emerg-6', 'emerg-7', 'emerg-8', 'emerg-4', 'xc-3', 'xc-4'];
+  var SCENARIOS = SCENARIO_IDS.map(function (id) {
+    var q = DPE_DATA.filter(function (d) { return d.id === id; })[0];
+    return {
+      id: 'scenario-' + q.id,
+      sourceId: q.id,
+      tag: q.sectionLabel,
+      title: q.q,
+      brief: q.application,
+      model: q.model,
+      mistakes: q.mistakes,
+      evaluating: q.evaluating,
+      acs: q.acs
+    };
+  });
+
+  /* ══════════════════════════════════════════════════════════════
+     RENDER — Prep Pack tabs (product + lessons/quickref)
+     ══════════════════════════════════════════════════════════════ */
+  var prepTabs = document.getElementById('prepTabs');
+  prepTabs.querySelectorAll('.portal-tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      prepTabs.querySelectorAll('.portal-tab').forEach(function (t) { t.classList.remove('active'); });
+      tab.classList.add('active');
+      ['private', 'instrument', 'commercial'].forEach(function (key) {
+        document.getElementById('prep' + key.charAt(0).toUpperCase() + key.slice(1)).style.display = (key === tab.dataset.prep) ? '' : 'none';
+      });
+    });
+  });
+  var prepSubtabs = document.getElementById('prepPrivateSubtabs');
+  prepSubtabs.querySelectorAll('.portal-tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      prepSubtabs.querySelectorAll('.portal-tab').forEach(function (t) { t.classList.remove('active'); });
+      tab.classList.add('active');
+      document.getElementById('prepLessons').style.display = (tab.dataset.sub === 'lessons') ? '' : 'none';
+      document.getElementById('prepQuickRef').style.display = (tab.dataset.sub === 'quickref') ? '' : 'none';
+    });
+  });
+
+  /* ══════════════════════════════════════════════════════════════
+     RENDER — Lessons (Framework, 9 content sections, Checkride Day)
+     ══════════════════════════════════════════════════════════════ */
+  function lessonPartHtml(part) {
+    var html = '';
+    if (part.h) html += '<h4>' + part.h + '</h4>';
+    if (part.body) part.body.forEach(function (p) { html += '<p>' + p + '</p>'; });
+    if (part.list) html += '<ul>' + part.list.map(function (li) { return '<li>' + li + '</li>'; }).join('') + '</ul>';
+    if (part.table) {
+      html += '<table class="portal-lesson__table"><thead><tr>' +
+        part.table.headers.map(function (h) { return '<th>' + h + '</th>'; }).join('') + '</tr></thead><tbody>' +
+        part.table.rows.map(function (row) { return '<tr>' + row.map(function (c) { return '<td>' + c + '</td>'; }).join('') + '</tr>'; }).join('') +
+        '</tbody></table>';
+    }
+    if (part.tip) html += '<div class="portal-lesson__tip"><strong>' + part.tip.label + '</strong><p>' + part.tip.body + '</p></div>';
+    return html;
+  }
+
+  function buildLessonEl(lessonId, num, title, meta, bodyHtml, extraFooterHtml) {
+    var el = document.createElement('div');
+    el.className = 'portal-card portal-lesson';
+    var done = !!lessonComplete[lessonId];
+    el.innerHTML =
+      '<button class="portal-lesson__head" type="button">' +
+        '<div class="portal-lesson__head-left">' +
+          '<div class="portal-lesson__num">' + num + '</div>' +
+          '<div><div class="portal-lesson__title">' + title + '</div><div class="portal-lesson__meta">' + meta + (lastViewed[lessonId] ? ' · Last viewed ' + timeAgo(lastViewed[lessonId]) : '') + '</div></div>' +
+        '</div>' +
+        '<div class="portal-lesson__head-left">' +
+          '<label class="portal-lesson__complete" onclick="event.stopPropagation()"><input type="checkbox" ' + (done ? 'checked' : '') + ' /> Complete</label>' +
+          '<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+        '</div>' +
+      '</button>' +
+      '<div class="portal-lesson__body"><div class="portal-lesson__body-inner">' + bodyHtml + (extraFooterHtml || '') + '</div></div>';
+
+    el.querySelector('.portal-lesson__head').addEventListener('click', function () {
+      var wasOpen = el.classList.contains('open');
+      el.classList.toggle('open');
+      if (!wasOpen) {
+        touchLastViewed(lessonId);
+        el.querySelector('.portal-lesson__meta').textContent = meta + ' · Last viewed just now';
+      }
+    });
+    el.querySelector('.portal-lesson__complete input').addEventListener('change', function (e) {
+      lessonComplete[lessonId] = e.target.checked;
+      saveMap('apex_portal_lesson_complete', lessonComplete);
+      renderProgress();
+      renderDashboardStats();
+    });
+    return el;
+  }
+
+  function renderLessons() {
+    var container = document.getElementById('prepLessons');
+    container.innerHTML = '';
+
+    // Lesson 1: Framework
+    var frameworkBody = FRAMEWORK_LESSON.parts.map(lessonPartHtml).join('');
+    container.appendChild(buildLessonEl(FRAMEWORK_LESSON.id, 1, FRAMEWORK_LESSON.title, FRAMEWORK_LESSON.meta, frameworkBody));
+
+    // Lessons 2-10: the 9 content sections, each intro + link to filtered DPE library
+    var order = ['eligibility', 'airworthiness', 'privileges', 'airspace', 'weather', 'performance', 'aeromedical', 'crosscountry', 'emergency'];
+    order.forEach(function (cat, i) {
+      var meta = CATEGORY_META[cat];
+      var count = DPE_DATA.filter(function (d) { return d.section === cat; }).length;
+      var studiedCount = DPE_DATA.filter(function (d) { return d.section === cat && studied[d.id]; }).length;
+      var body = '<p>' + meta.intro + '</p>' +
+        '<div class="portal-lesson__study-link"><button class="btn btn--primary" data-study-cat="' + cat + '">Study these ' + count + ' questions (' + studiedCount + '/' + count + ' studied)</button></div>';
+      var lessonId = 'lesson-' + cat;
+      container.appendChild(buildLessonEl(lessonId, i + 2, meta.section + ': ' + meta.label, meta.section + ' · ' + count + ' questions', body));
+    });
+
+    // Lesson 11: Checkride Day Prep
+    var dayBody = CHECKRIDE_DAY_LESSON.parts.map(lessonPartHtml).join('');
+    container.appendChild(buildLessonEl(CHECKRIDE_DAY_LESSON.id, 11, CHECKRIDE_DAY_LESSON.title, CHECKRIDE_DAY_LESSON.meta, dayBody));
+
+    container.querySelectorAll('[data-study-cat]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        showSection('dpe-library');
+        setDpeCategory(btn.dataset.studyCat);
+      });
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     RENDER — Quick Reference Appendix
+     ══════════════════════════════════════════════════════════════ */
+  function renderQuickRef() {
+    var container = document.getElementById('prepQuickRef');
+    container.innerHTML = '';
+    var searchWrap = document.createElement('div');
+    searchWrap.className = 'portal-search';
+    searchWrap.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><input type="text" id="qrefSearch" placeholder="Search ARROW, IMSAFE, PAVE, and 4 more…" />';
+    container.appendChild(searchWrap);
+
+    var cardsWrap = document.createElement('div');
+    cardsWrap.id = 'qrefCards';
+    container.appendChild(cardsWrap);
+
+    QUICK_REF.forEach(function (card) {
+      var el = document.createElement('div');
+      el.className = 'portal-card portal-qref-card';
+      el.dataset.qrefId = card.id;
+      var rowsHtml = card.rows.map(function (r) {
+        return '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td><td>' + (r[2] || '') + '</td></tr>';
+      }).join('');
+      el.innerHTML =
+        '<div class="portal-qref-card__title">' + card.title + '</div>' +
+        '<div class="portal-qref-card__subtitle">' + card.subtitle + '</div>' +
+        '<table class="portal-qref-table"><tbody>' + rowsHtml + '</tbody></table>';
+      cardsWrap.appendChild(el);
+    });
+
+    document.getElementById('qrefSearch').addEventListener('input', function (e) {
+      var term = e.target.value.trim().toLowerCase();
+      cardsWrap.querySelectorAll('.portal-qref-card').forEach(function (card, i) {
+        var ref = QUICK_REF[i];
+        var haystack = (ref.title + ' ' + ref.subtitle + ' ' + ref.rows.map(function (r) { return r.join(' '); }).join(' ')).toLowerCase();
+        card.hidden = term.length > 0 && haystack.indexOf(term) === -1;
+      });
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     RENDER — DPE Questions Library (72 real questions)
+     ══════════════════════════════════════════════════════════════ */
   var dpeLibraryEl = document.getElementById('dpeLibrary');
   var dpeSearch = document.getElementById('dpeSearch');
   var dpeTabs = document.getElementById('dpeTabs');
   var dpeEmpty = document.getElementById('dpeEmpty');
   var dpeActiveCat = 'all';
 
-  var CAT_LABELS = {
-    regulations: 'Regulations',
-    weather: 'Weather',
-    airspace: 'Airspace',
-    aerodynamics: 'Aerodynamics & Systems',
-    navigation: 'Navigation & Flight Planning',
-    emergencies: 'Emergencies'
-  };
+  function setDpeCategory(cat) {
+    dpeActiveCat = cat;
+    dpeTabs.querySelectorAll('.portal-tab').forEach(function (t) { t.classList.toggle('active', t.dataset.cat === cat); });
+    renderDpeLibrary();
+  }
+
+  function fieldBlock(label, text) {
+    if (!text) return '';
+    return '<div class="portal-qitem__field"><div class="portal-qitem__field-label">' + label + '</div><p>' + text + '</p></div>';
+  }
 
   function renderDpeLibrary() {
     var term = dpeSearch.value.trim().toLowerCase();
     var byCat = {};
     var totalShown = 0;
 
-    DPE_DATA.forEach(function (item, idx) {
-      if (dpeActiveCat !== 'all' && item.cat !== dpeActiveCat) return;
-      var matches = !term || item.q.toLowerCase().indexOf(term) !== -1 || item.a.toLowerCase().indexOf(term) !== -1;
-      if (!matches) return;
-      if (!byCat[item.cat]) byCat[item.cat] = [];
-      byCat[item.cat].push({ item: item, idx: idx });
+    DPE_DATA.forEach(function (item) {
+      if (dpeActiveCat === 'favorites' && !favorites[item.id]) return;
+      if (dpeActiveCat !== 'all' && dpeActiveCat !== 'favorites' && item.section !== dpeActiveCat) return;
+      var haystack = (item.q + ' ' + item.model + ' ' + item.mistakes + ' ' + item.evaluating + ' ' + item.acs + ' ' + item.application).toLowerCase();
+      if (term && haystack.indexOf(term) === -1) return;
+      if (!byCat[item.section]) byCat[item.section] = [];
+      byCat[item.section].push(item);
       totalShown++;
     });
 
     dpeLibraryEl.innerHTML = '';
-    Object.keys(CAT_LABELS).forEach(function (cat) {
+    Object.keys(CATEGORY_META).forEach(function (cat) {
       if (!byCat[cat]) return;
+      var meta = CATEGORY_META[cat];
       var group = document.createElement('div');
       group.className = 'portal-qgroup';
       var title = document.createElement('div');
       title.className = 'portal-qgroup__title';
-      title.innerHTML = CAT_LABELS[cat] + ' <span class="count">' + byCat[cat].length + '</span>';
+      title.innerHTML = meta.label + ' <span class="count">' + byCat[cat].length + '</span>';
       group.appendChild(title);
 
       var list = document.createElement('div');
       list.className = 'portal-qlist';
-      byCat[cat].forEach(function (entry) {
+      byCat[cat].forEach(function (item) {
         var qitem = document.createElement('div');
         qitem.className = 'portal-qitem';
+        var isFav = !!favorites[item.id];
+        var isStudied = !!studied[item.id];
         qitem.innerHTML =
           '<button class="portal-qitem__q" type="button">' +
-            '<span>' + entry.item.q + '</span>' +
+            '<span class="portal-qitem__head">' +
+              '<button class="portal-star-btn' + (isFav ? ' active' : '') + '" type="button" data-star="' + item.id + '" title="Star for review">' +
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="' + (isFav ? 'currentColor' : 'none') + '"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>' +
+              '</button>' +
+              '<span>' + item.q + '</span>' +
+            '</span>' +
             '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
           '</button>' +
-          '<div class="portal-qitem__a"><p>' + entry.item.a + '</p></div>';
-        qitem.querySelector('.portal-qitem__q').addEventListener('click', function () {
+          '<div class="portal-qitem__a"><div class="portal-qitem__a-inner">' +
+            fieldBlock('Model Answer', item.model) +
+            fieldBlock('Common Student Mistakes', item.mistakes) +
+            fieldBlock('What the DPE Is Evaluating', item.evaluating) +
+            fieldBlock('Real-World Application', item.application) +
+            '<div class="portal-qitem__field"><div class="portal-qitem__field-label">ACS Connection</div><span class="portal-qitem__acs">' + item.acs + '</span></div>' +
+          '</div></div>' +
+          '<div class="portal-qitem__meta">' +
+            '<div class="portal-qitem__meta-left">' +
+              '<label class="portal-studied-label"><input type="checkbox" data-studied="' + item.id + '" ' + (isStudied ? 'checked' : '') + ' /> Mark as studied</label>' +
+            '</div>' +
+            '<span class="portal-qitem__lastviewed">' + (lastViewed[item.id] ? 'Viewed ' + timeAgo(lastViewed[item.id]) : '') + '</span>' +
+          '</div>';
+
+        qitem.querySelector('.portal-qitem__q').addEventListener('click', function (e) {
+          if (e.target.closest('[data-star]')) return;
+          var wasOpen = qitem.classList.contains('open');
           qitem.classList.toggle('open');
+          if (!wasOpen) {
+            touchLastViewed(item.id);
+            qitem.querySelector('.portal-qitem__lastviewed').textContent = 'Viewed just now';
+          }
+        });
+        qitem.querySelector('[data-star]').addEventListener('click', function (e) {
+          e.stopPropagation();
+          toggleFavorite(item.id);
+          renderDpeLibrary();
+        });
+        qitem.querySelector('[data-studied]').addEventListener('change', function () {
+          toggleStudied(item.id);
+          renderProgress();
+          renderDashboardStats();
         });
         list.appendChild(qitem);
       });
@@ -204,186 +1053,134 @@
 
   dpeSearch.addEventListener('input', renderDpeLibrary);
   dpeTabs.querySelectorAll('.portal-tab').forEach(function (tab) {
-    tab.addEventListener('click', function () {
-      dpeTabs.querySelectorAll('.portal-tab').forEach(function (t) { t.classList.remove('active'); });
-      tab.classList.add('active');
-      dpeActiveCat = tab.dataset.cat;
-      renderDpeLibrary();
-    });
+    tab.addEventListener('click', function () { setDpeCategory(tab.dataset.cat); });
   });
-  renderDpeLibrary();
 
   /* ══════════════════════════════════════════════════════════════
-     SCENARIO TRAINING CENTER
+     RENDER — Scenario Training Center (real emergency/XC content)
      ══════════════════════════════════════════════════════════════ */
-  var SCENARIOS = [
-    {
-      tag: 'Cross-Country', time: '10-15 min', title: 'Weather deteriorates en route on a VFR cross-country',
-      brief: 'You\'re 40 minutes into a 2-hour VFR cross-country when you notice the ceiling ahead has dropped and visibility is worsening faster than forecast.',
-      decisions: ['Reassess current position, fuel, and nearest suitable airports', 'Check current weather via ATC, ADS-B, or Flight Service', 'Decide: continue, divert, or turn back — before conditions force the decision', 'Communicate intentions to ATC or Flight Following if applicable'],
-      debrief: ['What cues should have triggered the decision earlier?', 'How does personal minimums differ from legal VFR minimums?', 'What resources are available in the cockpit to verify conditions ahead?']
-    },
-    {
-      tag: 'Emergency', time: '10-15 min', title: 'Engine roughness at cruise over unfavorable terrain',
-      brief: 'Cruising at 5,500 ft, you notice a slight engine roughness and a drop in RPM. There is no suitable landing area directly below.',
-      decisions: ['Establish best glide / maintain aircraft control first', 'Run the engine roughness checklist (carb heat, mixture, fuel selector, mags)', 'Identify the nearest suitable landing site while troubleshooting', 'Declare an emergency if conditions warrant'],
-      debrief: ['Why is troubleshooting sequenced after securing a landing option?', 'What is the difference between carburetor icing and other causes of roughness?', 'When should you declare an emergency versus just requesting priority handling?']
-    },
-    {
-      tag: 'Airspace', time: '8-12 min', title: 'Unplanned Class B transition on a busy Saturday',
-      brief: 'Your planned route skirts the edge of Class B airspace, but a stronger-than-forecast tailwind has you approaching the boundary faster than planned, with towering cumulus building nearby.',
-      decisions: ['Recheck position relative to the Class B shelf using chart and GPS', 'Determine whether to request clearance, alter course, or descend below the shelf', 'Communicate with ATC early rather than reactively', 'Account for the weather buildup in the course change'],
-      debrief: ['What are the consequences of an inadvertent Class B incursion?', 'How would you request a clearance if you decided to transition?', 'How does workload management change when weather and airspace pressure occur together?']
-    },
-    {
-      tag: 'IFR', time: '12-18 min', title: 'Approach into deteriorating weather at destination',
-      brief: 'On an IFR flight plan, the latest ATIS at your destination now reports ceiling and visibility right at your approach minimums, with a light and variable wind.',
-      decisions: ['Verify current approach minimums and required visibility for your aircraft/pilot category', 'Review the missed approach procedure before beginning the approach', 'Brief an alternate airport and required fuel to divert', 'Decide whether to attempt the approach, hold, or divert immediately'],
-      debrief: ['What regulatory requirements govern filing an alternate?', 'How do you weigh currency and personal comfort against legal minimums?', 'At what point during the approach do you commit to the missed approach?']
-    },
-    {
-      tag: 'Systems', time: '8-10 min', title: 'Alternator failure mid-flight in day VFR',
-      brief: 'The ammeter shows a discharge and the alternator warning light illuminates 30 minutes from your destination in clear VFR conditions.',
-      decisions: ['Verify the failure (check circuit breakers, try resetting per POH)', 'Reduce electrical load — turn off non-essential avionics and lighting', 'Estimate remaining battery endurance for essential equipment', 'Decide whether to continue to destination or land sooner at a suitable airport'],
-      debrief: ['What is the difference between an alternator failure and a full electrical failure?', 'Which equipment would you shed first, and why?', 'How does daylight VFR change your risk calculus compared to night or IMC?']
-    },
-    {
-      tag: 'Decision Making', time: '10-15 min', title: 'Passenger pressure to fly in marginal conditions',
-      brief: 'Your passengers have a tight schedule and are encouraging you to depart despite a forecast for marginal VFR conditions with isolated thunderstorms along your route.',
-      decisions: ['Separate the desire to please passengers from an objective risk assessment', 'Use a personal minimums checklist or FAA risk assessment tool (e.g., PAVE, IMSAFE)', 'Communicate your decision clearly and confidently to passengers', 'Identify alternatives — delayed departure, different route, or commercial travel'],
-      debrief: ['What is "get-there-itis" and how does it factor into accident statistics?', 'How do you communicate a scrub decision to passengers without conflict?', 'What tools exist to make this decision more objective and less emotional?']
-    }
-  ];
-
   var scenarioGrid = document.getElementById('scenarioGrid');
-  SCENARIOS.forEach(function (s) {
-    var card = document.createElement('div');
-    card.className = 'portal-card portal-scenario-card';
-    card.innerHTML =
-      '<span class="portal-scenario-card__tag">' + s.tag + '</span>' +
-      '<h3>' + s.title + '</h3>' +
-      '<p>' + s.brief + '</p>' +
-      '<div class="portal-scenario-card__meta"><span>⏱ ' + s.time + '</span></div>' +
-      '<button class="portal-scenario-card__toggle" type="button">Start scenario ' +
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
-      '</button>' +
-      '<div class="portal-scenario-detail">' +
-        '<h4>Key decision points</h4>' +
-        '<ul>' + s.decisions.map(function (d) { return '<li>' + d + '</li>'; }).join('') + '</ul>' +
-        '<h4>Debrief questions</h4>' +
-        '<ul>' + s.debrief.map(function (d) { return '<li>' + d + '</li>'; }).join('') + '</ul>' +
-      '</div>';
-    card.querySelector('.portal-scenario-card__toggle').addEventListener('click', function (e) {
-      var expanded = card.classList.toggle('expanded');
-      e.currentTarget.firstChild.textContent = expanded ? 'Hide scenario ' : 'Start scenario ';
+  function renderScenarios() {
+    scenarioGrid.innerHTML = '';
+    SCENARIOS.forEach(function (s) {
+      var isFav = !!favorites[s.id];
+      var isStudied = !!studied[s.id];
+      var card = document.createElement('div');
+      card.className = 'portal-card portal-scenario-card';
+      card.innerHTML =
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">' +
+          '<span class="portal-scenario-card__tag">' + s.tag + '</span>' +
+          '<button class="portal-star-btn' + (isFav ? ' active' : '') + '" type="button" data-star="' + s.id + '" title="Star for review">' +
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="' + (isFav ? 'currentColor' : 'none') + '"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>' +
+          '</button>' +
+        '</div>' +
+        '<h3>' + s.title + '</h3>' +
+        '<p>' + s.brief + '</p>' +
+        '<button class="portal-scenario-card__toggle" type="button">Reveal model answer ' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+        '</button>' +
+        '<div class="portal-scenario-detail">' +
+          '<h4>Model Answer</h4><p>' + s.model + '</p>' +
+          '<h4>Common Student Mistakes</h4><p>' + s.mistakes + '</p>' +
+          '<h4>What the DPE Is Evaluating</h4><p>' + s.evaluating + '</p>' +
+          '<h4>ACS Connection</h4><p>' + s.acs + '</p>' +
+        '</div>' +
+        '<label class="portal-studied-label"><input type="checkbox" data-studied="' + s.id + '" ' + (isStudied ? 'checked' : '') + ' /> Mark as reviewed</label>';
+      card.querySelector('.portal-scenario-card__toggle').addEventListener('click', function (e) {
+        var expanded = card.classList.toggle('expanded');
+        e.currentTarget.firstChild.textContent = expanded ? 'Hide model answer ' : 'Reveal model answer ';
+        if (expanded) touchLastViewed(s.id);
+      });
+      card.querySelector('[data-star]').addEventListener('click', function () {
+        toggleFavorite(s.id);
+        renderScenarios();
+      });
+      card.querySelector('[data-studied]').addEventListener('change', function () {
+        toggleStudied(s.id);
+        renderProgress();
+        renderDashboardStats();
+      });
+      scenarioGrid.appendChild(card);
     });
-    scenarioGrid.appendChild(card);
-  });
+  }
 
   /* ══════════════════════════════════════════════════════════════
      PROGRESS TRACKING
      ══════════════════════════════════════════════════════════════ */
-  var TRACKS = [
-    {
-      id: 'private', title: 'Private Pilot Track',
-      items: [
-        'Complete Apex Advantage Private Pilot ground school modules',
-        'Review Checkride Prep Pack — Regulations & Airspace',
-        'Review Checkride Prep Pack — Weather & Performance',
-        'Practice all Private Pilot DPE questions in the library',
-        'Complete Cross-Country scenario training',
-        'Complete Emergency scenario training',
-        'Schedule and pass the FAA knowledge test',
-        'Complete pre-checkride stage check with an instructor'
-      ]
-    },
-    {
-      id: 'instrument', title: 'Instrument Rating Track',
-      items: [
-        'Complete Apex Advantage Instrument Rating ground school modules',
-        'Review IFR regulations and approach procedures',
-        'Practice all IFR-related DPE questions in the library',
-        'Complete IFR Approach scenario training',
-        'Log required instrument time and approaches',
-        'Schedule and pass the FAA knowledge test'
-      ]
-    },
-    {
-      id: 'commercial', title: 'Commercial Pilot Track',
-      items: [
-        'Complete Apex Advantage Commercial Pilot ground school modules',
-        'Review complex aircraft systems and performance planning',
-        'Practice all Commercial-level DPE questions in the library',
-        'Complete Systems Failure scenario training',
-        'Log required commercial pilot flight time',
-        'Schedule and pass the FAA knowledge test'
-      ]
-    }
-  ];
-
-  var PROGRESS_KEY = 'apex_portal_progress';
-  function loadProgress() {
-    try { return JSON.parse(localStorage.getItem(PROGRESS_KEY)) || {}; } catch (e) { return {}; }
-  }
-  function saveProgress(data) {
-    localStorage.setItem(PROGRESS_KEY, JSON.stringify(data));
-  }
-  var progressData = loadProgress();
+  var LESSON_LIST = [FRAMEWORK_LESSON.id]
+    .concat(['eligibility', 'airworthiness', 'privileges', 'airspace', 'weather', 'performance', 'aeromedical', 'crosscountry', 'emergency'].map(function (c) { return 'lesson-' + c; }))
+    .concat([CHECKRIDE_DAY_LESSON.id]);
 
   var progressTracksEl = document.getElementById('progressTracks');
-  var statOverallPct = document.getElementById('statOverallPct');
-
-  function computeTrackPct(track) {
-    var done = 0;
-    track.items.forEach(function (_, i) {
-      if (progressData[track.id] && progressData[track.id][i]) done++;
-    });
-    return Math.round((done / track.items.length) * 100);
-  }
-
-  function computeOverallPct() {
-    var totalItems = 0, totalDone = 0;
-    TRACKS.forEach(function (track) {
-      totalItems += track.items.length;
-      track.items.forEach(function (_, i) {
-        if (progressData[track.id] && progressData[track.id][i]) totalDone++;
-      });
-    });
-    return totalItems ? Math.round((totalDone / totalItems) * 100) : 0;
-  }
 
   function renderProgress() {
     progressTracksEl.innerHTML = '';
-    TRACKS.forEach(function (track) {
-      if (!progressData[track.id]) progressData[track.id] = {};
-      var pct = computeTrackPct(track);
 
-      var wrap = document.createElement('div');
-      wrap.className = 'portal-card portal-track';
-      wrap.innerHTML =
-        '<div class="portal-track__head"><h3>' + track.title + '</h3><span class="portal-track__pct">' + pct + '% complete</span></div>' +
-        '<div class="portal-progress-bar"><div class="portal-progress-bar__fill" style="width:' + pct + '%"></div></div>' +
-        '<div class="portal-checklist"></div>';
+    var lessonsDone = LESSON_LIST.filter(function (id) { return lessonComplete[id]; }).length;
+    var lessonPct = Math.round((lessonsDone / LESSON_LIST.length) * 100);
+    var lessonLabels = { };
+    lessonLabels[FRAMEWORK_LESSON.id] = FRAMEWORK_LESSON.title;
+    lessonLabels[CHECKRIDE_DAY_LESSON.id] = CHECKRIDE_DAY_LESSON.title;
+    Object.keys(CATEGORY_META).forEach(function (cat) { lessonLabels['lesson-' + cat] = CATEGORY_META[cat].section + ': ' + CATEGORY_META[cat].label; });
 
-      var checklist = wrap.querySelector('.portal-checklist');
-      track.items.forEach(function (label, i) {
-        var row = document.createElement('label');
-        row.className = 'portal-checkitem';
-        var checked = !!progressData[track.id][i];
-        row.innerHTML = '<input type="checkbox" ' + (checked ? 'checked' : '') + ' /><span>' + label + '</span>';
-        row.querySelector('input').addEventListener('change', function (e) {
-          progressData[track.id][i] = e.target.checked;
-          saveProgress(progressData);
-          renderProgress();
-        });
-        checklist.appendChild(row);
+    var lessonCard = document.createElement('div');
+    lessonCard.className = 'portal-card portal-track';
+    lessonCard.innerHTML =
+      '<div class="portal-track__head"><h3>Private Pilot Checkride Prep — Lessons</h3><span class="portal-track__pct">' + lessonPct + '% complete</span></div>' +
+      '<div class="portal-progress-bar"><div class="portal-progress-bar__fill" style="width:' + lessonPct + '%"></div></div>' +
+      '<div class="portal-checklist">' + LESSON_LIST.map(function (id) {
+        var checked = !!lessonComplete[id];
+        return '<label class="portal-checkitem"><input type="checkbox" data-lesson="' + id + '" ' + (checked ? 'checked' : '') + ' /><span>' + lessonLabels[id] + '</span></label>';
+      }).join('') + '</div>';
+    lessonCard.querySelectorAll('[data-lesson]').forEach(function (cb) {
+      cb.addEventListener('change', function (e) {
+        lessonComplete[e.target.dataset.lesson] = e.target.checked;
+        saveMap('apex_portal_lesson_complete', lessonComplete);
+        renderProgress();
+        renderDashboardStats();
       });
-
-      progressTracksEl.appendChild(wrap);
     });
+    progressTracksEl.appendChild(lessonCard);
 
-    statOverallPct.textContent = computeOverallPct() + '%';
+    var qStudied = DPE_DATA.filter(function (d) { return studied[d.id]; }).length;
+    var qPct = Math.round((qStudied / DPE_DATA.length) * 100);
+    var qCard = document.createElement('div');
+    qCard.className = 'portal-card portal-track';
+    qCard.innerHTML =
+      '<div class="portal-track__head"><h3>DPE Question Bank</h3><span class="portal-track__pct">' + qStudied + ' / ' + DPE_DATA.length + ' studied</span></div>' +
+      '<div class="portal-progress-bar"><div class="portal-progress-bar__fill" style="width:' + qPct + '%"></div></div>';
+    progressTracksEl.appendChild(qCard);
+
+    var sReviewed = SCENARIOS.filter(function (s) { return studied[s.id]; }).length;
+    var sPct = Math.round((sReviewed / SCENARIOS.length) * 100);
+    var sCard = document.createElement('div');
+    sCard.className = 'portal-card portal-track';
+    sCard.innerHTML =
+      '<div class="portal-track__head"><h3>Scenario Training Center</h3><span class="portal-track__pct">' + sReviewed + ' / ' + SCENARIOS.length + ' reviewed</span></div>' +
+      '<div class="portal-progress-bar"><div class="portal-progress-bar__fill" style="width:' + sPct + '%"></div></div>';
+    progressTracksEl.appendChild(sCard);
+
+    var futureCard = document.createElement('div');
+    futureCard.className = 'portal-card';
+    futureCard.innerHTML = '<h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">Instrument Rating &amp; Commercial Pilot</h3><p style="color:rgba(255,255,255,0.5);font-size:13.5px;line-height:1.6">Progress tracking for these tracks will appear here once their Checkride Prep Packs launch.</p>';
+    progressTracksEl.appendChild(futureCard);
   }
 
+  /* ══════════════════════════════════════════════════════════════
+     DASHBOARD STATS + CONTINUE WHERE YOU LEFT OFF
+     ══════════════════════════════════════════════════════════════ */
+  function renderDashboardStats() {
+    var qStudied = DPE_DATA.filter(function (d) { return studied[d.id]; }).length;
+    var overallItems = DPE_DATA.length + SCENARIOS.length + LESSON_LIST.length;
+    var overallDone = qStudied + SCENARIOS.filter(function (s) { return studied[s.id]; }).length + LESSON_LIST.filter(function (id) { return lessonComplete[id]; }).length;
+    document.getElementById('statOverallPct').textContent = Math.round((overallDone / overallItems) * 100) + '%';
+  }
+
+  /* ── Init ───────────────────────────────────────────────────── */
+  renderLessons();
+  renderQuickRef();
+  renderDpeLibrary();
+  renderScenarios();
   renderProgress();
+  renderDashboardStats();
 })();

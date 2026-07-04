@@ -103,12 +103,12 @@
           </div>
           <div class="portal-card portal-stat">
             <div class="portal-stat__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 6.253v13M12 6.253C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <div class="portal-stat__value">35</div>
+            <div class="portal-stat__value">72</div>
             <div class="portal-stat__label">DPE Questions Available</div>
           </div>
           <div class="portal-card portal-stat">
             <div class="portal-stat__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7l6-3 5.447 2.724A1 1 0 0121 7.618v10.764a1 1 0 01-1.447.894L15 17l-6 3z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <div class="portal-stat__value">6</div>
+            <div class="portal-stat__value">10</div>
             <div class="portal-stat__label">Training Scenarios</div>
           </div>
           <div class="portal-card portal-stat">
@@ -144,30 +144,41 @@
         <div class="portal-header">
           <div class="portal-header__eyebrow">Checkride Prep Pack</div>
           <h1>Everything you need for checkride day.</h1>
-          <p>Certificate-specific study guides built around what your DPE will actually ask — organized so you can study by area of operation, not by chapter number.</p>
+          <p>The full Private Pilot Checkride Prep Pack, broken into lessons you can study section by section — plus the complete Quick Reference Appendix. Every word is from the original guide.</p>
         </div>
 
-        <div class="portal-grid portal-grid--3">
-          <div class="portal-card">
-            <div class="portal-stat__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.976-.83 3.42 3.42 0 014.478 0 3.42 3.42 0 001.976.83 3.42 3.42 0 013.166 3.166 3.42 3.42 0 00.83 1.976 3.42 3.42 0 010 4.478 3.42 3.42 0 00-.83 1.976 3.42 3.42 0 01-3.166 3.166 3.42 3.42 0 00-1.976.83 3.42 3.42 0 01-4.478 0 3.42 3.42 0 00-1.976-.83 3.42 3.42 0 01-3.166-3.166 3.42 3.42 0 00-.83-1.976 3.42 3.42 0 010-4.478 3.42 3.42 0 00.83-1.976 3.42 3.42 0 013.166-3.166z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Private Pilot Prep Pack</h3>
-            <p style="color:rgba(255,255,255,0.55);font-size:14px;line-height:1.65;margin-bottom:18px">Aerodynamics, airspace, weather, regulations, and a full oral exam walkthrough organized by ACS area of operation.</p>
-            <a href="https://drive.google.com/uc?export=download&id=1Pp9vN4q9Swuc92cXIiOAblXrlZOuZr1s" class="btn btn--primary btn--full" target="_blank" rel="noopener">Download PDF</a>
+        <div class="portal-tabs" id="prepTabs">
+          <button class="portal-tab active" data-prep="private">Private Pilot</button>
+          <button class="portal-tab" data-prep="instrument">Instrument Rating</button>
+          <button class="portal-tab" data-prep="commercial">Commercial Pilot</button>
+        </div>
+
+        <div id="prepPrivate">
+          <div class="portal-tabs" id="prepPrivateSubtabs">
+            <button class="portal-tab active" data-sub="lessons">Lessons</button>
+            <button class="portal-tab" data-sub="quickref">Quick Reference Appendix</button>
           </div>
-          <div class="portal-card">
-            <div class="portal-stat__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.976-.83 3.42 3.42 0 014.478 0 3.42 3.42 0 001.976.83 3.42 3.42 0 013.166 3.166 3.42 3.42 0 00.83 1.976 3.42 3.42 0 010 4.478 3.42 3.42 0 00-.83 1.976 3.42 3.42 0 01-3.166 3.166 3.42 3.42 0 00-1.976.83 3.42 3.42 0 01-4.478 0 3.42 3.42 0 00-1.976-.83 3.42 3.42 0 01-3.166-3.166 3.42 3.42 0 00-.83-1.976 3.42 3.42 0 010-4.478 3.42 3.42 0 00.83-1.976 3.42 3.42 0 013.166-3.166z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Instrument Rating Prep Pack</h3>
-            <p style="color:rgba(255,255,255,0.55);font-size:14px;line-height:1.65;margin-bottom:18px">IFR regulations, approach procedures, holding, IFR weather, and lost comm scenarios explained the way examiners test them.</p>
-            <span class="portal-badge-locked" style="margin-bottom:12px;display:inline-block">Coming Soon</span>
-            <button class="btn btn--ghost btn--full" disabled style="opacity:0.5;cursor:not-allowed">Notify Me</button>
+          <div style="margin-bottom:20px">
+            <a href="https://drive.google.com/uc?export=download&id=1Pp9vN4q9Swuc92cXIiOAblXrlZOuZr1s" class="btn btn--ghost" target="_blank" rel="noopener">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 4v12m0 0l4-4m-4 4l-4-4M4 20h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Download the full PDF
+            </a>
           </div>
-          <div class="portal-card">
-            <div class="portal-stat__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.976-.83 3.42 3.42 0 014.478 0 3.42 3.42 0 001.976.83 3.42 3.42 0 013.166 3.166 3.42 3.42 0 00.83 1.976 3.42 3.42 0 010 4.478 3.42 3.42 0 00-.83 1.976 3.42 3.42 0 01-3.166 3.166 3.42 3.42 0 00-1.976.83 3.42 3.42 0 01-4.478 0 3.42 3.42 0 00-1.976-.83 3.42 3.42 0 01-3.166-3.166 3.42 3.42 0 00-.83-1.976 3.42 3.42 0 010-4.478 3.42 3.42 0 00.83-1.976 3.42 3.42 0 013.166-3.166z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Commercial Pilot Prep Pack</h3>
-            <p style="color:rgba(255,255,255,0.55);font-size:14px;line-height:1.65;margin-bottom:18px">Advanced aerodynamics, commercial regs, complex aircraft systems, and performance planning for the CAX checkride.</p>
-            <span class="portal-badge-locked" style="margin-bottom:12px;display:inline-block">Coming Soon</span>
-            <button class="btn btn--ghost btn--full" disabled style="opacity:0.5;cursor:not-allowed">Notify Me</button>
-          </div>
+          <div id="prepLessons"><!-- populated by JS --></div>
+          <div id="prepQuickRef" style="display:none"><!-- populated by JS --></div>
+        </div>
+
+        <div id="prepInstrument" style="display:none" class="portal-card">
+          <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Instrument Rating Prep Pack</h3>
+          <p style="color:rgba(255,255,255,0.55);font-size:14px;line-height:1.65;margin-bottom:18px">IFR regulations, approach procedures, holding, IFR weather, and lost comm scenarios explained the way examiners test them.</p>
+          <span class="portal-badge-locked" style="margin-bottom:12px;display:inline-block">Coming Soon</span>
+          <button class="btn btn--ghost" disabled style="opacity:0.5;cursor:not-allowed">Notify Me</button>
+        </div>
+        <div id="prepCommercial" style="display:none" class="portal-card">
+          <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Commercial Pilot Prep Pack</h3>
+          <p style="color:rgba(255,255,255,0.55);font-size:14px;line-height:1.65;margin-bottom:18px">Advanced aerodynamics, commercial regs, complex aircraft systems, and performance planning for the CAX checkride.</p>
+          <span class="portal-badge-locked" style="margin-bottom:12px;display:inline-block">Coming Soon</span>
+          <button class="btn btn--ghost" disabled style="opacity:0.5;cursor:not-allowed">Notify Me</button>
         </div>
       </section>
 
@@ -176,22 +187,26 @@
         <div class="portal-header">
           <div class="portal-header__eyebrow">DPE Questions Library</div>
           <h1>Real oral exam questions. Model answers.</h1>
-          <p>Practice the questions designated pilot examiners actually ask — organized by ACS area of operation. Tap a question to reveal a model answer.</p>
+          <p>All 72 questions from the Private Pilot Checkride Prep Pack — Model Answer, Common Student Mistakes, what the DPE is evaluating, the ACS Connection, and Real-World Application for each. Tap a question to reveal it, mark it studied, or star it for review.</p>
         </div>
 
         <div class="portal-search">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          <input type="text" id="dpeSearch" placeholder="Search questions (e.g. airspace, weather, stalls)…" />
+          <input type="text" id="dpeSearch" placeholder="Search all 72 questions and answers…" />
         </div>
 
         <div class="portal-tabs" id="dpeTabs">
           <button class="portal-tab active" data-cat="all">All Categories</button>
-          <button class="portal-tab" data-cat="regulations">Regulations</button>
-          <button class="portal-tab" data-cat="weather">Weather</button>
+          <button class="portal-tab" data-cat="favorites">★ Starred</button>
+          <button class="portal-tab" data-cat="eligibility">Eligibility &amp; Documents</button>
+          <button class="portal-tab" data-cat="airworthiness">Airworthiness</button>
+          <button class="portal-tab" data-cat="privileges">Privileges &amp; Limitations</button>
           <button class="portal-tab" data-cat="airspace">Airspace</button>
-          <button class="portal-tab" data-cat="aerodynamics">Aerodynamics &amp; Systems</button>
-          <button class="portal-tab" data-cat="navigation">Navigation &amp; Flight Planning</button>
-          <button class="portal-tab" data-cat="emergencies">Emergencies</button>
+          <button class="portal-tab" data-cat="weather">Weather</button>
+          <button class="portal-tab" data-cat="performance">Performance &amp; W&amp;B</button>
+          <button class="portal-tab" data-cat="aeromedical">Aeromedical Factors</button>
+          <button class="portal-tab" data-cat="crosscountry">Cross-Country Planning</button>
+          <button class="portal-tab" data-cat="emergency">Emergency Operations</button>
         </div>
 
         <div id="dpeLibrary"><!-- populated by JS --></div>
@@ -203,7 +218,7 @@
         <div class="portal-header">
           <div class="portal-header__eyebrow">Scenario Training Center</div>
           <h1>Think like a pilot in command.</h1>
-          <p>Real-world decision-making scenarios modeled after ACS Task Areas and common checkride discussion points. Expand a scenario to work through the briefing, key decision points, and debrief.</p>
+          <p>The Emergency Operations and Cross-Country Planning scenarios from the Checkride Prep Pack, presented as interactive cards. Reveal each one to see the model answer, common mistakes, and what the DPE is actually evaluating.</p>
         </div>
         <div class="portal-grid portal-grid--2" id="scenarioGrid"><!-- populated by JS --></div>
       </section>
