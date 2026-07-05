@@ -2,13 +2,14 @@
 
 **Status:** Phase 1 (Premium Content Security), the ground-school RLS
 hardening called out as Phase 1's top open risk (see
-`GROUND_SCHOOL_RLS_AUDIT.md`), Phase 2 (Billing & Account Consistency), and
-Phase 3 (Retention System) are executed and verified. Phases 4–7 planned
-and sequenced below, not yet built — each is a substantial standalone
-effort in its own right (a CMS, an analytics dashboard, attendance
-tooling), and building all of them in one uncommitted pass would mean
-shipping untested, unverified code against a live payment system. This
-document is the roadmap for the follow-up passes.
+`GROUND_SCHOOL_RLS_AUDIT.md`), Phase 2 (Billing & Account Consistency),
+Phase 3 (Retention System), and Phase 4 (Content Operations) are executed
+and verified. Phases 5–7 planned and sequenced below, not yet built — each
+is a substantial standalone effort in its own right (an analytics
+dashboard, attendance tooling), and building all of them in one
+uncommitted pass would mean shipping untested, unverified code against a
+live payment system. This document is the roadmap for the follow-up
+passes.
 
 ## How this plan was built
 
@@ -184,20 +185,41 @@ deploying the new one (to avoid double-sends), deploy
 `pg_net` — exact steps in `RETENTION_SYSTEM.md`). None of this could be
 verified end-to-end against the live project from this sandbox.
 
-## Phase 4 — Content Operations (foundation laid, UI not built)
+## Phase 4 — Content Operations ✅ Executed this pass
 
-Phase 1's migration already moves DPE questions/scenarios/quick-reference/
-lessons into real tables — that was the prerequisite for a CMS to even be
-possible (you can't build an admin editor over hardcoded JS). What's left:
-an admin UI (likely a new section in `portal.html`'s existing admin panel,
-or the React CRM) for create/edit/publish on `dpe_questions` and
-`dpe_categories`, matching the pattern already used for Ask Andrew/
-testimonial moderation. Ask Andrew and testimonial admin workflows **already
-exist and work** (`renderAdminAskInbox`, `renderAdminTestimonialInbox`) —
-the gap there is narrower than the original ask assumed: referrals have
-**no admin action UI at all** today (pure data write, no way to mark
-`signed_up`/`rewarded` short of a direct DB edit), which is the one real
-gap to close in this phase.
+**What shipped:** see `CONTENT_OPERATIONS.md` for the full design and test
+results. Summary:
+
+- `portal/supabase-portal-schema-v9.sql` — `dpe_categories`/`dpe_questions`
+  get real admin write access (create/edit/delete), replacing the
+  view-only policy Phase 1 deferred. Also adds the one genuinely missing
+  piece for referrals: an `"Admins can manage all referrals"` policy —
+  **found while building this that nobody, admin included, could actually
+  move a referral's status through the normal RLS-protected client before
+  this**, since the only existing policy scoped update access to the
+  referrer's own row (and the v5 lock trigger correctly stops the referrer
+  from self-approving it), with no policy granting an admin access to a
+  row that isn't theirs.
+- `site/portal.js` — a new "DPE Question Library (Content Management)"
+  card in the existing vanilla admin dashboard (same surface Ask Andrew/
+  testimonial moderation already live in): category selector with an
+  editable label/section-label/intro form, and a per-category question
+  list with add/edit/delete. `renderAdminReferralList` now shows a "Mark
+  Signed Up"/"Mark Rewarded" action button matching each referral's
+  current status.
+- **A second, unrelated bug found via testing the new write actions**:
+  the admin dashboard was loading its full data set **twice** on every
+  session (once eagerly on login, once again on visiting the section) —
+  harmless when the dashboard was read-only, but a real race once it
+  supports live writes (a stale second load could clobber an in-progress
+  edit). Fixed by removing the redundant eager call.
+- Verified: the v9 RLS changes against a real local Postgres instance
+  (admin CRUD on DPE content, student blocked, referrer still can't
+  self-approve, admin can move a referral through both transitions); the
+  UI against a mocked Supabase client via Playwright (category switching,
+  add/edit/delete all reflected correctly with no duplication after
+  fixing the double-load race, referral status actions advancing and
+  disappearing at the terminal state).
 
 ## Phase 5 — Analytics & Conversion Tracking (not started)
 

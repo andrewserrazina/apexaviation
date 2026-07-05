@@ -76,12 +76,15 @@ deploying the new function:** check the Supabase dashboard's Edge
 Functions list for anything resembling an inactivity nudge and disable it
 first, or members could get double-nudged by two independent jobs.
 
-### 7. Referrals have no admin workflow
-`portal_referrals.status` can only move from `pending` via direct
-database edit — there's no UI (in the vanilla portal admin panel or the
-React CRM) to mark a referral `signed_up` or `rewarded`. Ask Andrew and
-testimonials both already have working admin inboxes; referrals are the
-one gap in that pattern.
+### 7. Referrals have no admin workflow — **FIXED this pass**
+`portal_referrals.status` could only move from `pending` via direct
+database edit — there was no UI to mark a referral `signed_up` or
+`rewarded`, and (found while fixing this) **no RLS policy that would have
+let anyone, admin included, do it through the normal client even with a
+UI** — only the referrer's own-row policy existed, and the existing lock
+trigger correctly stops the referrer from self-approving it. Fixed via a
+new admin policy plus status-action buttons in the existing admin
+dashboard. See `CONTENT_OPERATIONS.md`.
 
 ---
 
@@ -169,6 +172,7 @@ hand-built mock of `window.apexSupabase`, not the production backend.
 - [ ] Run `portal/supabase-portal-schema-v6.sql` (ground-school RLS fix — see `GROUND_SCHOOL_RLS_AUDIT.md`)
 - [ ] Run `portal/supabase-portal-schema-v7.sql` (billing/pricing RLS + pricing RPC — Phase 2)
 - [ ] Run `portal/supabase-portal-schema-v8.sql` (retention system + profiles RLS fixes — Phase 3, see `RETENTION_SYSTEM.md`)
+- [ ] Run `portal/supabase-portal-schema-v9.sql` (DPE content CMS + referral admin RLS — Phase 4, see `CONTENT_OPERATIONS.md`)
 - [ ] Check the Supabase Edge Functions list for a legacy inactivity-nudge function before deploying the new one (Issue #6)
 - [ ] Deploy `send-lifecycle-emails` and schedule it (dashboard cron or `pg_cron`/`pg_net` — see `RETENTION_SYSTEM.md`)
 - [ ] Manually test the full signup → unlock → DPE library flow against the real, deployed site
@@ -176,7 +180,7 @@ hand-built mock of `window.apexSupabase`, not the production backend.
 
 **Should do soon after launch:**
 - [x] Build the server-side lifecycle-email reconciliation job (Issue #4) — see `RETENTION_SYSTEM.md`
-- [ ] Add admin UI for referral status (Issue #7)
+- [x] Add admin UI for referral status (Issue #7) — see `CONTENT_OPERATIONS.md`
 - [x] Reconcile `portal_email_log` to actually log all five (now seven) email types (Issue #5)
 
 **Can wait:**

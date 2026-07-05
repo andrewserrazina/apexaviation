@@ -1422,6 +1422,14 @@
     }).join('') + '</tbody></table>';
   }
 
+  // DPE content CMS state (Phase 4) — held in memory and patched locally
+  // after each save/delete rather than re-fetched from Supabase every
+  // time, same lightweight-update pattern already used for the Ask
+  // Andrew/testimonial/referral inboxes above.
+  var cmsCategories = [];
+  var cmsQuestions = [];
+  var cmsActiveCategory = null;
+
   function loadAdminDashboard() {
     var el = document.getElementById('adminDashboard');
     Promise.all([
@@ -1433,7 +1441,9 @@
       apexSupabase.from('portal_question_discussions').select('*').eq('status', 'open').order('created_at', { ascending: false }),
       apexSupabase.from('portal_testimonials').select('*').eq('status', 'pending').order('created_at', { ascending: false }),
       apexSupabase.from('portal_referrals').select('*').order('created_at', { ascending: false }).limit(20),
-      apexSupabase.from('profiles').select('id,full_name,email')
+      apexSupabase.from('profiles').select('id,full_name,email'),
+      apexSupabase.from('dpe_categories').select('*').order('sort_order'),
+      apexSupabase.from('dpe_questions').select('*').order('sort_order')
     ]).then(function (results) {
       var totalUsers = results[0].count || 0;
       var invoices = results[1].data || [];
@@ -1468,6 +1478,11 @@
       var recentReferrals = results[7].data || [];
       var profileMap = {};
       (results[8].data || []).forEach(function (p) { profileMap[p.id] = p; });
+      cmsCategories = results[9].data || [];
+      cmsQuestions = results[10].data || [];
+      if (!cmsActiveCategory || !cmsCategories.some(function (c) { return c.id === cmsActiveCategory; })) {
+        cmsActiveCategory = cmsCategories.length ? cmsCategories[0].id : null;
+      }
 
       el.innerHTML =
         '<div class="portal-admin-metrics">' +
@@ -1483,11 +1498,21 @@
         '<div class="portal-card" style="margin-top:20px"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">Total Study Time (all students)</h3><p style="color:var(--gold);font-size:24px;font-weight:800">' + Math.round(totalSeconds / 3600) + ' hours</p></div>' +
         '<div class="portal-card" style="margin-top:20px"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">Ask Andrew — Open Questions (' + openDiscussions.length + ')</h3><p style="color:rgba(255,255,255,0.4);font-size:12.5px;margin-bottom:14px">These are exactly the topics your students want content on — FAQs, reels, ground school material.</p><div id="adminAskInbox"></div></div>' +
         '<div class="portal-card" style="margin-top:20px"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:14px">Testimonials Awaiting Approval (' + pendingTestimonials.length + ')</h3><div id="adminTestimonialInbox"></div></div>' +
-        '<div class="portal-card" style="margin-top:20px"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:14px">Recent Referrals</h3><div id="adminReferralList"></div></div>';
+        '<div class="portal-card" style="margin-top:20px"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:14px">Recent Referrals</h3><div id="adminReferralList"></div></div>' +
+        '<div class="portal-card" style="margin-top:20px">' +
+          '<h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">DPE Question Library (Content Management)</h3>' +
+          '<p style="color:rgba(255,255,255,0.4);font-size:12.5px;margin-bottom:14px">Add, edit, or remove questions from the Checkride Prep question bank. Changes appear for members next time they load the portal.</p>' +
+          '<div id="cmsCategoryBar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center"></div>' +
+          '<div id="cmsCategoryInfo" style="margin-bottom:16px"></div>' +
+          '<div id="cmsQuestionList"></div>' +
+        '</div>';
 
       renderAdminAskInbox(openDiscussions, profileMap);
       renderAdminTestimonialInbox(pendingTestimonials, profileMap);
       renderAdminReferralList(recentReferrals, profileMap);
+      renderCmsCategoryBar();
+      renderCmsCategoryInfo();
+      renderCmsQuestionList();
     }).catch(function (e) {
       el.innerHTML = '<p style="color:#ff8b8b;font-size:14px">Could not load admin data: ' + e.message + '</p>';
     });
@@ -1544,19 +1569,235 @@
     });
   }
 
+  // Referral status transitions, admin-only. Previously portal_referrals
+  // had no admin write path at all -- "Users manage their own referrals"
+  // only ever let the referrer touch their own row, and the existing
+  // lock_referral_status trigger correctly stops them from self-approving
+  // it, but nothing granted an admin write access to a row that isn't
+  // theirs either. Fixed via the "Admins can manage all referrals" policy
+  // in supabase-portal-schema-v9.sql.
+  var REFERRAL_NEXT_STATUS = { pending: 'signed_up', signed_up: 'rewarded' };
+  var REFERRAL_NEXT_LABEL = { pending: 'Mark Signed Up', signed_up: 'Mark Rewarded' };
+
   function renderAdminReferralList(rows, profileMap) {
     var el = document.getElementById('adminReferralList');
     if (!rows.length) { el.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:13px">No referrals yet.</p>'; return; }
     el.innerHTML = rows.map(function (r) {
       var referrerName = (profileMap[r.referrer_id] && profileMap[r.referrer_id].full_name) || 'A student';
-      return '<div class="portal-referral-row"><span class="email">' + referrerName + ' → ' + r.referred_email + '</span><span class="status">' + r.status + '</span></div>';
+      var next = REFERRAL_NEXT_STATUS[r.status];
+      var actionBtn = next ? '<button class="btn btn--ghost" style="margin-left:10px;padding:4px 12px;font-size:11.5px" data-referral-advance="' + r.id + '" data-next-status="' + next + '">' + REFERRAL_NEXT_LABEL[r.status] + '</button>' : '';
+      return '<div class="portal-referral-row" data-referral-row="' + r.id + '"><span class="email">' + referrerName + ' → ' + r.referred_email + '</span><span style="display:flex;align-items:center"><span class="status">' + r.status + '</span>' + actionBtn + '</span></div>';
     }).join('');
+    el.querySelectorAll('[data-referral-advance]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.dataset.referralAdvance;
+        var nextStatus = btn.dataset.nextStatus;
+        btn.disabled = true;
+        apexSupabase.from('portal_referrals').update({ status: nextStatus }).eq('id', id).then(function (res) {
+          if (res.error) { toast('Could not update referral: ' + res.error.message); btn.disabled = false; return; }
+          var row = el.querySelector('[data-referral-row="' + id + '"]');
+          if (row) {
+            row.querySelector('.status').textContent = nextStatus;
+            var nextNext = REFERRAL_NEXT_STATUS[nextStatus];
+            var oldBtn = row.querySelector('[data-referral-advance]');
+            if (nextNext) {
+              oldBtn.dataset.nextStatus = nextNext;
+              oldBtn.textContent = REFERRAL_NEXT_LABEL[nextStatus];
+              oldBtn.disabled = false;
+            } else if (oldBtn) {
+              oldBtn.remove();
+            }
+          }
+          toast('Referral updated.');
+        });
+      });
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     DPE CONTENT MANAGEMENT (Phase 4) — create/edit/delete questions
+     within a category, and edit each category's own label/section
+     label/intro. dpe_questions/dpe_categories were view-only for
+     admins before supabase-portal-schema-v9.sql added write access;
+     this is that CMS. Creating brand-new categories is out of scope —
+     the 9 categories map to fixed ACS knowledge areas — only their
+     text fields are editable here.
+     ══════════════════════════════════════════════════════════════ */
+  function escapeAttr(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  }
+
+  function renderCmsCategoryBar() {
+    var el = document.getElementById('cmsCategoryBar');
+    if (!el) return;
+    el.innerHTML = cmsCategories.map(function (c) {
+      var active = c.id === cmsActiveCategory;
+      return '<button type="button" class="btn ' + (active ? 'btn--primary' : 'btn--ghost') + '" style="padding:6px 14px;font-size:12.5px" data-cms-category="' + c.id + '">' + c.label + '</button>';
+    }).join('');
+    el.querySelectorAll('[data-cms-category]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        cmsActiveCategory = btn.dataset.cmsCategory;
+        renderCmsCategoryBar();
+        renderCmsCategoryInfo();
+        renderCmsQuestionList();
+      });
+    });
+  }
+
+  function renderCmsCategoryInfo() {
+    var el = document.getElementById('cmsCategoryInfo');
+    if (!el) return;
+    var cat = cmsCategories.filter(function (c) { return c.id === cmsActiveCategory; })[0];
+    if (!cat) { el.innerHTML = ''; return; }
+    el.innerHTML =
+      '<div class="portal-admin-inbox-item">' +
+        '<div class="form-group" style="margin-bottom:8px"><label style="font-size:12px;color:rgba(255,255,255,0.5)">Label</label><input type="text" data-cms-cat-field="label" value="' + escapeAttr(cat.label) + '" /></div>' +
+        '<div class="form-group" style="margin-bottom:8px"><label style="font-size:12px;color:rgba(255,255,255,0.5)">Section Label</label><input type="text" data-cms-cat-field="section_label" value="' + escapeAttr(cat.section_label) + '" /></div>' +
+        '<div class="form-group" style="margin-bottom:8px"><label style="font-size:12px;color:rgba(255,255,255,0.5)">Intro</label><textarea rows="2" data-cms-cat-field="intro">' + escapeAttr(cat.intro) + '</textarea></div>' +
+        '<button type="button" class="btn btn--ghost" style="padding:6px 14px;font-size:12.5px" data-cms-cat-save>Save Category Info</button>' +
+      '</div>';
+    el.querySelector('[data-cms-cat-save]').addEventListener('click', function () {
+      var btn = el.querySelector('[data-cms-cat-save]');
+      var patch = {
+        label: el.querySelector('[data-cms-cat-field="label"]').value.trim(),
+        section_label: el.querySelector('[data-cms-cat-field="section_label"]').value.trim(),
+        intro: el.querySelector('[data-cms-cat-field="intro"]').value.trim()
+      };
+      btn.disabled = true;
+      apexSupabase.from('dpe_categories').update(patch).eq('id', cat.id).then(function (res) {
+        btn.disabled = false;
+        if (res.error) { toast('Could not save category: ' + res.error.message); return; }
+        Object.assign(cat, patch);
+        renderCmsCategoryBar();
+        toast('Category updated.');
+      });
+    });
+  }
+
+  function cmsQuestionFormHtml(q) {
+    return (
+      '<div class="form-group" style="margin-bottom:8px"><label style="font-size:12px;color:rgba(255,255,255,0.5)">Question</label><textarea rows="2" data-cms-q-field="question">' + escapeAttr(q.question) + '</textarea></div>' +
+      '<div class="form-group" style="margin-bottom:8px"><label style="font-size:12px;color:rgba(255,255,255,0.5)">Model Answer</label><textarea rows="3" data-cms-q-field="model_answer">' + escapeAttr(q.model_answer) + '</textarea></div>' +
+      '<div class="form-group" style="margin-bottom:8px"><label style="font-size:12px;color:rgba(255,255,255,0.5)">Common Mistakes</label><textarea rows="2" data-cms-q-field="common_mistakes">' + escapeAttr(q.common_mistakes) + '</textarea></div>' +
+      '<div class="form-group" style="margin-bottom:8px"><label style="font-size:12px;color:rgba(255,255,255,0.5)">What the DPE Is Evaluating</label><textarea rows="2" data-cms-q-field="dpe_evaluating">' + escapeAttr(q.dpe_evaluating) + '</textarea></div>' +
+      '<div class="form-group" style="margin-bottom:8px"><label style="font-size:12px;color:rgba(255,255,255,0.5)">ACS Reference</label><input type="text" data-cms-q-field="acs_reference" value="' + escapeAttr(q.acs_reference) + '" /></div>' +
+      '<div class="form-group" style="margin-bottom:8px"><label style="font-size:12px;color:rgba(255,255,255,0.5)">Real-World Application</label><textarea rows="2" data-cms-q-field="real_world_application">' + escapeAttr(q.real_world_application) + '</textarea></div>' +
+      '<div class="form-group" style="margin-bottom:8px;display:flex;gap:16px;align-items:center">' +
+        '<label style="font-size:12px;color:rgba(255,255,255,0.6);display:flex;align-items:center;gap:6px"><input type="checkbox" data-cms-q-field="is_scenario"' + (q.is_scenario ? ' checked' : '') + ' /> Include in Scenario Training</label>' +
+        '<label style="font-size:12px;color:rgba(255,255,255,0.5)">Sort Order <input type="number" data-cms-q-field="sort_order" value="' + (q.sort_order || 0) + '" style="width:64px;margin-left:6px" /></label>' +
+      '</div>'
+    );
+  }
+
+  function readCmsQuestionForm(container) {
+    return {
+      question: container.querySelector('[data-cms-q-field="question"]').value.trim(),
+      model_answer: container.querySelector('[data-cms-q-field="model_answer"]').value.trim(),
+      common_mistakes: container.querySelector('[data-cms-q-field="common_mistakes"]').value.trim() || null,
+      dpe_evaluating: container.querySelector('[data-cms-q-field="dpe_evaluating"]').value.trim() || null,
+      acs_reference: container.querySelector('[data-cms-q-field="acs_reference"]').value.trim() || null,
+      real_world_application: container.querySelector('[data-cms-q-field="real_world_application"]').value.trim() || null,
+      is_scenario: container.querySelector('[data-cms-q-field="is_scenario"]').checked,
+      sort_order: parseInt(container.querySelector('[data-cms-q-field="sort_order"]').value, 10) || 0
+    };
+  }
+
+  function renderCmsQuestionList() {
+    var el = document.getElementById('cmsQuestionList');
+    if (!el) return;
+    var rows = cmsQuestions.filter(function (q) { return q.category === cmsActiveCategory; })
+      .sort(function (a, b) { return (a.sort_order || 0) - (b.sort_order || 0); });
+
+    el.innerHTML =
+      '<button type="button" class="btn btn--ghost" style="padding:6px 14px;font-size:12.5px;margin-bottom:12px" id="cmsAddQuestionBtn">+ Add Question</button>' +
+      '<div id="cmsQuestionRows"></div>';
+
+    var rowsEl = document.getElementById('cmsQuestionRows');
+    if (!rows.length) rowsEl.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:13px">No questions in this category yet.</p>';
+    else rowsEl.innerHTML = rows.map(function (q) {
+      return '<div class="portal-admin-inbox-item" data-cms-question="' + q.id + '">' +
+        '<div class="meta">' + (q.is_scenario ? '🎬 Scenario · ' : '') + 'Sort ' + (q.sort_order || 0) + '</div>' +
+        '<div class="msg">' + escapeAttr(q.question) + '</div>' +
+        '<button type="button" class="btn btn--ghost" style="padding:4px 12px;font-size:11.5px" data-cms-q-edit>Edit</button> ' +
+        '<button type="button" class="btn btn--missed" style="padding:4px 12px;font-size:11.5px" data-cms-q-delete>Delete</button>' +
+      '</div>';
+    }).join('');
+
+    rowsEl.querySelectorAll('[data-cms-question]').forEach(function (item) {
+      var id = item.dataset.cmsQuestion;
+      item.querySelector('[data-cms-q-edit]').addEventListener('click', function () {
+        var q = cmsQuestions.filter(function (x) { return x.id === id; })[0];
+        if (!q) return;
+        item.innerHTML = cmsQuestionFormHtml(q) +
+          '<button type="button" class="btn btn--primary" style="padding:6px 14px;font-size:12.5px" data-cms-q-save>Save</button> ' +
+          '<button type="button" class="btn btn--ghost" style="padding:6px 14px;font-size:12.5px" data-cms-q-cancel>Cancel</button>';
+        item.querySelector('[data-cms-q-cancel]').addEventListener('click', renderCmsQuestionList);
+        item.querySelector('[data-cms-q-save]').addEventListener('click', function () {
+          var saveBtn = item.querySelector('[data-cms-q-save]');
+          var patch = readCmsQuestionForm(item);
+          saveBtn.disabled = true;
+          apexSupabase.from('dpe_questions').update(patch).eq('id', id).then(function (res) {
+            saveBtn.disabled = false;
+            if (res.error) { toast('Could not save question: ' + res.error.message); return; }
+            Object.assign(q, patch);
+            renderCmsQuestionList();
+            toast('Question saved.');
+          });
+        });
+      });
+      item.querySelector('[data-cms-q-delete]').addEventListener('click', function () {
+        if (!window.confirm('Delete this question? This cannot be undone.')) return;
+        apexSupabase.from('dpe_questions').delete().eq('id', id).then(function (res) {
+          if (res.error) { toast('Could not delete question: ' + res.error.message); return; }
+          cmsQuestions = cmsQuestions.filter(function (x) { return x.id !== id; });
+          renderCmsQuestionList();
+          toast('Question deleted.');
+        });
+      });
+    });
+
+    var addBtn = document.getElementById('cmsAddQuestionBtn');
+    addBtn.addEventListener('click', function () {
+      if (document.getElementById('cmsNewQuestionForm')) return;
+      var blank = { question: '', model_answer: '', common_mistakes: '', dpe_evaluating: '', acs_reference: '', real_world_application: '', is_scenario: false, sort_order: rows.length };
+      var form = document.createElement('div');
+      form.className = 'portal-admin-inbox-item';
+      form.id = 'cmsNewQuestionForm';
+      form.innerHTML = cmsQuestionFormHtml(blank) +
+        '<button type="button" class="btn btn--primary" style="padding:6px 14px;font-size:12.5px" data-cms-q-create>Add Question</button> ' +
+        '<button type="button" class="btn btn--ghost" style="padding:6px 14px;font-size:12.5px" data-cms-q-cancel>Cancel</button>';
+      rowsEl.insertBefore(form, rowsEl.firstChild);
+      form.querySelector('[data-cms-q-cancel]').addEventListener('click', function () { form.remove(); });
+      form.querySelector('[data-cms-q-create]').addEventListener('click', function () {
+        var createBtn = form.querySelector('[data-cms-q-create]');
+        var fields = readCmsQuestionForm(form);
+        if (!fields.question || !fields.model_answer) { toast('Question and model answer are required.'); return; }
+        var newRow = Object.assign({ id: cmsActiveCategory + '-custom-' + Date.now(), category: cmsActiveCategory }, fields);
+        createBtn.disabled = true;
+        apexSupabase.from('dpe_questions').insert(newRow).then(function (res) {
+          createBtn.disabled = false;
+          if (res.error) { toast('Could not add question: ' + res.error.message); return; }
+          cmsQuestions.push(newRow);
+          renderCmsQuestionList();
+          toast('Question added.');
+        });
+      });
+    });
   }
 
   function renderAdminIfApplicable() {
     if (!member || member.role !== 'admin') return;
+    // Just unhides the nav item -- showSection('admin') is what actually
+    // loads the dashboard (same lazy-load-on-visit pattern loadGroundSchool()
+    // uses). This used to also call loadAdminDashboard() here directly,
+    // meaning every admin session fired the same ~11-query Promise.all
+    // twice on login (once here, again the moment they clicked into the
+    // section) -- wasteful on its own, and a real correctness risk now
+    // that Phase 4 added live writes (CMS edits, referral status changes)
+    // to this dashboard: a stale second load resolving after a write was
+    // already in flight could silently clobber it or duplicate rows in
+    // the rendered list. Found via testing the new CMS, not by inspection.
     document.getElementById('adminNavItem').hidden = false;
-    loadAdminDashboard();
   }
 
   /* ══════════════════════════════════════════════════════════════
