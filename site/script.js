@@ -45,13 +45,13 @@ async function submitToFormspree(form, successEl) {
       successEl.classList.add('visible');
     } else {
       const data = await res.json();
-      const msg = data.errors ? data.errors.map(e => e.message).join(', ') : 'Something went wrong. Please email info@apexaviation.com directly.';
+      const msg = data.errors ? data.errors.map(e => e.message).join(', ') : 'Something went wrong. Please email info@apexaviationtx.com directly.';
       alert(msg);
       btn.disabled = false;
       btn.textContent = originalText;
     }
   } catch {
-    alert('Network error. Please email info@apexaviation.com directly.');
+    alert('Network error. Please email info@apexaviationtx.com directly.');
     btn.disabled = false;
     btn.textContent = originalText;
   }
