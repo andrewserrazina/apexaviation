@@ -30,6 +30,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 // create-checkout-session/index.ts. Same crash, same fix, same function
 // family (both call the Stripe SDK the same way).
 import Stripe from 'https://esm.sh/stripe@14?target=denonext'
+import { emailTemplate as template } from '../_shared/emailTemplate.ts'
 
 const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY')!
 const STRIPE_WEBHOOK_SECRET = Deno.env.get('STRIPE_WEBHOOK_SECRET')!
@@ -41,21 +42,6 @@ const stripe = new Stripe(STRIPE_SECRET_KEY, {
   httpClient: Stripe.createFetchHttpClient(),
 })
 const cryptoProvider = Stripe.createSubtleCryptoProvider()
-
-function template(content: string) {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:32px 16px;background:#06080f;font-family:'Helvetica Neue',Arial,sans-serif;color:#e0e0e0;">
-  <div style="max-width:560px;margin:0 auto;">
-    <div style="margin-bottom:28px;">
-      <span style="font-size:22px;font-weight:900;letter-spacing:3px;color:#fff;">APEX</span>
-      <span style="font-size:22px;font-style:italic;color:#F4B400;font-family:Georgia,serif;"> Advantage</span>
-    </div>
-    ${content}
-    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:32px 0 16px;">
-    <p style="font-size:12px;color:rgba(255,255,255,0.3);margin:0;">Apex Aviation · San Marcos, TX (KHYI)</p>
-  </div>
-</body></html>`
-}
 
 async function sendEmail(supabase: any, to: string, subject: string, html: string) {
   await supabase.functions.invoke('send-email', { body: { to, subject, html } })
