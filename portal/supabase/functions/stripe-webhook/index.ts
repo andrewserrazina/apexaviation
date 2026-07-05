@@ -1,16 +1,21 @@
-// Stripe webhook handler for Apex Advantage Portal Access purchases.
+// Stripe webhook handler for the Apex Advantage portal.
 //
-// On checkout.session.completed:
-//   1. Idempotency check (stripe_webhook_events) — Stripe retries webhooks,
-//      this makes sure a retry never double-charges/double-creates.
-//   2. If no profile exists for the payer's email, create a real Supabase
-//      Auth user (portal account) and email them a secure link to set
-//      their own password.
-//   3. If a profile already exists (returning student topping up), just
-//      send a payment-received receipt — no duplicate account.
-//   4. Record the purchase (portal_access_purchases + invoices, the
-//      latter so it shows up in the existing Billing.jsx / Admin Analytics
-//      views alongside everything else).
+// Portal signup itself is free (see create-free-account), so this
+// function no longer creates accounts. On checkout.session.completed it
+// branches on `metadata.purpose`, set by create-checkout-session:
+//
+//   'unlock-checkride-prep' — flips profiles.checkride_prep_unlocked to
+//     true for the signed-in member who paid, logs the purchase
+//     (portal_access_purchases + invoices), and emails a confirmation.
+//
+//   'ground-school-registration' — creates the ground_registrations row
+//     (waitlisted if the session had already filled up by the time
+//     payment completed), linking it to a profile if one exists for that
+//     email, and emails a confirmation.
+//
+// Idempotency: every event is recorded in stripe_webhook_events first;
+// a unique-constraint failure there means Stripe is retrying an event
+// we already processed, so we skip straight to returning 200.
 //
 // SETUP (Supabase Dashboard → Edge Functions → stripe-webhook → Secrets):
 //   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
@@ -53,6 +58,111 @@ async function sendEmail(supabase: any, to: string, subject: string, html: strin
   await supabase.functions.invoke('send-email', { body: { to, subject, html } })
 }
 
+async function handleUnlockCheckridePrep(supabase: any, session: Stripe.Checkout.Session) {
+  const profileId = session.metadata?.profile_id as string
+  const tier = (session.metadata?.tier as string) || 'standard'
+  const amountCents = session.amount_total ?? 0
+  const email = session.customer_details?.email || session.customer_email
+
+  if (!profileId) throw new Error('No profile_id on checkout session metadata')
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', profileId)
+    .maybeSingle()
+  const fullName = profile?.full_name || 'there'
+
+  await supabase.from('profiles').update({ checkride_prep_unlocked: true }).eq('id', profileId)
+
+  await supabase.from('portal_access_purchases').insert({
+    profile_id: profileId,
+    email,
+    full_name: fullName,
+    stripe_session_id: session.id,
+    amount_cents: amountCents,
+    tier,
+  })
+
+  await supabase.from('invoices').insert({
+    student_id: profileId,
+    description: 'Apex Advantage Checkride Prep Unlock' + (tier === 'founding' ? ' (Founding Pilot Pricing)' : ''),
+    amount_cents: amountCents,
+    status: 'paid',
+  })
+
+  if (email) {
+    await sendEmail(supabase, email, "You're unlocked — Apex Advantage Checkride Prep",
+      template(`
+        <h2 style="color:#F4B400;margin:0 0 4px;">You're in, ${fullName.split(' ')[0]}!</h2>
+        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your payment went through and the full Checkride Prep System is unlocked — DPE question library, scenario training, Checkride Mode, progress tracking, and everything else in the sidebar.</p>
+        <a href="https://apexaviationtx.com/portal.html#checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Start Studying →</a>
+      `))
+  }
+}
+
+async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Checkout.Session) {
+  const sessionId = session.metadata?.session_id as string
+  const fullName = (session.metadata?.full_name as string) || 'Student'
+  const email = (session.metadata?.email as string) || session.customer_details?.email || session.customer_email
+  const amountCents = session.amount_total ?? 0
+
+  if (!sessionId) throw new Error('No session_id on checkout session metadata')
+  if (!email) throw new Error('No email on checkout session')
+
+  const { data: groundSession } = await supabase
+    .from('ground_sessions')
+    .select('title, scheduled_at, max_students')
+    .eq('id', sessionId)
+    .maybeSingle()
+
+  const { count: confirmedCount } = await supabase
+    .from('ground_registrations')
+    .select('id', { count: 'exact', head: true })
+    .eq('session_id', sessionId)
+    .eq('is_waitlisted', false)
+
+  const isWaitlisted = !!groundSession && (confirmedCount ?? 0) >= groundSession.max_students
+
+  const { data: matchingProfile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle()
+
+  await supabase.from('ground_registrations').insert({
+    session_id: sessionId,
+    full_name: fullName,
+    email,
+    is_waitlisted: isWaitlisted,
+    profile_id: matchingProfile?.id ?? null,
+    stripe_session_id: session.id,
+    amount_cents: amountCents,
+    payment_status: 'paid',
+  })
+
+  const when = groundSession
+    ? new Date(groundSession.scheduled_at).toLocaleString('en-US', {
+        weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit',
+      })
+    : ''
+  const title = groundSession?.title || 'Ground School'
+
+  if (isWaitlisted) {
+    await sendEmail(supabase, email, `Waitlisted — ${title}`,
+      template(`
+        <h2 style="color:#F4B400;margin:0 0 4px;">You're on the waitlist</h2>
+        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">${title} on ${when} filled up right as your payment came through. You're first on the waitlist — we'll email you the moment a spot opens, and refund you in full if one doesn't.</p>
+      `))
+  } else {
+    await sendEmail(supabase, email, `You're registered — ${title}`,
+      template(`
+        <h2 style="color:#F4B400;margin:0 0 4px;">You're confirmed, ${fullName.split(' ')[0]}!</h2>
+        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">You're registered for <strong style="color:#fff">${title}</strong> on ${when}. See you there.</p>
+      `))
+  }
+}
+
 serve(async (req) => {
   const signature = req.headers.get('Stripe-Signature')
   const body = await req.text()
@@ -81,69 +191,14 @@ serve(async (req) => {
 
   try {
     const session = event.data.object as Stripe.Checkout.Session
-    const email = session.customer_details?.email || session.customer_email
-    const fullName = (session.metadata?.full_name as string) || 'Apex Advantage Student'
-    const tier = (session.metadata?.tier as string) || 'standard'
-    const amountCents = session.amount_total ?? 0
+    const purpose = session.metadata?.purpose
 
-    if (!email) throw new Error('No email on checkout session')
-
-    const { data: existingProfile } = await supabase
-      .from('profiles')
-      .select('id, full_name')
-      .eq('email', email)
-      .maybeSingle()
-
-    let profileId = existingProfile?.id
-
-    if (!existingProfile) {
-      const { data: created, error: createErr } = await supabase.auth.admin.createUser({
-        email,
-        email_confirm: true,
-        password: crypto.randomUUID(),
-        user_metadata: { full_name: fullName },
-      })
-      if (createErr) throw createErr
-      profileId = created.user.id
-
-      const { data: linkData } = await supabase.auth.admin.generateLink({
-        type: 'recovery',
-        email,
-      })
-      const actionLink = linkData?.properties?.action_link
-
-      await sendEmail(supabase, email, 'Welcome to Apex Advantage — set your password',
-        template(`
-          <h2 style="color:#F4B400;margin:0 0 4px;">Welcome to Apex Advantage, ${fullName.split(' ')[0]}!</h2>
-          <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your payment went through and your member portal account is ready. Set your password to get in:</p>
-          <a href="${actionLink}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Set Your Password →</a>
-          <p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">Once that's done, sign in any time at apexaviationtx.com/portal-login.html.</p>
-        `))
+    if (purpose === 'unlock-checkride-prep') {
+      await handleUnlockCheckridePrep(supabase, session)
+    } else if (purpose === 'ground-school-registration') {
+      await handleGroundSchoolRegistration(supabase, session)
     } else {
-      await sendEmail(supabase, email, 'Payment received — Apex Advantage',
-        template(`
-          <h2 style="color:#F4B400;margin:0 0 4px;">Payment received. Thank you!</h2>
-          <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">We've recorded your $${(amountCents / 100).toFixed(2)} payment for Apex Advantage. Your portal account is unchanged — sign in any time.</p>
-          <a href="https://apexaviationtx.com/portal-login.html" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Go to the Portal →</a>
-        `))
-    }
-
-    await supabase.from('portal_access_purchases').insert({
-      profile_id: profileId,
-      email,
-      full_name: fullName,
-      stripe_session_id: session.id,
-      amount_cents: amountCents,
-      tier,
-    })
-
-    if (profileId) {
-      await supabase.from('invoices').insert({
-        student_id: profileId,
-        description: 'Apex Advantage Portal Access' + (tier === 'founding' ? ' (Founding Pilot Pricing)' : ''),
-        amount_cents: amountCents,
-        status: 'paid',
-      })
+      throw new Error(`Unknown checkout purpose: ${purpose}`)
     }
 
     return new Response(JSON.stringify({ received: true }), { status: 200 })

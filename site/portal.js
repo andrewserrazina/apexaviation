@@ -3,9 +3,11 @@
 
   /* ── Auth guard — real Supabase session + profile ────────────── */
   var member = null;
+  var accessToken = null;
   var authReady = apexSupabase.auth.getSession().then(function (res) {
     var session = res.data.session;
     if (!session) { window.location.href = 'portal-login.html'; return Promise.reject('no-session'); }
+    accessToken = session.access_token;
     return apexSupabase.from('profiles').select('*').eq('id', session.user.id).single().then(function (profRes) {
       var profile = profRes.data;
       member = {
@@ -14,9 +16,11 @@
         email: (profile && profile.email) || session.user.email,
         role: profile && profile.role,
         certificateStatus: (profile && profile.certificate_status) || 'None',
-        memberSince: profile && profile.created_at
+        memberSince: profile && profile.created_at,
+        checkridePrepUnlocked: !!(profile && profile.checkride_prep_unlocked)
       };
       populateMember();
+      applyUnlockState();
       return initPortalData();
     });
   }).catch(function (e) { if (e !== 'no-session') console.error(e); });
@@ -66,8 +70,15 @@
   var sidebar = document.getElementById('portalSidebar');
   var overlay = document.getElementById('sidebarOverlay');
 
+  var GATED_SECTIONS = ['checkride-prep', 'dpe-library', 'scenarios', 'progress', 'vault'];
+
   function showSection(id) {
     if (!document.getElementById('section-' + id)) id = 'dashboard';
+    if (member && !member.checkridePrepUnlocked && GATED_SECTIONS.indexOf(id) !== -1) {
+      closeSidebar();
+      openUnlockModal();
+      return;
+    }
     sections.forEach(function (s) { s.classList.toggle('active', s.id === 'section-' + id); });
     navItems.forEach(function (b) { b.classList.toggle('active', b.dataset.section === id); });
     window.scrollTo(0, 0);
@@ -76,6 +87,7 @@
     if (!member) return;
     if (id === 'admin' && member.role === 'admin') loadAdminDashboard();
     if (id === 'success-wall') renderSuccessWall();
+    if (id === 'ground-school') loadGroundSchool();
   }
   window.apexShowSection = showSection;
 
@@ -107,6 +119,182 @@
   document.getElementById('signOutBtn').addEventListener('click', signOut);
   var signOutBtn2 = document.getElementById('signOutBtn2');
   if (signOutBtn2) signOutBtn2.addEventListener('click', signOut);
+
+  /* ── Unlock state: nav lock badges + blurred dashboard widgets ─ */
+  function applyUnlockState() {
+    var unlocked = !!(member && member.checkridePrepUnlocked);
+    document.querySelectorAll('.portal-nav__item[data-gated] [data-lock-icon]').forEach(function (el) {
+      el.style.display = unlocked ? 'none' : '';
+    });
+    document.querySelectorAll('[data-locked-widget]').forEach(function (card) {
+      var overlay = card.querySelector('.portal-locked-widget__overlay');
+      var content = card.querySelector('.portal-locked-widget__content');
+      if (overlay) overlay.style.display = unlocked ? 'none' : 'flex';
+      if (content) {
+        content.style.filter = unlocked ? 'none' : '';
+        content.style.pointerEvents = unlocked ? 'auto' : 'none';
+      }
+    });
+  }
+
+  document.querySelectorAll('[data-unlock-trigger]').forEach(function (el) {
+    el.addEventListener('click', function (e) {
+      e.stopPropagation();
+      openUnlockModal();
+    });
+  });
+
+  /* ── Unlock Checkride Prep modal ────────────────────────────── */
+  var unlockModalOverlay = document.getElementById('unlockModalOverlay');
+  var unlockModalCta = document.getElementById('unlockModalCta');
+  var unlockModalError = document.getElementById('unlockModalError');
+
+  function openUnlockModal() {
+    unlockModalError.classList.remove('show');
+    unlockModalOverlay.classList.add('show');
+  }
+  function closeUnlockModal() { unlockModalOverlay.classList.remove('show'); }
+
+  document.getElementById('unlockModalClose').addEventListener('click', closeUnlockModal);
+  unlockModalOverlay.addEventListener('click', function (e) { if (e.target === unlockModalOverlay) closeUnlockModal(); });
+
+  unlockModalCta.addEventListener('click', function () {
+    unlockModalError.classList.remove('show');
+    unlockModalCta.disabled = true;
+    unlockModalCta.textContent = 'Redirecting to secure checkout…';
+
+    apexSupabase.functions.invoke('create-checkout-session', {
+      body: { purpose: 'unlock-checkride-prep', origin: window.location.origin },
+      headers: { Authorization: 'Bearer ' + accessToken }
+    }).then(function (res) {
+      if (res.error || !res.data || !res.data.url) {
+        unlockModalCta.disabled = false;
+        unlockModalCta.textContent = 'Unlock Now';
+        unlockModalError.textContent = (res.error && res.error.message) || (res.data && res.data.error) || 'Could not start checkout. Please try again.';
+        unlockModalError.classList.add('show');
+        return;
+      }
+      window.location.href = res.data.url;
+    }).catch(function () {
+      unlockModalCta.disabled = false;
+      unlockModalCta.textContent = 'Unlock Now';
+      unlockModalError.textContent = 'Could not start checkout. Please try again.';
+      unlockModalError.classList.add('show');
+    });
+  });
+
+  /* ── Ground School Scheduling ───────────────────────────────── */
+  var groundSchoolLoaded = false;
+  var activeGroundSession = null;
+
+  function fmtSessionDate(iso) {
+    return new Date(iso).toLocaleString('en-US', {
+      weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+    });
+  }
+
+  function loadGroundSchool() {
+    if (groundSchoolLoaded) return;
+    groundSchoolLoaded = true;
+    var listEl = document.getElementById('groundSchoolList');
+    var emptyEl = document.getElementById('groundSchoolEmpty');
+
+    apexSupabase.from('ground_sessions')
+      .select('*, ground_registrations(id, is_waitlisted)')
+      .gte('scheduled_at', new Date().toISOString())
+      .order('scheduled_at')
+      .then(function (res) {
+        var sessionsList = res.data || [];
+        if (!sessionsList.length) {
+          listEl.style.display = 'none';
+          emptyEl.style.display = 'block';
+          return;
+        }
+        listEl.innerHTML = '';
+        listEl.className = 'portal-grid portal-grid--2';
+        sessionsList.forEach(function (s) {
+          var confirmed = (s.ground_registrations || []).filter(function (r) { return !r.is_waitlisted; }).length;
+          var spotsLeft = s.max_students - confirmed;
+          var full = spotsLeft <= 0;
+          var card = document.createElement('div');
+          card.className = 'portal-card';
+          card.innerHTML =
+            '<div class="portal-header__eyebrow" style="margin-bottom:8px">' + (s.category || 'General').toUpperCase() + '</div>' +
+            '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">' + s.title + '</h3>' +
+            '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:4px">' + fmtSessionDate(s.scheduled_at) + '</p>' +
+            '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-bottom:16px">' + (full ? 'Full — join the waitlist' : spotsLeft + ' spot' + (spotsLeft === 1 ? '' : 's') + ' left') + '</p>' +
+            '<button class="btn btn--primary" data-register style="width:100%">' + (full ? 'Join Waitlist — $25' : 'Register — $25') + '</button>';
+          card.querySelector('[data-register]').addEventListener('click', function () { openGroundSchoolModal(s); });
+          listEl.appendChild(card);
+        });
+      });
+  }
+
+  var groundSchoolModalOverlay = document.getElementById('groundSchoolModalOverlay');
+  var groundSchoolModalTitle = document.getElementById('groundSchoolModalTitle');
+  var groundSchoolModalWhen = document.getElementById('groundSchoolModalWhen');
+  var groundSchoolModalCta = document.getElementById('groundSchoolModalCta');
+  var groundSchoolModalError = document.getElementById('groundSchoolModalError');
+
+  function openGroundSchoolModal(s) {
+    activeGroundSession = s;
+    groundSchoolModalTitle.textContent = s.title;
+    groundSchoolModalWhen.textContent = fmtSessionDate(s.scheduled_at);
+    groundSchoolModalError.classList.remove('show');
+    groundSchoolModalOverlay.classList.add('show');
+  }
+  function closeGroundSchoolModal() { groundSchoolModalOverlay.classList.remove('show'); }
+
+  document.getElementById('groundSchoolModalClose').addEventListener('click', closeGroundSchoolModal);
+  groundSchoolModalOverlay.addEventListener('click', function (e) { if (e.target === groundSchoolModalOverlay) closeGroundSchoolModal(); });
+
+  groundSchoolModalCta.addEventListener('click', function () {
+    if (!activeGroundSession || !member) return;
+    groundSchoolModalError.classList.remove('show');
+    groundSchoolModalCta.disabled = true;
+    groundSchoolModalCta.textContent = 'Redirecting to secure checkout…';
+
+    apexSupabase.functions.invoke('create-checkout-session', {
+      body: {
+        purpose: 'ground-school-registration',
+        sessionId: activeGroundSession.id,
+        name: member.name,
+        email: member.email,
+        origin: window.location.origin
+      }
+    }).then(function (res) {
+      if (res.error || !res.data || !res.data.url) {
+        groundSchoolModalCta.disabled = false;
+        groundSchoolModalCta.textContent = 'Pay & Register';
+        groundSchoolModalError.textContent = (res.error && res.error.message) || (res.data && res.data.error) || 'Could not start checkout. Please try again.';
+        groundSchoolModalError.classList.add('show');
+        return;
+      }
+      window.location.href = res.data.url;
+    }).catch(function () {
+      groundSchoolModalCta.disabled = false;
+      groundSchoolModalCta.textContent = 'Pay & Register';
+      groundSchoolModalError.textContent = 'Could not start checkout. Please try again.';
+      groundSchoolModalError.classList.add('show');
+    });
+  });
+
+  /* ── Post-Stripe-redirect toasts ────────────────────────────── */
+  var urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('unlocked') === '1') {
+    authReady.then(function () {
+      apexSupabase.from('profiles').select('checkride_prep_unlocked').eq('id', member.id).single().then(function (res) {
+        if (res.data && res.data.checkride_prep_unlocked) {
+          member.checkridePrepUnlocked = true;
+          applyUnlockState();
+          toast('Unlocked! Welcome to the Checkride Prep System.');
+        }
+      });
+    });
+  }
+  if (urlParams.get('registered') === '1') {
+    toast('You\'re registered for ground school!');
+  }
 
   /* ── Account form ───────────────────────────────────────────── */
   document.getElementById('accountForm').addEventListener('submit', function (e) {
