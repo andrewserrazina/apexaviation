@@ -21,15 +21,17 @@ to DB tables, RLS-locked) + `get-premium-content` Edge Function (403s
 unpaid callers, never returns partial data). See
 `IMPLEMENTATION_PLAN.md` Phase 1 and `DATABASE_CHANGES.md` for full detail.
 
-### 2. `ground_sessions`/`ground_registrations` RLS state is unknown — **NOT FIXED, needs manual check**
+### 2. `ground_sessions`/`ground_registrations` RLS state is unknown — **FIXED in a follow-up pass**
 These tables have no `CREATE TABLE` anywhere in the repo (created directly
 in the Supabase dashboard) and are reachable from two public,
 unauthenticated routes while holding PII and, since the freemium rework,
-payment data (`stripe_session_id`, `amount_cents`, `payment_status`).
-**Action required before launch:** check `pg_policies` for these two
-tables in the Supabase dashboard and apply the correct policy given
-whatever the current state actually is — see the exact steps in
-`DATABASE_CHANGES.md`. This is the single highest-priority open item.
+payment data (`stripe_session_id`, `amount_cents`, `payment_status`). Live
+state was pulled directly from the Supabase dashboard (not guessed at) and
+every policy on `ground_registrations` turned out to use `using(true)`/
+`with_check(true)` — no real protection at all. Fixed via
+`portal/supabase-portal-schema-v6.sql` plus three new token/registration
+RPCs, verified against a real local Postgres instance. Full before/after,
+policies, and test results in `GROUND_SCHOOL_RLS_AUDIT.md`.
 
 ### 3. Three RLS policies allowed self-moderation — **FIXED this pass**
 `portal_referrals`, `portal_testimonials`, `portal_question_discussions`
@@ -86,12 +88,16 @@ After a ground school session, nothing automatically sends a replay link,
 related resources, or a premium-portal CTA. This is genuinely unbuilt, not
 a bug — flagged here as a real revenue-adjacent gap (Phase 6).
 
-### 10. Account page pricing/status copy hasn't had a full audit pass
+### 10. Account page pricing/status copy hasn't had a full audit pass — **FIXED this pass (Phase 2)**
 The main marketing funnel pages (`checkride-prep.html`, `apex-advantage.html`)
-were updated for the free-signup model in the prior session pass, but a
-dedicated sweep of every string inside `portal.html`/`portal.js` itself
-(Account Management section specifically) for outdated "$25/session"-style
-copy has not been done as its own task.
+were updated for the free-signup model in the prior session pass. The
+Account Management section itself had two real bugs beyond stale copy: the
+Membership card hardcoded `"Apex Advantage — Founding Member"` for every
+member regardless of what they'd actually bought, and the "$29 · Tap to
+unlock" labels/unlock modal price were static HTML that never reflected
+whether the 25 founding seats were still available — a member could see
+"$29" and get charged $49 at checkout. Both now reflect real, live
+per-member/per-tier state — see `IMPLEMENTATION_PLAN.md` Phase 2.
 
 ---
 
@@ -139,8 +145,6 @@ hand-built mock of `window.apexSupabase`, not the production backend.
 - Actual testimonial approval → Success Wall display end-to-end
 - Whether the 7-day inactivity nudge function exists and runs at all (see
   Critical/High Issue #6)
-- Current live RLS state on `ground_sessions`/`ground_registrations` (see
-  Critical Issue #2)
 - Admin analytics dashboard against real, non-trivial data volume
 
 ---
@@ -150,7 +154,8 @@ hand-built mock of `window.apexSupabase`, not the production backend.
 **Must do before launch:**
 - [ ] Run `portal/supabase-portal-schema-v5.sql` in the Supabase SQL editor
 - [ ] Deploy `get-premium-content` Edge Function (new)
-- [ ] Check and fix RLS on `ground_sessions`/`ground_registrations` (Critical Issue #2)
+- [ ] Run `portal/supabase-portal-schema-v6.sql` (ground-school RLS fix — see `GROUND_SCHOOL_RLS_AUDIT.md`)
+- [ ] Run `portal/supabase-portal-schema-v7.sql` (billing/pricing RLS + pricing RPC — Phase 2)
 - [ ] Confirm the 7-day inactivity nudge function actually exists and runs (Critical/High Issue #6)
 - [ ] Manually test the full signup → unlock → DPE library flow against the real, deployed site
 - [ ] Manually test a real ground school registration + Stripe payment end to end
@@ -163,5 +168,8 @@ hand-built mock of `window.apexSupabase`, not the production backend.
 **Can wait:**
 - [ ] Student-facing ground school session history (Issue #8)
 - [ ] Post-attendance follow-up emails (Issue #9)
-- [ ] Full Account page copy audit (Issue #10)
+- [x] Full Account page copy audit (Issue #10) — Membership card, billing
+      history, and locked-widget/unlock-modal pricing now reflect real
+      per-member state instead of static copy; see `IMPLEMENTATION_PLAN.md`
+      Phase 2
 - [ ] Cosmetic/low-severity items #11–#12

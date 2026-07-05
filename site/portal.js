@@ -21,6 +21,7 @@
       };
       populateMember();
       applyUnlockState();
+      applyUnlockPricing();
       return loadPremiumContent().then(function () {
         return initPortalData();
       });
@@ -196,6 +197,33 @@
         content.style.pointerEvents = unlocked ? 'auto' : 'none';
       }
     });
+  }
+
+  /* ── Live founding/standard price preview — the "$29 · Tap to unlock"
+     labels and the unlock modal's price both used to be static HTML that
+     kept advertising $29 forever, even after the 25 founding seats were
+     gone and every new member was actually being charged $49 at checkout.
+     get_checkride_prep_pricing() mirrors the same server-side rule
+     create-checkout-session uses to decide the real charge, so what a
+     member sees here always matches what they're about to pay. ──────── */
+  function applyUnlockPricing() {
+    if (member && member.checkridePrepUnlocked) return;
+    apexSupabase.rpc('get_checkride_prep_pricing').then(function (res) {
+      var row = res.data && res.data[0];
+      if (res.error || !row) return;
+      var priceLabel = '$' + Math.round(row.amount_cents / 100);
+      document.querySelectorAll('.portal-locked-widget__overlay small').forEach(function (el) {
+        el.textContent = priceLabel + ' · Tap to unlock';
+      });
+      var modalPrice = document.getElementById('unlockModalPrice');
+      var modalNote = document.getElementById('unlockModalPriceNote');
+      if (modalPrice) modalPrice.textContent = priceLabel;
+      if (modalNote) {
+        modalNote.textContent = row.tier === 'founding'
+          ? row.founding_seats_remaining + ' founding spot' + (row.founding_seats_remaining === 1 ? '' : 's') + ' left at $29, then $49'
+          : 'Founding pricing has ended — $49 for full access';
+      }
+    }).catch(function (e) { console.error('applyUnlockPricing failed', e); });
   }
 
   document.querySelectorAll('[data-unlock-trigger]').forEach(function (el) {
@@ -476,6 +504,8 @@
   var checkrideDate = null;
   var testimonialSubmitted = false;
   var checkrideResult = null;
+  var myPurchase = null;
+  var myInvoices = [];
 
   function loadProgress() {
     return Promise.all([
@@ -492,7 +522,9 @@
       apexSupabase.from('portal_referrals').select('*').eq('referrer_id', member.id).order('created_at', { ascending: false }),
       apexSupabase.from('portal_checkride_date').select('*').eq('profile_id', member.id).maybeSingle(),
       apexSupabase.from('portal_testimonials').select('id').eq('profile_id', member.id).limit(1),
-      apexSupabase.from('portal_checkride_results').select('*').eq('profile_id', member.id).maybeSingle()
+      apexSupabase.from('portal_checkride_results').select('*').eq('profile_id', member.id).maybeSingle(),
+      apexSupabase.from('portal_access_purchases').select('*').eq('profile_id', member.id).maybeSingle(),
+      apexSupabase.from('invoices').select('*').eq('student_id', member.id).order('issued_at', { ascending: false })
     ]).then(function (results) {
       (results[0].data || []).forEach(function (r) {
         studied[r.question_id] = r.completed;
@@ -529,6 +561,8 @@
       checkrideDate = results[11].data ? results[11].data.checkride_date : null;
       testimonialSubmitted = (results[12].data || []).length > 0;
       checkrideResult = results[13].data || null;
+      myPurchase = results[14].data || null;
+      myInvoices = results[15].data || [];
     }).catch(function (e) { console.error('Failed to load portal progress', e); });
   }
 
@@ -1707,6 +1741,50 @@
   });
 
   /* ══════════════════════════════════════════════════════════════
+     MEMBERSHIP + BILLING HISTORY (Account Management)
+     ══════════════════════════════════════════════════════════════ */
+  function formatCents(cents) {
+    return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function renderMembership() {
+    var planEl = document.getElementById('membershipPlan');
+    var unlockedRow = document.getElementById('membershipUnlockedRow');
+    var unlockedDateEl = document.getElementById('membershipUnlockedDate');
+
+    if (member.checkridePrepUnlocked && myPurchase) {
+      var tierLabel = myPurchase.tier === 'founding' ? 'Unlocked (Founding Pricing)' : 'Unlocked';
+      planEl.textContent = tierLabel + ' — ' + formatCents(myPurchase.amount_cents);
+      unlockedRow.hidden = false;
+      unlockedDateEl.textContent = new Date(myPurchase.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    } else if (member.checkridePrepUnlocked) {
+      planEl.textContent = 'Unlocked';
+      unlockedRow.hidden = true;
+    } else {
+      planEl.textContent = 'Not yet unlocked';
+      unlockedRow.hidden = true;
+    }
+  }
+
+  function renderBillingHistory() {
+    var listEl = document.getElementById('billingHistoryList');
+    var emptyEl = document.getElementById('billingHistoryEmpty');
+    if (!myInvoices.length) {
+      listEl.innerHTML = '';
+      emptyEl.style.display = 'block';
+      return;
+    }
+    emptyEl.style.display = 'none';
+    listEl.innerHTML = myInvoices.map(function (inv) {
+      var date = inv.issued_at ? new Date(inv.issued_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+      return '<div class="portal-billing-row">' +
+        '<div><div class="portal-billing-row__desc">' + (inv.description || 'Charge') + '</div><div class="portal-billing-row__date">' + date + '</div></div>' +
+        '<div><div class="portal-billing-row__amount">' + formatCents(inv.amount_cents) + '</div><span class="portal-billing-row__status portal-billing-row__status--' + inv.status + '">' + inv.status + '</span></div>' +
+        '</div>';
+    }).join('');
+  }
+
+  /* ══════════════════════════════════════════════════════════════
      REFERRAL PROGRAM
      ══════════════════════════════════════════════════════════════ */
   function makeReferralCode() {
@@ -1913,6 +1991,8 @@
       checkAchievements();
       renderAdminIfApplicable();
       renderCheckrideCountdown();
+      renderMembership();
+      renderBillingHistory();
       ensureReferralCode();
       renderPassedBanner();
       renderSuccessWall();

@@ -1,11 +1,14 @@
 # Apex Advantage — Launch Readiness Implementation Plan
 
-**Status:** Phase 1 executed and verified in this pass. Phases 2–7 planned and
-sequenced below, not yet built — each is a substantial standalone effort in
-its own right (a CMS, an analytics dashboard, five email automations,
-attendance tooling), and building all of them in one uncommitted pass would
-mean shipping untested, unverified code against a live payment system. This
-document is the roadmap for the follow-up passes.
+**Status:** Phase 1 (Premium Content Security), the ground-school RLS
+hardening called out as Phase 1's top open risk (see
+`GROUND_SCHOOL_RLS_AUDIT.md`), and Phase 2 (Billing & Account Consistency)
+are executed and verified. Phases 3–7 planned and sequenced below, not yet
+built — each is a substantial standalone effort in its own right (a CMS, an
+analytics dashboard, five email automations, attendance tooling), and
+building all of them in one uncommitted pass would mean shipping untested,
+unverified code against a live payment system. This document is the roadmap
+for the follow-up passes.
 
 ## How this plan was built
 
@@ -89,28 +92,53 @@ phase list, and are called out explicitly below.
 
 ---
 
-## Phase 2 — Billing & Account Consistency (not started)
+## Phase 2 — Billing & Account Consistency ✅ Executed this pass
 
-**Scope, grounded in the audit:**
-- Account page currently shows nothing about founding/standard tier,
-  purchase date, or referral code in one place — that data exists
-  (`portal_access_purchases.tier`, `.created_at`, `portal_referral_codes.code`)
-  but isn't surfaced together as a "Membership Status" card.
-- No billing history view exists in the student portal today — `invoices`
-  rows are created correctly (verified in the freemium-rework pass) but
-  never rendered back to the student. Admin's Billing.jsx (React CRM) can
-  see them; the member portal (`portal.html`) has no equivalent.
-- Audit every page for "the portal costs $29" language that predates the
-  free-signup model — the marketing pages (`checkride-prep.html`,
-  `apex-advantage.html`) were already updated in the freemium rework; a
-  full sweep of `portal.html`/`portal.js` copy itself hasn't been done.
+**What shipped:**
 
-**Estimated effort:** small-to-medium. Mostly a new Account section + one
-new read-only Edge Function or direct RLS-backed query (existing
-`portal_access_purchases` RLS is admin-only-select today, so the student's
-own row needs either a new "view own purchases" policy or a scoped
-Edge Function — recommend the RLS policy, it's simpler and this data isn't
-sensitive to the owner themselves).
+- `portal/supabase-portal-schema-v7.sql` — new SELECT policy "Members can
+  view their own portal access purchases" on `portal_access_purchases`
+  (was admin-only-select before this); new `get_checkride_prep_pricing()`
+  `SECURITY DEFINER` RPC that returns the live founding/standard
+  tier+price+seats-remaining, mirroring the exact rule
+  `create-checkout-session` already enforces server-side, without giving
+  every member a row-level SELECT policy over other members' purchase
+  records just to count them. Verified against a real local Postgres 16
+  instance: a member sees only their own purchase row, a different member
+  and anon see none, admin sees all, and the pricing RPC correctly reports
+  `founding`/24-remaining at 1 purchase and flips to `standard`/0-remaining
+  at exactly 25.
+- `site/portal.html` / `site/portal.js` — the Account page's Membership
+  card no longer hardcodes `"Apex Advantage — Founding Member"` and
+  `"$25 / session"` regardless of what the member actually bought; it now
+  shows real state (`Not yet unlocked` / `Unlocked (Founding Pricing) —
+  $29.00` / `Unlocked — $49.00`) plus the actual unlock date pulled from
+  `portal_access_purchases`. A new **Billing History** card renders every
+  row from `invoices` (already had correct student-own-row RLS from the
+  original schema — no policy change needed there), formatted with amount
+  and a paid/unpaid status badge.
+- The "$29 · Tap to unlock" labels on the five locked dashboard widgets
+  and the unlock modal's price were static HTML that kept advertising $29
+  forever, even after the 25 founding seats were gone and new members were
+  actually being charged $49 at checkout — a real billing inconsistency.
+  Both now call `get_checkride_prep_pricing()` once on page load and
+  render the actual current tier/price/seats-remaining, so what a member
+  sees before clicking "Unlock Now" always matches what Stripe actually
+  charges them.
+- Copy sweep: the marketing pages' `$29`/`$49`/"Founding Member" language
+  (`checkride-prep.html`, `apex-advantage.html`, etc.) is accurate
+  advertising of the pricing tiers themselves and was already updated in
+  the freemium rework — left as-is. The bug was specifically inside the
+  member portal showing a *fixed* price regardless of the *viewing
+  member's own* real eligibility/purchase state, which is what this pass
+  fixed.
+- Verified via Playwright against a mocked Supabase client: a locked
+  member's Account page shows "Not yet unlocked" / empty billing history /
+  the live founding-tier price and seats-remaining; an unlocked founding
+  member's page shows the correct tier label, unlock date, and both
+  billing-history rows (a Checkride Prep purchase and a manually-entered
+  flight-lesson invoice) with correctly formatted amounts and status
+  badges — zero console errors in either case.
 
 ## Phase 3 — Retention System (partially exists, largely unverifiable from this repo)
 
