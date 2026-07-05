@@ -91,6 +91,17 @@ async function handleUnlockCheckridePrep(supabase: any, session: Stripe.Checkout
     status: 'paid',
   })
 
+  // Conversion event for the Phase 5 admin analytics dashboard. Logged
+  // here (server-side, webhook-driven) rather than client-side like the
+  // portal.js milestone events -- this one must never depend on the
+  // member reopening the portal at the right moment, since it's a
+  // revenue event, not an engagement nudge. See ANALYTICS_EVENT_MAP.md.
+  await supabase.from('portal_events').insert({
+    profile_id: profileId,
+    event_type: 'premium_unlocked',
+    metadata: { tier, amount_cents: amountCents },
+  })
+
   if (email) {
     await sendEmail(supabase, email, "You're unlocked — Apex Advantage Checkride Prep",
       template(`
@@ -139,6 +150,17 @@ async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Che
     stripe_session_id: session.id,
     amount_cents: amountCents,
     payment_status: 'paid',
+  })
+
+  // Conversion event for the Phase 5 admin analytics dashboard -- see
+  // the matching comment in handleUnlockCheckridePrep(). profile_id can
+  // be null here (no matching profile for this email, e.g. a walk-in who
+  // paid online without a portal account) -- still logged for aggregate
+  // revenue/funnel counting even when it can't be attributed to a member.
+  await supabase.from('portal_events').insert({
+    profile_id: matchingProfile?.id ?? null,
+    event_type: 'ground_school_purchased',
+    metadata: { session_id: sessionId, amount_cents: amountCents, is_waitlisted: isWaitlisted },
   })
 
   const when = groundSession

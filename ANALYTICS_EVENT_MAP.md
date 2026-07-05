@@ -39,8 +39,8 @@ tables, but not from one consistent event stream:
 | Needed event | Derivable today from | Gap |
 |---|---|---|
 | `account_created` | `profiles.created_at` | Not logged as an event; fine to derive from the table directly, no new event needed |
-| `premium_unlocked` | `portal_access_purchases` insert (webhook-driven) | Not logged as a `portal_events` row — **recommend adding** `logEventOnce('premium_unlocked', {tier})` inside the `unlock-checkride-prep` webhook handler (server-side, not client — this one must not depend on the member reopening the portal) |
-| `ground_school_purchased` | `ground_registrations` insert (webhook-driven, once RLS/table access is confirmed per `DATABASE_CHANGES.md`) | Same gap — **recommend adding** a server-side event log inside the `ground-school-registration` webhook handler |
+| `premium_unlocked` | `portal_access_purchases` insert (webhook-driven) | **✅ Fixed (Phase 5)** — `stripe-webhook`'s `handleUnlockCheckridePrep` now inserts a `portal_events` row (`{tier, amount_cents}`) server-side, alongside the existing `portal_access_purchases`/`invoices` writes |
+| `ground_school_purchased` | `ground_registrations` insert (webhook-driven) | **✅ Fixed (Phase 5)** — `handleGroundSchoolRegistration` now inserts a `portal_events` row the same way (`profile_id` may be `null` for a walk-in with no matching portal account — still counted for aggregate revenue/funnel purposes even when unattributed) |
 | `active_user` (daily/weekly) | `portal_study_activity` rows | Usable as-is; "active" already means "did something," just needs an aggregation query, not a new event |
 | Funnel step events (`viewed_signup`, `started_checkout`, `abandoned_checkout`) | Nothing today | Genuinely missing — Stripe Checkout abandonment isn't observable at all right now since nothing fires until `checkout.session.completed`. Consider Stripe's `checkout.session.expired` webhook event as a low-effort way to at least capture abandonment without new client instrumentation |
 
@@ -48,16 +48,16 @@ tables, but not from one consistent event stream:
 
 Already fully derivable from existing tables, no new events needed:
 
-- **Viewed**: `portal_question_progress.last_viewed_at` (question), no direct
-  equivalent for scenarios today — `portal_scenario_progress` would need a
-  `last_viewed_at` column added (small migration) to answer "most-viewed
-  scenario" the same way questions do.
-- **Completed/studied**: `portal_question_progress.studied` /
-  `portal_scenario_progress.reviewed` (confirm exact column name against
-  live schema — not in any committed SQL file for scenario progress
-  specifically, same caveat as the ground school tables).
+- **Viewed**: `portal_question_progress.last_viewed_at` (question),
+  `portal_scenario_progress.last_viewed_at` (scenario) — corrected from an
+  earlier draft of this doc, which claimed scenarios had no equivalent
+  column; they do (`site/supabase-portal-schema.sql`), no migration
+  needed.
+- **Completed/studied**: `portal_question_progress.completed` /
+  `portal_scenario_progress.completed` (both are plain `completed`
+  booleans, not `reviewed` as an earlier draft of this doc guessed).
 - **Bookmarked**: `portal_question_progress.favorited` /
-  equivalent on scenarios.
+  `portal_scenario_progress.favorited`.
 
 ## Retention metrics — Day 1/7/30, streak distribution
 
@@ -71,18 +71,21 @@ Already fully derivable from existing tables, no new events needed:
   time, since the current implementation only ever computes one user's
   own streak.
 
-## Recommendation for Phase 5's build order
+## Recommendation for Phase 5's build order — ✅ executed this pass
 
-1. Add the two missing server-side events (`premium_unlocked`,
-   `ground_school_purchased`) inside the Stripe webhook handlers — cheap,
-   high-value, and fixes the "must not depend on a browser being open"
-   problem for exactly the two events that matter most for revenue
-   reporting.
-2. Build the admin dashboard's funnel/revenue section on top of
-   `portal_access_purchases` + `invoices` directly (already reliable,
-   already used by the existing admin panel) rather than waiting on new
-   event plumbing.
+1. ~~Add the two missing server-side events...~~ **Done** — see above.
+2. ~~Build the admin dashboard's funnel/revenue section on top of
+   `portal_access_purchases` + `invoices` directly...~~ **Done** — see
+   `ANALYTICS_DASHBOARD.md` for the full design (funnel/revenue card now
+   also folds in `ground_registrations`, since ground school payments
+   aren't in `invoices` and omitting them would have made "total revenue"
+   silently wrong).
 3. Treat `portal_events`-derived engagement/retention metrics as
    directionally useful but under-counted until the Phase 3 email/
    milestone system moves server-side — the two problems share the same
-   root cause and should likely be fixed together.
+   root cause and should likely be fixed together. **Still true** for the
+   milestone-email events (`first_question_completed`, `readiness_*`,
+   etc.); not true anymore for `premium_unlocked`/`ground_school_purchased`
+   (webhook-driven, complete) or Day 1/7/30 retention (derived directly
+   from `portal_study_activity`/`profiles.created_at`, not from
+   `portal_events` at all).
