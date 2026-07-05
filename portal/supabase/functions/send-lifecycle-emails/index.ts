@@ -51,6 +51,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { emailTemplate as template } from '../_shared/emailTemplate.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -82,21 +83,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   eligibility: 'Eligibility & Documents', airworthiness: 'Airworthiness', privileges: 'Privileges & Limitations',
   airspace: 'Airspace', weather: 'Weather', performance: 'Performance', aeromedical: 'Aeromedical Factors',
   crosscountry: 'Cross-Country Planning', emergency: 'Emergency Operations',
-}
-
-function template(content: string) {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:32px 16px;background:#06080f;font-family:'Helvetica Neue',Arial,sans-serif;color:#e0e0e0;">
-  <div style="max-width:560px;margin:0 auto;">
-    <div style="margin-bottom:28px;">
-      <span style="font-size:22px;font-weight:900;letter-spacing:3px;color:#fff;">APEX</span>
-      <span style="font-size:22px;font-style:italic;color:#F4B400;font-family:Georgia,serif;"> Advantage</span>
-    </div>
-    ${content}
-    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:32px 0 16px;">
-    <p style="font-size:12px;color:rgba(255,255,255,0.3);margin:0;">Apex Aviation · San Marcos, TX (KHYI)</p>
-  </div>
-</body></html>`
 }
 
 async function sendEmail(supabase: any, to: string, subject: string, contentHtml: string) {
