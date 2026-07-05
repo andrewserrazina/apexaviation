@@ -61,7 +61,7 @@
       border-radius: 100px; padding: 8px 16px; font-size: 13px; font-weight: 700;
       color: var(--gold-light); margin-bottom: 22px; text-align: center;
     }
-    [data-view="forgot"], [data-view="signup"] { display: none; }
+    [data-view="forgot"], [data-view="signup"], [data-view="signup-success"] { display: none; }
   </style>
 </head>
 <body>
@@ -98,11 +98,11 @@
         <p class="login-note">New here? <button type="button" id="goToSignup">Join Apex Advantage</button> to get portal access.</p>
       </div>
 
-      <!-- ─── SIGN UP / PAY ─── -->
+      <!-- ─── SIGN UP (FREE) ─── -->
       <div data-view="signup">
         <h1>Join Apex Advantage.</h1>
-        <div class="signup-price-badge">⚡ Founding pilot pricing — $29 for the first 25 members, then $49</div>
-        <p class="sub">Get full access to the member portal — Checkride Prep Pack, DPE Question Library, Scenario Training Center, and every training tool inside.</p>
+        <div class="signup-price-badge">✓ Free to join — register for live ground school sessions right away</div>
+        <p class="sub">Create your free member portal account to book live ground school sessions ($25/session). Unlock the full Checkride Prep System — DPE Question Library, Scenario Training Center, and more — any time after you sign up.</p>
 
         <div class="login-error" id="signupError"></div>
 
@@ -115,12 +115,21 @@
             <label for="signupEmail">Email</label>
             <input type="email" id="signupEmail" placeholder="you@email.com" autocomplete="email" required />
           </div>
-          <button type="submit" class="btn btn--primary btn--full" id="signupSubmit">Continue to Payment</button>
+          <button type="submit" class="btn btn--primary btn--full" id="signupSubmit">Create Free Account</button>
         </form>
-        <p class="login-note" style="margin-top:12px">Secure checkout via Stripe. You'll get an email to set your password right after payment.</p>
+        <p class="login-note" style="margin-top:12px">You'll get an email to set your password right away — no payment required to join.</p>
 
         <div class="login-forgot">
           <button type="button" id="backToSignInFromSignup">← Back to Sign In</button>
+        </div>
+      </div>
+
+      <!-- ─── SIGN UP SUCCESS ─── -->
+      <div data-view="signup-success">
+        <h1>Check your email.</h1>
+        <p class="sub">We sent you a link to set your password. Once that's done, sign in and you're ready to book ground school sessions — or unlock the Checkride Prep System whenever you're ready.</p>
+        <div class="login-forgot">
+          <button type="button" id="backToSignInFromSuccess">← Back to Sign In</button>
         </div>
       </div>
 
@@ -178,6 +187,7 @@
     document.getElementById('backToSignIn').addEventListener('click', function () { showView('signin'); });
     document.getElementById('goToSignup').addEventListener('click', function () { showView('signup'); });
     document.getElementById('backToSignInFromSignup').addEventListener('click', function () { showView('signin'); });
+    document.getElementById('backToSignInFromSuccess').addEventListener('click', function () { showView('signin'); });
 
     // Deep link support: portal-login.html?view=signup or #signup
     var requestedView = (new URLSearchParams(window.location.search)).get('view') || window.location.hash.replace('#', '');
@@ -240,23 +250,23 @@
       if (!name || !email) return;
 
       signupSubmit.disabled = true;
-      signupSubmit.textContent = 'Redirecting to secure checkout…';
+      signupSubmit.textContent = 'Creating your account…';
 
-      apexSupabase.functions.invoke('create-checkout-session', {
-        body: { name: name, email: email, origin: window.location.origin }
+      apexSupabase.functions.invoke('create-free-account', {
+        body: { name: name, email: email }
       }).then(function (res) {
-        if (res.error || !res.data || !res.data.url) {
-          signupSubmit.disabled = false;
-          signupSubmit.textContent = 'Continue to Payment';
-          signupError.textContent = (res.error && res.error.message) || 'Could not start checkout. Please try again.';
+        signupSubmit.disabled = false;
+        signupSubmit.textContent = 'Create Free Account';
+        if (res.error || !res.data || !res.data.ok) {
+          signupError.textContent = (res.error && res.error.message) || (res.data && res.data.error) || 'Could not create account. Please try again.';
           signupError.classList.add('show');
           return;
         }
-        window.location.href = res.data.url;
+        showView('signup-success');
       }).catch(function (err) {
         signupSubmit.disabled = false;
-        signupSubmit.textContent = 'Continue to Payment';
-        signupError.textContent = 'Could not start checkout. Please try again.';
+        signupSubmit.textContent = 'Create Free Account';
+        signupError.textContent = 'Could not create account. Please try again.';
         signupError.classList.add('show');
       });
     });
