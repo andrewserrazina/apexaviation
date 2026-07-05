@@ -410,6 +410,7 @@
           member.checkridePrepUnlocked = true;
           applyUnlockState();
           toast('Unlocked! Welcome to the Checkride Prep System.');
+          if (window.gtag) gtag('event', 'purchase', { currency: 'USD', items: [{ item_name: 'Checkride Prep Unlock' }] });
         }
       });
     });
