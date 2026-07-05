@@ -79,6 +79,7 @@
   cursor: pointer; font-family: var(--font);
   transition: background var(--transition), color var(--transition);
 }
+.portal-nav__item[hidden] { display: none; }
 .portal-nav__item svg { flex-shrink: 0; opacity: 0.85; }
 .portal-nav__item:hover { background: rgba(255,255,255,0.05); color: #fff; }
 .portal-nav__item.active {
