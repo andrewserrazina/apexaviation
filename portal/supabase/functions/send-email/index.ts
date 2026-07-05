@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
-const FROM_ADDRESS = Deno.env.get('FROM_EMAIL') ?? 'Apex Advantage <noreply@apexaviation.com>'
+const FROM_ADDRESS = Deno.env.get('FROM_EMAIL') ?? 'Apex Advantage <noreply@apexaviationtx.com>'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

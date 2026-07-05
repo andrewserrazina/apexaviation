@@ -183,6 +183,25 @@
         el.style.display = el.dataset.view === name ? 'block' : 'none';
       });
     }
+
+    // supabase-js's functions.invoke() throws a FunctionsHttpError on any
+    // non-2xx response, whose .message is ALWAYS the generic literal "Edge
+    // Function returned a non-2xx status code" -- regardless of what the
+    // function itself actually returned (confirmed against the
+    // @supabase/functions-js source: on failure, data is null and the real
+    // response body is only reachable via the unconsumed Response at
+    // error.context). Same helper as site/portal.js's create-checkout-session
+    // calls, duplicated here since this page has no shared module with it.
+    function extractInvokeError(res) {
+      if (res.data && res.data.error) return Promise.resolve(res.data.error);
+      var fallback = (res.error && res.error.message) || 'Could not create account. Please try again.';
+      if (res.error && res.error.context && typeof res.error.context.json === 'function') {
+        return res.error.context.json().then(function (body) {
+          return (body && body.error) || fallback;
+        }).catch(function () { return fallback; });
+      }
+      return Promise.resolve(fallback);
+    }
     document.getElementById('forgotToggle').addEventListener('click', function () { showView('forgot'); });
     document.getElementById('backToSignIn').addEventListener('click', function () { showView('signin'); });
     document.getElementById('goToSignup').addEventListener('click', function () { showView('signup'); });
@@ -258,9 +277,10 @@
         signupSubmit.disabled = false;
         signupSubmit.textContent = 'Create Free Account';
         if (res.error || !res.data || !res.data.ok) {
-          signupError.textContent = (res.error && res.error.message) || (res.data && res.data.error) || 'Could not create account. Please try again.';
-          signupError.classList.add('show');
-          return;
+          return extractInvokeError(res).then(function (msg) {
+            signupError.textContent = msg;
+            signupError.classList.add('show');
+          });
         }
         showView('signup-success');
       }).catch(function (err) {
