@@ -1,0 +1,19 @@
+# Supabase CLI config for the Apex Advantage portal/CRM Edge Functions.
+# Run `supabase link --project-ref <your-project-ref>` once before deploying.
+
+[functions.create-checkout-session]
+# Called by anonymous visitors signing up for portal access — they don't
+# have a Supabase session yet, so platform-level JWT verification must be
+# off or every request (including the CORS preflight) gets rejected before
+# reaching the function's own code.
+verify_jwt = false
+
+[functions.stripe-webhook]
+# Called directly by Stripe, authenticated via its own signature header
+# (constructEventAsync), not a Supabase JWT.
+verify_jwt = false
+
+[functions.send-email]
+# Only ever invoked server-to-server from other Edge Functions with the
+# service_role key, but no anonymous/browser caller needs a session either.
+verify_jwt = false
