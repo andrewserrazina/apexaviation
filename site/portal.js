@@ -1441,9 +1441,11 @@
       apexSupabase.from('portal_question_discussions').select('*').eq('status', 'open').order('created_at', { ascending: false }),
       apexSupabase.from('portal_testimonials').select('*').eq('status', 'pending').order('created_at', { ascending: false }),
       apexSupabase.from('portal_referrals').select('*').order('created_at', { ascending: false }).limit(20),
-      apexSupabase.from('profiles').select('id,full_name,email'),
+      apexSupabase.from('profiles').select('id,full_name,email,created_at,checkride_prep_unlocked'),
       apexSupabase.from('dpe_categories').select('*').order('sort_order'),
-      apexSupabase.from('dpe_questions').select('*').order('sort_order')
+      apexSupabase.from('dpe_questions').select('*').order('sort_order'),
+      apexSupabase.from('portal_access_purchases').select('tier,amount_cents,created_at'),
+      apexSupabase.from('ground_registrations').select('payment_status,amount_cents,profile_id,registered_at')
     ]).then(function (results) {
       var totalUsers = results[0].count || 0;
       var invoices = results[1].data || [];
@@ -1484,6 +1486,91 @@
         cmsActiveCategory = cmsCategories.length ? cmsCategories[0].id : null;
       }
 
+      /* ── Phase 5: Funnel & Revenue ──────────────────────────────
+         Revenue/funnel counts are read directly from
+         portal_access_purchases/ground_registrations/invoices rather
+         than portal_events -- ANALYTICS_EVENT_MAP.md's own
+         recommendation, since portal_events undercounts anything that
+         only ever fired client-side (see Phase 3). Ground school
+         revenue lives in ground_registrations, not invoices -- adding
+         it here fixes what would otherwise be a silently incomplete
+         "total revenue" figure (invoices alone only ever contained
+         Checkride Prep purchases + manual tuition, never ground school). */
+      var purchases = results[11].data || [];
+      var foundingUnlocks = purchases.filter(function (p) { return p.tier === 'founding'; }).length;
+      var standardUnlocks = purchases.filter(function (p) { return p.tier === 'standard'; }).length;
+      var premiumRevenueCents = purchases.reduce(function (sum, p) { return sum + (p.amount_cents || 0); }, 0);
+      var conversionRate = totalUsers ? Math.round((purchases.length / totalUsers) * 100) : 0;
+
+      var groundRegs = results[12].data || [];
+      var paidGroundRegs = groundRegs.filter(function (r) { return r.payment_status === 'paid'; });
+      var groundRevenueCents = paidGroundRegs.reduce(function (sum, r) { return sum + (r.amount_cents || 0); }, 0);
+
+      // totalRevenueCents (paid invoices) already includes every premium
+      // unlock's mirrored invoice row -- add ground school revenue
+      // alongside it, not premiumRevenueCents too, or unlocks would be
+      // double-counted.
+      var combinedRevenueCents = totalRevenueCents + groundRevenueCents;
+
+      /* ── Phase 5: Retention (Day 1/7/30) + streak distribution ───
+         Cohort-based, derived straight from profiles.created_at +
+         portal_study_activity -- no new instrumentation needed, per
+         ANALYTICS_EVENT_MAP.md. Uses UTC "today" throughout (both for
+         the cohort math and the streak walk-back) purely for internal
+         consistency across profiles in different browser timezones;
+         activity_date itself was written using each member's own
+         browser-local date client-side, so this is the same
+         one-day-fuzziness approximation already documented in
+         RETENTION_SYSTEM.md for the lifecycle email job -- a coarse
+         aggregate metric, not a per-member-exact one. */
+      var allProfiles = results[8].data || [];
+      var actByProfile = {};
+      actRows.forEach(function (r) {
+        if (!actByProfile[r.profile_id]) actByProfile[r.profile_id] = {};
+        actByProfile[r.profile_id][r.activity_date] = true;
+      });
+      function utcDateKey(d) { return d.toISOString().slice(0, 10); }
+      function retentionRate(days) {
+        var eligible = 0, retained = 0;
+        var now = new Date();
+        allProfiles.forEach(function (p) {
+          if (!p.created_at) return;
+          var cohortDay = new Date(p.created_at);
+          cohortDay.setUTCHours(0, 0, 0, 0);
+          var targetDay = new Date(cohortDay);
+          targetDay.setUTCDate(targetDay.getUTCDate() + days);
+          if (targetDay > now) return; // cohort hasn't reached day N yet
+          eligible++;
+          var dates = actByProfile[p.id];
+          if (dates && dates[utcDateKey(targetDay)]) retained++;
+        });
+        return eligible ? Math.round((retained / eligible) * 100) : null;
+      }
+      function currentStreakFromDates(dates) {
+        if (!dates) return 0;
+        var current = 0;
+        var cursor = new Date();
+        cursor.setUTCHours(0, 0, 0, 0);
+        if (!dates[utcDateKey(cursor)]) cursor.setUTCDate(cursor.getUTCDate() - 1);
+        while (dates[utcDateKey(cursor)]) {
+          current++;
+          cursor.setUTCDate(cursor.getUTCDate() - 1);
+        }
+        return current;
+      }
+      var day1Retention = retentionRate(1);
+      var day7Retention = retentionRate(7);
+      var day30Retention = retentionRate(30);
+      var streakBuckets = { '0 days': 0, '1–2 days': 0, '3–6 days': 0, '7–13 days': 0, '14+ days': 0 };
+      allProfiles.forEach(function (p) {
+        var streak = currentStreakFromDates(actByProfile[p.id]);
+        if (streak === 0) streakBuckets['0 days']++;
+        else if (streak <= 2) streakBuckets['1–2 days']++;
+        else if (streak <= 6) streakBuckets['3–6 days']++;
+        else if (streak <= 13) streakBuckets['7–13 days']++;
+        else streakBuckets['14+ days']++;
+      });
+
       el.innerHTML =
         '<div class="portal-admin-metrics">' +
           metricCard('Total Users', totalUsers) +
@@ -1491,7 +1578,25 @@
           metricCard('Questions Completed', questionsCompleted) +
           metricCard('Active Students (30d)', Object.keys(activeUsers30d).length) +
         '</div>' +
-        '<div class="portal-grid portal-grid--2">' +
+        '<div class="portal-grid portal-grid--2" style="margin-top:20px">' +
+          '<div class="portal-card">' +
+            '<h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:14px">Funnel &amp; Revenue</h3>' +
+            '<div class="portal-membership-row"><strong>Signup → Unlock Conversion</strong><span>' + conversionRate + '% (' + purchases.length + ' of ' + totalUsers + ')</span></div>' +
+            '<div class="portal-membership-row"><strong>Premium Unlocks</strong><span>' + purchases.length + ' — ' + foundingUnlocks + ' founding, ' + standardUnlocks + ' standard ($' + (premiumRevenueCents / 100).toLocaleString() + ')</span></div>' +
+            '<div class="portal-membership-row"><strong>Ground School (paid)</strong><span>' + paidGroundRegs.length + ' registrations ($' + (groundRevenueCents / 100).toLocaleString() + ')</span></div>' +
+            '<div class="portal-membership-row"><strong>Total Platform Revenue</strong><span style="color:var(--gold);font-weight:700">$' + (combinedRevenueCents / 100).toLocaleString() + '</span></div>' +
+          '</div>' +
+          '<div class="portal-card">' +
+            '<h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:14px">Retention</h3>' +
+            '<div class="portal-membership-row"><strong>Day 1</strong><span>' + (day1Retention === null ? '—' : day1Retention + '%') + '</span></div>' +
+            '<div class="portal-membership-row"><strong>Day 7</strong><span>' + (day7Retention === null ? '—' : day7Retention + '%') + '</span></div>' +
+            '<div class="portal-membership-row"><strong>Day 30</strong><span>' + (day30Retention === null ? '—' : day30Retention + '%') + '</span></div>' +
+            Object.keys(streakBuckets).map(function (k) {
+              return '<div class="portal-membership-row"><strong>Streak: ' + k + '</strong><span>' + streakBuckets[k] + '</span></div>';
+            }).join('') +
+          '</div>' +
+        '</div>' +
+        '<div class="portal-grid portal-grid--2" style="margin-top:20px">' +
           '<div class="portal-card"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:14px">Most Difficult Questions (most starred)</h3>' + adminTable(mostDifficult, 'q', 'count') + '</div>' +
           '<div class="portal-card"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:14px">Most Viewed Scenarios</h3>' + adminTable(mostViewedScenarios, 'title', 'views') + '</div>' +
         '</div>' +

@@ -3,10 +3,10 @@
 **Status:** Phase 1 (Premium Content Security), the ground-school RLS
 hardening called out as Phase 1's top open risk (see
 `GROUND_SCHOOL_RLS_AUDIT.md`), Phase 2 (Billing & Account Consistency),
-Phase 3 (Retention System), and Phase 4 (Content Operations) are executed
-and verified. Phases 5–7 planned and sequenced below, not yet built — each
-is a substantial standalone effort in its own right (an analytics
-dashboard, attendance tooling), and building all of them in one
+Phase 3 (Retention System), Phase 4 (Content Operations), and Phase 5
+(Analytics & Conversion Tracking) are executed and verified. Phases 6–7
+planned and sequenced below, not yet built — each is a substantial
+standalone effort in its own right, and building all of them in one
 uncommitted pass would mean shipping untested, unverified code against a
 live payment system. This document is the roadmap for the follow-up
 passes.
@@ -221,13 +221,35 @@ results. Summary:
   fixing the double-load race, referral status actions advancing and
   disappearing at the terminal state).
 
-## Phase 5 — Analytics & Conversion Tracking (not started)
+## Phase 5 — Analytics & Conversion Tracking ✅ Executed this pass
 
-See `ANALYTICS_EVENT_MAP.md` for the concrete event taxonomy this phase
-should build against — `portal_events` already logs a reasonable set of
-raw events; this phase is mainly building the aggregation/dashboard layer
-on top, plus adding the funnel-specific events (`account_created`,
-`premium_unlocked`, `ground_school_purchased`) that don't exist yet.
+**What shipped:** see `ANALYTICS_DASHBOARD.md` for the full design and
+test results. Summary:
+
+- `portal/supabase/functions/stripe-webhook/index.ts` — the two missing
+  funnel events (`premium_unlocked`, `ground_school_purchased`) now log to
+  `portal_events` server-side, inside the webhook handlers, exactly as
+  `ANALYTICS_EVENT_MAP.md` recommended (must not depend on a browser being
+  open).
+- New "Funnel & Revenue" and "Retention" cards in the existing admin
+  dashboard, built directly on `portal_access_purchases`/
+  `ground_registrations`/`invoices`/`portal_study_activity` rather than
+  `portal_events` aggregation, per the event map's own recommendation.
+  Along the way, fixed a real gap in the existing "Paid Invoices" revenue
+  figure: it only ever summed the `invoices` table, which never included
+  ground school payments (a separate table), silently understating total
+  revenue. Day 1/7/30 retention and a streak-length distribution are
+  computed from `profiles.created_at`/`portal_study_activity` directly —
+  no new instrumentation needed.
+- Corrected two factual errors in `ANALYTICS_EVENT_MAP.md` itself (it had
+  guessed `portal_scenario_progress` was missing a `last_viewed_at`
+  column and might use a `reviewed` completion flag — the live schema
+  already has `last_viewed_at`/`completed`, identical in shape to the
+  question-progress table).
+- Verified: the retention/streak formulas against hand-computed fixture
+  data (exact match) before touching the dashboard, then the full
+  rendered dashboard via Playwright against a mocked Supabase client (5
+  synthetic profiles, exact match on every displayed number).
 
 ## Phase 6 — Ground School Optimization (mostly already built)
 
