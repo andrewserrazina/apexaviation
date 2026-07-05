@@ -45,7 +45,10 @@
     return apexSupabase.functions.invoke('get-premium-content', {
       headers: { Authorization: 'Bearer ' + accessToken }
     }).then(function (res) {
-      if (res.error || !res.data) { console.error('loadPremiumContent failed', res.error); return; }
+      if (res.error || !res.data) {
+        extractInvokeError(res).then(function (msg) { console.error('loadPremiumContent failed:', msg); });
+        return;
+      }
       var data = res.data;
 
       (data.categories || []).forEach(function (c) {
@@ -186,6 +189,30 @@
   var signOutBtn2 = document.getElementById('signOutBtn2');
   if (signOutBtn2) signOutBtn2.addEventListener('click', signOut);
 
+  // supabase-js's functions.invoke() throws a FunctionsHttpError on any
+  // non-2xx response, whose .message is ALWAYS the generic literal "Edge
+  // Function returned a non-2xx status code" -- regardless of what the
+  // function's own response body actually says. The real message create-
+  // checkout-session sent (e.g. "Invalid or expired session", "Checkride
+  // Prep is already unlocked on this account", or the Stripe/auth error
+  // that actually caused a 500) is still sitting in the unconsumed
+  // Response object at res.error.context, readable via .json(). Confirmed
+  // against the actual @supabase/functions-js source (FunctionsClient.ts):
+  // on failure `data` is always null and `error.context` is the raw,
+  // never-yet-read Response. Used by both checkout flows below so a
+  // failure actually tells the member (and us) what went wrong instead of
+  // a useless generic string.
+  function extractInvokeError(res) {
+    if (res.data && res.data.error) return Promise.resolve(res.data.error);
+    var fallback = (res.error && res.error.message) || 'Could not start checkout. Please try again.';
+    if (res.error && res.error.context && typeof res.error.context.json === 'function') {
+      return res.error.context.json().then(function (body) {
+        return (body && body.error) || fallback;
+      }).catch(function () { return fallback; });
+    }
+    return Promise.resolve(fallback);
+  }
+
   /* ── Unlock state: nav lock badges + blurred dashboard widgets ─ */
   function applyUnlockState() {
     var unlocked = !!(member && member.checkridePrepUnlocked);
@@ -261,11 +288,12 @@
       headers: { Authorization: 'Bearer ' + accessToken }
     }).then(function (res) {
       if (res.error || !res.data || !res.data.url) {
-        unlockModalCta.disabled = false;
-        unlockModalCta.textContent = 'Unlock Now';
-        unlockModalError.textContent = (res.error && res.error.message) || (res.data && res.data.error) || 'Could not start checkout. Please try again.';
-        unlockModalError.classList.add('show');
-        return;
+        return extractInvokeError(res).then(function (msg) {
+          unlockModalCta.disabled = false;
+          unlockModalCta.textContent = 'Unlock Now';
+          unlockModalError.textContent = msg;
+          unlockModalError.classList.add('show');
+        });
       }
       window.location.href = res.data.url;
     }).catch(function () {
@@ -357,11 +385,12 @@
       }
     }).then(function (res) {
       if (res.error || !res.data || !res.data.url) {
-        groundSchoolModalCta.disabled = false;
-        groundSchoolModalCta.textContent = 'Pay & Register';
-        groundSchoolModalError.textContent = (res.error && res.error.message) || (res.data && res.data.error) || 'Could not start checkout. Please try again.';
-        groundSchoolModalError.classList.add('show');
-        return;
+        return extractInvokeError(res).then(function (msg) {
+          groundSchoolModalCta.disabled = false;
+          groundSchoolModalCta.textContent = 'Pay & Register';
+          groundSchoolModalError.textContent = msg;
+          groundSchoolModalError.classList.add('show');
+        });
       }
       window.location.href = res.data.url;
     }).catch(function () {
