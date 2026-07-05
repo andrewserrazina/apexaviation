@@ -23,7 +23,15 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import Stripe from 'https://esm.sh/stripe@14?target=deno'
+// `?target=denonext`, not `?target=deno` -- the latter pulls in esm.sh's
+// legacy Node-compat shim, which calls the internal `Deno.core.
+// runMicrotasks()` API. That API doesn't exist in the Supabase Edge
+// Runtime (it's Deno-based but not vanilla Deno), so every invocation
+// crashed with "Deno.core.runMicrotasks() is not supported in this
+// environment" before the handler ever ran -- confirmed via the actual
+// function logs. `denonext` is esm.sh's build target for this exact
+// runtime and doesn't hit that code path.
+import Stripe from 'https://esm.sh/stripe@14?target=denonext'
 
 const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY')!
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!

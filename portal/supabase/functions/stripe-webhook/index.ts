@@ -26,7 +26,10 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import Stripe from 'https://esm.sh/stripe@14?target=deno'
+// `?target=denonext`, not `?target=deno` -- see the matching comment in
+// create-checkout-session/index.ts. Same crash, same fix, same function
+// family (both call the Stripe SDK the same way).
+import Stripe from 'https://esm.sh/stripe@14?target=denonext'
 
 const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY')!
 const STRIPE_WEBHOOK_SECRET = Deno.env.get('STRIPE_WEBHOOK_SECRET')!
