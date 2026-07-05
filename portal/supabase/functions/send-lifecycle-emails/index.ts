@@ -6,8 +6,9 @@
 // without the portal tab open at the right moment never gets that
 // email. This function recomputes the exact same conditions
 // server-side so nothing depends on the client being open, plus adds
-// two email types nothing client-side can do at all: the 7-day
-// inactivity nudge and the checkride countdown (30/14/7/3/1 days out).
+// three email types nothing client-side can do at all: the 7-day
+// inactivity nudge, the checkride countdown (30/14/7/3/1 days out), and
+// (Phase 6) a post-attendance ground school follow-up.
 //
 // Meant to run on a schedule (daily), not per-request. See
 // RETENTION_SYSTEM.md for the exact Supabase cron/pg_net setup this
@@ -36,6 +37,10 @@
 //   - checkride_countdown_<N>: brand new, no client-side equivalent, no
 //     compatibility concern -- one-time per day-mark, dedup via
 //     portal_email_log alone.
+//   - ground_followup_<registration_id>: brand new (Phase 6), no
+//     client-side equivalent. One-time per registration (not per
+//     profile/day), so a member who attends multiple sessions gets one
+//     follow-up per session attended.
 //
 // Env vars required (Supabase Edge Function secrets):
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (both auto-provided)
@@ -158,6 +163,21 @@ function emailTemplateCountdown(daysUntil: number) {
   return `<h2 style="color:#F4B400;margin:0 0 4px;">${daysUntil} ${noun} until your checkride</h2>` +
     '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Use the Weak Areas widget to spend your remaining study time where it counts most, and make sure your logbook and endorsements are squared away.</p>' +
     '<a href="https://apexaviationtx.com/portal.html#progress" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Review Your Progress →</a>'
+}
+
+// Ground school is live, instructor-led, in-person -- there is no
+// recording/replay system anywhere in this codebase, so this
+// deliberately does not promise a "replay link" the way the original
+// Phase 6 ask's wording suggested. "Resources" here is a real, working
+// link to browse upcoming sessions (repeat attendance); the portal CTA
+// is generic rather than personalized to unlock status, since that would
+// require an extra profiles lookup per registration for a soft nudge
+// that reads fine either way.
+function emailTemplateGroundSchoolFollowUp(sessionTitle: string) {
+  return `<h2 style="color:#F4B400;margin:0 0 4px;">Thanks for coming to ${sessionTitle}</h2>` +
+    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Hope it was a good session. Keep the momentum going with the Checkride Prep System in your member portal, or grab a spot at the next ground school session while it\'s fresh.</p>' +
+    '<a href="https://apexaviationtx.com/portal.html#ground-school" style="display:inline-block;margin-top:8px;margin-right:10px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">See Upcoming Sessions →</a>' +
+    '<a href="https://apexaviationtx.com/portal.html" style="display:inline-block;margin-top:8px;border:1.5px solid rgba(244,180,0,0.4);color:#F4B400;border-radius:8px;padding:11px 21px;text-decoration:none;font-weight:700;font-size:14px;">Go to My Portal →</a>'
 }
 
 type Question = { id: string; category: string; is_scenario: boolean }
@@ -308,6 +328,41 @@ async function processCountdown(supabase: any, profile: any, results: any) {
   results.countdown++
 }
 
+// Phase 6: post-attendance follow-up. Iterates ground_registrations
+// directly rather than profiles -- a walk-in registrant with no matching
+// portal account (profile_id null) still has a real email on the
+// registration row and should still get this, same as the registration/
+// waitlist confirmation emails already sent from the Stripe webhook and
+// GroundSchedule.jsx. Dedup key includes the registration id itself
+// (not just profile_id), so a member who attends multiple sessions over
+// time gets one follow-up per session, not just once ever. Bounded to
+// the last 45 days so this doesn't rescan an ever-growing full history
+// on every run.
+async function processGroundSchoolFollowUps(supabase: any, results: any) {
+  const cutoff = new Date(Date.now() - 45 * 86400000).toISOString()
+  const { data: regs } = await supabase
+    .from('ground_registrations')
+    .select('id, email, profile_id, checked_out_at, session:ground_sessions(title)')
+    .eq('attendance_status', 'completed')
+    .gte('checked_out_at', cutoff)
+
+  for (const reg of regs ?? []) {
+    if (!reg.email) continue
+    const emailType = 'ground_followup_' + reg.id
+    try {
+      const { data: already } = await supabase.from('portal_email_log').select('id').eq('email_type', emailType).limit(1)
+      if (already && already.length) continue
+
+      const sessionTitle = reg.session?.title || 'Ground School'
+      await sendEmail(supabase, reg.email, `Thanks for coming to ${sessionTitle}`, emailTemplateGroundSchoolFollowUp(sessionTitle))
+      await supabase.from('portal_email_log').insert({ profile_id: reg.profile_id, email_type: emailType })
+      results.ground_followup++
+    } catch (err) {
+      results.errors.push(`ground_registration ${reg.id}: ${err}`)
+    }
+  }
+}
+
 serve(async (req) => {
   if (CRON_SECRET) {
     const authHeader = req.headers.get('Authorization') || ''
@@ -317,7 +372,7 @@ serve(async (req) => {
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
-  const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, errors: [] as string[] }
+  const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, ground_followup: 0, errors: [] as string[] }
 
   const [{ data: categories }, { data: questions }, { data: profiles }] = await Promise.all([
     supabase.from('dpe_categories').select('id'),
@@ -341,6 +396,8 @@ serve(async (req) => {
       results.errors.push(`${profile.id}: ${err}`)
     }
   }
+
+  await processGroundSchoolFollowUps(supabase, results)
 
   return new Response(JSON.stringify(results), { headers: { 'Content-Type': 'application/json' } })
 })

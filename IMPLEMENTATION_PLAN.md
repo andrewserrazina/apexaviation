@@ -3,13 +3,11 @@
 **Status:** Phase 1 (Premium Content Security), the ground-school RLS
 hardening called out as Phase 1's top open risk (see
 `GROUND_SCHOOL_RLS_AUDIT.md`), Phase 2 (Billing & Account Consistency),
-Phase 3 (Retention System), Phase 4 (Content Operations), and Phase 5
-(Analytics & Conversion Tracking) are executed and verified. Phases 6–7
-planned and sequenced below, not yet built — each is a substantial
-standalone effort in its own right, and building all of them in one
-uncommitted pass would mean shipping untested, unverified code against a
-live payment system. This document is the roadmap for the follow-up
-passes.
+Phase 3 (Retention System), Phase 4 (Content Operations), Phase 5
+(Analytics & Conversion Tracking), and Phase 6 (Ground School
+Optimization) are executed and verified. Phase 7 (this document + report)
+is ongoing — see below. This document is the roadmap and running record
+for this multi-pass effort.
 
 ## How this plan was built
 
@@ -251,16 +249,33 @@ test results. Summary:
   rendered dashboard via Playwright against a mocked Supabase client (5
   synthetic profiles, exact match on every displayed number).
 
-## Phase 6 — Ground School Optimization (mostly already built)
+## Phase 6 — Ground School Optimization ✅ Executed this pass
 
-Contrary to the original ask's framing, attendance tracking, CSV export,
-manual registrant add, waitlist promotion, and bulk email **already exist**
-in `GroundSchedule.jsx` (the React CRM). What's actually missing: a
-student-facing "My Sessions" view (past/upcoming/purchased) in the member
-portal — today a student who paid via the new Stripe flow has no way to
-see their own registration history — and the post-attendance follow-up
-email sequence (replay/resources/portal CTA), which doesn't exist in any
-form yet.
+**What shipped:** see `GROUND_SCHOOL_OPTIMIZATION.md` for the full design
+and test results. Summary:
+
+- Attendance tracking, CSV export, manual registrant add, waitlist
+  promotion, and bulk email already existed in `GroundSchedule.jsx` (the
+  React CRM), contrary to the original ask's framing — untouched.
+- New "My Ground School Sessions" card in the member portal's Account
+  Management page: every registration the member has, sorted by session
+  date, with a status badge (Registered/Waitlisted/Checked In/Attended/No
+  Show). Built on RLS access the ground-school hardening pass already
+  granted — no new policy needed.
+- New post-attendance follow-up email, added to the existing
+  `send-lifecycle-emails` scheduled function (Phase 3) rather than a new
+  function, since it's the same server-side reconciliation concern that
+  function already owns. Iterates `ground_registrations` directly (not
+  `profiles`), so a walk-in with no portal account still gets it. Content
+  deliberately doesn't promise a "replay" link — ground school has no
+  recording/replay system anywhere in this codebase, and the original
+  ask's wording implied one; the email links to upcoming sessions and the
+  member's portal instead, both real and working.
+- Verified: the new query pattern reuses the identical Supabase embedded-
+  resource join syntax already proven in `Attend.jsx`/`GroundSchedule.jsx`;
+  the "My Sessions" UI verified via Playwright against a mocked Supabase
+  client (4 fixture registrations covering every status, correct sort
+  order, correct empty state).
 
 ## Phase 7 — Launch Readiness Audit (this document + report, live-flow testing not done)
 

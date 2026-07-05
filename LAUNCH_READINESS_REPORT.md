@@ -90,16 +90,21 @@ dashboard. See `CONTENT_OPERATIONS.md`.
 
 ## Medium Priority Issues
 
-### 8. No student-facing ground school session history
-A student who registers and pays for a ground school session today has no
-"My Sessions" view showing past/upcoming/purchased sessions in their own
-portal — this data exists (`ground_registrations` linkable via the new
-`profile_id` column added in v4) but isn't surfaced back to them.
+### 8. No student-facing ground school session history — **FIXED this pass**
+A student who registers and pays for a ground school session had no "My
+Sessions" view showing their sessions in their own portal — this data
+existed (`ground_registrations` linkable via the `profile_id` column
+added in v4, readable via the RLS policy added in v6) but wasn't surfaced
+back to them. Fixed via a new card in Account Management. See
+`GROUND_SCHOOL_OPTIMIZATION.md`.
 
-### 9. No post-attendance follow-up email sequence
-After a ground school session, nothing automatically sends a replay link,
-related resources, or a premium-portal CTA. This is genuinely unbuilt, not
-a bug — flagged here as a real revenue-adjacent gap (Phase 6).
+### 9. No post-attendance follow-up email sequence — **FIXED this pass**
+After a ground school session, nothing automatically sent a follow-up.
+Fixed via a new routine in the existing `send-lifecycle-emails` scheduled
+function — deliberately without a "replay" link, since ground school has
+no recording/replay system anywhere in this codebase (a real link would
+be shipping a broken promise); it links to upcoming sessions and the
+portal instead. See `GROUND_SCHOOL_OPTIMIZATION.md`.
 
 ### 10. Account page pricing/status copy hasn't had a full audit pass — **FIXED this pass (Phase 2)**
 The main marketing funnel pages (`checkride-prep.html`, `apex-advantage.html`)
@@ -184,8 +189,8 @@ hand-built mock of `window.apexSupabase`, not the production backend.
 - [x] Reconcile `portal_email_log` to actually log all five (now seven) email types (Issue #5)
 
 **Can wait:**
-- [ ] Student-facing ground school session history (Issue #8)
-- [ ] Post-attendance follow-up emails (Issue #9)
+- [x] Student-facing ground school session history (Issue #8) — see `GROUND_SCHOOL_OPTIMIZATION.md`
+- [x] Post-attendance follow-up emails (Issue #9) — see `GROUND_SCHOOL_OPTIMIZATION.md`
 - [x] Full Account page copy audit (Issue #10) — Membership card, billing
       history, and locked-widget/unlock-modal pricing now reflect real
       per-member state instead of static copy; see `IMPLEMENTATION_PLAN.md`
