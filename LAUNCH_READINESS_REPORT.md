@@ -1,12 +1,18 @@
 # Launch Readiness Report — Apex Advantage
 
-**Scope of this pass:** full codebase audit (auth, Stripe, gating, RLS,
-email, analytics, account management, admin dashboards) + execution of
-Phase 1 (premium content server-side enforcement). This report reflects
-what was found, what was fixed, and what still needs a human with live
-Supabase/Stripe dashboard access to verify — this sandbox has no
-production access, so nothing below marked "not verified" was skipped by
-choice; it's genuinely unreachable from here.
+**Scope:** full codebase audit (auth, Stripe, gating, RLS, email,
+analytics, account management, admin dashboards) followed by execution of
+all seven planned phases (`IMPLEMENTATION_PLAN.md`) across several
+passes — premium content security, ground-school RLS hardening, billing/
+account consistency, the retention system, content operations, the
+analytics dashboard, and ground school optimization. This report reflects
+what was found across all of that work, what was fixed, and what still
+needs a human with live Supabase/Stripe dashboard access to verify — this
+sandbox has no production access, so nothing below marked "not verified"
+was skipped by choice; it's genuinely unreachable from here. This is
+Phase 7 (Launch Readiness Audit) itself: the final consolidation pass,
+including one last cross-phase integration test (see below) beyond each
+phase's own isolated verification.
 
 ---
 
@@ -90,16 +96,21 @@ dashboard. See `CONTENT_OPERATIONS.md`.
 
 ## Medium Priority Issues
 
-### 8. No student-facing ground school session history
-A student who registers and pays for a ground school session today has no
-"My Sessions" view showing past/upcoming/purchased sessions in their own
-portal — this data exists (`ground_registrations` linkable via the new
-`profile_id` column added in v4) but isn't surfaced back to them.
+### 8. No student-facing ground school session history — **FIXED this pass**
+A student who registers and pays for a ground school session had no "My
+Sessions" view showing their sessions in their own portal — this data
+existed (`ground_registrations` linkable via the `profile_id` column
+added in v4, readable via the RLS policy added in v6) but wasn't surfaced
+back to them. Fixed via a new card in Account Management. See
+`GROUND_SCHOOL_OPTIMIZATION.md`.
 
-### 9. No post-attendance follow-up email sequence
-After a ground school session, nothing automatically sends a replay link,
-related resources, or a premium-portal CTA. This is genuinely unbuilt, not
-a bug — flagged here as a real revenue-adjacent gap (Phase 6).
+### 9. No post-attendance follow-up email sequence — **FIXED this pass**
+After a ground school session, nothing automatically sent a follow-up.
+Fixed via a new routine in the existing `send-lifecycle-emails` scheduled
+function — deliberately without a "replay" link, since ground school has
+no recording/replay system anywhere in this codebase (a real link would
+be shipping a broken promise); it links to upcoming sessions and the
+portal instead. See `GROUND_SCHOOL_OPTIMIZATION.md`.
 
 ### 10. Account page pricing/status copy hasn't had a full audit pass — **FIXED this pass (Phase 2)**
 The main marketing funnel pages (`checkride-prep.html`, `apex-advantage.html`)
@@ -131,12 +142,35 @@ the randomization scheme, but worth a retry loop for correctness.
 
 ---
 
-## What was actually verified this pass (and how)
+## What was actually verified across all phases (and how)
 
-This sandbox cannot reach the live Supabase project or Stripe API — every
-verification below used Playwright driving the real HTML/JS against a
-hand-built mock of `window.apexSupabase`, not the production backend.
+This sandbox cannot reach the live Supabase project, Stripe API, or Resend
+— every verification below used one of two methods: (a) a real local
+Postgres 16 instance for every RLS policy/trigger/RPC change (`SET ROLE`
++ session variables simulating `anon`/`authenticated`/`service_role` and
+`auth.uid()`), or (b) Playwright driving the real `site/portal.js`/
+`portal.html` against a hand-built mock of `window.apexSupabase`, never
+the production backend. Full test tables live in each phase's own
+document; this is the roll-up.
 
+**RLS/database, verified against real Postgres:**
+- ✅ Ground school RLS (v6): public browsing preserved, forged-paid/
+  forged-attended inserts blocked, anon can't read registration PII,
+  student sees only their own registration, admin sees/manages all,
+  service-role/webhook bypass works, token-based check-in/out including
+  the "already recorded" repeat-call case — 15 scenarios (`GROUND_SCHOOL_RLS_AUDIT.md`)
+- ✅ Billing/pricing RLS (v7): own-purchase visibility, cross-member
+  isolation, admin access, founding→standard tier flip at exactly 25
+  purchases (`IMPLEMENTATION_PLAN.md` Phase 2)
+- ✅ Retention system RLS (v8): profile self-update with privileged
+  columns locked, admin full access — plus catching and fixing the
+  **pre-existing** infinite-recursion bug in the original profiles admin
+  policies (`RETENTION_SYSTEM.md`)
+- ✅ Content CMS + referral RLS (v9): admin CRUD on DPE content, student
+  blocked, referrer still can't self-approve, admin can move a referral
+  through both status transitions (`CONTENT_OPERATIONS.md`)
+
+**Application flows, verified via Playwright + mocked Supabase client:**
 - ✅ Free signup → "check your email" flow
 - ✅ Locked member: dashboard renders with zero JS errors, blurred
   widgets show correctly, gated nav items open the unlock modal instead of
@@ -148,6 +182,27 @@ hand-built mock of `window.apexSupabase`, not the production backend.
   detection, Stripe redirect attempt with correct metadata)
 - ✅ Unlock-Checkride-Prep flow (modal → Stripe redirect attempt with
   correct purpose/tier metadata)
+- ✅ Account Management: Membership card (locked/unlocked/founding/
+  standard states), Billing History, live founding/standard pricing on
+  locked widgets and the unlock modal, My Ground School Sessions (every
+  attendance/waitlist status, correct sort order, empty state)
+- ✅ Admin dashboard: Funnel & Revenue and Retention cards (verified
+  against hand-computed fixture data before touching the UI, then the
+  rendered numbers matched exactly), DPE content CMS (add/edit/delete,
+  category switching), referral status actions
+- ✅ **Phase 7 cross-phase integration pass** (new in this pass, beyond
+  each phase's own isolated test): locked member, unlocked member, and
+  admin each loaded in one page load with every table this session
+  touched present in a single shared mock — zero console errors in any of
+  the three, confirming Phases 1–6's additions to the same shared pages
+  (Account Management, the admin dashboard) don't interfere with each
+  other.
+- ✅ Formula/math verification done by hand before touching UI code in
+  three cases: the readiness-score/streak formulas (Phase 3, ported to
+  the server-side email job), the retention/streak-bucket cohort math
+  (Phase 5), and checkride-countdown day arithmetic (Phase 3) — each
+  checked against fixture data with a known expected result before being
+  wired into rendered UI or emails.
 
 ## What has NOT been verified (requires live access)
 
@@ -159,33 +214,49 @@ hand-built mock of `window.apexSupabase`, not the production backend.
 - Whether a legacy inactivity-nudge function is already deployed in the
   Supabase project (see Issue #6 — check before deploying the new one)
 - An actual scheduled run of `send-lifecycle-emails` against real member
-  data (Phase 3 — see `RETENTION_SYSTEM.md`)
-- Admin analytics dashboard against real, non-trivial data volume
+  data — none of its six email types (four reconciled milestones,
+  inactivity nudge, checkride countdown, ground-school follow-up) have
+  fired against a real inbox (Phases 3 and 6 — see `RETENTION_SYSTEM.md`,
+  `GROUND_SCHOOL_OPTIMIZATION.md`)
+- Admin analytics dashboard against real, non-trivial data volume — the
+  Funnel & Revenue/Retention math was verified against small synthetic
+  fixtures, not a real member base's actual scale or data shape
+  (Phase 5 — see `ANALYTICS_DASHBOARD.md`)
+- Whether any of the nine SQL migrations produced across this effort
+  (`v5` through `v9`) have actually been run against the live Supabase
+  project yet — everything above was verified against faithful replicas
+  of the live schema, not the live schema itself
 
 ---
 
 ## Recommended Launch Checklist
 
-**Must do before launch:**
-- [ ] Run `portal/supabase-portal-schema-v5.sql` in the Supabase SQL editor
-- [ ] Deploy `get-premium-content` Edge Function (new)
+Every code change described in this report and `IMPLEMENTATION_PLAN.md`
+is written, committed, and verified against faithful replicas of the live
+environment. None of it is live yet — the items below are what actually
+moves it from "committed" to "running in production," and every one of
+them requires Supabase/Stripe dashboard access this sandbox doesn't have.
+
+**Must do before launch — run in this order (later migrations assume earlier ones are applied):**
+- [ ] Run `portal/supabase-portal-schema-v5.sql` (premium content tables + RLS — Phase 1)
 - [ ] Run `portal/supabase-portal-schema-v6.sql` (ground-school RLS fix — see `GROUND_SCHOOL_RLS_AUDIT.md`)
 - [ ] Run `portal/supabase-portal-schema-v7.sql` (billing/pricing RLS + pricing RPC — Phase 2)
-- [ ] Run `portal/supabase-portal-schema-v8.sql` (retention system + profiles RLS fixes — Phase 3, see `RETENTION_SYSTEM.md`)
+- [ ] Run `portal/supabase-portal-schema-v8.sql` (retention system + profiles RLS fixes, including the pre-existing infinite-recursion fix — Phase 3, see `RETENTION_SYSTEM.md`)
 - [ ] Run `portal/supabase-portal-schema-v9.sql` (DPE content CMS + referral admin RLS — Phase 4, see `CONTENT_OPERATIONS.md`)
-- [ ] Check the Supabase Edge Functions list for a legacy inactivity-nudge function before deploying the new one (Issue #6)
-- [ ] Deploy `send-lifecycle-emails` and schedule it (dashboard cron or `pg_cron`/`pg_net` — see `RETENTION_SYSTEM.md`)
+- [ ] Deploy `get-premium-content` Edge Function (new, Phase 1)
+- [ ] Redeploy `stripe-webhook` (Phase 5 added `portal_events` conversion-tracking inserts — same function, needs redeploying to pick them up)
+- [ ] Check the Supabase Edge Functions list for a legacy inactivity-nudge function before deploying the new one (Issue #6) — **do this before the next step**
+- [ ] Deploy `send-lifecycle-emails` and schedule it (dashboard cron or `pg_cron`/`pg_net` — see `RETENTION_SYSTEM.md`). This one function now covers all of Phase 3's reconciled milestones + inactivity nudge + checkride countdown, and Phase 6's post-attendance follow-up — one deploy, one schedule.
 - [ ] Manually test the full signup → unlock → DPE library flow against the real, deployed site
 - [ ] Manually test a real ground school registration + Stripe payment end to end
+- [ ] Manually trigger one `send-lifecycle-emails` run against real data and inspect its JSON response (per-type counts + `errors` array) before trusting the schedule
 
-**Should do soon after launch:**
-- [x] Build the server-side lifecycle-email reconciliation job (Issue #4) — see `RETENTION_SYSTEM.md`
-- [x] Add admin UI for referral status (Issue #7) — see `CONTENT_OPERATIONS.md`
-- [x] Reconcile `portal_email_log` to actually log all five (now seven) email types (Issue #5)
-
-**Can wait:**
-- [ ] Student-facing ground school session history (Issue #8)
-- [ ] Post-attendance follow-up emails (Issue #9)
+**Already executed and verified this effort (see each phase's document for detail):**
+- [x] Server-side lifecycle-email reconciliation job (Issue #4) — `RETENTION_SYSTEM.md`
+- [x] Admin UI for referral status (Issue #7) — `CONTENT_OPERATIONS.md`
+- [x] `portal_email_log` now logs all seven email types, not just weak-area (Issue #5)
+- [x] Student-facing ground school session history (Issue #8) — `GROUND_SCHOOL_OPTIMIZATION.md`
+- [x] Post-attendance follow-up emails (Issue #9) — `GROUND_SCHOOL_OPTIMIZATION.md`
 - [x] Full Account page copy audit (Issue #10) — Membership card, billing
       history, and locked-widget/unlock-modal pricing now reflect real
       per-member state instead of static copy; see `IMPLEMENTATION_PLAN.md`

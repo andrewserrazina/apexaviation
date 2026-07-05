@@ -510,6 +510,7 @@
   var checkrideResult = null;
   var myPurchase = null;
   var myInvoices = [];
+  var myGroundRegistrations = [];
 
   function loadProgress() {
     return Promise.all([
@@ -528,7 +529,8 @@
       apexSupabase.from('portal_testimonials').select('id').eq('profile_id', member.id).limit(1),
       apexSupabase.from('portal_checkride_results').select('*').eq('profile_id', member.id).maybeSingle(),
       apexSupabase.from('portal_access_purchases').select('*').eq('profile_id', member.id).maybeSingle(),
-      apexSupabase.from('invoices').select('*').eq('student_id', member.id).order('issued_at', { ascending: false })
+      apexSupabase.from('invoices').select('*').eq('student_id', member.id).order('issued_at', { ascending: false }),
+      apexSupabase.from('ground_registrations').select('*, session:ground_sessions(*)').eq('profile_id', member.id)
     ]).then(function (results) {
       (results[0].data || []).forEach(function (r) {
         studied[r.question_id] = r.completed;
@@ -567,6 +569,7 @@
       checkrideResult = results[13].data || null;
       myPurchase = results[14].data || null;
       myInvoices = results[15].data || [];
+      myGroundRegistrations = results[16].data || [];
     }).catch(function (e) { console.error('Failed to load portal progress', e); });
   }
 
@@ -2151,6 +2154,36 @@
     }).join('');
   }
 
+  // Phase 6: student-facing "My Sessions" -- ground_registrations.profile_id
+  // is populated by the Stripe webhook (or an admin's manual add), but
+  // nothing surfaced it back to the member; "Students can view their own
+  // registrations" (supabase-portal-schema-v6.sql) already made this
+  // readable, it just had no UI. Sorted by session date descending so the
+  // next upcoming session (or the most recent past one) shows first.
+  var SESSION_STATUS_LABEL = { registered: 'Registered', checked_in: 'Checked In', completed: 'Attended', no_show: 'No Show' };
+  function renderMySessions() {
+    var listEl = document.getElementById('mySessionsList');
+    var emptyEl = document.getElementById('mySessionsEmpty');
+    var rows = myGroundRegistrations.filter(function (r) { return r.session; })
+      .sort(function (a, b) { return new Date(b.session.scheduled_at) - new Date(a.session.scheduled_at); });
+    if (!rows.length) {
+      listEl.innerHTML = '';
+      emptyEl.style.display = 'block';
+      return;
+    }
+    emptyEl.style.display = 'none';
+    listEl.innerHTML = rows.map(function (r) {
+      var s = r.session;
+      var date = new Date(s.scheduled_at).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      var statusKey = r.is_waitlisted ? 'waitlisted' : (r.attendance_status || 'registered');
+      var statusLabel = r.is_waitlisted ? 'Waitlisted' : (SESSION_STATUS_LABEL[r.attendance_status] || 'Registered');
+      return '<div class="portal-session-row">' +
+        '<div><div class="portal-session-row__title">' + s.title + '</div><div class="portal-session-row__meta">' + date + (s.location ? ' · ' + s.location : '') + '</div></div>' +
+        '<span class="portal-session-row__status portal-session-row__status--' + statusKey + '">' + statusLabel + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
   /* ══════════════════════════════════════════════════════════════
      REFERRAL PROGRAM
      ══════════════════════════════════════════════════════════════ */
@@ -2360,6 +2393,7 @@
       renderCheckrideCountdown();
       renderMembership();
       renderBillingHistory();
+      renderMySessions();
       ensureReferralCode();
       renderPassedBanner();
       renderSuccessWall();

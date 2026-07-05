@@ -1,15 +1,18 @@
 # Apex Advantage — Launch Readiness Implementation Plan
 
-**Status:** Phase 1 (Premium Content Security), the ground-school RLS
-hardening called out as Phase 1's top open risk (see
-`GROUND_SCHOOL_RLS_AUDIT.md`), Phase 2 (Billing & Account Consistency),
-Phase 3 (Retention System), Phase 4 (Content Operations), and Phase 5
-(Analytics & Conversion Tracking) are executed and verified. Phases 6–7
-planned and sequenced below, not yet built — each is a substantial
-standalone effort in its own right, and building all of them in one
-uncommitted pass would mean shipping untested, unverified code against a
-live payment system. This document is the roadmap for the follow-up
-passes.
+**Status:** All seven phases are executed and verified — Phase 1 (Premium
+Content Security), the ground-school RLS hardening called out as Phase
+1's top open risk (see `GROUND_SCHOOL_RLS_AUDIT.md`), Phase 2 (Billing &
+Account Consistency), Phase 3 (Retention System), Phase 4 (Content
+Operations), Phase 5 (Analytics & Conversion Tracking), Phase 6 (Ground
+School Optimization), and Phase 7 (Launch Readiness Audit — this
+document + `LAUNCH_READINESS_REPORT.md`, including a final cross-phase
+integration test). Nothing here has been applied to the live Supabase
+project yet — every migration and Edge Function change is committed and
+verified against faithful replicas of the live schema/environment, not
+the live environment itself. See `LAUNCH_READINESS_REPORT.md`'s
+Recommended Launch Checklist for the exact, dependency-ordered steps to
+actually go live.
 
 ## How this plan was built
 
@@ -251,27 +254,57 @@ test results. Summary:
   rendered dashboard via Playwright against a mocked Supabase client (5
   synthetic profiles, exact match on every displayed number).
 
-## Phase 6 — Ground School Optimization (mostly already built)
+## Phase 6 — Ground School Optimization ✅ Executed this pass
 
-Contrary to the original ask's framing, attendance tracking, CSV export,
-manual registrant add, waitlist promotion, and bulk email **already exist**
-in `GroundSchedule.jsx` (the React CRM). What's actually missing: a
-student-facing "My Sessions" view (past/upcoming/purchased) in the member
-portal — today a student who paid via the new Stripe flow has no way to
-see their own registration history — and the post-attendance follow-up
-email sequence (replay/resources/portal CTA), which doesn't exist in any
-form yet.
+**What shipped:** see `GROUND_SCHOOL_OPTIMIZATION.md` for the full design
+and test results. Summary:
 
-## Phase 7 — Launch Readiness Audit (this document + report, live-flow testing not done)
+- Attendance tracking, CSV export, manual registrant add, waitlist
+  promotion, and bulk email already existed in `GroundSchedule.jsx` (the
+  React CRM), contrary to the original ask's framing — untouched.
+- New "My Ground School Sessions" card in the member portal's Account
+  Management page: every registration the member has, sorted by session
+  date, with a status badge (Registered/Waitlisted/Checked In/Attended/No
+  Show). Built on RLS access the ground-school hardening pass already
+  granted — no new policy needed.
+- New post-attendance follow-up email, added to the existing
+  `send-lifecycle-emails` scheduled function (Phase 3) rather than a new
+  function, since it's the same server-side reconciliation concern that
+  function already owns. Iterates `ground_registrations` directly (not
+  `profiles`), so a walk-in with no portal account still gets it. Content
+  deliberately doesn't promise a "replay" link — ground school has no
+  recording/replay system anywhere in this codebase, and the original
+  ask's wording implied one; the email links to upcoming sessions and the
+  member's portal instead, both real and working.
+- Verified: the new query pattern reuses the identical Supabase embedded-
+  resource join syntax already proven in `Attend.jsx`/`GroundSchedule.jsx`;
+  the "My Sessions" UI verified via Playwright against a mocked Supabase
+  client (4 fixture registrations covering every status, correct sort
+  order, correct empty state).
 
-This session verified, via mocked Supabase/Stripe clients (this sandbox
-cannot reach the live project): free signup, premium unlock modal flow,
-ground school registration flow, and the full premium-content
-locked/unlocked render pipeline. **Not verified**, because they require a
-live Supabase project and real Stripe test-mode transactions this sandbox
-can't reach: actual password reset email delivery, actual webhook
-delivery/signature verification against live Stripe, actual referral
-signup attribution, actual testimonial/success-wall end-to-end flow, and
-the inactivity email system (whose existence itself is unverified — see
-Phase 3). These need to be run by hand against the real project; see the
-checklist in `LAUNCH_READINESS_REPORT.md`.
+## Phase 7 — Launch Readiness Audit ✅ Executed this pass
+
+**What this phase did, beyond what Phases 1–6 already verified in
+isolation:** a full-portal cross-phase integration test — locked member,
+unlocked member, and admin, each loaded in one page with every table this
+whole effort touched present in a single shared mock, checking that
+Phases 1–6's additions to the same shared pages (Account Management, the
+admin dashboard) don't interfere with each other. All three scenarios
+rendered with zero console errors. Then a full consolidation pass across
+`LAUNCH_READINESS_REPORT.md`: rewrote the "verified"/"not verified"
+sections to cover all six phases (not just Phase 1, which is all they
+reflected before this pass), and rebuilt the launch checklist into a
+single ordered list of every migration (`v5`–`v9`) and Edge Function
+deploy this effort produced, since by this point that list spans six
+phases' worth of changes and needed to actually be run in dependency
+order.
+
+**Still not verified**, because they require a live Supabase project and
+real Stripe test-mode transactions this sandbox can't reach: actual
+password reset email delivery, actual webhook delivery/signature
+verification against live Stripe, actual referral signup attribution,
+actual testimonial/success-wall end-to-end flow, an actual scheduled run
+of `send-lifecycle-emails` against real data, and whether a legacy
+inactivity-nudge function is already deployed (Issue #6). These need to
+be run by hand against the real project — see the full checklist in
+`LAUNCH_READINESS_REPORT.md`.
