@@ -1,5 +1,5 @@
 -- Run this whole block in the Supabase SQL Editor and paste back everything
--- it returns (all four result sets). This is read-only, changes nothing.
+-- it returns (all five result sets). This is read-only, changes nothing.
 
 -- 1. Column definitions for both tables
 select table_name, column_name, data_type, is_nullable, column_default
@@ -7,10 +7,16 @@ from information_schema.columns
 where table_schema = 'public' and table_name in ('ground_sessions', 'ground_registrations')
 order by table_name, ordinal_position;
 
--- 2. RLS enabled/disabled status
-select schemaname, tablename, rowsecurity, forcerowsecurity
-from pg_tables
-where schemaname = 'public' and tablename in ('ground_sessions', 'ground_registrations');
+-- 2. RLS enabled/disabled status (rowsecurity = RLS on; relforcerowsecurity =
+-- force-RLS, which also applies RLS to the table owner -- rarely set, but
+-- worth seeing if it is)
+select
+  c.relname as table_name,
+  c.relrowsecurity as rls_enabled,
+  c.relforcerowsecurity as rls_forced
+from pg_class c
+join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public' and c.relname in ('ground_sessions', 'ground_registrations');
 
 -- 3. Every existing policy on both tables
 select schemaname, tablename, policyname, permissive, roles, cmd, qual, with_check

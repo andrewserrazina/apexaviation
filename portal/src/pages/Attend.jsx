@@ -26,35 +26,22 @@ export default function Attend() {
         return
       }
 
-      const tokenCol = isCheckIn ? 'check_in_token' : 'check_out_token'
-      const timestampCol = isCheckIn ? 'checked_in_at' : 'checked_out_at'
+      const { data: rows, error } = await supabase.rpc('record_ground_attendance_by_token', {
+        p_token: token,
+        p_type: type,
+      })
 
-      const { data: rows } = await supabase
-        .from('ground_registrations')
-        .select('*, session:ground_sessions(*)')
-        .eq(tokenCol, token)
-
-      if (!rows?.length) { setStatus('invalid'); return }
+      if (error || !rows?.length) { setStatus('invalid'); return }
       const row = rows[0]
-      setReg(row)
-      setSession(row.session)
+      setReg({ full_name: row.full_name })
+      setSession({
+        title: row.session_title,
+        scheduled_at: row.session_scheduled_at,
+        location: row.session_location,
+      })
 
-      // Already recorded
-      if (row[timestampCol]) { setStatus('already'); return }
-
-      // Check-out requires check-in first
-      if (!isCheckIn && !row.checked_in_at) { setStatus('checkin_first'); return }
-
-      const newStatus = isCheckIn ? 'checked_in' : 'completed'
-      const { error } = await supabase
-        .from('ground_registrations')
-        .update({
-          [timestampCol]: new Date().toISOString(),
-          attendance_status: newStatus,
-        })
-        .eq('id', row.id)
-
-      if (error) { setStatus('invalid'); return }
+      if (row.needs_checkin_first) { setStatus('checkin_first'); return }
+      if (row.already_recorded) { setStatus('already'); return }
       setStatus('success')
     }
     process()

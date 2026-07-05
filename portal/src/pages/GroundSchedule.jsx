@@ -198,30 +198,23 @@ export default function GroundSchedule() {
     e.preventDefault()
     setSaving(true)
     setFormError('')
-    const spots = spotsLeft(activeSession)
-    const goWaitlist = spots <= 0
 
-    const { error } = await supabase.from('ground_registrations').insert({
-      session_id: activeSession.id,
-      full_name: regForm.full_name,
-      email: regForm.email,
-      is_waitlisted: goWaitlist,
-    })
+    const { data: newReg, error } = await supabase
+      .rpc('register_for_ground_school', {
+        p_session_id: activeSession.id,
+        p_full_name: regForm.full_name,
+        p_email: regForm.email,
+      })
+      .single()
+
     if (error) {
       setSaving(false)
-      setFormError(error.message.includes('unique') ? 'This email is already registered for this session.' : error.message)
+      setFormError(error.message)
       return
     }
 
-    const { data: newReg } = await supabase
-      .from('ground_registrations')
-      .select('*')
-      .eq('session_id', activeSession.id)
-      .eq('email', regForm.email)
-      .single()
-
     if (newReg) {
-      if (goWaitlist) {
+      if (newReg.is_waitlisted) {
         sendWaitlistConfirmation(newReg, activeSession)
       } else {
         sendRegistrationConfirmation(newReg, activeSession)
@@ -229,7 +222,7 @@ export default function GroundSchedule() {
     }
 
     setSaving(false)
-    setRegSuccess(goWaitlist ? 'waitlist' : 'registered')
+    setRegSuccess(newReg?.is_waitlisted ? 'waitlist' : 'registered')
     load()
   }
 
