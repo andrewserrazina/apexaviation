@@ -516,8 +516,12 @@
           <div class="portal-card">
             <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:18px">Membership</h3>
             <div class="portal-membership-row">
-              <strong>Plan</strong>
-              <span>Apex Advantage — Founding Member</span>
+              <strong>Checkride Prep</strong>
+              <span id="membershipPlan">—</span>
+            </div>
+            <div class="portal-membership-row" id="membershipUnlockedRow" hidden>
+              <strong>Unlocked</strong>
+              <span id="membershipUnlockedDate">—</span>
             </div>
             <div class="portal-membership-row">
               <strong>Role</strong>
@@ -528,8 +532,8 @@
               <span id="memberSince">—</span>
             </div>
             <div class="portal-membership-row">
-              <strong>Billing</strong>
-              <span>$25 / session</span>
+              <strong>Ground School</strong>
+              <span>$25 / session, pay at the door</span>
             </div>
             <div class="portal-membership-row">
               <strong>Support</strong>
@@ -564,6 +568,13 @@
             </form>
             <div id="referralList" style="margin-top:16px"></div>
           </div>
+        </div>
+
+        <div class="portal-card" style="margin-top:20px">
+          <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">Billing History</h3>
+          <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:16px">Every charge on your Apex Advantage account.</p>
+          <div id="billingHistoryList"></div>
+          <p id="billingHistoryEmpty" style="color:rgba(255,255,255,0.4);font-size:13px">No billing history yet.</p>
         </div>
 
         <div class="portal-card portal-passed-banner" style="margin-top:20px" id="passedBanner">

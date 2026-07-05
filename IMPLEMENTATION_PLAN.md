@@ -1,10 +1,13 @@
 # Apex Advantage — Launch Readiness Implementation Plan
 
-**Status:** Phase 1 executed and verified in this pass. Phases 2–7 planned and
-sequenced below, not yet built — each is a substantial standalone effort in
-its own right (a CMS, an analytics dashboard, five email automations,
-attendance tooling), and building all of them in one uncommitted pass would
-mean shipping untested, unverified code against a live payment system. This
+**Status:** Phase 1 (Premium Content Security), the ground-school RLS
+hardening called out as Phase 1's top open risk (see
+`GROUND_SCHOOL_RLS_AUDIT.md`), Phase 2 (Billing & Account Consistency), and
+Phase 3 (Retention System) are executed and verified. Phases 4–7 planned
+and sequenced below, not yet built — each is a substantial standalone
+effort in its own right (a CMS, an analytics dashboard, attendance
+tooling), and building all of them in one uncommitted pass would mean
+shipping untested, unverified code against a live payment system. This
 document is the roadmap for the follow-up passes.
 
 ## How this plan was built
@@ -89,60 +92,97 @@ phase list, and are called out explicitly below.
 
 ---
 
-## Phase 2 — Billing & Account Consistency (not started)
+## Phase 2 — Billing & Account Consistency ✅ Executed this pass
 
-**Scope, grounded in the audit:**
-- Account page currently shows nothing about founding/standard tier,
-  purchase date, or referral code in one place — that data exists
-  (`portal_access_purchases.tier`, `.created_at`, `portal_referral_codes.code`)
-  but isn't surfaced together as a "Membership Status" card.
-- No billing history view exists in the student portal today — `invoices`
-  rows are created correctly (verified in the freemium-rework pass) but
-  never rendered back to the student. Admin's Billing.jsx (React CRM) can
-  see them; the member portal (`portal.html`) has no equivalent.
-- Audit every page for "the portal costs $29" language that predates the
-  free-signup model — the marketing pages (`checkride-prep.html`,
-  `apex-advantage.html`) were already updated in the freemium rework; a
-  full sweep of `portal.html`/`portal.js` copy itself hasn't been done.
+**What shipped:**
 
-**Estimated effort:** small-to-medium. Mostly a new Account section + one
-new read-only Edge Function or direct RLS-backed query (existing
-`portal_access_purchases` RLS is admin-only-select today, so the student's
-own row needs either a new "view own purchases" policy or a scoped
-Edge Function — recommend the RLS policy, it's simpler and this data isn't
-sensitive to the owner themselves).
+- `portal/supabase-portal-schema-v7.sql` — new SELECT policy "Members can
+  view their own portal access purchases" on `portal_access_purchases`
+  (was admin-only-select before this); new `get_checkride_prep_pricing()`
+  `SECURITY DEFINER` RPC that returns the live founding/standard
+  tier+price+seats-remaining, mirroring the exact rule
+  `create-checkout-session` already enforces server-side, without giving
+  every member a row-level SELECT policy over other members' purchase
+  records just to count them. Verified against a real local Postgres 16
+  instance: a member sees only their own purchase row, a different member
+  and anon see none, admin sees all, and the pricing RPC correctly reports
+  `founding`/24-remaining at 1 purchase and flips to `standard`/0-remaining
+  at exactly 25.
+- `site/portal.html` / `site/portal.js` — the Account page's Membership
+  card no longer hardcodes `"Apex Advantage — Founding Member"` and
+  `"$25 / session"` regardless of what the member actually bought; it now
+  shows real state (`Not yet unlocked` / `Unlocked (Founding Pricing) —
+  $29.00` / `Unlocked — $49.00`) plus the actual unlock date pulled from
+  `portal_access_purchases`. A new **Billing History** card renders every
+  row from `invoices` (already had correct student-own-row RLS from the
+  original schema — no policy change needed there), formatted with amount
+  and a paid/unpaid status badge.
+- The "$29 · Tap to unlock" labels on the five locked dashboard widgets
+  and the unlock modal's price were static HTML that kept advertising $29
+  forever, even after the 25 founding seats were gone and new members were
+  actually being charged $49 at checkout — a real billing inconsistency.
+  Both now call `get_checkride_prep_pricing()` once on page load and
+  render the actual current tier/price/seats-remaining, so what a member
+  sees before clicking "Unlock Now" always matches what Stripe actually
+  charges them.
+- Copy sweep: the marketing pages' `$29`/`$49`/"Founding Member" language
+  (`checkride-prep.html`, `apex-advantage.html`, etc.) is accurate
+  advertising of the pricing tiers themselves and was already updated in
+  the freemium rework — left as-is. The bug was specifically inside the
+  member portal showing a *fixed* price regardless of the *viewing
+  member's own* real eligibility/purchase state, which is what this pass
+  fixed.
+- Verified via Playwright against a mocked Supabase client: a locked
+  member's Account page shows "Not yet unlocked" / empty billing history /
+  the live founding-tier price and seats-remaining; an unlocked founding
+  member's page shows the correct tier label, unlock date, and both
+  billing-history rows (a Checkride Prep purchase and a manually-entered
+  flight-lesson invoice) with correctly formatted amounts and status
+  badges — zero console errors in either case.
 
-## Phase 3 — Retention System (partially exists, largely unverifiable from this repo)
+## Phase 3 — Retention System ✅ Executed this pass
 
-**What's real:** readiness milestones (25/50/75/90%), first-question,
-Checkride-Mode-complete, and weak-area emails all exist and fire — but
-**client-side only**, triggered from `initPortalData()` on page load/UI
-events. There is no server-side reconciliation: if a member crosses a
-milestone without the portal tab open at the right moment, that email
-simply never sends. `portal_email_log` is defined and intended as the
-single dedup source for all lifecycle emails, but only the weak-area nudge
-actually writes to it — the other four dedupe against `portal_events`
-instead, so an admin querying `portal_email_log` today sees an incomplete
-picture.
+**What shipped:** see `RETENTION_SYSTEM.md` for the full design, before/
+after, and test results. Summary:
 
-**What's referenced but not present:** the 7-day inactivity nudge is
-mentioned in a code comment as living in "a separate scheduled Edge
-Function in the apexadvantage repo" — that function is not in this
-codebase and its existence/correctness cannot be verified from here.
-**Action item:** confirm directly whether this function is actually
-deployed and running before assuming it works.
+- `portal/supabase/functions/send-lifecycle-emails/index.ts` (new) — a
+  single scheduled Edge Function that recomputes readiness milestones,
+  first-question, Checkride-Mode-complete, and weak-area conditions
+  server-side (line-for-line port of `computeReadiness()`/`categoryPct()`/
+  `computeStreaks()` from `site/portal.js`, verified against fixture data
+  by hand), plus the two email types that had no implementation anywhere:
+  a 7-day inactivity nudge and the 30/14/7/3/1-day checkride countdown.
+  Dedup for the four pre-existing types is shared with the client via
+  `portal_events` (so neither side double-sends); every type now also
+  writes to `portal_email_log`, closing the Issue #5 gap where only the
+  weak-area nudge actually logged there.
+- `portal/supabase-portal-schema-v8.sql` — adds `profiles.
+  portal_last_active_at` (the signal the inactivity nudge needs, since
+  nothing existing tracks "last visited" as distinct from "last studied").
+  Also fixes two **pre-existing** bugs found while building this, neither
+  introduced by this pass: (1) `profiles` had no policy letting a member
+  update their own row at all, meaning the Account page's "Save Changes"
+  form has been silently doing nothing for every non-admin member since it
+  was built; (2) the existing admin-check policies on `profiles` itself
+  recurse infinitely (`ERROR: infinite recursion detected in policy for
+  relation "profiles"`) — reproduced on the unmodified original schema,
+  meaning any admin session plain-selecting `profiles` through the regular
+  client (not service-role) hits a hard error today. Both fixed and
+  verified against a real Postgres instance.
+- `site/portal.js` — pings `portal_last_active_at` once per session, logs
+  to `portal_email_log` for the four milestone types (parity with the new
+  server job), and corrects a stale comment that referred to a
+  "separate apexadvantage repo" Edge Function that no longer exists as a
+  separate thing post-merge and was never actually present in this
+  codebase.
 
-**Not started:** checkride countdown automation (30/14/7/3/1-day emails) —
-the countdown date and display already exist (`portal_checkride_date`,
-`renderCheckrideCountdown()`), but no scheduled job sends anything based on
-it today.
-
-**Recommended approach:** move milestone/inactivity/countdown emails to a
-single scheduled Edge Function (cron-triggered, e.g. daily) that queries
-each condition server-side and writes/checks `portal_email_log` as the one
-source of truth, rather than depending on the member's browser being open
-at the right moment. This is a real architecture change, not a small patch
-— sequence it as its own effort.
+**Action required before this is live (cannot be done from this
+sandbox):** run the v8 migration, check the Supabase Edge Functions list
+for a possibly-still-deployed legacy inactivity-nudge function before
+deploying the new one (to avoid double-sends), deploy
+`send-lifecycle-emails`, and schedule it (dashboard cron or `pg_cron`/
+`pg_net` — exact steps in `RETENTION_SYSTEM.md`). None of this could be
+verified end-to-end against the live project from this sandbox.
 
 ## Phase 4 — Content Operations (foundation laid, UI not built)
 

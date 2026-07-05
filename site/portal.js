@@ -21,6 +21,11 @@
       };
       populateMember();
       applyUnlockState();
+      applyUnlockPricing();
+      // Fire-and-forget: feeds the 7-day inactivity nudge
+      // (send-lifecycle-emails, Phase 3) a real "last seen" signal.
+      // Once per page load is enough — this isn't a click-tracking beacon.
+      apexSupabase.from('profiles').update({ portal_last_active_at: new Date().toISOString() }).eq('id', member.id);
       return loadPremiumContent().then(function () {
         return initPortalData();
       });
@@ -196,6 +201,33 @@
         content.style.pointerEvents = unlocked ? 'auto' : 'none';
       }
     });
+  }
+
+  /* ── Live founding/standard price preview — the "$29 · Tap to unlock"
+     labels and the unlock modal's price both used to be static HTML that
+     kept advertising $29 forever, even after the 25 founding seats were
+     gone and every new member was actually being charged $49 at checkout.
+     get_checkride_prep_pricing() mirrors the same server-side rule
+     create-checkout-session uses to decide the real charge, so what a
+     member sees here always matches what they're about to pay. ──────── */
+  function applyUnlockPricing() {
+    if (member && member.checkridePrepUnlocked) return;
+    apexSupabase.rpc('get_checkride_prep_pricing').then(function (res) {
+      var row = res.data && res.data[0];
+      if (res.error || !row) return;
+      var priceLabel = '$' + Math.round(row.amount_cents / 100);
+      document.querySelectorAll('.portal-locked-widget__overlay small').forEach(function (el) {
+        el.textContent = priceLabel + ' · Tap to unlock';
+      });
+      var modalPrice = document.getElementById('unlockModalPrice');
+      var modalNote = document.getElementById('unlockModalPriceNote');
+      if (modalPrice) modalPrice.textContent = priceLabel;
+      if (modalNote) {
+        modalNote.textContent = row.tier === 'founding'
+          ? row.founding_seats_remaining + ' founding spot' + (row.founding_seats_remaining === 1 ? '' : 's') + ' left at $29, then $49'
+          : 'Founding pricing has ended — $49 for full access';
+      }
+    }).catch(function (e) { console.error('applyUnlockPricing failed', e); });
   }
 
   document.querySelectorAll('[data-unlock-trigger]').forEach(function (el) {
@@ -476,6 +508,8 @@
   var checkrideDate = null;
   var testimonialSubmitted = false;
   var checkrideResult = null;
+  var myPurchase = null;
+  var myInvoices = [];
 
   function loadProgress() {
     return Promise.all([
@@ -492,7 +526,9 @@
       apexSupabase.from('portal_referrals').select('*').eq('referrer_id', member.id).order('created_at', { ascending: false }),
       apexSupabase.from('portal_checkride_date').select('*').eq('profile_id', member.id).maybeSingle(),
       apexSupabase.from('portal_testimonials').select('id').eq('profile_id', member.id).limit(1),
-      apexSupabase.from('portal_checkride_results').select('*').eq('profile_id', member.id).maybeSingle()
+      apexSupabase.from('portal_checkride_results').select('*').eq('profile_id', member.id).maybeSingle(),
+      apexSupabase.from('portal_access_purchases').select('*').eq('profile_id', member.id).maybeSingle(),
+      apexSupabase.from('invoices').select('*').eq('student_id', member.id).order('issued_at', { ascending: false })
     ]).then(function (results) {
       (results[0].data || []).forEach(function (r) {
         studied[r.question_id] = r.completed;
@@ -529,6 +565,8 @@
       checkrideDate = results[11].data ? results[11].data.checkride_date : null;
       testimonialSubmitted = (results[12].data || []).length > 0;
       checkrideResult = results[13].data || null;
+      myPurchase = results[14].data || null;
+      myInvoices = results[15].data || [];
     }).catch(function (e) { console.error('Failed to load portal progress', e); });
   }
 
@@ -1522,12 +1560,16 @@
   }
 
   /* ══════════════════════════════════════════════════════════════
-     EMAIL ENGINE — reuses the apexadvantage `send-email` Edge
-     Function (Resend). Milestone/recommendation emails fire directly
-     from the client since they're tied to real-time user actions;
-     7-day inactivity is handled by a separate scheduled Edge Function
-     (supabase/functions/portal-inactivity-nudge in the apexadvantage repo)
-     since there's no client open to trigger it from.
+     EMAIL ENGINE — reuses the `send-email` Edge Function (Resend).
+     Milestone/recommendation emails fire directly from the client
+     since they're tied to real-time user actions, so a member sees the
+     payoff immediately. They're also recomputed server-side on a daily
+     schedule by send-lifecycle-emails (Phase 3 — see
+     portal/supabase/functions/send-lifecycle-emails and
+     RETENTION_SYSTEM.md), which catches whatever this client-side path
+     misses (tab never reopened at the right moment) and is the only
+     path for the two email types with no client-side equivalent at
+     all: the 7-day inactivity nudge and the checkride countdown.
      ══════════════════════════════════════════════════════════════ */
   function emailTemplate(contentHtml) {
     return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>' +
@@ -1566,6 +1608,16 @@
     apexSupabase.from('portal_email_log').insert({ profile_id: member.id, email_type: emailType });
   }
 
+  // One-time milestone emails dedupe via portal_events (loggedEventTypes,
+  // above) rather than portal_email_log, but also log to
+  // portal_email_log here so the two stay consistent with each other and
+  // with what send-lifecycle-emails (the server-side reconciliation job,
+  // Phase 3) writes when it's the one that ends up sending instead.
+  function logEmailSent(emailType) {
+    if (!member) return;
+    apexSupabase.from('portal_email_log').insert({ profile_id: member.id, email_type: emailType });
+  }
+
   /* ── Lifecycle milestone emails ───────────────────────────────── */
   function checkLifecycleMilestones() {
     if (!member) return;
@@ -1577,6 +1629,7 @@
       logEventOnce('first_question_completed');
       if (wasNew) {
         sendPortalEmail(member.email, 'You completed your first question 🎉', emailTemplate1FirstQuestion());
+        logEmailSent('first_question_completed');
       }
     }
 
@@ -1586,12 +1639,14 @@
       if (score >= threshold && !loggedEventTypes[key]) {
         logEventOnce(key);
         sendPortalEmail(member.email, score + '% Checkride Ready', emailTemplateMilestone(threshold));
+        logEmailSent(key);
       }
     });
 
     if (checkrideModeDone && !loggedEventTypes['checkride_mode_completed_email']) {
       logEventOnce('checkride_mode_completed_email');
       sendPortalEmail(member.email, 'Checkride Mode: complete', emailTemplateCheckrideModeDone());
+      logEmailSent('checkride_mode_completed_email');
     }
   }
 
@@ -1705,6 +1760,50 @@
       window.location.href = 'contact.html';
     }
   });
+
+  /* ══════════════════════════════════════════════════════════════
+     MEMBERSHIP + BILLING HISTORY (Account Management)
+     ══════════════════════════════════════════════════════════════ */
+  function formatCents(cents) {
+    return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function renderMembership() {
+    var planEl = document.getElementById('membershipPlan');
+    var unlockedRow = document.getElementById('membershipUnlockedRow');
+    var unlockedDateEl = document.getElementById('membershipUnlockedDate');
+
+    if (member.checkridePrepUnlocked && myPurchase) {
+      var tierLabel = myPurchase.tier === 'founding' ? 'Unlocked (Founding Pricing)' : 'Unlocked';
+      planEl.textContent = tierLabel + ' — ' + formatCents(myPurchase.amount_cents);
+      unlockedRow.hidden = false;
+      unlockedDateEl.textContent = new Date(myPurchase.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    } else if (member.checkridePrepUnlocked) {
+      planEl.textContent = 'Unlocked';
+      unlockedRow.hidden = true;
+    } else {
+      planEl.textContent = 'Not yet unlocked';
+      unlockedRow.hidden = true;
+    }
+  }
+
+  function renderBillingHistory() {
+    var listEl = document.getElementById('billingHistoryList');
+    var emptyEl = document.getElementById('billingHistoryEmpty');
+    if (!myInvoices.length) {
+      listEl.innerHTML = '';
+      emptyEl.style.display = 'block';
+      return;
+    }
+    emptyEl.style.display = 'none';
+    listEl.innerHTML = myInvoices.map(function (inv) {
+      var date = inv.issued_at ? new Date(inv.issued_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+      return '<div class="portal-billing-row">' +
+        '<div><div class="portal-billing-row__desc">' + (inv.description || 'Charge') + '</div><div class="portal-billing-row__date">' + date + '</div></div>' +
+        '<div><div class="portal-billing-row__amount">' + formatCents(inv.amount_cents) + '</div><span class="portal-billing-row__status portal-billing-row__status--' + inv.status + '">' + inv.status + '</span></div>' +
+        '</div>';
+    }).join('');
+  }
 
   /* ══════════════════════════════════════════════════════════════
      REFERRAL PROGRAM
@@ -1913,6 +2012,8 @@
       checkAchievements();
       renderAdminIfApplicable();
       renderCheckrideCountdown();
+      renderMembership();
+      renderBillingHistory();
       ensureReferralCode();
       renderPassedBanner();
       renderSuccessWall();
