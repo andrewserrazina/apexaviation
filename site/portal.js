@@ -22,6 +22,10 @@
       populateMember();
       applyUnlockState();
       applyUnlockPricing();
+      // Fire-and-forget: feeds the 7-day inactivity nudge
+      // (send-lifecycle-emails, Phase 3) a real "last seen" signal.
+      // Once per page load is enough — this isn't a click-tracking beacon.
+      apexSupabase.from('profiles').update({ portal_last_active_at: new Date().toISOString() }).eq('id', member.id);
       return loadPremiumContent().then(function () {
         return initPortalData();
       });
@@ -1556,12 +1560,16 @@
   }
 
   /* ══════════════════════════════════════════════════════════════
-     EMAIL ENGINE — reuses the apexadvantage `send-email` Edge
-     Function (Resend). Milestone/recommendation emails fire directly
-     from the client since they're tied to real-time user actions;
-     7-day inactivity is handled by a separate scheduled Edge Function
-     (supabase/functions/portal-inactivity-nudge in the apexadvantage repo)
-     since there's no client open to trigger it from.
+     EMAIL ENGINE — reuses the `send-email` Edge Function (Resend).
+     Milestone/recommendation emails fire directly from the client
+     since they're tied to real-time user actions, so a member sees the
+     payoff immediately. They're also recomputed server-side on a daily
+     schedule by send-lifecycle-emails (Phase 3 — see
+     portal/supabase/functions/send-lifecycle-emails and
+     RETENTION_SYSTEM.md), which catches whatever this client-side path
+     misses (tab never reopened at the right moment) and is the only
+     path for the two email types with no client-side equivalent at
+     all: the 7-day inactivity nudge and the checkride countdown.
      ══════════════════════════════════════════════════════════════ */
   function emailTemplate(contentHtml) {
     return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>' +
@@ -1600,6 +1608,16 @@
     apexSupabase.from('portal_email_log').insert({ profile_id: member.id, email_type: emailType });
   }
 
+  // One-time milestone emails dedupe via portal_events (loggedEventTypes,
+  // above) rather than portal_email_log, but also log to
+  // portal_email_log here so the two stay consistent with each other and
+  // with what send-lifecycle-emails (the server-side reconciliation job,
+  // Phase 3) writes when it's the one that ends up sending instead.
+  function logEmailSent(emailType) {
+    if (!member) return;
+    apexSupabase.from('portal_email_log').insert({ profile_id: member.id, email_type: emailType });
+  }
+
   /* ── Lifecycle milestone emails ───────────────────────────────── */
   function checkLifecycleMilestones() {
     if (!member) return;
@@ -1611,6 +1629,7 @@
       logEventOnce('first_question_completed');
       if (wasNew) {
         sendPortalEmail(member.email, 'You completed your first question 🎉', emailTemplate1FirstQuestion());
+        logEmailSent('first_question_completed');
       }
     }
 
@@ -1620,12 +1639,14 @@
       if (score >= threshold && !loggedEventTypes[key]) {
         logEventOnce(key);
         sendPortalEmail(member.email, score + '% Checkride Ready', emailTemplateMilestone(threshold));
+        logEmailSent(key);
       }
     });
 
     if (checkrideModeDone && !loggedEventTypes['checkride_mode_completed_email']) {
       logEventOnce('checkride_mode_completed_email');
       sendPortalEmail(member.email, 'Checkride Mode: complete', emailTemplateCheckrideModeDone());
+      logEmailSent('checkride_mode_completed_email');
     }
   }
 

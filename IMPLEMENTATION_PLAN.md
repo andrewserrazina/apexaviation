@@ -2,13 +2,13 @@
 
 **Status:** Phase 1 (Premium Content Security), the ground-school RLS
 hardening called out as Phase 1's top open risk (see
-`GROUND_SCHOOL_RLS_AUDIT.md`), and Phase 2 (Billing & Account Consistency)
-are executed and verified. Phases 3–7 planned and sequenced below, not yet
-built — each is a substantial standalone effort in its own right (a CMS, an
-analytics dashboard, five email automations, attendance tooling), and
-building all of them in one uncommitted pass would mean shipping untested,
-unverified code against a live payment system. This document is the roadmap
-for the follow-up passes.
+`GROUND_SCHOOL_RLS_AUDIT.md`), Phase 2 (Billing & Account Consistency), and
+Phase 3 (Retention System) are executed and verified. Phases 4–7 planned
+and sequenced below, not yet built — each is a substantial standalone
+effort in its own right (a CMS, an analytics dashboard, attendance
+tooling), and building all of them in one uncommitted pass would mean
+shipping untested, unverified code against a live payment system. This
+document is the roadmap for the follow-up passes.
 
 ## How this plan was built
 
@@ -140,37 +140,49 @@ phase list, and are called out explicitly below.
   flight-lesson invoice) with correctly formatted amounts and status
   badges — zero console errors in either case.
 
-## Phase 3 — Retention System (partially exists, largely unverifiable from this repo)
+## Phase 3 — Retention System ✅ Executed this pass
 
-**What's real:** readiness milestones (25/50/75/90%), first-question,
-Checkride-Mode-complete, and weak-area emails all exist and fire — but
-**client-side only**, triggered from `initPortalData()` on page load/UI
-events. There is no server-side reconciliation: if a member crosses a
-milestone without the portal tab open at the right moment, that email
-simply never sends. `portal_email_log` is defined and intended as the
-single dedup source for all lifecycle emails, but only the weak-area nudge
-actually writes to it — the other four dedupe against `portal_events`
-instead, so an admin querying `portal_email_log` today sees an incomplete
-picture.
+**What shipped:** see `RETENTION_SYSTEM.md` for the full design, before/
+after, and test results. Summary:
 
-**What's referenced but not present:** the 7-day inactivity nudge is
-mentioned in a code comment as living in "a separate scheduled Edge
-Function in the apexadvantage repo" — that function is not in this
-codebase and its existence/correctness cannot be verified from here.
-**Action item:** confirm directly whether this function is actually
-deployed and running before assuming it works.
+- `portal/supabase/functions/send-lifecycle-emails/index.ts` (new) — a
+  single scheduled Edge Function that recomputes readiness milestones,
+  first-question, Checkride-Mode-complete, and weak-area conditions
+  server-side (line-for-line port of `computeReadiness()`/`categoryPct()`/
+  `computeStreaks()` from `site/portal.js`, verified against fixture data
+  by hand), plus the two email types that had no implementation anywhere:
+  a 7-day inactivity nudge and the 30/14/7/3/1-day checkride countdown.
+  Dedup for the four pre-existing types is shared with the client via
+  `portal_events` (so neither side double-sends); every type now also
+  writes to `portal_email_log`, closing the Issue #5 gap where only the
+  weak-area nudge actually logged there.
+- `portal/supabase-portal-schema-v8.sql` — adds `profiles.
+  portal_last_active_at` (the signal the inactivity nudge needs, since
+  nothing existing tracks "last visited" as distinct from "last studied").
+  Also fixes two **pre-existing** bugs found while building this, neither
+  introduced by this pass: (1) `profiles` had no policy letting a member
+  update their own row at all, meaning the Account page's "Save Changes"
+  form has been silently doing nothing for every non-admin member since it
+  was built; (2) the existing admin-check policies on `profiles` itself
+  recurse infinitely (`ERROR: infinite recursion detected in policy for
+  relation "profiles"`) — reproduced on the unmodified original schema,
+  meaning any admin session plain-selecting `profiles` through the regular
+  client (not service-role) hits a hard error today. Both fixed and
+  verified against a real Postgres instance.
+- `site/portal.js` — pings `portal_last_active_at` once per session, logs
+  to `portal_email_log` for the four milestone types (parity with the new
+  server job), and corrects a stale comment that referred to a
+  "separate apexadvantage repo" Edge Function that no longer exists as a
+  separate thing post-merge and was never actually present in this
+  codebase.
 
-**Not started:** checkride countdown automation (30/14/7/3/1-day emails) —
-the countdown date and display already exist (`portal_checkride_date`,
-`renderCheckrideCountdown()`), but no scheduled job sends anything based on
-it today.
-
-**Recommended approach:** move milestone/inactivity/countdown emails to a
-single scheduled Edge Function (cron-triggered, e.g. daily) that queries
-each condition server-side and writes/checks `portal_email_log` as the one
-source of truth, rather than depending on the member's browser being open
-at the right moment. This is a real architecture change, not a small patch
-— sequence it as its own effort.
+**Action required before this is live (cannot be done from this
+sandbox):** run the v8 migration, check the Supabase Edge Functions list
+for a possibly-still-deployed legacy inactivity-nudge function before
+deploying the new one (to avoid double-sends), deploy
+`send-lifecycle-emails`, and schedule it (dashboard cron or `pg_cron`/
+`pg_net` — exact steps in `RETENTION_SYSTEM.md`). None of this could be
+verified end-to-end against the live project from this sandbox.
 
 ## Phase 4 — Content Operations (foundation laid, UI not built)
 

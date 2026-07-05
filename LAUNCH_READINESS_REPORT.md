@@ -44,27 +44,37 @@ entry). Fixed via trigger functions in the v5 migration — see
 
 ## High Priority Issues
 
-### 4. Lifecycle emails only fire client-side, with no reconciliation
+### 4. Lifecycle emails only fire client-side, with no reconciliation — **FIXED this pass**
 Readiness milestones, first-question, Checkride-Mode-complete, and
-weak-area emails are all triggered from the browser on page load. A member
-who crosses a milestone without reopening the portal at the right moment
-never gets that email — there's no server-side job checking for missed
-triggers. Recommend consolidating into one scheduled Edge Function (see
-`IMPLEMENTATION_PLAN.md` Phase 3).
+weak-area emails were all triggered from the browser on page load only. A
+member who crossed a milestone without reopening the portal at the right
+moment never got that email — there was no server-side job checking for
+missed triggers. Fixed via the new `send-lifecycle-emails` Edge Function,
+which recomputes every condition server-side on a schedule. See
+`RETENTION_SYSTEM.md` and `IMPLEMENTATION_PLAN.md` Phase 3. **Still
+requires a manual deploy + cron schedule in the Supabase dashboard before
+it actually runs** — see Recommended Launch Checklist below.
 
-### 5. `portal_email_log`'s stated purpose doesn't match its actual usage
+### 5. `portal_email_log`'s stated purpose doesn't match its actual usage — **FIXED this pass**
 The table's schema comment says it's the dedup log for all lifecycle
-emails; in practice only the weak-area nudge writes to it. The other four
-email types dedupe against `portal_events` instead. An admin (or future
-analytics dashboard) querying `portal_email_log` today would see an
-incomplete picture and could draw wrong conclusions about email volume.
+emails; only the weak-area nudge actually wrote to it. Fixed: both
+`site/portal.js` and the new `send-lifecycle-emails` function now log
+every one of the six existing email types (plus the two new ones) to
+`portal_email_log`, regardless of which side actually sent it. See
+`RETENTION_SYSTEM.md`.
 
-### 6. The 7-day inactivity nudge's existence cannot be verified
-Referenced only in a code comment as living in a separate Edge Function in
-a different repo, not present in this codebase. **Action required:**
-confirm directly (Supabase dashboard → Edge Functions list) whether this
-function actually exists and is scheduled/running before assuming
-inactivity nudges work at all.
+### 6. The 7-day inactivity nudge's existence cannot be verified — **still requires a manual check**
+Referenced only in a stale code comment as living in a separate Edge
+Function in a different repo — that repo was merged into this monorepo
+(see root `README.md`) and no such function exists anywhere in this
+codebase. A new inactivity nudge now ships as part of `send-lifecycle-
+emails` (Phase 3, see `RETENTION_SYSTEM.md`), but **it is still unknown
+whether an old, undocumented version of this function is already deployed
+directly in the Supabase project** (the same pattern `ground_sessions`/
+`ground_registrations` turned out to follow). **Action required before
+deploying the new function:** check the Supabase dashboard's Edge
+Functions list for anything resembling an inactivity nudge and disable it
+first, or members could get double-nudged by two independent jobs.
 
 ### 7. Referrals have no admin workflow
 `portal_referrals.status` can only move from `pending` via direct
@@ -143,8 +153,10 @@ hand-built mock of `window.apexSupabase`, not the production backend.
 - Actual password-reset email delivery via Resend
 - Actual referral signup attribution end-to-end
 - Actual testimonial approval → Success Wall display end-to-end
-- Whether the 7-day inactivity nudge function exists and runs at all (see
-  Critical/High Issue #6)
+- Whether a legacy inactivity-nudge function is already deployed in the
+  Supabase project (see Issue #6 — check before deploying the new one)
+- An actual scheduled run of `send-lifecycle-emails` against real member
+  data (Phase 3 — see `RETENTION_SYSTEM.md`)
 - Admin analytics dashboard against real, non-trivial data volume
 
 ---
@@ -156,14 +168,16 @@ hand-built mock of `window.apexSupabase`, not the production backend.
 - [ ] Deploy `get-premium-content` Edge Function (new)
 - [ ] Run `portal/supabase-portal-schema-v6.sql` (ground-school RLS fix — see `GROUND_SCHOOL_RLS_AUDIT.md`)
 - [ ] Run `portal/supabase-portal-schema-v7.sql` (billing/pricing RLS + pricing RPC — Phase 2)
-- [ ] Confirm the 7-day inactivity nudge function actually exists and runs (Critical/High Issue #6)
+- [ ] Run `portal/supabase-portal-schema-v8.sql` (retention system + profiles RLS fixes — Phase 3, see `RETENTION_SYSTEM.md`)
+- [ ] Check the Supabase Edge Functions list for a legacy inactivity-nudge function before deploying the new one (Issue #6)
+- [ ] Deploy `send-lifecycle-emails` and schedule it (dashboard cron or `pg_cron`/`pg_net` — see `RETENTION_SYSTEM.md`)
 - [ ] Manually test the full signup → unlock → DPE library flow against the real, deployed site
 - [ ] Manually test a real ground school registration + Stripe payment end to end
 
 **Should do soon after launch:**
-- [ ] Build the server-side lifecycle-email reconciliation job (Issue #4)
+- [x] Build the server-side lifecycle-email reconciliation job (Issue #4) — see `RETENTION_SYSTEM.md`
 - [ ] Add admin UI for referral status (Issue #7)
-- [ ] Reconcile `portal_email_log` to actually log all five email types (Issue #5)
+- [x] Reconcile `portal_email_log` to actually log all five (now seven) email types (Issue #5)
 
 **Can wait:**
 - [ ] Student-facing ground school session history (Issue #8)
