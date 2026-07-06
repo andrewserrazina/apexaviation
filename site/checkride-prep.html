@@ -394,8 +394,114 @@
     }
     .btn--outline-gold:hover { background: var(--gold); color: #080f1e; }
 
+    /* Background rhythm — two real, distinct tones instead of one flat
+       color repeated for ten sections in a row (section--light and the
+       inline #0b1627 sections were literally the same hex value). */
+    .section--deep { background: #080f1e; }
+    .section--navy { background: var(--navy); }
+
+    /* Stat band — bold numbers break up the text-block monotony */
+    .cp-stat-band {
+      background: rgba(244,180,0,0.06);
+      border-top: 1px solid rgba(244,180,0,0.14);
+      border-bottom: 1px solid rgba(244,180,0,0.14);
+      padding: 44px 0;
+    }
+    .cp-stat-band__grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      text-align: center;
+      max-width: 780px;
+      margin: 0 auto;
+    }
+    .cp-stat-band__num { font-size: clamp(2rem, 5vw, 2.6rem); font-weight: 800; color: var(--gold); line-height: 1; margin-bottom: 8px; }
+    .cp-stat-band__label { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.6); }
+
+    /* Portal experience — horizontal icon-left rows, deliberately not a
+       repeat of the icon-top card grid used one section earlier */
+    .cp-experience-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      max-width: 920px;
+      margin: 0 auto;
+    }
+    .cp-experience-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 18px;
+      background: #162C4F;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 24px;
+    }
+    .cp-experience-item__icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      background: rgba(244,180,0,0.12);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .cp-experience-item h3 { font-size: 15px; font-weight: 700; color: #fff; margin: 0 0 6px; }
+    .cp-experience-item p { font-size: 13.5px; color: rgba(255,255,255,0.6); line-height: 1.7; margin: 0; }
+
+    /* Sticky mini-CTA bar */
+    .cp-sticky-cta {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      z-index: 300;
+      background: rgba(11,31,58,0.97);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid rgba(244,180,0,0.25);
+      box-shadow: 0 -8px 32px rgba(0,0,0,0.35);
+      padding: 12px 20px;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+    }
+    .cp-sticky-cta.show { transform: translateY(0); }
+    .cp-sticky-cta__inner {
+      max-width: 1140px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .cp-sticky-cta__copy { font-size: 13px; color: rgba(255,255,255,0.7); font-weight: 600; }
+    .cp-sticky-cta__copy strong { color: var(--gold); }
+    .cp-sticky-cta a.btn--cta-primary {
+      width: auto;
+      padding: 12px 24px;
+      font-size: 14px;
+    }
+    @media (max-width: 640px) {
+      .cp-sticky-cta__copy { display: none; }
+      .cp-sticky-cta__inner { justify-content: center; }
+    }
+
+    /* Scroll reveal */
+    .cp-reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .cp-reveal.in-view { opacity: 1; transform: translateY(0); }
+    @media (prefers-reduced-motion: reduce) {
+      .cp-reveal { opacity: 1; transform: none; transition: none; }
+    }
+
+    /* Offer box glow — give the paid conversion moment real visual weight */
+    .cp-offer-wrap { position: relative; }
+    .cp-offer-wrap::before {
+      content: '';
+      position: absolute;
+      inset: -60px 0 auto 0;
+      height: 300px;
+      background: radial-gradient(ellipse at center, rgba(244,180,0,0.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
+      .cp-stat-band__grid { grid-template-columns: 1fr; gap: 28px; }
+      .cp-experience-row { grid-template-columns: 1fr !important; }
       .cp-hero-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
       .cp-why-grid { grid-template-columns: 1fr !important; }
       .cp-problem-grid { grid-template-columns: 1fr !important; }
@@ -531,7 +637,7 @@
   <!-- ═══════════════════════════════════════════════════════════
        1B. FREE GUIDE PREVIEW
   ════════════════════════════════════════════════════════════ -->
-  <section class="section section--light">
+  <section class="section section--navy cp-reveal">
     <div class="container">
       <div class="section__header">
         <div class="section__eyebrow" style="display:block;text-align:center">Free Resource</div>
@@ -579,7 +685,7 @@
   <!-- ═══════════════════════════════════════════════════════════
        2. PROBLEM
   ════════════════════════════════════════════════════════════ -->
-  <section class="section" style="background:#0b1627">
+  <section class="section section--deep cp-reveal">
     <div class="container">
       <div style="max-width:820px;margin:0 auto">
         <div class="section__eyebrow" style="display:block;text-align:center">Why Students Struggle</div>
@@ -611,7 +717,7 @@
   <!-- ═══════════════════════════════════════════════════════════
        3. WHAT YOU GET — FEATURE LIST
   ════════════════════════════════════════════════════════════ -->
-  <section class="section section--light">
+  <section class="section section--navy cp-reveal">
     <div class="container">
       <div style="max-width:860px;margin:0 auto">
         <div class="section__eyebrow" style="display:block;text-align:center">The Checkride Success System</div>
@@ -673,9 +779,31 @@
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════
+       3B. BY THE NUMBERS
+  ════════════════════════════════════════════════════════════ -->
+  <div class="cp-stat-band">
+    <div class="container">
+      <div class="cp-stat-band__grid">
+        <div>
+          <div class="cp-stat-band__num">72</div>
+          <div class="cp-stat-band__label">DPE-Style Oral Exam Questions</div>
+        </div>
+        <div>
+          <div class="cp-stat-band__num">12</div>
+          <div class="cp-stat-band__label">Modules, Fully ACS-Mapped</div>
+        </div>
+        <div>
+          <div class="cp-stat-band__num">25</div>
+          <div class="cp-stat-band__label">Founding Pilot Seats at $29</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
        4. WHAT'S INSIDE
   ════════════════════════════════════════════════════════════ -->
-  <section class="section" style="background:#0b1627">
+  <section class="section section--deep cp-reveal">
     <div class="container">
       <div class="section__header">
         <div class="section__eyebrow" style="display:block;text-align:center">Contents</div>
@@ -703,7 +831,7 @@
   <!-- ═══════════════════════════════════════════════════════════
        5. WHY IT WORKS
   ════════════════════════════════════════════════════════════ -->
-  <section class="section section--light">
+  <section class="section section--navy cp-reveal">
     <div class="container">
       <div class="section__header">
         <div class="section__eyebrow" style="display:block;text-align:center">The Method</div>
@@ -738,41 +866,49 @@
   <!-- ═══════════════════════════════════════════════════════════
        5B. MORE THAN A STUDY GUIDE — PORTAL EXPERIENCE
   ════════════════════════════════════════════════════════════ -->
-  <section class="section section--light">
+  <section class="section section--deep cp-reveal">
     <div class="container">
       <div class="section__header">
         <div class="section__eyebrow" style="display:block;text-align:center">Inside the Portal</div>
         <h2 class="section__title">More than a study guide.<br/><em class="accent">A system that keeps you moving.</em></h2>
         <p class="section__desc" style="max-width:620px">Portal access isn't a static PDF you read once. It's a living study system that tracks your progress, answers your real questions, and keeps you accountable until checkride day.</p>
       </div>
-      <div class="cp-why-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));max-width:1040px">
-        <div class="cp-why-card">
-          <div class="cp-why-card__icon">
+      <div class="cp-experience-row">
+        <div class="cp-experience-item">
+          <div class="cp-experience-item__icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
-          <h3>Ask Andrew</h3>
-          <p>Stuck on a question? Ask it right from that question in the portal — Andrew answers personally, and it becomes a mini-FAQ other members can see too.</p>
+          <div>
+            <h3>Ask Andrew</h3>
+            <p>Stuck on a question? Ask it right from that question in the portal — Andrew answers personally, and it becomes a mini-FAQ other members can see too.</p>
+          </div>
         </div>
-        <div class="cp-why-card">
-          <div class="cp-why-card__icon">
+        <div class="cp-experience-item">
+          <div class="cp-experience-item__icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 15a4 4 0 004-4V5a4 4 0 00-8 0v6a4 4 0 004 4z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 11a7 7 0 01-14 0M12 19v3" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
-          <h3>Study Streaks &amp; Achievements</h3>
-          <p>Your readiness score, study streak, and progress bars update as you go — with achievement badges for milestones like your first 50 questions or a completed Checkride Mode run.</p>
+          <div>
+            <h3>Study Streaks &amp; Achievements</h3>
+            <p>Your readiness score, study streak, and progress bars update as you go — with achievement badges for milestones like your first 50 questions or a completed Checkride Mode run.</p>
+          </div>
         </div>
-        <div class="cp-why-card">
-          <div class="cp-why-card__icon">
+        <div class="cp-experience-item">
+          <div class="cp-experience-item__icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
-          <h3>Checkride Countdown</h3>
-          <p>Set your checkride date and your dashboard keeps a live countdown, so your prep always has a clear deadline instead of an open-ended "someday."</p>
+          <div>
+            <h3>Checkride Countdown</h3>
+            <p>Set your checkride date and your dashboard keeps a live countdown, so your prep always has a clear deadline instead of an open-ended "someday."</p>
+          </div>
         </div>
-        <div class="cp-why-card">
-          <div class="cp-why-card__icon">
+        <div class="cp-experience-item">
+          <div class="cp-experience-item__icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
-          <h3>Success Wall</h3>
-          <p>See real members who passed their checkride after using the same system — and add your own story to the wall once you pass yours.</p>
+          <div>
+            <h3>Success Wall</h3>
+            <p>See real members who passed their checkride after using the same system — and add your own story to the wall once you pass yours.</p>
+          </div>
         </div>
       </div>
     </div>
@@ -781,7 +917,7 @@
   <!-- ═══════════════════════════════════════════════════════════
        6. SAMPLE QUESTION PREVIEW
   ════════════════════════════════════════════════════════════ -->
-  <section class="section" style="background:#0b1627">
+  <section class="section section--navy cp-reveal">
     <div class="container">
       <div class="section__header">
         <div class="section__eyebrow" style="display:block;text-align:center">Inside the Pack</div>
@@ -827,7 +963,7 @@
   <!-- ═══════════════════════════════════════════════════════════
        7. WHO IT'S FOR
   ════════════════════════════════════════════════════════════ -->
-  <section class="section section--light">
+  <section class="section section--deep cp-reveal">
     <div class="container">
       <div class="section__header">
         <div class="section__eyebrow" style="display:block;text-align:center">Who It's For</div>
@@ -852,7 +988,7 @@
   <!-- ═══════════════════════════════════════════════════════════
        8. CREATOR — ANDREW CREDIBILITY
   ════════════════════════════════════════════════════════════ -->
-  <section class="section" style="background:#0b1627">
+  <section class="section section--navy cp-reveal">
     <div class="container">
       <div class="section__header">
         <div class="section__eyebrow" style="display:block;text-align:center">About the Creator</div>
@@ -872,10 +1008,11 @@
   <!-- ═══════════════════════════════════════════════════════════
        9. OFFER / PURCHASE
   ════════════════════════════════════════════════════════════ -->
-  <section class="section section--light" id="checkout">
+  <section class="section section--deep cp-reveal" id="checkout">
     <div class="container">
-      <div class="section__eyebrow" style="text-align:center;display:block">Get the Pack</div>
-      <div class="cp-offer-box">
+      <div class="cp-offer-wrap">
+      <div class="section__eyebrow" style="text-align:center;display:block;position:relative">Get the Pack</div>
+      <div class="cp-offer-box" style="position:relative">
         <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Apex Advantage · The Checkride Success System</div>
         <h2 style="font-size:20px;font-weight:800;color:#fff;margin:0 0 24px;line-height:1.35">Two Steps to the Checkride Success System</h2>
 
@@ -900,13 +1037,14 @@
         </a>
         <p style="color:rgba(255,255,255,0.3);font-size:12px;margin:14px 0 0">Free to join. Secure checkout via Stripe when you're ready to unlock.</p>
       </div>
+      </div>
     </div>
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════
        10. FAQ
   ════════════════════════════════════════════════════════════ -->
-  <section class="section faq-section" style="background:#0b1627">
+  <section class="section faq-section section--navy cp-reveal">
     <div class="container">
       <div class="section__header">
         <div class="section__eyebrow" style="display:block;text-align:center">Common Questions</div>
@@ -962,7 +1100,7 @@
   <!-- ═══════════════════════════════════════════════════════════
        11. MOCK ORAL UPSELL
   ════════════════════════════════════════════════════════════ -->
-  <section class="section section--light">
+  <section class="section section--deep cp-reveal">
     <div class="container">
       <div class="cp-upsell">
         <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Need Personalized Checkride Prep?</div>
@@ -1063,6 +1201,57 @@
     </div>
   </footer>
 
+  <!-- Sticky mini-CTA — always-visible next action once past the hero -->
+  <div class="cp-sticky-cta" id="cpStickyCta">
+    <div class="cp-sticky-cta__inner">
+      <div class="cp-sticky-cta__copy">Free guide at signup · <strong>Unlock the full system for $29</strong></div>
+      <a href="portal-login.html?view=signup" class="btn--cta-primary">
+        Get the Free Guide
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+    </div>
+  </div>
+
   <script src="script.js"></script>
+  <script>
+    // Sticky CTA: show once the hero is scrolled past, hide again over the footer.
+    (function () {
+      var stickyCta = document.getElementById('cpStickyCta');
+      var hero = document.querySelector('.cp-hero-grid');
+      var footer = document.querySelector('.footer');
+      if (!stickyCta || !hero || !('IntersectionObserver' in window)) return;
+      var pastHero = false, overFooter = false;
+      function sync() { stickyCta.classList.toggle('show', pastHero && !overFooter); }
+      new IntersectionObserver(function (entries) {
+        pastHero = !entries[0].isIntersecting;
+        sync();
+      }, { threshold: 0 }).observe(hero.closest('section'));
+      if (footer) {
+        new IntersectionObserver(function (entries) {
+          overFooter = entries[0].isIntersecting;
+          sync();
+        }, { threshold: 0 }).observe(footer);
+      }
+    })();
+
+    // Scroll reveal for section-level fade-ins.
+    (function () {
+      var reveals = document.querySelectorAll('.cp-reveal');
+      if (!reveals.length) return;
+      if (!('IntersectionObserver' in window)) {
+        reveals.forEach(function (el) { el.classList.add('in-view'); });
+        return;
+      }
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('in-view');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1, rootMargin: '0px 0px -60px 0px' });
+      reveals.forEach(function (el) { observer.observe(el); });
+    })();
+  </script>
 </body>
 </html>
