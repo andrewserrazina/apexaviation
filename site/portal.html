@@ -236,6 +236,35 @@
           </div>
         </div>
 
+        <div class="portal-card portal-my-training" style="margin-bottom:24px">
+          <div class="portal-my-training__head">
+            <div>
+              <div class="portal-header__eyebrow" style="margin-bottom:6px">My Training</div>
+              <h2>What to work on next.</h2>
+              <p>Your classes, study plan, and progress in one place.</p>
+            </div>
+            <button class="btn btn--ghost" data-goto="progress">View Full Progress</button>
+          </div>
+          <div class="portal-my-training__grid">
+            <div class="portal-my-training__panel portal-my-training__panel--primary" id="studentNextActionCard">
+              <p class="portal-my-training__label">Next Best Action</p>
+              <h3>Loading…</h3>
+              <p>We’ll recommend your next training step once your progress loads.</p>
+            </div>
+            <div class="portal-my-training__panel" id="studentNextClassCard">
+              <p class="portal-my-training__label">Next Class</p>
+              <h3>No registered class yet</h3>
+              <p>Register for an upcoming live ground school class when you’re ready.</p>
+            </div>
+            <div class="portal-my-training__panel" id="studentResumeCard">
+              <p class="portal-my-training__label">Resume Studying</p>
+              <h3>Start with today’s question</h3>
+              <p>Open the daily oral-exam question and answer it out loud.</p>
+            </div>
+          </div>
+          <div class="portal-my-training__plan" id="studentStudyPlanList"></div>
+        </div>
+
         <!-- Question of the Day -->
         <div class="portal-card portal-qotd portal-locked-widget" data-locked-widget style="margin-bottom:24px">
           <div class="portal-locked-widget__content">

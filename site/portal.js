@@ -2730,14 +2730,141 @@
     });
   }
 
+  function computeOverallProgress() {
+    var qTotal = DPE_DATA.length;
+    var scenarioTotal = SCENARIOS.length;
+    var lessonTotal = LESSON_LIST.length;
+    var qStudied = DPE_DATA.filter(function (d) { return studied[d.id]; }).length;
+    var scenarioDone = SCENARIOS.filter(function (s) { return studied[s.id]; }).length;
+    var lessonDone = LESSON_LIST.filter(function (id) { return lessonComplete[id]; }).length;
+    var total = qTotal + scenarioTotal + lessonTotal;
+    var done = qStudied + scenarioDone + lessonDone;
+    return { total: total, done: done, pct: total ? Math.round((done / total) * 100) : 0, qStudied: qStudied, scenarioDone: scenarioDone, lessonDone: lessonDone };
+  }
+
+  function nextScheduledClassEnrollment() {
+    var now = Date.now();
+    return myScheduledGroundEnrollments
+      .filter(function (r) { return r.scheduled_class && r.payment_status === 'paid'; })
+      .map(function (r) {
+        return { enrollment: r, startsAt: new Date(r.scheduled_class.class_date + 'T' + r.scheduled_class.start_time).getTime() };
+      })
+      .filter(function (entry) { return entry.startsAt >= now; })
+      .sort(function (a, b) { return a.startsAt - b.startsAt; })[0];
+  }
+
+  function googleCalendarUrlForClass(c) {
+    if (!c || !c.class_date || !c.start_time) return '';
+    function stamp(date, time) {
+      return (date + 'T' + time).replace(/[-:]/g, '').replace(/\.\d+$/, '');
+    }
+    var start = stamp(c.class_date, c.start_time);
+    var end = stamp(c.class_date, c.end_time || c.start_time);
+    var details = [c.description || '', c.meeting_url ? 'Meeting link: ' + c.meeting_url : ''].filter(Boolean).join('\n\n');
+    return 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
+      '&text=' + encodeURIComponent(c.title || 'Apex Ground School') +
+      '&dates=' + encodeURIComponent(start + '/' + end) +
+      '&details=' + encodeURIComponent(details) +
+      '&location=' + encodeURIComponent(c.meeting_url || 'Online');
+  }
+
+  function weakestCategory() {
+    return Object.keys(CATEGORY_META).map(function (cat) {
+      return { cat: cat, label: CATEGORY_META[cat].label, pct: Math.round(categoryPct(cat) * 100) };
+    }).filter(function (c) { return c.pct < 100; }).sort(function (a, b) { return a.pct - b.pct; })[0];
+  }
+
+  function resumeTarget() {
+    var latest = null;
+    Object.keys(lastViewed).forEach(function (id) {
+      if (!latest || lastViewed[id] > latest.ts) latest = { id: id, ts: lastViewed[id] };
+    });
+    if (!latest) return { section: member && member.checkridePrepUnlocked ? 'dpe-library' : 'dpe-questions', title: member && member.checkridePrepUnlocked ? 'Open the DPE Questions Library' : 'Start the free question guide', body: 'Answer one question out loud before reading the model answer.' };
+    if (latest.id.indexOf('scenario-') === 0) return { section: 'scenarios', title: 'Continue Scenario Training', body: 'Pick up with the last scenario you opened ' + timeAgo(latest.ts) + '.' };
+    if (latest.id.indexOf('lesson-') === 0) return { section: 'checkride-prep', title: 'Resume Checkride Prep Lessons', body: 'Continue the lesson you last viewed ' + timeAgo(latest.ts) + '.' };
+    return { section: 'dpe-library', title: 'Resume DPE Questions', body: 'Continue the question bank you last viewed ' + timeAgo(latest.ts) + '.' };
+  }
+
+  function renderStudentTrainingHub() {
+    var nextActionEl = document.getElementById('studentNextActionCard');
+    var nextClassEl = document.getElementById('studentNextClassCard');
+    var resumeEl = document.getElementById('studentResumeCard');
+    var planEl = document.getElementById('studentStudyPlanList');
+    if (!nextActionEl || !nextClassEl || !resumeEl || !planEl) return;
+
+    var progress = computeOverallProgress();
+    var score = computeReadiness();
+    var weak = weakestCategory();
+    var nextClass = nextScheduledClassEnrollment();
+    var resume = resumeTarget();
+    var action = { section: 'ground-school', title: 'Register for live ground school', body: 'Choose an upcoming instructor-led session and get it on your calendar.', cta: 'Browse Classes' };
+
+    if (nextClass) {
+      action = { section: 'checkride-prep', title: 'Prepare for your next class', body: 'Review the matching lesson before ' + fmtScheduledClassDate(nextClass.enrollment.scheduled_class) + '.', cta: 'Review Prep' };
+    } else if (!member.checkridePrepUnlocked) {
+      action = { section: 'dpe-questions', title: 'Build momentum with the free guide', body: 'Use the 10-question guide first, then unlock the full Checkride Prep System when you are ready.', cta: 'Study Free Guide' };
+    } else if (weak) {
+      action = { section: 'dpe-library', cat: weak.cat, title: 'Review ' + weak.label, body: 'This is currently your lowest ACS coverage area at ' + weak.pct + '%.', cta: 'Review Weak Area' };
+    } else if (!checkrideModeDone && score >= 60) {
+      action = { section: 'dpe-library', practice: 'checkride', title: 'Run Checkride Mode', body: 'Simulate the oral exam with 20 randomized questions and no hints.', cta: 'Start Checkride Mode' };
+    } else if (progress.pct >= 90) {
+      action = { section: 'progress', title: 'Tighten the last few gaps', body: 'You are close. Finish any unchecked lessons, scenarios, or questions.', cta: 'Open Progress' };
+    }
+
+    nextActionEl.innerHTML = '<p class="portal-my-training__label">Next Best Action</p>' +
+      '<h3>' + escapeAttr(action.title) + '</h3>' +
+      '<p>' + escapeAttr(action.body) + '</p>' +
+      '<button class="btn btn--primary" data-student-action="next">' + escapeAttr(action.cta) + '</button>';
+
+    if (nextClass) {
+      var c = nextClass.enrollment.scheduled_class;
+      var calUrl = googleCalendarUrlForClass(c);
+      nextClassEl.innerHTML = '<p class="portal-my-training__label">Next Class</p>' +
+        '<h3>' + escapeAttr(c.title || 'Ground School Class') + '</h3>' +
+        '<p>' + escapeAttr(fmtScheduledClassDate(c) + (c.instructor_name ? ' · ' + c.instructor_name : '')) + '</p>' +
+        '<div class="portal-my-training__actions">' +
+          (c.meeting_url ? '<a class="btn btn--ghost" href="' + escapeAttr(c.meeting_url) + '" target="_blank" rel="noopener">Join</a>' : '') +
+          (calUrl ? '<a class="btn btn--ghost" href="' + escapeAttr(calUrl) + '" target="_blank" rel="noopener">Add to Calendar</a>' : '') +
+        '</div>';
+    } else {
+      nextClassEl.innerHTML = '<p class="portal-my-training__label">Next Class</p><h3>No registered class yet</h3><p>Browse upcoming live ground school classes and register when one fits your schedule.</p><button class="btn btn--ghost" data-goto="ground-school">Browse Classes</button>';
+    }
+
+    resumeEl.innerHTML = '<p class="portal-my-training__label">Resume Studying</p>' +
+      '<h3>' + escapeAttr(resume.title) + '</h3>' +
+      '<p>' + escapeAttr(resume.body) + '</p>' +
+      '<button class="btn btn--ghost" data-student-action="resume">Resume</button>';
+
+    var planRows = [
+      { label: 'Progress', value: progress.pct + '% complete', section: 'progress' },
+      { label: 'Readiness', value: score + '% · ' + (score >= 90 ? 'Checkride ready' : score >= 70 ? 'Almost there' : score >= 40 ? 'Building momentum' : 'Just getting started'), section: 'progress' },
+      { label: 'Study Plan', value: weak ? 'Focus next on ' + weak.label : 'All ACS areas complete — keep skills fresh', section: weak ? 'dpe-library' : 'progress', cat: weak && weak.cat }
+    ];
+    planEl.innerHTML = planRows.map(function (row) {
+      return '<button class="portal-my-training__plan-row" data-plan-section="' + escapeAttr(row.section) + '"' + (row.cat ? ' data-plan-cat="' + escapeAttr(row.cat) + '"' : '') + '><span>' + escapeAttr(row.label) + '</span><strong>' + escapeAttr(row.value) + '</strong></button>';
+    }).join('');
+
+    nextActionEl.querySelector('[data-student-action="next"]').addEventListener('click', function () {
+      showSection(action.section);
+      if (action.cat) setDpeCategory(action.cat);
+      if (action.practice === 'checkride') startPractice('checkride');
+    });
+    resumeEl.querySelector('[data-student-action="resume"]').addEventListener('click', function () { showSection(resume.section); });
+    planEl.querySelectorAll('[data-plan-section]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        showSection(btn.dataset.planSection);
+        if (btn.dataset.planCat) setDpeCategory(btn.dataset.planCat);
+      });
+    });
+  }
+
   /* ══════════════════════════════════════════════════════════════
      DASHBOARD STATS
      ══════════════════════════════════════════════════════════════ */
   function renderDashboardStats() {
-    var qStudied = DPE_DATA.filter(function (d) { return studied[d.id]; }).length;
-    var overallItems = DPE_DATA.length + SCENARIOS.length + LESSON_LIST.length;
-    var overallDone = qStudied + SCENARIOS.filter(function (s) { return studied[s.id]; }).length + LESSON_LIST.filter(function (id) { return lessonComplete[id]; }).length;
-    document.getElementById('statOverallPct').textContent = Math.round((overallDone / overallItems) * 100) + '%';
+    var progress = computeOverallProgress();
+    document.getElementById('statOverallPct').textContent = progress.pct + '%';
+    renderStudentTrainingHub();
   }
 
   /* ── Init — waits for the real Supabase session + profile ────── */
