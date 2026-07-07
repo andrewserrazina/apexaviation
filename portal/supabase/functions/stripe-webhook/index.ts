@@ -62,7 +62,17 @@ async function handleUnlockCheckridePrep(supabase: any, session: Stripe.Checkout
     .maybeSingle()
   const fullName = profile?.full_name || 'there'
 
-  await supabase.from('profiles').update({ checkride_prep_unlocked: true }).eq('id', profileId)
+  const { data: unlockedProfile, error: unlockError } = await supabase
+    .from('profiles')
+    .update({ checkride_prep_unlocked: true })
+    .eq('id', profileId)
+    .select('id, checkride_prep_unlocked')
+    .maybeSingle()
+
+  if (unlockError) throw unlockError
+  if (!unlockedProfile?.checkride_prep_unlocked) {
+    throw new Error(`Checkride Prep unlock flag was not set for profile ${profileId}`)
+  }
 
   await supabase.from('portal_access_purchases').insert({
     profile_id: profileId,
