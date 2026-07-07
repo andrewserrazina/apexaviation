@@ -1988,6 +1988,19 @@
   var GUIDED_NOTES_MODULES = [
     {
       courseId: 'PPL',
+      moduleId: 'PPL-M01-Becoming-a-Pilot',
+      courseLabel: 'Private Pilot',
+      moduleLabel: 'Module 01 · Becoming a Pilot',
+      prompts: [
+        { id: 'eligibility-certificates', section: 'Eligibility & Certificates', prompt: 'What are the eligibility requirements to apply for a Private Pilot Certificate, and how do the student pilot certificate and medical certificate differ from each other?' },
+        { id: 'part-61-vs-141', section: 'Part 61 vs. Part 141', prompt: 'What is the difference between Part 61 and Part 141 flight training, and why does Apex operate under Part 61?' },
+        { id: 'aeronautical-experience', section: 'Required Aeronautical Experience', prompt: 'What is the regulatory minimum flight time for a Private Pilot Certificate, and how does that compare to the realistic national average?' },
+        { id: 'roles', section: 'Roles', prompt: 'What are the distinct roles of the FAA, the DPE, and your CFI in the certification process?' },
+        { id: 'the-acs', section: 'The ACS', prompt: 'How is the ACS organized, and what three elements does every Task contain?' }
+      ]
+    },
+    {
+      courseId: 'PPL',
       moduleId: 'PPL-M02-Aerodynamics',
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 02 · Aerodynamics',
