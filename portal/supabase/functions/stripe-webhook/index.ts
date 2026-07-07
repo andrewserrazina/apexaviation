@@ -8,10 +8,9 @@
 //     true for the signed-in member who paid, logs the purchase
 //     (portal_access_purchases + invoices), and emails a confirmation.
 //
-//   'ground-school-registration' — creates the ground_registrations row
-//     (waitlisted if the session had already filled up by the time
-//     payment completed), linking it to a profile if one exists for that
-//     email, and emails a confirmation.
+//   'ground-school-registration' — creates the scheduled class enrollment
+//     for the new admin-managed scheduler when scheduled_class_id is present,
+//     falling back to the legacy ground_registrations path for older sessions.
 //
 // Idempotency: every event is recorded in stripe_webhook_events first;
 // a unique-constraint failure there means Stripe is retrying an event
@@ -113,12 +112,57 @@ async function handleUnlockCheckridePrep(supabase: any, session: Stripe.Checkout
 
 async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Checkout.Session) {
   const sessionId = session.metadata?.session_id as string
+  const scheduledClassId = session.metadata?.scheduled_class_id as string
   const fullName = (session.metadata?.full_name as string) || 'Student'
   const email = (session.metadata?.email as string) || session.customer_details?.email || session.customer_email
   const amountCents = session.amount_total ?? 0
 
-  if (!sessionId) throw new Error('No session_id on checkout session metadata')
+  if (!sessionId && !scheduledClassId) throw new Error('No ground school id on checkout session metadata')
   if (!email) throw new Error('No email on checkout session')
+
+  const { data: matchingProfile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle()
+
+  if (scheduledClassId) {
+    const { data: scheduledClass } = await supabase
+      .from('scheduled_ground_classes')
+      .select('id, title, lesson_title, class_date, start_time, timezone')
+      .eq('id', scheduledClassId)
+      .maybeSingle()
+
+    const { error: enrollError } = await supabase.rpc('confirm_scheduled_ground_class_enrollment', {
+      p_scheduled_ground_class_id: scheduledClassId,
+      p_full_name: fullName,
+      p_email: email,
+      p_profile_id: matchingProfile?.id ?? null,
+      p_stripe_session_id: session.id,
+      p_amount_cents: amountCents,
+    })
+    if (enrollError) throw enrollError
+
+    await supabase.from('portal_events').insert({
+      profile_id: matchingProfile?.id ?? null,
+      event_type: 'ground_school_purchased',
+      metadata: { scheduled_class_id: scheduledClassId, amount_cents: amountCents },
+    })
+
+    const when = scheduledClass
+      ? new Date(`${scheduledClass.class_date}T${scheduledClass.start_time}`).toLocaleString('en-US', {
+          weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit',
+        })
+      : ''
+    const title = scheduledClass?.title || 'Ground School'
+
+    await sendEmail(supabase, email, `You're registered — ${title}`,
+      template(`
+        <h2 style="color:#F4B400;margin:0 0 4px;">You're confirmed, ${fullName.split(' ')[0]}!</h2>
+        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">You're registered for <strong style="color:#fff">${title}</strong> on ${when}. See you there.</p>
+      `))
+    return
+  }
 
   const { data: groundSession } = await supabase
     .from('ground_sessions')
@@ -133,12 +177,6 @@ async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Che
     .eq('is_waitlisted', false)
 
   const isWaitlisted = !!groundSession && (confirmedCount ?? 0) >= groundSession.max_students
-
-  const { data: matchingProfile } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('email', email)
-    .maybeSingle()
 
   await supabase.from('ground_registrations').insert({
     session_id: sessionId,

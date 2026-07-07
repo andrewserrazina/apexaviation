@@ -332,47 +332,88 @@
   /* ── Ground School Scheduling ───────────────────────────────── */
   var groundSchoolLoaded = false;
   var activeGroundSession = null;
+  var activeGroundSessionMode = 'legacy';
 
   function fmtSessionDate(iso) {
     return new Date(iso).toLocaleString('en-US', {
       weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
     });
   }
+  function fmtScheduledClassDate(row) {
+    if (!row.class_date || !row.start_time) return 'Date TBD';
+    return new Date(row.class_date + 'T' + row.start_time).toLocaleString('en-US', {
+      weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+    });
+  }
+
 
   function loadGroundSchool() {
     if (groundSchoolLoaded) return;
     groundSchoolLoaded = true;
     var listEl = document.getElementById('groundSchoolList');
     var emptyEl = document.getElementById('groundSchoolEmpty');
+    var today = new Date().toISOString().slice(0, 10);
 
-    apexSupabase.from('ground_sessions')
-      .select('*, ground_registrations(id, is_waitlisted)')
-      .gte('scheduled_at', new Date().toISOString())
-      .order('scheduled_at')
-      .then(function (res) {
-        var sessionsList = res.data || [];
-        if (!sessionsList.length) {
-          listEl.style.display = 'none';
-          emptyEl.style.display = 'block';
+    apexSupabase.from('scheduled_ground_classes')
+      .select('*')
+      .eq('status', 'published')
+      .gte('class_date', today)
+      .order('class_date')
+      .order('start_time')
+      .then(function (scheduledRes) {
+        var scheduledClasses = scheduledRes.data || [];
+        if (scheduledClasses.length) {
+          listEl.innerHTML = '';
+          listEl.className = 'portal-grid portal-grid--2';
+          listEl.style.display = '';
+          emptyEl.style.display = 'none';
+          scheduledClasses.forEach(function (s) {
+            var spotsLeft = Math.max(0, Number(s.capacity || 0) - Number(s.enrolled_count || 0));
+            var full = spotsLeft <= 0;
+            var card = document.createElement('div');
+            card.className = 'portal-card';
+            card.innerHTML =
+              '<div class="portal-header__eyebrow" style="margin-bottom:8px">' + escapeAttr((s.module_id || 'Private Pilot').toUpperCase()) + '</div>' +
+              '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">' + escapeAttr(s.title || 'Ground School Class') + '</h3>' +
+              '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:4px">' + escapeAttr(fmtScheduledClassDate(s)) + '</p>' +
+              '<p style="color:rgba(255,255,255,0.45);font-size:12px;margin-bottom:8px">' + escapeAttr(s.lesson_title || 'Private Pilot lesson') + '</p>' +
+              '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-bottom:16px">' + (full ? 'Full' : spotsLeft + ' spot' + (spotsLeft === 1 ? '' : 's') + ' left') + '</p>' +
+              '<button class="btn btn--primary" data-register style="width:100%"' + (full ? ' disabled' : '') + '>' + (full ? 'Class Full' : 'Register — $25') + '</button>';
+            if (!full) card.querySelector('[data-register]').addEventListener('click', function () { openGroundSchoolModal(s, 'scheduled'); });
+            listEl.appendChild(card);
+          });
           return;
         }
-        listEl.innerHTML = '';
-        listEl.className = 'portal-grid portal-grid--2';
-        sessionsList.forEach(function (s) {
-          var confirmed = (s.ground_registrations || []).filter(function (r) { return !r.is_waitlisted; }).length;
-          var spotsLeft = s.max_students - confirmed;
-          var full = spotsLeft <= 0;
-          var card = document.createElement('div');
-          card.className = 'portal-card';
-          card.innerHTML =
-            '<div class="portal-header__eyebrow" style="margin-bottom:8px">' + (s.category || 'General').toUpperCase() + '</div>' +
-            '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">' + s.title + '</h3>' +
-            '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:4px">' + fmtSessionDate(s.scheduled_at) + '</p>' +
-            '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-bottom:16px">' + (full ? 'Full — join the waitlist' : spotsLeft + ' spot' + (spotsLeft === 1 ? '' : 's') + ' left') + '</p>' +
-            '<button class="btn btn--primary" data-register style="width:100%">' + (full ? 'Join Waitlist — $25' : 'Register — $25') + '</button>';
-          card.querySelector('[data-register]').addEventListener('click', function () { openGroundSchoolModal(s); });
-          listEl.appendChild(card);
-        });
+
+        apexSupabase.from('ground_sessions')
+          .select('*, ground_registrations(id, is_waitlisted)')
+          .gte('scheduled_at', new Date().toISOString())
+          .order('scheduled_at')
+          .then(function (res) {
+            var sessionsList = res.data || [];
+            if (!sessionsList.length) {
+              listEl.style.display = 'none';
+              emptyEl.style.display = 'block';
+              return;
+            }
+            listEl.innerHTML = '';
+            listEl.className = 'portal-grid portal-grid--2';
+            sessionsList.forEach(function (s) {
+              var confirmed = (s.ground_registrations || []).filter(function (r) { return !r.is_waitlisted; }).length;
+              var spotsLeft = s.max_students - confirmed;
+              var full = spotsLeft <= 0;
+              var card = document.createElement('div');
+              card.className = 'portal-card';
+              card.innerHTML =
+                '<div class="portal-header__eyebrow" style="margin-bottom:8px">' + escapeAttr((s.category || 'General').toUpperCase()) + '</div>' +
+                '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">' + escapeAttr(s.title) + '</h3>' +
+                '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:4px">' + escapeAttr(fmtSessionDate(s.scheduled_at)) + '</p>' +
+                '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-bottom:16px">' + (full ? 'Full — join the waitlist' : spotsLeft + ' spot' + (spotsLeft === 1 ? '' : 's') + ' left') + '</p>' +
+                '<button class="btn btn--primary" data-register style="width:100%">' + (full ? 'Join Waitlist — $25' : 'Register — $25') + '</button>';
+              card.querySelector('[data-register]').addEventListener('click', function () { openGroundSchoolModal(s, 'legacy'); });
+              listEl.appendChild(card);
+            });
+          });
       });
   }
 
@@ -382,10 +423,11 @@
   var groundSchoolModalCta = document.getElementById('groundSchoolModalCta');
   var groundSchoolModalError = document.getElementById('groundSchoolModalError');
 
-  function openGroundSchoolModal(s) {
+  function openGroundSchoolModal(s, mode) {
     activeGroundSession = s;
+    activeGroundSessionMode = mode || 'legacy';
     groundSchoolModalTitle.textContent = s.title;
-    groundSchoolModalWhen.textContent = fmtSessionDate(s.scheduled_at);
+    groundSchoolModalWhen.textContent = activeGroundSessionMode === 'scheduled' ? fmtScheduledClassDate(s) : fmtSessionDate(s.scheduled_at);
     groundSchoolModalError.classList.remove('show');
     groundSchoolModalOverlay.classList.add('show');
   }
@@ -403,7 +445,8 @@
     apexSupabase.functions.invoke('create-checkout-session', {
       body: {
         purpose: 'ground-school-registration',
-        sessionId: activeGroundSession.id,
+        sessionId: activeGroundSessionMode === 'legacy' ? activeGroundSession.id : null,
+        scheduledClassId: activeGroundSessionMode === 'scheduled' ? activeGroundSession.id : null,
         name: member.name,
         email: member.email,
         origin: window.location.origin
@@ -580,6 +623,7 @@
   var myPurchase = null;
   var myInvoices = [];
   var myGroundRegistrations = [];
+  var myScheduledGroundEnrollments = [];
 
   function loadProgress() {
     return Promise.all([
@@ -599,7 +643,8 @@
       apexSupabase.from('portal_checkride_results').select('*').eq('profile_id', member.id).maybeSingle(),
       apexSupabase.from('portal_access_purchases').select('*').eq('profile_id', member.id).maybeSingle(),
       apexSupabase.from('invoices').select('*').eq('student_id', member.id).order('issued_at', { ascending: false }),
-      apexSupabase.from('ground_registrations').select('*, session:ground_sessions(*)').eq('profile_id', member.id)
+      apexSupabase.from('ground_registrations').select('*, session:ground_sessions(*)').eq('profile_id', member.id),
+      apexSupabase.from('scheduled_ground_class_enrollments').select('*, scheduled_class:scheduled_ground_classes(*)').eq('profile_id', member.id)
     ]).then(function (results) {
       (results[0].data || []).forEach(function (r) {
         studied[r.question_id] = r.completed;
@@ -639,6 +684,7 @@
       myPurchase = results[14].data || null;
       myInvoices = results[15].data || [];
       myGroundRegistrations = results[16].data || [];
+      myScheduledGroundEnrollments = results[17].data || [];
     }).catch(function (e) { console.error('Failed to load portal progress', e); });
   }
 
@@ -2468,22 +2514,39 @@
   function renderMySessions() {
     var listEl = document.getElementById('mySessionsList');
     var emptyEl = document.getElementById('mySessionsEmpty');
-    var rows = myGroundRegistrations.filter(function (r) { return r.session; })
-      .sort(function (a, b) { return new Date(b.session.scheduled_at) - new Date(a.session.scheduled_at); });
+    var legacyRows = myGroundRegistrations.filter(function (r) { return r.session; }).map(function (r) {
+      return { type: 'legacy', sortDate: r.session.scheduled_at, row: r };
+    });
+    var scheduledRows = myScheduledGroundEnrollments.filter(function (r) { return r.scheduled_class; }).map(function (r) {
+      return { type: 'scheduled', sortDate: r.scheduled_class.class_date + 'T' + r.scheduled_class.start_time, row: r };
+    });
+    var rows = legacyRows.concat(scheduledRows)
+      .sort(function (a, b) { return new Date(b.sortDate) - new Date(a.sortDate); });
     if (!rows.length) {
       listEl.innerHTML = '';
       emptyEl.style.display = 'block';
       return;
     }
     emptyEl.style.display = 'none';
-    listEl.innerHTML = rows.map(function (r) {
+    listEl.innerHTML = rows.map(function (entry) {
+      if (entry.type === 'scheduled') {
+        var r = entry.row;
+        var c = r.scheduled_class;
+        var scheduledDate = fmtScheduledClassDate(c);
+        var scheduledStatus = r.attendance_status || 'registered';
+        return '<div class="portal-session-row">' +
+          '<div><div class="portal-session-row__title">' + escapeAttr(c.title) + '</div><div class="portal-session-row__meta">' + escapeAttr(scheduledDate + (c.instructor_name ? ' · ' + c.instructor_name : '')) + '</div></div>' +
+          '<span class="portal-session-row__status portal-session-row__status--' + escapeAttr(scheduledStatus) + '">' + escapeAttr(SESSION_STATUS_LABEL[scheduledStatus] || 'Registered') + '</span>' +
+        '</div>';
+      }
+      var r = entry.row;
       var s = r.session;
       var date = new Date(s.scheduled_at).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
       var statusKey = r.is_waitlisted ? 'waitlisted' : (r.attendance_status || 'registered');
       var statusLabel = r.is_waitlisted ? 'Waitlisted' : (SESSION_STATUS_LABEL[r.attendance_status] || 'Registered');
       return '<div class="portal-session-row">' +
-        '<div><div class="portal-session-row__title">' + s.title + '</div><div class="portal-session-row__meta">' + date + (s.location ? ' · ' + s.location : '') + '</div></div>' +
-        '<span class="portal-session-row__status portal-session-row__status--' + statusKey + '">' + statusLabel + '</span>' +
+        '<div><div class="portal-session-row__title">' + escapeAttr(s.title) + '</div><div class="portal-session-row__meta">' + escapeAttr(date + (s.location ? ' · ' + s.location : '')) + '</div></div>' +
+        '<span class="portal-session-row__status portal-session-row__status--' + escapeAttr(statusKey) + '">' + escapeAttr(statusLabel) + '</span>' +
       '</div>';
     }).join('');
   }
