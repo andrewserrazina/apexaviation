@@ -148,6 +148,13 @@
       openUnlockModal();
       return;
     }
+    // Guided Notes is an admin-only feature preview -- not just hidden from
+    // the nav. A non-admin who already has member.role loaded (e.g. clicked
+    // a stale link, or called this from the console) gets bounced to the
+    // dashboard instead of ever seeing the section become active. The other
+    // half of this guard is enforceGuidedNotesAccess(), which catches the
+    // same case on first page load, before member.role is known yet.
+    if (id === 'guided-notes' && member && member.role !== 'admin') id = 'dashboard';
     sections.forEach(function (s) { s.classList.toggle('active', s.id === 'section-' + id); });
     navItems.forEach(function (b) { b.classList.toggle('active', b.dataset.section === id); });
     window.scrollTo(0, 0);
@@ -155,6 +162,7 @@
     closeSidebar();
     if (!member) return;
     if (id === 'admin' && member.role === 'admin') loadAdminDashboard();
+    if (id === 'guided-notes' && member.role === 'admin') loadGuidedNotes();
     if (id === 'success-wall') renderSuccessWall();
     if (id === 'ground-school') loadGroundSchool();
   }
@@ -1936,6 +1944,156 @@
     // already in flight could silently clobber it or duplicate rows in
     // the rendered list. Found via testing the new CMS, not by inspection.
     document.getElementById('adminNavItem').hidden = false;
+    document.getElementById('guidedNotesNavItem').hidden = false;
+  }
+
+  // Catches a non-admin who bookmarked or typed #guided-notes directly.
+  // The very first showSection() call (script init, before the Supabase
+  // session/profile resolves) can't check member.role yet -- this runs
+  // once it's known. Real enforcement is still server-side: guided_notes'
+  // RLS policy rejects the query regardless of what the UI shows.
+  function enforceGuidedNotesAccess() {
+    var activeId = (window.location.hash || '#dashboard').replace('#', '');
+    if (activeId === 'guided-notes' && (!member || member.role !== 'admin')) showSection('dashboard');
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     GUIDED NOTES — admin-only feature preview.
+
+     Per-prompt free-text responses a student will eventually fill in on
+     every Apex Advantage module page. Hidden from students entirely for
+     now: the nav item stays `hidden` unless renderAdminIfApplicable()
+     unhides it, and showSection()/enforceGuidedNotesAccess() bounce any
+     non-admin who reaches #guided-notes straight back to the dashboard.
+     None of that is the real security boundary, though -- it's UI
+     convenience on top of the actual one, same as loadPremiumContent()
+     above: guided_notes' RLS policy (supabase-portal-schema-v14.sql)
+     only grants a row to its own profile_id AND a caller whose profile
+     has role = 'admin'. A signed-in student calling the Supabase client
+     directly gets rejected at the database, not just kept off the page.
+
+     Opening this to every student later is a single migration (drop the
+     "and exists(...role='admin')" clause from that policy) plus removing
+     the `hidden` attribute from the nav button -- every query here
+     already scopes to the caller's own profile_id, so nothing else in
+     this file needs to change.
+
+     Course/module IDs follow the PPL-M03-Aircraft-Systems convention
+     from the Apex Advantage Content Architecture doc. Aircraft Systems
+     ships with its first 6 prompts; the rest of that module's guided-
+     notes pages (and every other module) are just more entries in
+     GUIDED_NOTES_PROMPTS -- no schema or rendering changes needed. ── */
+  var GUIDED_NOTES_COURSE = 'PPL';
+  var GUIDED_NOTES_MODULE = 'PPL-M03-Aircraft-Systems';
+  var GUIDED_NOTES_PROMPTS = [
+    { id: 'engine-responsibilities', section: 'Engine', prompt: 'What are the main responsibilities of the engine system?' },
+    { id: 'fuel-components', section: 'Fuel System', prompt: 'What are the main components of the fuel system?' },
+    { id: 'alternator-failure', section: 'Electrical System', prompt: 'What indications might suggest an alternator failure?' },
+    { id: 'vacuum-failure', section: 'Vacuum System', prompt: 'What instruments are affected by a vacuum system failure?' },
+    { id: 'pitot-blocked', section: 'Pitot-Static System', prompt: 'What happens when the pitot tube becomes blocked?' },
+    { id: 'review-topic', section: 'Self-Assessment', prompt: 'What is one aircraft systems topic you need to review before your checkride?' }
+  ];
+
+  var guidedNotesLoaded = false;
+  var guidedNotesSaveTimers = {};
+
+  // Textarea content is round-tripped back into innerHTML on every render,
+  // so a literal "</textarea>" in a saved response would otherwise truncate
+  // the field early. This one only guards that path -- see loadGuidedNotes.
+  function escapeForTextarea(str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function loadGuidedNotes() {
+    if (!member || member.role !== 'admin') return;
+    if (guidedNotesLoaded) return;
+    guidedNotesLoaded = true;
+    var root = document.getElementById('guidedNotesRoot');
+
+    apexSupabase.from('guided_notes').select('*')
+      .eq('profile_id', member.id)
+      .eq('course_id', GUIDED_NOTES_COURSE)
+      .eq('module_id', GUIDED_NOTES_MODULE)
+      .then(function (res) {
+        if (res.error) {
+          root.innerHTML = '<p style="color:#ff8b8b;font-size:14px">Could not load guided notes: ' + res.error.message + '</p>';
+          return;
+        }
+        var existingByPrompt = {};
+        (res.data || []).forEach(function (row) { existingByPrompt[row.prompt_id] = row; });
+        renderGuidedNotes(root, existingByPrompt);
+      });
+  }
+
+  function renderGuidedNotes(root, existingByPrompt) {
+    var html = '<div class="portal-card" style="margin-bottom:20px">' +
+      '<div class="portal-header__eyebrow" style="margin-bottom:6px">Private Pilot · Module 03</div>' +
+      '<h3 style="color:#fff;font-size:18px;font-weight:700;margin:0">Aircraft Systems</h3>' +
+      '</div>';
+
+    html += GUIDED_NOTES_PROMPTS.map(function (p) {
+      var row = existingByPrompt[p.id];
+      var savedValue = row ? escapeForTextarea(row.response_text) : '';
+      var statusText = row && row.response_text ? 'Saved ' + timeAgo(new Date(row.updated_at).getTime()) : 'Not started';
+      return '<div class="portal-card" style="margin-bottom:16px" data-guided-note-card data-prompt-id="' + p.id + '">' +
+        '<div class="portal-header__eyebrow" style="margin-bottom:6px">' + p.section + '</div>' +
+        '<h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:12px">' + p.prompt + '</h3>' +
+        '<textarea data-guided-note-input rows="4" placeholder="Type your response…" style="width:100%;padding:12px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none;resize:vertical;margin-bottom:10px">' + savedValue + '</textarea>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">' +
+          '<span data-guided-note-status style="font-size:12.5px;color:rgba(255,255,255,0.4)">' + statusText + '</span>' +
+          '<button class="btn btn--ghost" data-guided-note-save style="padding:8px 16px;font-size:13px">Save</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    root.innerHTML = html;
+    wireGuidedNotesInputs(root);
+  }
+
+  function wireGuidedNotesInputs(root) {
+    root.querySelectorAll('[data-guided-note-card]').forEach(function (card) {
+      var promptId = card.dataset.promptId;
+      var promptDef = GUIDED_NOTES_PROMPTS.filter(function (p) { return p.id === promptId; })[0];
+      var textarea = card.querySelector('[data-guided-note-input]');
+      var status = card.querySelector('[data-guided-note-status]');
+      var saveBtn = card.querySelector('[data-guided-note-save]');
+
+      function save() {
+        saveBtn.disabled = true;
+        status.style.color = 'rgba(255,255,255,0.4)';
+        status.textContent = 'Saving…';
+        apexSupabase.from('guided_notes').upsert({
+          profile_id: member.id,
+          course_id: GUIDED_NOTES_COURSE,
+          module_id: GUIDED_NOTES_MODULE,
+          section_id: promptDef ? promptDef.section : promptId,
+          prompt_id: promptId,
+          response_text: textarea.value,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'profile_id,course_id,module_id,section_id,prompt_id' }).then(function (res) {
+          saveBtn.disabled = false;
+          if (res.error) {
+            status.style.color = '#ff8b8b';
+            status.textContent = 'Could not save — try again';
+            return;
+          }
+          status.style.color = 'rgba(255,255,255,0.4)';
+          status.textContent = 'Saved just now';
+        });
+      }
+
+      saveBtn.addEventListener('click', save);
+
+      // Autosave 1.5s after the admin stops typing, in addition to the
+      // manual Save button -- matches the "autosave or manual save"
+      // requirement without making the button feel redundant.
+      textarea.addEventListener('input', function () {
+        status.style.color = 'rgba(255,255,255,0.4)';
+        status.textContent = 'Unsaved changes…';
+        clearTimeout(guidedNotesSaveTimers[promptId]);
+        guidedNotesSaveTimers[promptId] = setTimeout(save, 1500);
+      });
+    });
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -1958,7 +2116,7 @@
       '<span style="font-size:22px;font-style:italic;color:#F4B400;font-family:Georgia,serif;"> Advantage</span></div>' +
       contentHtml +
       '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:32px 0 16px;">' +
-      '<p style="font-size:12px;color:rgba(255,255,255,0.3);margin:0;">Apex Aviation · San Marcos, TX (KHYI)</p>' +
+      '<p style="font-size:12px;color:rgba(255,255,255,0.3);margin:0;">Apex Aviation · Austin, TX</p>' +
       '</div></body></html>';
   }
 
@@ -2420,6 +2578,7 @@
       renderAchievements();
       checkAchievements();
       renderAdminIfApplicable();
+      enforceGuidedNotesAccess();
       renderCheckrideCountdown();
       renderMembership();
       renderBillingHistory();
