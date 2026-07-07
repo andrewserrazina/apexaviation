@@ -411,17 +411,31 @@
 
   /* ── Post-Stripe-redirect toasts ────────────────────────────── */
   var urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('unlocked') === '1') {
-    authReady.then(function () {
-      apexSupabase.from('profiles').select('checkride_prep_unlocked').eq('id', member.id).single().then(function (res) {
-        if (res.data && res.data.checkride_prep_unlocked) {
-          member.checkridePrepUnlocked = true;
-          applyUnlockState();
+  function refreshUnlockAfterCheckout(attempt) {
+    attempt = attempt || 1;
+    apexSupabase.from('profiles').select('checkride_prep_unlocked').eq('id', member.id).single().then(function (res) {
+      if (res.data && res.data.checkride_prep_unlocked) {
+        member.checkridePrepUnlocked = true;
+        applyUnlockState();
+        loadPremiumContent().then(function () {
+          return initPortalData();
+        }).then(function () {
           toast('Unlocked! Welcome to the Checkride Prep System.');
           if (window.gtag) gtag('event', 'purchase', { currency: 'USD', items: [{ item_name: 'Checkride Prep Unlock' }] });
-        }
-      });
+        });
+        return;
+      }
+
+      if (attempt < 8) {
+        window.setTimeout(function () { refreshUnlockAfterCheckout(attempt + 1); }, 1000);
+      } else {
+        toast('Payment received. Your unlock is still processing — refresh in a moment if it does not appear.');
+      }
     });
+  }
+
+  if (urlParams.get('unlocked') === '1') {
+    authReady.then(function () { refreshUnlockAfterCheckout(1); });
   }
   if (urlParams.get('registered') === '1') {
     toast('You\'re registered for ground school!');
