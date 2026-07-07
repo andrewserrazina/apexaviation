@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
 
@@ -10,7 +9,6 @@ const BLANK_EDIT = { full_name: '', email: '', certificate_status: 'None', medic
 const BLANK_CREATE = { full_name: '', email: '', password: '', certificate_status: 'None', medical_expiry: '' }
 
 export default function Students() {
-  const { user } = useAuth()
   const [students, setStudents] = useState([])
   const [syllabi, setSyllabi] = useState([])
   const [loading, setLoading] = useState(true)
