@@ -110,18 +110,18 @@ document.querySelectorAll('.faq-item__question').forEach(btn => {
   const STORAGE_KEY = 'apex_exit_popup_dismissed';
   if (sessionStorage.getItem(STORAGE_KEY)) return;
 
+  // Pages can override the popup with window.APEX_EXIT_POPUP before script.js loads,
+  // e.g. { mode: 'cta', eyebrow, heading, body, ctaText, ctaHref } to point the
+  // exit save at whatever that page is actually selling (live portal, free guide, etc.)
+  // instead of the default Austin-facility waitlist pitch.
+  const cfg = Object.assign({ mode: 'form' }, window.APEX_EXIT_POPUP || {});
+
   // Inject popup HTML
   const overlay = document.createElement('div');
   overlay.className = 'exit-popup-overlay';
   overlay.id = 'exitPopup';
-  overlay.innerHTML = `
-    <div class="exit-popup">
-      <button class="exit-popup__close" id="exitPopupClose" aria-label="Close">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
-      </button>
-      <div class="exit-popup__eyebrow">Founding Member Waitlist</div>
-      <h2>Before you go — secure your spot.</h2>
-      <p>24 founding member slots open January 2027. Join the waitlist for locked-in pricing and priority scheduling.</p>
+
+  const formModeHtml = `
       <form class="contact__form" id="exitPopupForm">
         <input type="hidden" name="_source" value="exit-intent-popup" />
         <div class="form-row">
@@ -147,12 +147,26 @@ document.querySelectorAll('.faq-item__question').forEach(btn => {
         </div>
         <button type="submit" class="btn btn--primary btn--full">Join the Waitlist</button>
         <p class="form__note" style="text-align:center;margin-top:10px">No spam. Unsubscribe anytime.</p>
-      </form>
+      </form>`;
+
+  const ctaModeHtml = `
+      <a href="${cfg.ctaHref || 'portal-login.html?view=signup'}" class="btn btn--primary btn--full" style="text-align:center">${cfg.ctaText || 'Create Your Free Account'}</a>
+      <p class="form__note" style="text-align:center;margin-top:10px">${cfg.ctaNote || 'Free forever. No credit card required.'}</p>`;
+
+  overlay.innerHTML = `
+    <div class="exit-popup">
+      <button class="exit-popup__close" id="exitPopupClose" aria-label="Close">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+      </button>
+      <div class="exit-popup__eyebrow">${cfg.eyebrow || 'Founding Member Waitlist'}</div>
+      <h2>${cfg.heading || 'Before you go — secure your spot.'}</h2>
+      <p>${cfg.body || '24 founding member slots open January 2027. Join the waitlist for locked-in pricing and priority scheduling.'}</p>
+      ${cfg.mode === 'cta' ? ctaModeHtml : `${formModeHtml}
       <div class="form__success" id="exitPopupSuccess" style="display:none;text-align:center;padding:24px 0">
         <svg width="48" height="48" viewBox="0 0 56 56" fill="none" style="margin-bottom:12px"><circle cx="28" cy="28" r="28" fill="#F4B400" fill-opacity=".1"/><path d="M18 28l8 8 14-16" stroke="#F4B400" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <h3 style="color:var(--navy);margin-bottom:8px">You're on the list.</h3>
         <p style="color:var(--gray)">We'll be in touch before our January 2027 launch.</p>
-      </div>
+      </div>`}
     </div>`;
   document.body.appendChild(overlay);
 
@@ -165,33 +179,39 @@ document.querySelectorAll('.faq-item__question').forEach(btn => {
   overlay.addEventListener('click', (e) => { if (e.target === overlay) dismiss(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') dismiss(); });
 
-  // Submit
+  // Submit (form mode only)
   const epForm = document.getElementById('exitPopupForm');
   const epSuccess = document.getElementById('exitPopupSuccess');
-  epForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = epForm.querySelector('[type="submit"]');
-    btn.disabled = true;
-    btn.textContent = 'Sending…';
-    try {
-      const res = await fetch('https://formspree.io/f/xzdqylpz', {
-        method: 'POST',
-        headers: { 'Accept': 'application/json' },
-        body: new FormData(epForm),
-      });
-      if (res.ok) {
-        epForm.style.display = 'none';
-        epSuccess.style.display = 'block';
-        setTimeout(dismiss, 2800);
-      } else {
+  if (epForm) {
+    epForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = epForm.querySelector('[type="submit"]');
+      btn.disabled = true;
+      btn.textContent = 'Sending…';
+      try {
+        const res = await fetch('https://formspree.io/f/xzdqylpz', {
+          method: 'POST',
+          headers: { 'Accept': 'application/json' },
+          body: new FormData(epForm),
+        });
+        if (res.ok) {
+          epForm.style.display = 'none';
+          epSuccess.style.display = 'block';
+          setTimeout(dismiss, 2800);
+        } else {
+          btn.disabled = false;
+          btn.textContent = 'Join the Waitlist';
+        }
+      } catch {
         btn.disabled = false;
         btn.textContent = 'Join the Waitlist';
       }
-    } catch {
-      btn.disabled = false;
-      btn.textContent = 'Join the Waitlist';
-    }
-  });
+    });
+  }
+  if (cfg.mode === 'cta') {
+    const ctaLink = overlay.querySelector('.exit-popup a.btn');
+    if (ctaLink) ctaLink.addEventListener('click', dismiss);
+  }
 
   // Trigger: mouse leaves viewport toward top (desktop)
   let triggered = false;

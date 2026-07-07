@@ -342,7 +342,7 @@
       <h1 class="page-hero__title" style="max-width:700px">Train Beyond<br /><span>the Checkride.&#8482;</span></h1>
       <p class="page-hero__sub" style="max-width:620px">Not another prerecorded video course. The Apex Advantage Private Pilot Ground School is built around live instruction, real-time discussion, and mentorship from experienced flight instructors — preparing you for the FAA Knowledge Exam, checkride oral, and real-world flying.</p>
       <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:36px">
-        <a href="home.html#waitlist" class="btn btn--primary">Start Training</a>
+        <a href="home.html?interest=ground-school#waitlist" class="btn btn--primary">Join the Waitlist</a>
         <a href="contact.html" class="btn btn--ghost">Schedule a Discovery Call</a>
       </div>
       <p style="margin-top:20px;font-size:13px;color:rgba(255,255,255,0.4)">Closer to checkride day right now? The <a href="checkride-prep.html" style="color:var(--gold)">virtual Checkride Prep Pack</a> is open today — no waiting for September.</p>
@@ -831,7 +831,7 @@
         <p style="color:rgba(255,255,255,0.65);margin:0 auto 12px;max-width:500px;line-height:1.8;font-size:16px">Join the Apex Advantage Private Pilot Ground School and build the knowledge, skills, and confidence needed to become a safe, capable pilot — not just a certificated one.</p>
         <p style="color:rgba(255,255,255,0.4);font-size:13px;margin-bottom:36px">24 founding member slots. No payment required to join.</p>
         <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
-          <a href="home.html#waitlist" class="btn btn--primary">Enroll Now — Join Waitlist</a>
+          <a href="home.html?interest=ground-school#waitlist" class="btn btn--primary">Enroll Now — Join Waitlist</a>
           <a href="contact.html" class="btn btn--ghost">Speak With an Instructor</a>
         </div>
       </div>
@@ -904,6 +904,17 @@
     </div>
   </footer>
 
+  <script>
+    window.APEX_EXIT_POPUP = {
+      mode: 'cta',
+      eyebrow: 'Free Guide, No Card Required',
+      heading: "Wait — the guide's free.",
+      body: 'Create your free Apex Advantage account and get "10 Questions DPEs Love to Ask" instantly. Upgrade to the full Private Pilot Checkride Prep Pack whenever you\'re ready.',
+      ctaText: 'Get the Free Guide',
+      ctaHref: 'portal-login.html?view=signup',
+      ctaNote: 'Free forever. No credit card required.'
+    };
+  </script>
   <script src="script.js"></script>
   <script>
     // Curriculum accordion

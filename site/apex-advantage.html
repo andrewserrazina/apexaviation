@@ -263,7 +263,7 @@
       <p class="page-hero__sub">Apex Advantage is two things working together: a live instructor-led ground school launching September 2026, and a virtual member portal you can access today — DPE question banks, scenario training, and checkride prep resources built to help you pass your written exam, succeed on your checkride, and become a safer, more confident pilot.</p>
       <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:32px">
         <a href="portal-login.html?view=signup" class="btn btn--primary">Create Your Free Portal Account</a>
-        <a href="home.html#waitlist" class="btn btn--ghost">Join the Ground School Waitlist</a>
+        <a href="home.html?interest=ground-school#waitlist" class="btn btn--ghost">Join the Ground School Waitlist</a>
       </div>
       <div style="display:flex;gap:10px;align-items:center;margin-top:20px;font-size:13px;color:rgba(255,255,255,0.45)">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -628,7 +628,7 @@
             <li style="font-size:14px;color:rgba(255,255,255,0.8);display:flex;gap:8px;align-items:flex-start"><span style="color:var(--gold);margin-top:2px">✓</span><strong>IRA knowledge test endorsement</strong></li>
           </ul>
           <div style="font-size:22px;font-weight:800;color:var(--white);margin-bottom:16px">$25 <span style="font-size:14px;font-weight:500;color:rgba(255,255,255,0.5)">per session</span></div>
-          <a href="home.html#waitlist" class="btn btn--outline" style="text-align:center">Join Waitlist — Sept 2026</a>
+          <a href="home.html?interest=ground-school#waitlist" class="btn btn--outline" style="text-align:center">Join Waitlist — Sept 2026</a>
         </div>
 
         <!-- Commercial Pilot -->
@@ -645,7 +645,7 @@
             <li style="font-size:14px;color:rgba(255,255,255,0.8);display:flex;gap:8px;align-items:flex-start"><span style="color:var(--gold);margin-top:2px">✓</span><strong>CAX knowledge test endorsement</strong></li>
           </ul>
           <div style="font-size:22px;font-weight:800;color:var(--white);margin-bottom:16px">$25 <span style="font-size:14px;font-weight:500;color:rgba(255,255,255,0.5)">per session</span></div>
-          <a href="home.html#waitlist" class="btn btn--outline" style="text-align:center">Join Waitlist — Sept 2026</a>
+          <a href="home.html?interest=ground-school#waitlist" class="btn btn--outline" style="text-align:center">Join Waitlist — Sept 2026</a>
         </div>
 
       </div>
@@ -761,7 +761,7 @@
       <p style="color:rgba(255,255,255,0.7);line-height:1.75;margin-bottom:12px;font-size:16px">Experience a live instructor-led ground school designed to help you pass your written exam, ace your checkride, and become a safer, more confident pilot — not just another student who watched a video library.</p>
       <p style="color:rgba(255,255,255,0.5);font-size:14px;margin-bottom:36px">24 founding member slots available. No payment required to join.</p>
       <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
-        <a href="home.html#waitlist" class="btn btn--primary">Reserve Your Seat</a>
+        <a href="home.html?interest=ground-school#waitlist" class="btn btn--primary">Reserve Your Seat</a>
         <a href="contact.html" class="btn btn--ghost" style="background:transparent;border-color:rgba(255,255,255,0.35);color:#fff">Speak With an Instructor</a>
       </div>
     </div>
@@ -815,6 +815,17 @@
     </div>
   </footer>
 
+  <script>
+    window.APEX_EXIT_POPUP = {
+      mode: 'cta',
+      eyebrow: 'Free Portal Access',
+      heading: 'Before you go — it\'s free to start.',
+      body: 'Create a free Apex Advantage account for the "10 Questions DPEs Love to Ask" guide today, plus ground school updates as September 2026 gets closer.',
+      ctaText: 'Create Your Free Account',
+      ctaHref: 'portal-login.html?view=signup',
+      ctaNote: 'Free forever. No credit card required.'
+    };
+  </script>
   <script src="script.js"></script>
 </body>
 </html>

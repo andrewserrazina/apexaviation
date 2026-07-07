@@ -587,9 +587,9 @@
   <section class="waitlist-section section" id="waitlist">
     <div class="container waitlist__inner">
       <div class="waitlist__text">
-        <div class="section__eyebrow">Founding Member Waitlist</div>
-        <h2 class="section__title">First in the pattern<br/>gets the <em class="accent">best approach.</em></h2>
-        <p>We open in Austin in January 2027 with 24 founding member slots. Tell us about your flying and we'll confirm your spot before public enrollment opens.</p>
+        <div class="section__eyebrow" id="waitlistEyebrow">Founding Member Waitlist</div>
+        <h2 class="section__title" id="waitlistHeading">First in the pattern<br/>gets the <em class="accent">best approach.</em></h2>
+        <p id="waitlistIntro">We open in Austin in January 2027 with 24 founding member slots. Tell us about your flying and we'll confirm your spot before public enrollment opens.</p>
         <ul class="waitlist__perks">
           <li>Priority scheduling for all programs</li>
           <li>Founding Member pricing (locked in at launch rates)</li>
@@ -692,5 +692,20 @@
   </footer>
 
   <script src="script.js"></script>
+  <script>
+    // Personalize the waitlist section when arriving with a specific interest (e.g. from apex-advantage.html)
+    (function () {
+      var interest = new URLSearchParams(window.location.search).get('interest');
+      if (interest !== 'ground-school') return;
+      var eyebrow = document.getElementById('waitlistEyebrow');
+      var heading = document.getElementById('waitlistHeading');
+      var intro = document.getElementById('waitlistIntro');
+      if (eyebrow) eyebrow.textContent = 'Ground School Waitlist';
+      if (heading) heading.innerHTML = 'Reserve your seat<br/>for the <em class="accent">next cohort.</em>';
+      if (intro) intro.textContent = 'Apex Advantage live ground school launches September 2026 with 24 founding member slots. Tell us about your training and we\'ll confirm your spot before public enrollment opens.';
+      var groundSchoolCheckbox = document.querySelector('#waitlistForm input[name="services"][value="Apex Advantage Ground"]');
+      if (groundSchoolCheckbox) groundSchoolCheckbox.checked = true;
+    })();
+  </script>
 </body>
 </html>
