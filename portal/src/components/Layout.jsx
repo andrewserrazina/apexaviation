@@ -25,12 +25,6 @@ const navItems = [
   { to: '/reports',         label: 'Reports',         roles: ['admin'] },
 ]
 
-const SEARCH_TABLES = [
-  { table: 'profiles',        labelCol: 'full_name',   sub: 'role',        link: id => `/students` },
-  { table: 'lessons',         labelCol: 'lesson_type', sub: 'starts_at',   link: () => '/schedule' },
-  { table: 'logbook_entries', labelCol: 'route',       sub: 'date',        link: () => '/logbook' },
-  { table: 'invoices',        labelCol: 'description', sub: 'status',      link: () => '/billing' },
-]
 
 export default function Layout({ children }) {
   const { profile, signOut } = useAuth()
