@@ -2154,3 +2154,85 @@ em { font-family: 'Playfair Display', serif; font-style: italic; }
     flex-direction: column;
   }
 }
+
+/* ─── ADMIN GROUND SCHOOL SCHEDULER ─────────── */
+.table-scroll {
+  overflow-x: auto;
+  width: 100%;
+}
+
+.admin-table {
+  border-collapse: collapse;
+  min-width: 820px;
+  width: 100%;
+}
+
+.admin-table th,
+.admin-table td {
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  padding: 12px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.admin-table th {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.action-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.empty-state-block {
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+  padding: 24px;
+}
+
+.empty-state-block h3 {
+  color: var(--white);
+  font-size: 18px;
+  margin-bottom: 6px;
+}
+
+.curriculum-chip-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.curriculum-chip {
+  background: var(--navy-3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  padding: 12px;
+  text-align: left;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.curriculum-chip:hover {
+  border-color: rgba(244, 180, 0, 0.4);
+  transform: translateY(-1px);
+}
+
+.curriculum-chip span {
+  color: var(--gold);
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}

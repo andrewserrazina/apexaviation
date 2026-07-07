@@ -15,6 +15,7 @@ const Schedule = lazy(() => import('./pages/Schedule'))
 const Logbook = lazy(() => import('./pages/Logbook'))
 const Billing = lazy(() => import('./pages/Billing'))
 const GroundSchedule = lazy(() => import('./pages/GroundSchedule'))
+const AdminGroundSchoolSchedule = lazy(() => import('./pages/AdminGroundSchoolSchedule'))
 const Documents = lazy(() => import('./pages/Documents'))
 const Aircraft = lazy(() => import('./pages/Aircraft'))
 const Analytics = lazy(() => import('./pages/Analytics'))
@@ -51,6 +52,7 @@ export default function App() {
               <Route path="/logbook" element={protectedPage(<Logbook />)} />
               <Route path="/billing" element={protectedPage(<Billing />)} />
               <Route path="/ground-schedule" element={<GroundSchedule />} />
+              <Route path="/admin/ground-school-schedule" element={protectedPage(<AdminGroundSchoolSchedule />, { adminOnly: true })} />
               <Route path="/attend/:type/:token" element={<Attend />} />
               <Route path="/documents" element={protectedPage(<Documents />)} />
               <Route path="/crm" element={protectedPage(<CRM />)} />
