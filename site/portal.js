@@ -1989,7 +1989,7 @@
         el.innerHTML = '<div class="portal-card" style="margin-bottom:20px">' +
           '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Admin Scheduler</h3>' +
           '<p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:14px">Use the full scheduler to create, edit, publish, or cancel curriculum-backed classes.</p>' +
-          '<a class="btn btn--primary" href="/admin/ground-school-schedule">Open Full Scheduler</a>' +
+          '<a class="btn btn--primary" href="/portal.html#admin-ground-schedule">Open Full Scheduler</a>' +
         '</div>' +
         '<div class="portal-card"><h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:14px">Scheduled Classes</h3>' + table + '</div>';
       });
