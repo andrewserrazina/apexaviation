@@ -1979,22 +1979,44 @@
      this file needs to change.
 
      Course/module IDs follow the PPL-M03-Aircraft-Systems convention
-     from the Apex Advantage Content Architecture doc. Aircraft Systems
-     ships with its first 6 prompts; the rest of that module's guided-
-     notes pages (and every other module) are just more entries in
-     GUIDED_NOTES_PROMPTS -- no schema or rendering changes needed. ── */
-  var GUIDED_NOTES_COURSE = 'PPL';
-  var GUIDED_NOTES_MODULE = 'PPL-M03-Aircraft-Systems';
-  var GUIDED_NOTES_PROMPTS = [
-    { id: 'engine-responsibilities', section: 'Engine', prompt: 'What are the main responsibilities of the engine system?' },
-    { id: 'fuel-components', section: 'Fuel System', prompt: 'What are the main components of the fuel system?' },
-    { id: 'alternator-failure', section: 'Electrical System', prompt: 'What indications might suggest an alternator failure?' },
-    { id: 'vacuum-failure', section: 'Vacuum System', prompt: 'What instruments are affected by a vacuum system failure?' },
-    { id: 'pitot-blocked', section: 'Pitot-Static System', prompt: 'What happens when the pitot tube becomes blocked?' },
-    { id: 'review-topic', section: 'Self-Assessment', prompt: 'What is one aircraft systems topic you need to review before your checkride?' }
+     from the Apex Advantage Content Architecture doc. Each module is
+     just one more entry in GUIDED_NOTES_MODULES below, with its own
+     prompt list -- no schema or rendering changes needed to add the
+     rest of these two modules' guided-notes pages, or any other
+     module in the curriculum. The tab row lets the admin switch
+     between whichever modules exist so far while testing. ── */
+  var GUIDED_NOTES_MODULES = [
+    {
+      courseId: 'PPL',
+      moduleId: 'PPL-M02-Aerodynamics',
+      courseLabel: 'Private Pilot',
+      moduleLabel: 'Module 02 · Aerodynamics',
+      prompts: [
+        { id: 'four-forces', section: 'The Four Forces', prompt: 'What are the four forces of flight, and what does it mean for them to be in balance during steady, unaccelerated flight?' },
+        { id: 'lift-generation', section: 'How Lift Is Generated', prompt: 'How do Bernoulli’s Principle and Newton’s Third Law each explain lift, and why are both considered valid rather than competing explanations?' },
+        { id: 'angle-of-attack', section: 'Angle of Attack & Critical AoA', prompt: 'What is angle of attack, how does it differ from pitch attitude, and what happens at the critical angle of attack?' },
+        { id: 'load-factor', section: 'Load Factor & Accelerated Stalls', prompt: 'How does load factor relate to angle of attack in a turn, and why does stall speed increase as bank angle increases?' },
+        { id: 'drag', section: 'Drag', prompt: 'What is the difference between parasite drag and induced drag, and what does the point of minimum total drag (L/D-max) correspond to?' },
+        { id: 'stability-control', section: 'Stability & Control', prompt: 'What is the difference between stability and controllability, and what are the three axes of stability?' }
+      ]
+    },
+    {
+      courseId: 'PPL',
+      moduleId: 'PPL-M03-Aircraft-Systems',
+      courseLabel: 'Private Pilot',
+      moduleLabel: 'Module 03 · Aircraft Systems',
+      prompts: [
+        { id: 'engine-responsibilities', section: 'Engine', prompt: 'What are the main responsibilities of the engine system?' },
+        { id: 'fuel-components', section: 'Fuel System', prompt: 'What are the main components of the fuel system?' },
+        { id: 'alternator-failure', section: 'Electrical System', prompt: 'What indications might suggest an alternator failure?' },
+        { id: 'vacuum-failure', section: 'Vacuum System', prompt: 'What instruments are affected by a vacuum system failure?' },
+        { id: 'pitot-blocked', section: 'Pitot-Static System', prompt: 'What happens when the pitot tube becomes blocked?' },
+        { id: 'review-topic', section: 'Self-Assessment', prompt: 'What is one aircraft systems topic you need to review before your checkride?' }
+      ]
+    }
   ];
 
-  var guidedNotesLoaded = false;
+  var guidedNotesActiveModuleIndex = 0;
   var guidedNotesSaveTimers = {};
 
   // Textarea content is round-tripped back into innerHTML on every render,
@@ -2006,14 +2028,13 @@
 
   function loadGuidedNotes() {
     if (!member || member.role !== 'admin') return;
-    if (guidedNotesLoaded) return;
-    guidedNotesLoaded = true;
+    var moduleDef = GUIDED_NOTES_MODULES[guidedNotesActiveModuleIndex];
     var root = document.getElementById('guidedNotesRoot');
 
     apexSupabase.from('guided_notes').select('*')
       .eq('profile_id', member.id)
-      .eq('course_id', GUIDED_NOTES_COURSE)
-      .eq('module_id', GUIDED_NOTES_MODULE)
+      .eq('course_id', moduleDef.courseId)
+      .eq('module_id', moduleDef.moduleId)
       .then(function (res) {
         if (res.error) {
           root.innerHTML = '<p style="color:#ff8b8b;font-size:14px">Could not load guided notes: ' + res.error.message + '</p>';
@@ -2021,17 +2042,24 @@
         }
         var existingByPrompt = {};
         (res.data || []).forEach(function (row) { existingByPrompt[row.prompt_id] = row; });
-        renderGuidedNotes(root, existingByPrompt);
+        renderGuidedNotes(root, existingByPrompt, moduleDef);
       });
   }
 
-  function renderGuidedNotes(root, existingByPrompt) {
-    var html = '<div class="portal-card" style="margin-bottom:20px">' +
-      '<div class="portal-header__eyebrow" style="margin-bottom:6px">Private Pilot · Module 03</div>' +
-      '<h3 style="color:#fff;font-size:18px;font-weight:700;margin:0">Aircraft Systems</h3>' +
+  function renderGuidedNotes(root, existingByPrompt, moduleDef) {
+    var tabsHtml = '<div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">' +
+      GUIDED_NOTES_MODULES.map(function (m, i) {
+        var isActive = i === guidedNotesActiveModuleIndex;
+        return '<button class="btn ' + (isActive ? 'btn--primary' : 'btn--ghost') + '" data-guided-module-tab data-module-index="' + i + '" style="padding:9px 16px;font-size:13px">' + m.moduleLabel + '</button>';
+      }).join('') +
       '</div>';
 
-    html += GUIDED_NOTES_PROMPTS.map(function (p) {
+    var headerHtml = '<div class="portal-card" style="margin-bottom:20px">' +
+      '<div class="portal-header__eyebrow" style="margin-bottom:6px">' + moduleDef.courseLabel + ' · ' + moduleDef.moduleLabel.split(' · ')[0] + '</div>' +
+      '<h3 style="color:#fff;font-size:18px;font-weight:700;margin:0">' + moduleDef.moduleLabel.split(' · ')[1] + '</h3>' +
+      '</div>';
+
+    var cardsHtml = moduleDef.prompts.map(function (p) {
       var row = existingByPrompt[p.id];
       var savedValue = row ? escapeForTextarea(row.response_text) : '';
       var statusText = row && row.response_text ? 'Saved ' + timeAgo(new Date(row.updated_at).getTime()) : 'Not started';
@@ -2046,17 +2074,26 @@
       '</div>';
     }).join('');
 
-    root.innerHTML = html;
-    wireGuidedNotesInputs(root);
+    root.innerHTML = tabsHtml + headerHtml + cardsHtml;
+
+    root.querySelectorAll('[data-guided-module-tab]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        guidedNotesActiveModuleIndex = parseInt(btn.dataset.moduleIndex, 10);
+        loadGuidedNotes();
+      });
+    });
+
+    wireGuidedNotesInputs(root, moduleDef);
   }
 
-  function wireGuidedNotesInputs(root) {
+  function wireGuidedNotesInputs(root, moduleDef) {
     root.querySelectorAll('[data-guided-note-card]').forEach(function (card) {
       var promptId = card.dataset.promptId;
-      var promptDef = GUIDED_NOTES_PROMPTS.filter(function (p) { return p.id === promptId; })[0];
+      var promptDef = moduleDef.prompts.filter(function (p) { return p.id === promptId; })[0];
       var textarea = card.querySelector('[data-guided-note-input]');
       var status = card.querySelector('[data-guided-note-status]');
       var saveBtn = card.querySelector('[data-guided-note-save]');
+      var timerKey = moduleDef.moduleId + ':' + promptId;
 
       function save() {
         saveBtn.disabled = true;
@@ -2064,8 +2101,8 @@
         status.textContent = 'Saving…';
         apexSupabase.from('guided_notes').upsert({
           profile_id: member.id,
-          course_id: GUIDED_NOTES_COURSE,
-          module_id: GUIDED_NOTES_MODULE,
+          course_id: moduleDef.courseId,
+          module_id: moduleDef.moduleId,
           section_id: promptDef ? promptDef.section : promptId,
           prompt_id: promptId,
           response_text: textarea.value,
@@ -2090,8 +2127,8 @@
       textarea.addEventListener('input', function () {
         status.style.color = 'rgba(255,255,255,0.4)';
         status.textContent = 'Unsaved changes…';
-        clearTimeout(guidedNotesSaveTimers[promptId]);
-        guidedNotesSaveTimers[promptId] = setTimeout(save, 1500);
+        clearTimeout(guidedNotesSaveTimers[timerKey]);
+        guidedNotesSaveTimers[timerKey] = setTimeout(save, 1500);
       });
     });
   }
