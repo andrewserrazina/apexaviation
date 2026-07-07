@@ -19,18 +19,33 @@
         memberSince: profile && profile.created_at,
         checkridePrepUnlocked: !!(profile && profile.checkride_prep_unlocked)
       };
-      populateMember();
-      applyUnlockState();
-      applyUnlockPricing();
-      // Fire-and-forget: feeds the 7-day inactivity nudge
-      // (send-lifecycle-emails, Phase 3) a real "last seen" signal.
-      // Once per page load is enough — this isn't a click-tracking beacon.
-      apexSupabase.from('profiles').update({ portal_last_active_at: new Date().toISOString() }).eq('id', member.id);
-      return loadPremiumContent().then(function () {
-        return initPortalData();
+      return reconcileUnlockFromPurchase().then(function () {
+        populateMember();
+        applyUnlockState();
+        applyUnlockPricing();
+        // Fire-and-forget: feeds the 7-day inactivity nudge
+        // (send-lifecycle-emails, Phase 3) a real "last seen" signal.
+        // Once per page load is enough — this isn't a click-tracking beacon.
+        apexSupabase.from('profiles').update({ portal_last_active_at: new Date().toISOString() }).eq('id', member.id);
+        return loadPremiumContent().then(function () {
+          return initPortalData();
+        });
       });
     });
   }).catch(function (e) { if (e !== 'no-session') console.error(e); });
+
+
+  function reconcileUnlockFromPurchase() {
+    if (!member || member.checkridePrepUnlocked) return Promise.resolve();
+    return apexSupabase
+      .from('portal_access_purchases')
+      .select('id')
+      .eq('profile_id', member.id)
+      .limit(1)
+      .then(function (res) {
+        if (res.data && res.data.length) member.checkridePrepUnlocked = true;
+      });
+  }
 
   /* ── Premium content — fetched server-side, never bundled here ──
      DPE_DATA/CATEGORY_META/QUICK_REF/FRAMEWORK_LESSON/CHECKRIDE_DAY_LESSON
@@ -155,6 +170,7 @@
     // half of this guard is enforceGuidedNotesAccess(), which catches the
     // same case on first page load, before member.role is known yet.
     if (id === 'guided-notes' && member && member.role !== 'admin') id = 'dashboard';
+    if (id === 'admin-ground-schedule' && member && member.role !== 'admin') id = 'dashboard';
     sections.forEach(function (s) { s.classList.toggle('active', s.id === 'section-' + id); });
     navItems.forEach(function (b) { b.classList.toggle('active', b.dataset.section === id); });
     window.scrollTo(0, 0);
@@ -162,6 +178,7 @@
     closeSidebar();
     if (!member) return;
     if (id === 'admin' && member.role === 'admin') loadAdminDashboard();
+    if (id === 'admin-ground-schedule' && member.role === 'admin') loadAdminGroundSchedule();
     if (id === 'guided-notes' && member.role === 'admin') loadGuidedNotes();
     if (id === 'success-wall') renderSuccessWall();
     if (id === 'ground-school') loadGroundSchool();
@@ -315,47 +332,88 @@
   /* ── Ground School Scheduling ───────────────────────────────── */
   var groundSchoolLoaded = false;
   var activeGroundSession = null;
+  var activeGroundSessionMode = 'legacy';
 
   function fmtSessionDate(iso) {
     return new Date(iso).toLocaleString('en-US', {
       weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
     });
   }
+  function fmtScheduledClassDate(row) {
+    if (!row.class_date || !row.start_time) return 'Date TBD';
+    return new Date(row.class_date + 'T' + row.start_time).toLocaleString('en-US', {
+      weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+    });
+  }
+
 
   function loadGroundSchool() {
     if (groundSchoolLoaded) return;
     groundSchoolLoaded = true;
     var listEl = document.getElementById('groundSchoolList');
     var emptyEl = document.getElementById('groundSchoolEmpty');
+    var today = new Date().toISOString().slice(0, 10);
 
-    apexSupabase.from('ground_sessions')
-      .select('*, ground_registrations(id, is_waitlisted)')
-      .gte('scheduled_at', new Date().toISOString())
-      .order('scheduled_at')
-      .then(function (res) {
-        var sessionsList = res.data || [];
-        if (!sessionsList.length) {
-          listEl.style.display = 'none';
-          emptyEl.style.display = 'block';
+    apexSupabase.from('scheduled_ground_classes')
+      .select('*')
+      .eq('status', 'published')
+      .gte('class_date', today)
+      .order('class_date')
+      .order('start_time')
+      .then(function (scheduledRes) {
+        var scheduledClasses = scheduledRes.data || [];
+        if (scheduledClasses.length) {
+          listEl.innerHTML = '';
+          listEl.className = 'portal-grid portal-grid--2';
+          listEl.style.display = '';
+          emptyEl.style.display = 'none';
+          scheduledClasses.forEach(function (s) {
+            var spotsLeft = Math.max(0, Number(s.capacity || 0) - Number(s.enrolled_count || 0));
+            var full = spotsLeft <= 0;
+            var card = document.createElement('div');
+            card.className = 'portal-card';
+            card.innerHTML =
+              '<div class="portal-header__eyebrow" style="margin-bottom:8px">' + escapeAttr((s.module_id || 'Private Pilot').toUpperCase()) + '</div>' +
+              '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">' + escapeAttr(s.title || 'Ground School Class') + '</h3>' +
+              '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:4px">' + escapeAttr(fmtScheduledClassDate(s)) + '</p>' +
+              '<p style="color:rgba(255,255,255,0.45);font-size:12px;margin-bottom:8px">' + escapeAttr(s.lesson_title || 'Private Pilot lesson') + '</p>' +
+              '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-bottom:16px">' + (full ? 'Full' : spotsLeft + ' spot' + (spotsLeft === 1 ? '' : 's') + ' left') + '</p>' +
+              '<button class="btn btn--primary" data-register style="width:100%"' + (full ? ' disabled' : '') + '>' + (full ? 'Class Full' : 'Register — $25') + '</button>';
+            if (!full) card.querySelector('[data-register]').addEventListener('click', function () { openGroundSchoolModal(s, 'scheduled'); });
+            listEl.appendChild(card);
+          });
           return;
         }
-        listEl.innerHTML = '';
-        listEl.className = 'portal-grid portal-grid--2';
-        sessionsList.forEach(function (s) {
-          var confirmed = (s.ground_registrations || []).filter(function (r) { return !r.is_waitlisted; }).length;
-          var spotsLeft = s.max_students - confirmed;
-          var full = spotsLeft <= 0;
-          var card = document.createElement('div');
-          card.className = 'portal-card';
-          card.innerHTML =
-            '<div class="portal-header__eyebrow" style="margin-bottom:8px">' + (s.category || 'General').toUpperCase() + '</div>' +
-            '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">' + s.title + '</h3>' +
-            '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:4px">' + fmtSessionDate(s.scheduled_at) + '</p>' +
-            '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-bottom:16px">' + (full ? 'Full — join the waitlist' : spotsLeft + ' spot' + (spotsLeft === 1 ? '' : 's') + ' left') + '</p>' +
-            '<button class="btn btn--primary" data-register style="width:100%">' + (full ? 'Join Waitlist — $25' : 'Register — $25') + '</button>';
-          card.querySelector('[data-register]').addEventListener('click', function () { openGroundSchoolModal(s); });
-          listEl.appendChild(card);
-        });
+
+        apexSupabase.from('ground_sessions')
+          .select('*, ground_registrations(id, is_waitlisted)')
+          .gte('scheduled_at', new Date().toISOString())
+          .order('scheduled_at')
+          .then(function (res) {
+            var sessionsList = res.data || [];
+            if (!sessionsList.length) {
+              listEl.style.display = 'none';
+              emptyEl.style.display = 'block';
+              return;
+            }
+            listEl.innerHTML = '';
+            listEl.className = 'portal-grid portal-grid--2';
+            sessionsList.forEach(function (s) {
+              var confirmed = (s.ground_registrations || []).filter(function (r) { return !r.is_waitlisted; }).length;
+              var spotsLeft = s.max_students - confirmed;
+              var full = spotsLeft <= 0;
+              var card = document.createElement('div');
+              card.className = 'portal-card';
+              card.innerHTML =
+                '<div class="portal-header__eyebrow" style="margin-bottom:8px">' + escapeAttr((s.category || 'General').toUpperCase()) + '</div>' +
+                '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">' + escapeAttr(s.title) + '</h3>' +
+                '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:4px">' + escapeAttr(fmtSessionDate(s.scheduled_at)) + '</p>' +
+                '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-bottom:16px">' + (full ? 'Full — join the waitlist' : spotsLeft + ' spot' + (spotsLeft === 1 ? '' : 's') + ' left') + '</p>' +
+                '<button class="btn btn--primary" data-register style="width:100%">' + (full ? 'Join Waitlist — $25' : 'Register — $25') + '</button>';
+              card.querySelector('[data-register]').addEventListener('click', function () { openGroundSchoolModal(s, 'legacy'); });
+              listEl.appendChild(card);
+            });
+          });
       });
   }
 
@@ -365,10 +423,11 @@
   var groundSchoolModalCta = document.getElementById('groundSchoolModalCta');
   var groundSchoolModalError = document.getElementById('groundSchoolModalError');
 
-  function openGroundSchoolModal(s) {
+  function openGroundSchoolModal(s, mode) {
     activeGroundSession = s;
+    activeGroundSessionMode = mode || 'legacy';
     groundSchoolModalTitle.textContent = s.title;
-    groundSchoolModalWhen.textContent = fmtSessionDate(s.scheduled_at);
+    groundSchoolModalWhen.textContent = activeGroundSessionMode === 'scheduled' ? fmtScheduledClassDate(s) : fmtSessionDate(s.scheduled_at);
     groundSchoolModalError.classList.remove('show');
     groundSchoolModalOverlay.classList.add('show');
   }
@@ -386,7 +445,8 @@
     apexSupabase.functions.invoke('create-checkout-session', {
       body: {
         purpose: 'ground-school-registration',
-        sessionId: activeGroundSession.id,
+        sessionId: activeGroundSessionMode === 'legacy' ? activeGroundSession.id : null,
+        scheduledClassId: activeGroundSessionMode === 'scheduled' ? activeGroundSession.id : null,
         name: member.name,
         email: member.email,
         origin: window.location.origin
@@ -411,17 +471,31 @@
 
   /* ── Post-Stripe-redirect toasts ────────────────────────────── */
   var urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('unlocked') === '1') {
-    authReady.then(function () {
-      apexSupabase.from('profiles').select('checkride_prep_unlocked').eq('id', member.id).single().then(function (res) {
-        if (res.data && res.data.checkride_prep_unlocked) {
-          member.checkridePrepUnlocked = true;
-          applyUnlockState();
+  function refreshUnlockAfterCheckout(attempt) {
+    attempt = attempt || 1;
+    apexSupabase.from('profiles').select('checkride_prep_unlocked').eq('id', member.id).single().then(function (res) {
+      if (res.data && res.data.checkride_prep_unlocked) {
+        member.checkridePrepUnlocked = true;
+        applyUnlockState();
+        loadPremiumContent().then(function () {
+          return initPortalData();
+        }).then(function () {
           toast('Unlocked! Welcome to the Checkride Prep System.');
           if (window.gtag) gtag('event', 'purchase', { currency: 'USD', items: [{ item_name: 'Checkride Prep Unlock' }] });
-        }
-      });
+        });
+        return;
+      }
+
+      if (attempt < 8) {
+        window.setTimeout(function () { refreshUnlockAfterCheckout(attempt + 1); }, 1000);
+      } else {
+        toast('Payment received. Your unlock is still processing — refresh in a moment if it does not appear.');
+      }
     });
+  }
+
+  if (urlParams.get('unlocked') === '1') {
+    authReady.then(function () { refreshUnlockAfterCheckout(1); });
   }
   if (urlParams.get('registered') === '1') {
     toast('You\'re registered for ground school!');
@@ -549,6 +623,7 @@
   var myPurchase = null;
   var myInvoices = [];
   var myGroundRegistrations = [];
+  var myScheduledGroundEnrollments = [];
 
   function loadProgress() {
     return Promise.all([
@@ -568,7 +643,8 @@
       apexSupabase.from('portal_checkride_results').select('*').eq('profile_id', member.id).maybeSingle(),
       apexSupabase.from('portal_access_purchases').select('*').eq('profile_id', member.id).maybeSingle(),
       apexSupabase.from('invoices').select('*').eq('student_id', member.id).order('issued_at', { ascending: false }),
-      apexSupabase.from('ground_registrations').select('*, session:ground_sessions(*)').eq('profile_id', member.id)
+      apexSupabase.from('ground_registrations').select('*, session:ground_sessions(*)').eq('profile_id', member.id),
+      apexSupabase.from('scheduled_ground_class_enrollments').select('*, scheduled_class:scheduled_ground_classes(*)').eq('profile_id', member.id)
     ]).then(function (results) {
       (results[0].data || []).forEach(function (r) {
         studied[r.question_id] = r.completed;
@@ -608,6 +684,7 @@
       myPurchase = results[14].data || null;
       myInvoices = results[15].data || [];
       myGroundRegistrations = results[16].data || [];
+      myScheduledGroundEnrollments = results[17].data || [];
     }).catch(function (e) { console.error('Failed to load portal progress', e); });
   }
 
@@ -1931,6 +2008,39 @@
     });
   }
 
+
+  function loadAdminGroundSchedule() {
+    var el = document.getElementById('adminGroundScheduleRoot');
+    if (!el) return;
+    el.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:14px">Loading scheduled classes…</p>';
+    apexSupabase
+      .from('scheduled_ground_classes')
+      .select('*')
+      .order('class_date', { ascending: true })
+      .order('start_time', { ascending: true })
+      .then(function (res) {
+        if (res.error) {
+          el.innerHTML = '<div class="portal-card"><p style="color:#fca5a5;font-size:14px">Could not load scheduled classes: ' + escapeAttr(res.error.message) + '</p></div>';
+          return;
+        }
+        var rows = res.data || [];
+        var table = rows.length ? '<table class="portal-admin-table"><tbody>' + rows.map(function (row) {
+          return '<tr>' +
+            '<td><strong>' + escapeAttr(row.title || 'Untitled class') + '</strong><br><span style="color:rgba(255,255,255,0.45);font-size:12px">' + escapeAttr((row.module_id || 'PPL') + ' · ' + (row.lesson_title || 'Lesson')) + '</span></td>' +
+            '<td>' + escapeAttr(row.class_date || 'Date TBD') + '<br><span style="color:rgba(255,255,255,0.45);font-size:12px">' + escapeAttr((row.start_time || '').slice(0,5) + '–' + (row.end_time || '').slice(0,5)) + '</span></td>' +
+            '<td>' + escapeAttr(row.instructor_name || 'TBD') + '</td>' +
+            '<td>' + escapeAttr(row.status || 'draft') + '</td>' +
+          '</tr>';
+        }).join('') + '</tbody></table>' : '<p style="color:rgba(255,255,255,0.4);font-size:13px">No scheduled classes yet.</p>';
+        el.innerHTML = '<div class="portal-card" style="margin-bottom:20px">' +
+          '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Admin Scheduler</h3>' +
+          '<p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:14px">Use the full scheduler to create, edit, publish, or cancel curriculum-backed classes.</p>' +
+          '<a class="btn btn--primary" href="/portal.html#admin-ground-schedule">Open Full Scheduler</a>' +
+        '</div>' +
+        '<div class="portal-card"><h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:14px">Scheduled Classes</h3>' + table + '</div>';
+      });
+  }
+
   function renderAdminIfApplicable() {
     if (!member || member.role !== 'admin') return;
     // Just unhides the nav item -- showSection('admin') is what actually
@@ -1944,6 +2054,7 @@
     // already in flight could silently clobber it or duplicate rows in
     // the rendered list. Found via testing the new CMS, not by inspection.
     document.getElementById('adminNavItem').hidden = false;
+    document.getElementById('adminGroundScheduleNavItem').hidden = false;
     document.getElementById('guidedNotesNavItem').hidden = false;
   }
 
@@ -1955,6 +2066,7 @@
   function enforceGuidedNotesAccess() {
     var activeId = (window.location.hash || '#dashboard').replace('#', '');
     if (activeId === 'guided-notes' && (!member || member.role !== 'admin')) showSection('dashboard');
+    if (activeId === 'admin-ground-schedule' && (!member || member.role !== 'admin')) showSection('dashboard');
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -2402,22 +2514,39 @@
   function renderMySessions() {
     var listEl = document.getElementById('mySessionsList');
     var emptyEl = document.getElementById('mySessionsEmpty');
-    var rows = myGroundRegistrations.filter(function (r) { return r.session; })
-      .sort(function (a, b) { return new Date(b.session.scheduled_at) - new Date(a.session.scheduled_at); });
+    var legacyRows = myGroundRegistrations.filter(function (r) { return r.session; }).map(function (r) {
+      return { type: 'legacy', sortDate: r.session.scheduled_at, row: r };
+    });
+    var scheduledRows = myScheduledGroundEnrollments.filter(function (r) { return r.scheduled_class; }).map(function (r) {
+      return { type: 'scheduled', sortDate: r.scheduled_class.class_date + 'T' + r.scheduled_class.start_time, row: r };
+    });
+    var rows = legacyRows.concat(scheduledRows)
+      .sort(function (a, b) { return new Date(b.sortDate) - new Date(a.sortDate); });
     if (!rows.length) {
       listEl.innerHTML = '';
       emptyEl.style.display = 'block';
       return;
     }
     emptyEl.style.display = 'none';
-    listEl.innerHTML = rows.map(function (r) {
+    listEl.innerHTML = rows.map(function (entry) {
+      if (entry.type === 'scheduled') {
+        var r = entry.row;
+        var c = r.scheduled_class;
+        var scheduledDate = fmtScheduledClassDate(c);
+        var scheduledStatus = r.attendance_status || 'registered';
+        return '<div class="portal-session-row">' +
+          '<div><div class="portal-session-row__title">' + escapeAttr(c.title) + '</div><div class="portal-session-row__meta">' + escapeAttr(scheduledDate + (c.instructor_name ? ' · ' + c.instructor_name : '')) + '</div></div>' +
+          '<span class="portal-session-row__status portal-session-row__status--' + escapeAttr(scheduledStatus) + '">' + escapeAttr(SESSION_STATUS_LABEL[scheduledStatus] || 'Registered') + '</span>' +
+        '</div>';
+      }
+      var r = entry.row;
       var s = r.session;
       var date = new Date(s.scheduled_at).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
       var statusKey = r.is_waitlisted ? 'waitlisted' : (r.attendance_status || 'registered');
       var statusLabel = r.is_waitlisted ? 'Waitlisted' : (SESSION_STATUS_LABEL[r.attendance_status] || 'Registered');
       return '<div class="portal-session-row">' +
-        '<div><div class="portal-session-row__title">' + s.title + '</div><div class="portal-session-row__meta">' + date + (s.location ? ' · ' + s.location : '') + '</div></div>' +
-        '<span class="portal-session-row__status portal-session-row__status--' + statusKey + '">' + statusLabel + '</span>' +
+        '<div><div class="portal-session-row__title">' + escapeAttr(s.title) + '</div><div class="portal-session-row__meta">' + escapeAttr(date + (s.location ? ' · ' + s.location : '')) + '</div></div>' +
+        '<span class="portal-session-row__status portal-session-row__status--' + escapeAttr(statusKey) + '">' + escapeAttr(statusLabel) + '</span>' +
       '</div>';
     }).join('');
   }
@@ -2601,14 +2730,141 @@
     });
   }
 
+  function computeOverallProgress() {
+    var qTotal = DPE_DATA.length;
+    var scenarioTotal = SCENARIOS.length;
+    var lessonTotal = LESSON_LIST.length;
+    var qStudied = DPE_DATA.filter(function (d) { return studied[d.id]; }).length;
+    var scenarioDone = SCENARIOS.filter(function (s) { return studied[s.id]; }).length;
+    var lessonDone = LESSON_LIST.filter(function (id) { return lessonComplete[id]; }).length;
+    var total = qTotal + scenarioTotal + lessonTotal;
+    var done = qStudied + scenarioDone + lessonDone;
+    return { total: total, done: done, pct: total ? Math.round((done / total) * 100) : 0, qStudied: qStudied, scenarioDone: scenarioDone, lessonDone: lessonDone };
+  }
+
+  function nextScheduledClassEnrollment() {
+    var now = Date.now();
+    return myScheduledGroundEnrollments
+      .filter(function (r) { return r.scheduled_class && r.payment_status === 'paid'; })
+      .map(function (r) {
+        return { enrollment: r, startsAt: new Date(r.scheduled_class.class_date + 'T' + r.scheduled_class.start_time).getTime() };
+      })
+      .filter(function (entry) { return entry.startsAt >= now; })
+      .sort(function (a, b) { return a.startsAt - b.startsAt; })[0];
+  }
+
+  function googleCalendarUrlForClass(c) {
+    if (!c || !c.class_date || !c.start_time) return '';
+    function stamp(date, time) {
+      return (date + 'T' + time).replace(/[-:]/g, '').replace(/\.\d+$/, '');
+    }
+    var start = stamp(c.class_date, c.start_time);
+    var end = stamp(c.class_date, c.end_time || c.start_time);
+    var details = [c.description || '', c.meeting_url ? 'Meeting link: ' + c.meeting_url : ''].filter(Boolean).join('\n\n');
+    return 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
+      '&text=' + encodeURIComponent(c.title || 'Apex Ground School') +
+      '&dates=' + encodeURIComponent(start + '/' + end) +
+      '&details=' + encodeURIComponent(details) +
+      '&location=' + encodeURIComponent(c.meeting_url || 'Online');
+  }
+
+  function weakestCategory() {
+    return Object.keys(CATEGORY_META).map(function (cat) {
+      return { cat: cat, label: CATEGORY_META[cat].label, pct: Math.round(categoryPct(cat) * 100) };
+    }).filter(function (c) { return c.pct < 100; }).sort(function (a, b) { return a.pct - b.pct; })[0];
+  }
+
+  function resumeTarget() {
+    var latest = null;
+    Object.keys(lastViewed).forEach(function (id) {
+      if (!latest || lastViewed[id] > latest.ts) latest = { id: id, ts: lastViewed[id] };
+    });
+    if (!latest) return { section: member && member.checkridePrepUnlocked ? 'dpe-library' : 'dpe-questions', title: member && member.checkridePrepUnlocked ? 'Open the DPE Questions Library' : 'Start the free question guide', body: 'Answer one question out loud before reading the model answer.' };
+    if (latest.id.indexOf('scenario-') === 0) return { section: 'scenarios', title: 'Continue Scenario Training', body: 'Pick up with the last scenario you opened ' + timeAgo(latest.ts) + '.' };
+    if (latest.id.indexOf('lesson-') === 0) return { section: 'checkride-prep', title: 'Resume Checkride Prep Lessons', body: 'Continue the lesson you last viewed ' + timeAgo(latest.ts) + '.' };
+    return { section: 'dpe-library', title: 'Resume DPE Questions', body: 'Continue the question bank you last viewed ' + timeAgo(latest.ts) + '.' };
+  }
+
+  function renderStudentTrainingHub() {
+    var nextActionEl = document.getElementById('studentNextActionCard');
+    var nextClassEl = document.getElementById('studentNextClassCard');
+    var resumeEl = document.getElementById('studentResumeCard');
+    var planEl = document.getElementById('studentStudyPlanList');
+    if (!nextActionEl || !nextClassEl || !resumeEl || !planEl) return;
+
+    var progress = computeOverallProgress();
+    var score = computeReadiness();
+    var weak = weakestCategory();
+    var nextClass = nextScheduledClassEnrollment();
+    var resume = resumeTarget();
+    var action = { section: 'ground-school', title: 'Register for live ground school', body: 'Choose an upcoming instructor-led session and get it on your calendar.', cta: 'Browse Classes' };
+
+    if (nextClass) {
+      action = { section: 'checkride-prep', title: 'Prepare for your next class', body: 'Review the matching lesson before ' + fmtScheduledClassDate(nextClass.enrollment.scheduled_class) + '.', cta: 'Review Prep' };
+    } else if (!member.checkridePrepUnlocked) {
+      action = { section: 'dpe-questions', title: 'Build momentum with the free guide', body: 'Use the 10-question guide first, then unlock the full Checkride Prep System when you are ready.', cta: 'Study Free Guide' };
+    } else if (weak) {
+      action = { section: 'dpe-library', cat: weak.cat, title: 'Review ' + weak.label, body: 'This is currently your lowest ACS coverage area at ' + weak.pct + '%.', cta: 'Review Weak Area' };
+    } else if (!checkrideModeDone && score >= 60) {
+      action = { section: 'dpe-library', practice: 'checkride', title: 'Run Checkride Mode', body: 'Simulate the oral exam with 20 randomized questions and no hints.', cta: 'Start Checkride Mode' };
+    } else if (progress.pct >= 90) {
+      action = { section: 'progress', title: 'Tighten the last few gaps', body: 'You are close. Finish any unchecked lessons, scenarios, or questions.', cta: 'Open Progress' };
+    }
+
+    nextActionEl.innerHTML = '<p class="portal-my-training__label">Next Best Action</p>' +
+      '<h3>' + escapeAttr(action.title) + '</h3>' +
+      '<p>' + escapeAttr(action.body) + '</p>' +
+      '<button class="btn btn--primary" data-student-action="next">' + escapeAttr(action.cta) + '</button>';
+
+    if (nextClass) {
+      var c = nextClass.enrollment.scheduled_class;
+      var calUrl = googleCalendarUrlForClass(c);
+      nextClassEl.innerHTML = '<p class="portal-my-training__label">Next Class</p>' +
+        '<h3>' + escapeAttr(c.title || 'Ground School Class') + '</h3>' +
+        '<p>' + escapeAttr(fmtScheduledClassDate(c) + (c.instructor_name ? ' · ' + c.instructor_name : '')) + '</p>' +
+        '<div class="portal-my-training__actions">' +
+          (c.meeting_url ? '<a class="btn btn--ghost" href="' + escapeAttr(c.meeting_url) + '" target="_blank" rel="noopener">Join</a>' : '') +
+          (calUrl ? '<a class="btn btn--ghost" href="' + escapeAttr(calUrl) + '" target="_blank" rel="noopener">Add to Calendar</a>' : '') +
+        '</div>';
+    } else {
+      nextClassEl.innerHTML = '<p class="portal-my-training__label">Next Class</p><h3>No registered class yet</h3><p>Browse upcoming live ground school classes and register when one fits your schedule.</p><button class="btn btn--ghost" data-goto="ground-school">Browse Classes</button>';
+    }
+
+    resumeEl.innerHTML = '<p class="portal-my-training__label">Resume Studying</p>' +
+      '<h3>' + escapeAttr(resume.title) + '</h3>' +
+      '<p>' + escapeAttr(resume.body) + '</p>' +
+      '<button class="btn btn--ghost" data-student-action="resume">Resume</button>';
+
+    var planRows = [
+      { label: 'Progress', value: progress.pct + '% complete', section: 'progress' },
+      { label: 'Readiness', value: score + '% · ' + (score >= 90 ? 'Checkride ready' : score >= 70 ? 'Almost there' : score >= 40 ? 'Building momentum' : 'Just getting started'), section: 'progress' },
+      { label: 'Study Plan', value: weak ? 'Focus next on ' + weak.label : 'All ACS areas complete — keep skills fresh', section: weak ? 'dpe-library' : 'progress', cat: weak && weak.cat }
+    ];
+    planEl.innerHTML = planRows.map(function (row) {
+      return '<button class="portal-my-training__plan-row" data-plan-section="' + escapeAttr(row.section) + '"' + (row.cat ? ' data-plan-cat="' + escapeAttr(row.cat) + '"' : '') + '><span>' + escapeAttr(row.label) + '</span><strong>' + escapeAttr(row.value) + '</strong></button>';
+    }).join('');
+
+    nextActionEl.querySelector('[data-student-action="next"]').addEventListener('click', function () {
+      showSection(action.section);
+      if (action.cat) setDpeCategory(action.cat);
+      if (action.practice === 'checkride') startPractice('checkride');
+    });
+    resumeEl.querySelector('[data-student-action="resume"]').addEventListener('click', function () { showSection(resume.section); });
+    planEl.querySelectorAll('[data-plan-section]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        showSection(btn.dataset.planSection);
+        if (btn.dataset.planCat) setDpeCategory(btn.dataset.planCat);
+      });
+    });
+  }
+
   /* ══════════════════════════════════════════════════════════════
      DASHBOARD STATS
      ══════════════════════════════════════════════════════════════ */
   function renderDashboardStats() {
-    var qStudied = DPE_DATA.filter(function (d) { return studied[d.id]; }).length;
-    var overallItems = DPE_DATA.length + SCENARIOS.length + LESSON_LIST.length;
-    var overallDone = qStudied + SCENARIOS.filter(function (s) { return studied[s.id]; }).length + LESSON_LIST.filter(function (id) { return lessonComplete[id]; }).length;
-    document.getElementById('statOverallPct').textContent = Math.round((overallDone / overallItems) * 100) + '%';
+    var progress = computeOverallProgress();
+    document.getElementById('statOverallPct').textContent = progress.pct + '%';
+    renderStudentTrainingHub();
   }
 
   /* ── Init — waits for the real Supabase session + profile ────── */
