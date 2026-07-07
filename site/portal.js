@@ -19,18 +19,33 @@
         memberSince: profile && profile.created_at,
         checkridePrepUnlocked: !!(profile && profile.checkride_prep_unlocked)
       };
-      populateMember();
-      applyUnlockState();
-      applyUnlockPricing();
-      // Fire-and-forget: feeds the 7-day inactivity nudge
-      // (send-lifecycle-emails, Phase 3) a real "last seen" signal.
-      // Once per page load is enough — this isn't a click-tracking beacon.
-      apexSupabase.from('profiles').update({ portal_last_active_at: new Date().toISOString() }).eq('id', member.id);
-      return loadPremiumContent().then(function () {
-        return initPortalData();
+      return reconcileUnlockFromPurchase().then(function () {
+        populateMember();
+        applyUnlockState();
+        applyUnlockPricing();
+        // Fire-and-forget: feeds the 7-day inactivity nudge
+        // (send-lifecycle-emails, Phase 3) a real "last seen" signal.
+        // Once per page load is enough — this isn't a click-tracking beacon.
+        apexSupabase.from('profiles').update({ portal_last_active_at: new Date().toISOString() }).eq('id', member.id);
+        return loadPremiumContent().then(function () {
+          return initPortalData();
+        });
       });
     });
   }).catch(function (e) { if (e !== 'no-session') console.error(e); });
+
+
+  function reconcileUnlockFromPurchase() {
+    if (!member || member.checkridePrepUnlocked) return Promise.resolve();
+    return apexSupabase
+      .from('portal_access_purchases')
+      .select('id')
+      .eq('profile_id', member.id)
+      .limit(1)
+      .then(function (res) {
+        if (res.data && res.data.length) member.checkridePrepUnlocked = true;
+      });
+  }
 
   /* ── Premium content — fetched server-side, never bundled here ──
      DPE_DATA/CATEGORY_META/QUICK_REF/FRAMEWORK_LESSON/CHECKRIDE_DAY_LESSON
@@ -155,6 +170,7 @@
     // half of this guard is enforceGuidedNotesAccess(), which catches the
     // same case on first page load, before member.role is known yet.
     if (id === 'guided-notes' && member && member.role !== 'admin') id = 'dashboard';
+    if (id === 'admin-ground-schedule' && member && member.role !== 'admin') id = 'dashboard';
     sections.forEach(function (s) { s.classList.toggle('active', s.id === 'section-' + id); });
     navItems.forEach(function (b) { b.classList.toggle('active', b.dataset.section === id); });
     window.scrollTo(0, 0);
@@ -162,6 +178,7 @@
     closeSidebar();
     if (!member) return;
     if (id === 'admin' && member.role === 'admin') loadAdminDashboard();
+    if (id === 'admin-ground-schedule' && member.role === 'admin') loadAdminGroundSchedule();
     if (id === 'guided-notes' && member.role === 'admin') loadGuidedNotes();
     if (id === 'success-wall') renderSuccessWall();
     if (id === 'ground-school') loadGroundSchool();
@@ -411,17 +428,31 @@
 
   /* ── Post-Stripe-redirect toasts ────────────────────────────── */
   var urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('unlocked') === '1') {
-    authReady.then(function () {
-      apexSupabase.from('profiles').select('checkride_prep_unlocked').eq('id', member.id).single().then(function (res) {
-        if (res.data && res.data.checkride_prep_unlocked) {
-          member.checkridePrepUnlocked = true;
-          applyUnlockState();
+  function refreshUnlockAfterCheckout(attempt) {
+    attempt = attempt || 1;
+    apexSupabase.from('profiles').select('checkride_prep_unlocked').eq('id', member.id).single().then(function (res) {
+      if (res.data && res.data.checkride_prep_unlocked) {
+        member.checkridePrepUnlocked = true;
+        applyUnlockState();
+        loadPremiumContent().then(function () {
+          return initPortalData();
+        }).then(function () {
           toast('Unlocked! Welcome to the Checkride Prep System.');
           if (window.gtag) gtag('event', 'purchase', { currency: 'USD', items: [{ item_name: 'Checkride Prep Unlock' }] });
-        }
-      });
+        });
+        return;
+      }
+
+      if (attempt < 8) {
+        window.setTimeout(function () { refreshUnlockAfterCheckout(attempt + 1); }, 1000);
+      } else {
+        toast('Payment received. Your unlock is still processing — refresh in a moment if it does not appear.');
+      }
     });
+  }
+
+  if (urlParams.get('unlocked') === '1') {
+    authReady.then(function () { refreshUnlockAfterCheckout(1); });
   }
   if (urlParams.get('registered') === '1') {
     toast('You\'re registered for ground school!');
@@ -1931,6 +1962,39 @@
     });
   }
 
+
+  function loadAdminGroundSchedule() {
+    var el = document.getElementById('adminGroundScheduleRoot');
+    if (!el) return;
+    el.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:14px">Loading scheduled classes…</p>';
+    apexSupabase
+      .from('scheduled_ground_classes')
+      .select('*')
+      .order('class_date', { ascending: true })
+      .order('start_time', { ascending: true })
+      .then(function (res) {
+        if (res.error) {
+          el.innerHTML = '<div class="portal-card"><p style="color:#fca5a5;font-size:14px">Could not load scheduled classes: ' + escapeAttr(res.error.message) + '</p></div>';
+          return;
+        }
+        var rows = res.data || [];
+        var table = rows.length ? '<table class="portal-admin-table"><tbody>' + rows.map(function (row) {
+          return '<tr>' +
+            '<td><strong>' + escapeAttr(row.title || 'Untitled class') + '</strong><br><span style="color:rgba(255,255,255,0.45);font-size:12px">' + escapeAttr((row.module_id || 'PPL') + ' · ' + (row.lesson_title || 'Lesson')) + '</span></td>' +
+            '<td>' + escapeAttr(row.class_date || 'Date TBD') + '<br><span style="color:rgba(255,255,255,0.45);font-size:12px">' + escapeAttr((row.start_time || '').slice(0,5) + '–' + (row.end_time || '').slice(0,5)) + '</span></td>' +
+            '<td>' + escapeAttr(row.instructor_name || 'TBD') + '</td>' +
+            '<td>' + escapeAttr(row.status || 'draft') + '</td>' +
+          '</tr>';
+        }).join('') + '</tbody></table>' : '<p style="color:rgba(255,255,255,0.4);font-size:13px">No scheduled classes yet.</p>';
+        el.innerHTML = '<div class="portal-card" style="margin-bottom:20px">' +
+          '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Admin Scheduler</h3>' +
+          '<p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:14px">Use the full scheduler to create, edit, publish, or cancel curriculum-backed classes.</p>' +
+          '<a class="btn btn--primary" href="/admin/ground-school-schedule">Open Full Scheduler</a>' +
+        '</div>' +
+        '<div class="portal-card"><h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:14px">Scheduled Classes</h3>' + table + '</div>';
+      });
+  }
+
   function renderAdminIfApplicable() {
     if (!member || member.role !== 'admin') return;
     // Just unhides the nav item -- showSection('admin') is what actually
@@ -1944,6 +2008,7 @@
     // already in flight could silently clobber it or duplicate rows in
     // the rendered list. Found via testing the new CMS, not by inspection.
     document.getElementById('adminNavItem').hidden = false;
+    document.getElementById('adminGroundScheduleNavItem').hidden = false;
     document.getElementById('guidedNotesNavItem').hidden = false;
   }
 
@@ -1955,6 +2020,7 @@
   function enforceGuidedNotesAccess() {
     var activeId = (window.location.hash || '#dashboard').replace('#', '');
     if (activeId === 'guided-notes' && (!member || member.role !== 'admin')) showSection('dashboard');
+    if (activeId === 'admin-ground-schedule' && (!member || member.role !== 'admin')) showSection('dashboard');
   }
 
   /* ══════════════════════════════════════════════════════════════
