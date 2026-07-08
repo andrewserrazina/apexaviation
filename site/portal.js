@@ -156,6 +156,7 @@
 
   var GATED_SECTIONS = ['checkride-prep', 'dpe-library', 'scenarios', 'progress', 'vault'];
   var ADMIN_PREVIEW_SECTIONS = ['guided-notes', 'learning-path'];
+  var ADMIN_ONLY_SECTIONS = ['admin', 'admin-ground-schedule'];
 
   function showSection(id) {
     if (!document.getElementById('section-' + id)) id = 'dashboard';
@@ -170,7 +171,7 @@
     // of ever seeing the section become active. The other half of this
     // guard is enforceAdminPreviewAccess(), which catches the same case on
     // first page load, before member.role is known yet.
-    if (ADMIN_PREVIEW_SECTIONS.indexOf(id) !== -1 && member && member.role !== 'admin') id = 'dashboard';
+    if ((ADMIN_PREVIEW_SECTIONS.indexOf(id) !== -1 || ADMIN_ONLY_SECTIONS.indexOf(id) !== -1) && member && member.role !== 'admin') id = 'dashboard';
     sections.forEach(function (s) { s.classList.toggle('active', s.id === 'section-' + id); });
     navItems.forEach(function (b) { b.classList.toggle('active', b.dataset.section === id); });
     window.scrollTo(0, 0);
@@ -352,68 +353,40 @@
     groundSchoolLoaded = true;
     var listEl = document.getElementById('groundSchoolList');
     var emptyEl = document.getElementById('groundSchoolEmpty');
-    var today = new Date().toISOString().slice(0, 10);
 
-    apexSupabase.from('scheduled_ground_classes')
-      .select('*')
-      .eq('status', 'published')
-      .gte('class_date', today)
-      .order('class_date')
-      .order('start_time')
-      .then(function (scheduledRes) {
-        var scheduledClasses = scheduledRes.data || [];
-        if (scheduledClasses.length) {
-          listEl.innerHTML = '';
-          listEl.className = 'portal-grid portal-grid--2';
-          listEl.style.display = '';
-          emptyEl.style.display = 'none';
-          scheduledClasses.forEach(function (s) {
-            var spotsLeft = Math.max(0, Number(s.capacity || 0) - Number(s.enrolled_count || 0));
-            var full = spotsLeft <= 0;
-            var card = document.createElement('div');
-            card.className = 'portal-card';
-            card.innerHTML =
-              '<div class="portal-header__eyebrow" style="margin-bottom:8px">' + escapeAttr((s.module_id || 'Private Pilot').toUpperCase()) + '</div>' +
-              '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">' + escapeAttr(s.title || 'Ground School Class') + '</h3>' +
-              '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:4px">' + escapeAttr(fmtScheduledClassDate(s)) + '</p>' +
-              '<p style="color:rgba(255,255,255,0.45);font-size:12px;margin-bottom:8px">' + escapeAttr(s.lesson_title || 'Private Pilot lesson') + '</p>' +
-              '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-bottom:16px">' + (full ? 'Full' : spotsLeft + ' spot' + (spotsLeft === 1 ? '' : 's') + ' left') + '</p>' +
-              '<button class="btn btn--primary" data-register style="width:100%"' + (full ? ' disabled' : '') + '>' + (full ? 'Class Full' : 'Register — $25') + '</button>';
-            if (!full) card.querySelector('[data-register]').addEventListener('click', function () { openGroundSchoolModal(s, 'scheduled'); });
-            listEl.appendChild(card);
-          });
+    apexSupabase.from('ground_sessions')
+      .select('*, ground_registrations(id, is_waitlisted)')
+      .gte('scheduled_at', new Date().toISOString())
+      .order('scheduled_at')
+      .then(function (res) {
+        if (res.error) throw res.error;
+        var sessionsList = res.data || [];
+        if (!sessionsList.length) {
+          listEl.style.display = 'none';
+          emptyEl.style.display = 'block';
           return;
         }
-
-        apexSupabase.from('ground_sessions')
-          .select('*, ground_registrations(id, is_waitlisted)')
-          .gte('scheduled_at', new Date().toISOString())
-          .order('scheduled_at')
-          .then(function (res) {
-            var sessionsList = res.data || [];
-            if (!sessionsList.length) {
-              listEl.style.display = 'none';
-              emptyEl.style.display = 'block';
-              return;
-            }
-            listEl.innerHTML = '';
-            listEl.className = 'portal-grid portal-grid--2';
-            sessionsList.forEach(function (s) {
-              var confirmed = (s.ground_registrations || []).filter(function (r) { return !r.is_waitlisted; }).length;
-              var spotsLeft = s.max_students - confirmed;
-              var full = spotsLeft <= 0;
-              var card = document.createElement('div');
-              card.className = 'portal-card';
-              card.innerHTML =
-                '<div class="portal-header__eyebrow" style="margin-bottom:8px">' + escapeAttr((s.category || 'General').toUpperCase()) + '</div>' +
-                '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">' + escapeAttr(s.title) + '</h3>' +
-                '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:4px">' + escapeAttr(fmtSessionDate(s.scheduled_at)) + '</p>' +
-                '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-bottom:16px">' + (full ? 'Full — join the waitlist' : spotsLeft + ' spot' + (spotsLeft === 1 ? '' : 's') + ' left') + '</p>' +
-                '<button class="btn btn--primary" data-register style="width:100%">' + (full ? 'Join Waitlist — $25' : 'Register — $25') + '</button>';
-              card.querySelector('[data-register]').addEventListener('click', function () { openGroundSchoolModal(s, 'legacy'); });
-              listEl.appendChild(card);
-            });
-          });
+        listEl.innerHTML = '';
+        listEl.className = 'portal-grid portal-grid--2';
+        sessionsList.forEach(function (s) {
+          var confirmed = (s.ground_registrations || []).filter(function (r) { return !r.is_waitlisted; }).length;
+          var spotsLeft = s.max_students - confirmed;
+          var full = spotsLeft <= 0;
+          var card = document.createElement('div');
+          card.className = 'portal-card';
+          card.innerHTML =
+            '<div class="portal-header__eyebrow" style="margin-bottom:8px">' + (s.category || 'General').toUpperCase() + '</div>' +
+            '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">' + s.title + '</h3>' +
+            '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:4px">' + fmtSessionDate(s.scheduled_at) + '</p>' +
+            '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-bottom:16px">' + (full ? 'Full — join the waitlist' : spotsLeft + ' spot' + (spotsLeft === 1 ? '' : 's') + ' left') + '</p>' +
+            '<button class="btn btn--primary" data-register style="width:100%">' + (full ? 'Join Waitlist — $25' : 'Register — $25') + '</button>';
+          card.querySelector('[data-register]').addEventListener('click', function () { openGroundSchoolModal(s); });
+          listEl.appendChild(card);
+        });
+      }).catch(function (e) {
+        groundSchoolLoaded = false;
+        listEl.innerHTML = '<p style="color:#ff8b8b;font-size:14px">Could not load ground school sessions: ' + e.message + '</p>';
+        emptyEl.style.display = 'none';
       });
   }
 
@@ -1532,6 +1505,104 @@
     }
   }
 
+  var adminGroundScheduleLoaded = false;
+  var adminGroundInstructors = [];
+
+  function adminGroundSessionCard(s) {
+    var instructor = adminGroundInstructors.filter(function (i) { return i.id === s.instructor_id; })[0];
+    var when = s.scheduled_at ? fmtSessionDate(s.scheduled_at) : 'Date not set';
+    return '<div class="portal-card">' +
+      '<div class="portal-header__eyebrow" style="margin-bottom:8px">' + (s.category || 'General').toUpperCase() + '</div>' +
+      '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">' + (s.title || 'Untitled session') + '</h3>' +
+      '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:6px">' + when + '</p>' +
+      '<p style="color:rgba(255,255,255,0.45);font-size:13px;margin-bottom:6px">Instructor: ' + (instructor ? (instructor.full_name || instructor.email) : 'Not assigned') + '</p>' +
+      '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin:0">Capacity: ' + (s.max_students || 0) + ' · Duration: ' + (s.duration_minutes || 0) + ' min</p>' +
+    '</div>';
+  }
+
+  function adminGroundScheduleFormHtml() {
+    var instructorOptions = adminGroundInstructors.map(function (i) {
+      return '<option value="' + i.id + '">' + (i.full_name || i.email || 'Instructor') + '</option>';
+    }).join('');
+    return '<div class="portal-card" style="margin-bottom:20px">' +
+      '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:12px">Create Class</h3>' +
+      '<form id="adminGroundScheduleForm" class="portal-admin-ground-form">' +
+        '<label>Class Title<input required name="title" type="text" placeholder="Private Pilot Ground School" /></label>' +
+        '<label>Date & Time<input required name="scheduled_at" type="datetime-local" /></label>' +
+        '<label>Category<select name="category"><option value="private">Private Pilot</option><option value="instrument">Instrument</option><option value="commercial">Commercial</option><option value="general">General</option></select></label>' +
+        '<label>Instructor<select name="instructor_id"><option value="">Unassigned</option>' + instructorOptions + '</select></label>' +
+        '<label>Duration<select name="duration_minutes"><option>60</option><option selected>90</option><option>120</option><option>150</option><option>180</option></select></label>' +
+        '<label>Capacity<input required name="max_students" type="number" min="1" value="20" /></label>' +
+        '<label>Location<input name="location" type="text" placeholder="Apex Aviation / Online" /></label>' +
+        '<label>Meeting Link<input name="meet_link" type="url" placeholder="https://..." /></label>' +
+        '<label class="portal-admin-ground-form__wide">Description<textarea name="description" rows="3" placeholder="Optional class overview"></textarea></label>' +
+        '<div class="portal-admin-ground-form__wide"><button class="btn btn--primary" type="submit">Create Class</button><span id="adminGroundScheduleStatus" style="margin-left:12px;color:rgba(255,255,255,0.5);font-size:13px"></span></div>' +
+      '</form>' +
+    '</div>';
+  }
+
+  function renderAdminGroundSchedule(rows) {
+    var root = document.getElementById('adminGroundScheduleRoot');
+    root.innerHTML = adminGroundScheduleFormHtml() +
+      '<div class="portal-card"><h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:12px">Upcoming Classes</h3>' +
+      (rows.length ? '<div class="portal-grid portal-grid--2">' + rows.map(adminGroundSessionCard).join('') + '</div>' : '<p style="color:rgba(255,255,255,0.45);font-size:14px;margin:0">No upcoming classes scheduled yet.</p>') +
+      '</div>';
+
+    document.getElementById('adminGroundScheduleForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var form = e.currentTarget;
+      var status = document.getElementById('adminGroundScheduleStatus');
+      var payload = {
+        title: form.title.value.trim(),
+        scheduled_at: form.scheduled_at.value,
+        category: form.category.value,
+        instructor_id: form.instructor_id.value || null,
+        duration_minutes: parseInt(form.duration_minutes.value, 10),
+        max_students: parseInt(form.max_students.value, 10),
+        location: form.location.value.trim() || null,
+        meet_link: form.meet_link.value.trim() || null,
+        description: form.description.value.trim() || null
+      };
+      if (!payload.title || !payload.scheduled_at || !payload.max_students || payload.max_students < 1) {
+        status.style.color = '#ff8b8b';
+        status.textContent = 'Title, date/time, and positive capacity are required.';
+        return;
+      }
+      status.style.color = 'rgba(255,255,255,0.5)';
+      status.textContent = 'Saving…';
+      apexSupabase.from('ground_sessions').insert(payload).then(function (res) {
+        if (res.error) throw res.error;
+        status.style.color = 'var(--gold)';
+        status.textContent = 'Class created.';
+        adminGroundScheduleLoaded = false;
+        loadAdminGroundSchedule();
+      }).catch(function (err) {
+        status.style.color = '#ff8b8b';
+        status.textContent = err.message;
+      });
+    });
+  }
+
+  function loadAdminGroundSchedule() {
+    if (adminGroundScheduleLoaded) return;
+    adminGroundScheduleLoaded = true;
+    var root = document.getElementById('adminGroundScheduleRoot');
+    root.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:14px">Loading classes…</p>';
+    var now = new Date().toISOString();
+    Promise.all([
+      apexSupabase.from('profiles').select('id,full_name,email').eq('role', 'instructor').order('full_name'),
+      apexSupabase.from('ground_sessions').select('*').gte('scheduled_at', now).order('scheduled_at')
+    ]).then(function (results) {
+      if (results[0].error) throw results[0].error;
+      if (results[1].error) throw results[1].error;
+      adminGroundInstructors = results[0].data || [];
+      renderAdminGroundSchedule(results[1].data || []);
+    }).catch(function (e) {
+      adminGroundScheduleLoaded = false;
+      root.innerHTML = '<div class="portal-card"><p style="color:#ff8b8b;font-size:14px;margin:0">Could not load class scheduler: ' + e.message + '</p></div>';
+    });
+  }
+
   /* ══════════════════════════════════════════════════════════════
      ADMIN ANALYTICS (role = admin only)
      ══════════════════════════════════════════════════════════════ */
@@ -2061,8 +2132,20 @@
     document.getElementById('adminNavItem').hidden = false;
     document.getElementById('adminGroundScheduleNavItem').hidden = false;
     document.getElementById('guidedNotesNavItem').hidden = false;
+    var adminGroundScheduleNavItem = document.getElementById('adminGroundScheduleNavItem');
+    if (adminGroundScheduleNavItem) adminGroundScheduleNavItem.hidden = false;
     var learningPathNavItem = document.querySelector('.portal-nav__item[data-section="learning-path"]');
     if (learningPathNavItem) learningPathNavItem.hidden = false;
+
+    // If an admin opens the portal directly to an admin-only hash, the
+    // first showSection() call happens before the profile has loaded and
+    // intentionally cannot run admin queries yet. Kick the lazy loader once
+    // the role is known so the page never stays stuck on its static
+    // "Loading…" placeholder.
+    var activeId = (window.location.hash || '#dashboard').replace('#', '');
+    if (activeId === 'admin') loadAdminDashboard();
+    if (activeId === 'admin-ground-schedule') loadAdminGroundSchedule();
+    if (activeId === 'guided-notes') loadGuidedNotes();
   }
 
   // Catches a non-admin who bookmarked or typed an admin-preview section
@@ -2075,8 +2158,10 @@
     var isAdmin = !!member && member.role === 'admin';
     var learningPathNavItem = document.querySelector('.portal-nav__item[data-section="learning-path"]');
     if (learningPathNavItem) learningPathNavItem.hidden = !isAdmin;
+    var adminGroundScheduleNavItem = document.getElementById('adminGroundScheduleNavItem');
+    if (adminGroundScheduleNavItem) adminGroundScheduleNavItem.hidden = !isAdmin;
     var activeId = (window.location.hash || '#dashboard').replace('#', '');
-    if (ADMIN_PREVIEW_SECTIONS.indexOf(activeId) !== -1 && !isAdmin) showSection('dashboard');
+    if ((ADMIN_PREVIEW_SECTIONS.indexOf(activeId) !== -1 || ADMIN_ONLY_SECTIONS.indexOf(activeId) !== -1) && !isAdmin) showSection('dashboard');
   }
 
   /* ══════════════════════════════════════════════════════════════

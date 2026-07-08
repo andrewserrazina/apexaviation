@@ -708,145 +708,42 @@
 .portal-modal__error { color: #f87171; font-size: 13px; margin-top: 12px; display: none; }
 .portal-modal__error.show { display: block; }
 
-/* Student My Training hub */
-.portal-my-training__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 18px;
-  margin-bottom: 20px;
-}
-.portal-my-training__head h2 { color: #fff; font-size: 22px; font-weight: 800; margin: 0 0 6px; }
-.portal-my-training__head p { color: rgba(255,255,255,0.55); font-size: 13.5px; line-height: 1.6; margin: 0; }
-.portal-my-training__grid {
+/* Admin ground-school scheduler */
+.portal-admin-ground-form {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(0, 1fr));
   gap: 14px;
-  margin-bottom: 14px;
-}
-.portal-my-training__panel {
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 14px;
-  padding: 18px;
-  background: rgba(255,255,255,0.035);
-}
-.portal-my-training__panel--primary { border-color: rgba(244,180,0,0.28); background: linear-gradient(135deg, rgba(244,180,0,0.12), rgba(255,255,255,0.035)); }
-.portal-my-training__label { color: var(--gold); font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; margin: 0 0 8px; }
-.portal-my-training__panel h3 { color: #fff; font-size: 16px; font-weight: 800; margin: 0 0 8px; line-height: 1.35; }
-.portal-my-training__panel p { color: rgba(255,255,255,0.55); font-size: 13px; line-height: 1.55; margin: 0 0 14px; }
-.portal-my-training__actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.portal-my-training__plan {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-.portal-my-training__plan-row {
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 12px;
-  background: rgba(11,31,58,0.45);
-  color: #fff;
-  padding: 12px 14px;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 0.18s ease, transform 0.18s ease;
-}
-.portal-my-training__plan-row:hover { border-color: rgba(244,180,0,0.45); transform: translateY(-1px); }
-.portal-my-training__plan-row span { display: block; color: rgba(255,255,255,0.45); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
-.portal-my-training__plan-row strong { display: block; color: #fff; font-size: 13px; line-height: 1.35; }
-@media (max-width: 900px) {
-  .portal-my-training__head { flex-direction: column; }
-  .portal-my-training__grid, .portal-my-training__plan { grid-template-columns: 1fr; }
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-/* Student learning path */
-.portal-learning-summary {
+.portal-admin-ground-form label {
+  color: rgba(255, 255, 255, 0.72);
   display: flex;
-  align-items: center;
-  gap: 18px;
-  border: 1px solid rgba(244,180,0,0.22);
-  border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, rgba(244,180,0,0.10), rgba(255,255,255,0.035));
-  padding: 20px;
-  margin-bottom: 20px;
-}
-.portal-learning-summary__stat span { color: var(--gold); font-size: 34px; font-weight: 900; line-height: 1; }
-.portal-learning-summary__stat small { display: block; color: rgba(255,255,255,0.48); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 5px; }
-.portal-learning-summary__body h3 { color: #fff; font-size: 18px; font-weight: 800; margin: 0 0 6px; }
-.portal-learning-summary__body p { color: rgba(255,255,255,0.58); font-size: 13px; margin: 0; }
-.portal-learning-list { display: flex; flex-direction: column; gap: 16px; }
-.portal-learning-module { border-left: 3px solid rgba(255,255,255,0.08); }
-.portal-learning-module.complete { border-left-color: var(--gold); }
-.portal-learning-module__head { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
-.portal-learning-module__num { width: 42px; height: 42px; border-radius: 12px; background: rgba(244,180,0,0.12); color: var(--gold); font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.portal-learning-module__head h3 { color: #fff; font-size: 17px; font-weight: 800; margin: 0; }
-.portal-learning-module__complete { margin-left: auto; color: rgba(255,255,255,0.65); font-size: 12px; font-weight: 700; display: flex; gap: 8px; align-items: center; white-space: nowrap; }
-.portal-learning-module__body { display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px; }
-.portal-learning-module__body h4 { color: rgba(255,255,255,0.78); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 8px; }
-.portal-learning-module__body ul { margin: 0; padding-left: 18px; color: rgba(255,255,255,0.58); font-size: 13px; line-height: 1.6; }
-.portal-learning-tags { display: flex; flex-wrap: wrap; gap: 7px; }
-.portal-learning-tags span { border: 1px solid rgba(255,255,255,0.08); border-radius: 999px; color: rgba(255,255,255,0.62); font-size: 11.5px; padding: 5px 9px; background: rgba(11,31,58,0.35); }
-.portal-learning-tags--resources span { border-color: rgba(244,180,0,0.18); color: rgba(255,218,120,0.82); }
-.portal-learning-module__class { border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px; background: rgba(255,255,255,0.03); }
-.portal-learning-module__class strong { display: block; color: #fff; font-size: 13px; margin-bottom: 4px; }
-.portal-learning-module__class span { color: rgba(255,255,255,0.5); font-size: 12px; line-height: 1.45; }
-.portal-learning-module__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-@media (max-width: 900px) {
-  .portal-learning-summary, .portal-learning-module__head { align-items: flex-start; }
-  .portal-learning-summary, .portal-learning-module__head { flex-direction: column; }
-  .portal-learning-module__complete { margin-left: 0; }
-  .portal-learning-module__body { grid-template-columns: 1fr; }
-}
-
-.portal-learning-module__quiz {
-  border: 1px solid rgba(244, 180, 0, 0.16);
-  border-radius: 12px;
-  padding: 12px;
-  background: rgba(244, 180, 0, 0.06);
-}
-
-.portal-learning-module__quiz strong {
-  display: block;
-  color: #fff;
-  font-size: 13px;
-  margin-bottom: 4px;
-}
-
-.portal-learning-module__quiz span {
-  display: block;
-  color: rgba(255, 255, 255, 0.5);
+  flex-direction: column;
   font-size: 12px;
-  line-height: 1.45;
-  margin-bottom: 10px;
-}
-
-.portal-curriculum-quiz__answer {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  padding: 16px;
-  background: rgba(255, 255, 255, 0.035);
-  margin: 14px 0;
-  text-align: left;
-}
-
-.portal-curriculum-quiz__answer h3 {
-  color: var(--gold);
-  font-size: 11px;
+  font-weight: 700;
+  gap: 6px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin: 0 0 6px;
 }
 
-.portal-curriculum-quiz__answer p {
-  color: rgba(255, 255, 255, 0.68);
-  font-size: 13.5px;
-  line-height: 1.65;
-  margin: 0 0 12px;
+.portal-admin-ground-form input,
+.portal-admin-ground-form select,
+.portal-admin-ground-form textarea {
+  background: rgba(11, 31, 58, 0.65);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #fff;
+  font: inherit;
+  padding: 11px 14px;
+  text-transform: none;
 }
 
-.portal-curriculum-quiz__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: center;
-  margin-top: 16px;
+.portal-admin-ground-form__wide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 760px) {
+  .portal-admin-ground-form {
+    grid-template-columns: 1fr;
+  }
 }
