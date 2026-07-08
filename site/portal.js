@@ -140,6 +140,9 @@
   var overlay = document.getElementById('sidebarOverlay');
 
   var GATED_SECTIONS = ['checkride-prep', 'dpe-library', 'scenarios', 'progress', 'vault'];
+  var ADMIN_PREVIEW_SECTIONS = ['guided-notes', 'learning-path'];
+  var ADMIN_ONLY_SECTIONS = ['admin', 'admin-ground-schedule'];
+  var STAFF_ONLY_SECTIONS = ['operations'];
 
   function showSection(id) {
     if (!document.getElementById('section-' + id)) id = 'dashboard';
@@ -148,13 +151,14 @@
       openUnlockModal();
       return;
     }
-    // Guided Notes is an admin-only feature preview -- not just hidden from
-    // the nav. A non-admin who already has member.role loaded (e.g. clicked
-    // a stale link, or called this from the console) gets bounced to the
-    // dashboard instead of ever seeing the section become active. The other
-    // half of this guard is enforceGuidedNotesAccess(), which catches the
-    // same case on first page load, before member.role is known yet.
-    if (id === 'guided-notes' && member && member.role !== 'admin') id = 'dashboard';
+    // Admin preview sections are not just hidden from the nav. A non-admin
+    // who already has member.role loaded (e.g. clicked a stale link, or
+    // called this from the console) gets bounced to the dashboard instead
+    // of ever seeing the section become active. The other half of this
+    // guard is enforceAdminPreviewAccess(), which catches the same case on
+    // first page load, before member.role is known yet.
+    if ((ADMIN_PREVIEW_SECTIONS.indexOf(id) !== -1 || ADMIN_ONLY_SECTIONS.indexOf(id) !== -1) && member && member.role !== 'admin') id = 'dashboard';
+    if (STAFF_ONLY_SECTIONS.indexOf(id) !== -1 && member && ['admin', 'instructor'].indexOf(member.role) === -1) id = 'dashboard';
     sections.forEach(function (s) { s.classList.toggle('active', s.id === 'section-' + id); });
     navItems.forEach(function (b) { b.classList.toggle('active', b.dataset.section === id); });
     window.scrollTo(0, 0);
@@ -162,6 +166,7 @@
     closeSidebar();
     if (!member) return;
     if (id === 'admin' && member.role === 'admin') loadAdminDashboard();
+    if (id === 'admin-ground-schedule' && member.role === 'admin') loadAdminGroundSchedule();
     if (id === 'guided-notes' && member.role === 'admin') loadGuidedNotes();
     if (id === 'success-wall') renderSuccessWall();
     if (id === 'ground-school') loadGroundSchool();
@@ -184,6 +189,7 @@
   document.getElementById('portalSidebarToggle').addEventListener('click', openSidebar);
   overlay.addEventListener('click', closeSidebar);
 
+  hideLearningPathPreview();
   var initial = (window.location.hash || '#dashboard').replace('#', '');
   showSection(initial);
 
@@ -196,6 +202,20 @@
   document.getElementById('signOutBtn').addEventListener('click', signOut);
   var signOutBtn2 = document.getElementById('signOutBtn2');
   if (signOutBtn2) signOutBtn2.addEventListener('click', signOut);
+  var refreshAccessBtn = document.getElementById('refreshAccessBtn');
+  var refreshAccessStatus = document.getElementById('refreshAccessStatus');
+  if (refreshAccessBtn) {
+    refreshAccessBtn.addEventListener('click', function () {
+      refreshAccessBtn.disabled = true;
+      refreshAccessStatus.textContent = 'Checking your purchase record…';
+      reconcileCheckrideAccess(false).then(function (unlocked) {
+        refreshAccessStatus.textContent = unlocked
+          ? 'Access is unlocked on this account.'
+          : 'No matching Checkride Prep purchase was found yet. If Stripe charged you, contact Apex support.';
+        refreshAccessBtn.disabled = false;
+      });
+    });
+  }
 
   // supabase-js's functions.invoke() throws a FunctionsHttpError on any
   // non-2xx response, whose .message is ALWAYS the generic literal "Edge
@@ -333,6 +353,7 @@
       .gte('scheduled_at', new Date().toISOString())
       .order('scheduled_at')
       .then(function (res) {
+        if (res.error) throw res.error;
         var sessionsList = res.data || [];
         if (!sessionsList.length) {
           listEl.style.display = 'none';
@@ -356,6 +377,10 @@
           card.querySelector('[data-register]').addEventListener('click', function () { openGroundSchoolModal(s); });
           listEl.appendChild(card);
         });
+      }).catch(function (e) {
+        groundSchoolLoaded = false;
+        listEl.innerHTML = '<p style="color:#ff8b8b;font-size:14px">Could not load ground school sessions: ' + e.message + '</p>';
+        emptyEl.style.display = 'none';
       });
   }
 
@@ -413,10 +438,8 @@
   var urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('unlocked') === '1') {
     authReady.then(function () {
-      apexSupabase.from('profiles').select('checkride_prep_unlocked').eq('id', member.id).single().then(function (res) {
-        if (res.data && res.data.checkride_prep_unlocked) {
-          member.checkridePrepUnlocked = true;
-          applyUnlockState();
+      reconcileCheckrideAccess(true).then(function (unlocked) {
+        if (unlocked) {
           toast('Unlocked! Welcome to the Checkride Prep System.');
           if (window.gtag) gtag('event', 'purchase', { currency: 'USD', items: [{ item_name: 'Checkride Prep Unlock' }] });
         }
@@ -425,6 +448,31 @@
   }
   if (urlParams.get('registered') === '1') {
     toast('You\'re registered for ground school!');
+  }
+
+  function reconcileCheckrideAccess(silent) {
+    if (!member) return Promise.resolve(false);
+    return apexSupabase.rpc('reconcile_own_checkride_prep_access').then(function (res) {
+      if (res.error) throw res.error;
+      if (res.data) {
+        member.checkridePrepUnlocked = true;
+        applyUnlockState();
+        return loadPremiumContent().then(function () {
+          renderDpeLibrary();
+          renderScenarios();
+          renderProgress();
+          renderDashboardStats();
+          renderMembership();
+          if (!silent) toast('Access refreshed — Checkride Prep is unlocked.');
+          return true;
+        });
+      }
+      if (!silent) toast('No Checkride Prep purchase found on this account yet.');
+      return false;
+    }).catch(function (err) {
+      if (!silent) toast('Could not refresh access: ' + err.message);
+      return false;
+    });
   }
 
   /* ── Account form ───────────────────────────────────────────── */
@@ -608,6 +656,7 @@
       myPurchase = results[14].data || null;
       myInvoices = results[15].data || [];
       myGroundRegistrations = results[16].data || [];
+      if (myPurchase && !member.checkridePrepUnlocked) reconcileCheckrideAccess(true);
     }).catch(function (e) { console.error('Failed to load portal progress', e); });
   }
 
@@ -1450,6 +1499,104 @@
     }
   }
 
+  var adminGroundScheduleLoaded = false;
+  var adminGroundInstructors = [];
+
+  function adminGroundSessionCard(s) {
+    var instructor = adminGroundInstructors.filter(function (i) { return i.id === s.instructor_id; })[0];
+    var when = s.scheduled_at ? fmtSessionDate(s.scheduled_at) : 'Date not set';
+    return '<div class="portal-card">' +
+      '<div class="portal-header__eyebrow" style="margin-bottom:8px">' + (s.category || 'General').toUpperCase() + '</div>' +
+      '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">' + (s.title || 'Untitled session') + '</h3>' +
+      '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:6px">' + when + '</p>' +
+      '<p style="color:rgba(255,255,255,0.45);font-size:13px;margin-bottom:6px">Instructor: ' + (instructor ? (instructor.full_name || instructor.email) : 'Not assigned') + '</p>' +
+      '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin:0">Capacity: ' + (s.max_students || 0) + ' · Duration: ' + (s.duration_minutes || 0) + ' min</p>' +
+    '</div>';
+  }
+
+  function adminGroundScheduleFormHtml() {
+    var instructorOptions = adminGroundInstructors.map(function (i) {
+      return '<option value="' + i.id + '">' + (i.full_name || i.email || 'Instructor') + '</option>';
+    }).join('');
+    return '<div class="portal-card" style="margin-bottom:20px">' +
+      '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:12px">Create Class</h3>' +
+      '<form id="adminGroundScheduleForm" class="portal-admin-ground-form">' +
+        '<label>Class Title<input required name="title" type="text" placeholder="Private Pilot Ground School" /></label>' +
+        '<label>Date & Time<input required name="scheduled_at" type="datetime-local" /></label>' +
+        '<label>Category<select name="category"><option value="private">Private Pilot</option><option value="instrument">Instrument</option><option value="commercial">Commercial</option><option value="general">General</option></select></label>' +
+        '<label>Instructor<select name="instructor_id"><option value="">Unassigned</option>' + instructorOptions + '</select></label>' +
+        '<label>Duration<select name="duration_minutes"><option>60</option><option selected>90</option><option>120</option><option>150</option><option>180</option></select></label>' +
+        '<label>Capacity<input required name="max_students" type="number" min="1" value="20" /></label>' +
+        '<label>Location<input name="location" type="text" placeholder="Apex Aviation / Online" /></label>' +
+        '<label>Meeting Link<input name="meet_link" type="url" placeholder="https://..." /></label>' +
+        '<label class="portal-admin-ground-form__wide">Description<textarea name="description" rows="3" placeholder="Optional class overview"></textarea></label>' +
+        '<div class="portal-admin-ground-form__wide"><button class="btn btn--primary" type="submit">Create Class</button><span id="adminGroundScheduleStatus" style="margin-left:12px;color:rgba(255,255,255,0.5);font-size:13px"></span></div>' +
+      '</form>' +
+    '</div>';
+  }
+
+  function renderAdminGroundSchedule(rows) {
+    var root = document.getElementById('adminGroundScheduleRoot');
+    root.innerHTML = adminGroundScheduleFormHtml() +
+      '<div class="portal-card"><h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:12px">Upcoming Classes</h3>' +
+      (rows.length ? '<div class="portal-grid portal-grid--2">' + rows.map(adminGroundSessionCard).join('') + '</div>' : '<p style="color:rgba(255,255,255,0.45);font-size:14px;margin:0">No upcoming classes scheduled yet.</p>') +
+      '</div>';
+
+    document.getElementById('adminGroundScheduleForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var form = e.currentTarget;
+      var status = document.getElementById('adminGroundScheduleStatus');
+      var payload = {
+        title: form.title.value.trim(),
+        scheduled_at: form.scheduled_at.value,
+        category: form.category.value,
+        instructor_id: form.instructor_id.value || null,
+        duration_minutes: parseInt(form.duration_minutes.value, 10),
+        max_students: parseInt(form.max_students.value, 10),
+        location: form.location.value.trim() || null,
+        meet_link: form.meet_link.value.trim() || null,
+        description: form.description.value.trim() || null
+      };
+      if (!payload.title || !payload.scheduled_at || !payload.max_students || payload.max_students < 1) {
+        status.style.color = '#ff8b8b';
+        status.textContent = 'Title, date/time, and positive capacity are required.';
+        return;
+      }
+      status.style.color = 'rgba(255,255,255,0.5)';
+      status.textContent = 'Saving…';
+      apexSupabase.from('ground_sessions').insert(payload).then(function (res) {
+        if (res.error) throw res.error;
+        status.style.color = 'var(--gold)';
+        status.textContent = 'Class created.';
+        adminGroundScheduleLoaded = false;
+        loadAdminGroundSchedule();
+      }).catch(function (err) {
+        status.style.color = '#ff8b8b';
+        status.textContent = err.message;
+      });
+    });
+  }
+
+  function loadAdminGroundSchedule() {
+    if (adminGroundScheduleLoaded) return;
+    adminGroundScheduleLoaded = true;
+    var root = document.getElementById('adminGroundScheduleRoot');
+    root.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:14px">Loading classes…</p>';
+    var now = new Date().toISOString();
+    Promise.all([
+      apexSupabase.from('profiles').select('id,full_name,email').eq('role', 'instructor').order('full_name'),
+      apexSupabase.from('ground_sessions').select('*').gte('scheduled_at', now).order('scheduled_at')
+    ]).then(function (results) {
+      if (results[0].error) throw results[0].error;
+      if (results[1].error) throw results[1].error;
+      adminGroundInstructors = results[0].data || [];
+      renderAdminGroundSchedule(results[1].data || []);
+    }).catch(function (e) {
+      adminGroundScheduleLoaded = false;
+      root.innerHTML = '<div class="portal-card"><p style="color:#ff8b8b;font-size:14px;margin:0">Could not load class scheduler: ' + e.message + '</p></div>';
+    });
+  }
+
   /* ══════════════════════════════════════════════════════════════
      ADMIN ANALYTICS (role = admin only)
      ══════════════════════════════════════════════════════════════ */
@@ -1485,7 +1632,7 @@
       apexSupabase.from('profiles').select('id,full_name,email,created_at,checkride_prep_unlocked'),
       apexSupabase.from('dpe_categories').select('*').order('sort_order'),
       apexSupabase.from('dpe_questions').select('*').order('sort_order'),
-      apexSupabase.from('portal_access_purchases').select('tier,amount_cents,created_at'),
+      apexSupabase.from('portal_access_purchases').select('profile_id,tier,amount_cents,created_at'),
       apexSupabase.from('ground_registrations').select('payment_status,amount_cents,profile_id,registered_at')
     ]).then(function (results) {
       var totalUsers = results[0].count || 0;
@@ -1538,6 +1685,11 @@
          "total revenue" figure (invoices alone only ever contained
          Checkride Prep purchases + manual tuition, never ground school). */
       var purchases = results[11].data || [];
+      var purchaseByProfile = {};
+      purchases.forEach(function (p) { if (p.profile_id) purchaseByProfile[p.profile_id] = p; });
+      var unlockMismatches = Object.keys(purchaseByProfile).map(function (profileId) {
+        return profileMap[profileId];
+      }).filter(function (p) { return p && !p.checkride_prep_unlocked; });
       var foundingUnlocks = purchases.filter(function (p) { return p.tier === 'founding'; }).length;
       var standardUnlocks = purchases.filter(function (p) { return p.tier === 'standard'; }).length;
       var premiumRevenueCents = purchases.reduce(function (sum, p) { return sum + (p.amount_cents || 0); }, 0);
@@ -1642,6 +1794,7 @@
           '<div class="portal-card"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:14px">Most Viewed Scenarios</h3>' + adminTable(mostViewedScenarios, 'title', 'views') + '</div>' +
         '</div>' +
         '<div class="portal-card" style="margin-top:20px"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">Total Study Time (all students)</h3><p style="color:var(--gold);font-size:24px;font-weight:800">' + Math.round(totalSeconds / 3600) + ' hours</p></div>' +
+        '<div class="portal-card" style="margin-top:20px"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">Unlock Repair Queue (' + unlockMismatches.length + ')</h3><p style="color:rgba(255,255,255,0.4);font-size:12.5px;margin-bottom:14px">Paid members whose purchase exists but whose Checkride Prep flag is still locked.</p><div id="adminUnlockRepair"></div></div>' +
         '<div class="portal-card" style="margin-top:20px"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">Ask Andrew — Open Questions (' + openDiscussions.length + ')</h3><p style="color:rgba(255,255,255,0.4);font-size:12.5px;margin-bottom:14px">These are exactly the topics your students want content on — FAQs, reels, ground school material.</p><div id="adminAskInbox"></div></div>' +
         '<div class="portal-card" style="margin-top:20px"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:14px">Testimonials Awaiting Approval (' + pendingTestimonials.length + ')</h3><div id="adminTestimonialInbox"></div></div>' +
         '<div class="portal-card" style="margin-top:20px"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:14px">Recent Referrals</h3><div id="adminReferralList"></div></div>' +
@@ -1653,6 +1806,7 @@
           '<div id="cmsQuestionList"></div>' +
         '</div>';
 
+      renderAdminUnlockRepair(unlockMismatches);
       renderAdminAskInbox(openDiscussions, profileMap);
       renderAdminTestimonialInbox(pendingTestimonials, profileMap);
       renderAdminReferralList(recentReferrals, profileMap);
@@ -1661,6 +1815,41 @@
       renderCmsQuestionList();
     }).catch(function (e) {
       el.innerHTML = '<p style="color:#ff8b8b;font-size:14px">Could not load admin data: ' + e.message + '</p>';
+    });
+  }
+
+  function renderAdminUnlockRepair(rows) {
+    var el = document.getElementById('adminUnlockRepair');
+    if (!el) return;
+    if (!rows.length) {
+      el.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0">No mismatched paid accounts right now.</p>';
+      return;
+    }
+    el.innerHTML = rows.map(function (p) {
+      return '<div class="portal-admin-inbox-item" data-unlock-profile="' + p.id + '">' +
+        '<div><strong>' + (p.full_name || 'Unnamed member') + '</strong><p>' + (p.email || '') + '</p></div>' +
+        '<button class="btn btn--primary" style="padding:6px 14px;font-size:12.5px" data-admin-unlock>Unlock</button>' +
+      '</div>';
+    }).join('');
+    el.querySelectorAll('[data-admin-unlock]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var row = btn.closest('[data-unlock-profile]');
+        var profileId = row.dataset.unlockProfile;
+        btn.disabled = true;
+        btn.textContent = 'Unlocking…';
+        apexSupabase.rpc('admin_unlock_checkride_prep', { p_profile_id: profileId }).then(function (res) {
+          if (res.error) throw res.error;
+          row.remove();
+          if (!el.querySelector('[data-unlock-profile]')) {
+            el.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0">No mismatched paid accounts right now.</p>';
+          }
+          toast('Member access unlocked.');
+        }).catch(function (err) {
+          btn.disabled = false;
+          btn.textContent = 'Unlock';
+          toast('Could not unlock: ' + err.message);
+        });
+      });
     });
   }
 
@@ -1931,6 +2120,14 @@
     });
   }
 
+  function renderStaffIfApplicable() {
+    var isStaff = !!member && ['admin', 'instructor'].indexOf(member.role) !== -1;
+    var operationsNavItem = document.getElementById('operationsNavItem');
+    if (operationsNavItem) operationsNavItem.hidden = !isStaff;
+    var activeId = (window.location.hash || '#dashboard').replace('#', '');
+    if (activeId === 'operations' && !isStaff) showSection('dashboard');
+  }
+
   function renderAdminIfApplicable() {
     if (!member || member.role !== 'admin') return;
     // Just unhides the nav item -- showSection('admin') is what actually
@@ -1945,16 +2142,43 @@
     // the rendered list. Found via testing the new CMS, not by inspection.
     document.getElementById('adminNavItem').hidden = false;
     document.getElementById('guidedNotesNavItem').hidden = false;
+    var adminGroundScheduleNavItem = document.getElementById('adminGroundScheduleNavItem');
+    if (adminGroundScheduleNavItem) adminGroundScheduleNavItem.hidden = false;
+    hideLearningPathPreview();
+
+    // If an admin opens the portal directly to an admin-only hash, the
+    // first showSection() call happens before the profile has loaded and
+    // intentionally cannot run admin queries yet. Kick the lazy loader once
+    // the role is known so the page never stays stuck on its static
+    // "Loading…" placeholder.
+    var activeId = (window.location.hash || '#dashboard').replace('#', '');
+    if (activeId === 'admin') loadAdminDashboard();
+    if (activeId === 'admin-ground-schedule') loadAdminGroundSchedule();
+    if (activeId === 'guided-notes') loadGuidedNotes();
   }
 
-  // Catches a non-admin who bookmarked or typed #guided-notes directly.
-  // The very first showSection() call (script init, before the Supabase
-  // session/profile resolves) can't check member.role yet -- this runs
-  // once it's known. Real enforcement is still server-side: guided_notes'
-  // RLS policy rejects the query regardless of what the UI shows.
-  function enforceGuidedNotesAccess() {
+  // Catches a non-admin who bookmarked or typed an admin-preview section
+  // directly. The very first showSection() call (script init, before the
+  // Supabase session/profile resolves) can't check member.role yet -- this
+  // runs once it's known. Real enforcement still belongs at the data layer
+  // for preview features with backing tables, but this prevents unfinished
+  // UI from being exposed to students.
+  function hideLearningPathPreview() {
+    document.querySelectorAll('.portal-nav__item[data-section="learning-path"], a[href="#learning-path"], [data-goto="learning-path"]').forEach(function (el) {
+      el.hidden = true;
+      el.style.display = 'none';
+    });
+    var learningPathSection = document.getElementById('section-learning-path');
+    if (learningPathSection) learningPathSection.hidden = true;
+  }
+
+  function enforceAdminPreviewAccess() {
+    var isAdmin = !!member && member.role === 'admin';
+    hideLearningPathPreview();
+    var adminGroundScheduleNavItem = document.getElementById('adminGroundScheduleNavItem');
+    if (adminGroundScheduleNavItem) adminGroundScheduleNavItem.hidden = !isAdmin;
     var activeId = (window.location.hash || '#dashboard').replace('#', '');
-    if (activeId === 'guided-notes' && (!member || member.role !== 'admin')) showSection('dashboard');
+    if ((ADMIN_PREVIEW_SECTIONS.indexOf(activeId) !== -1 || ADMIN_ONLY_SECTIONS.indexOf(activeId) !== -1) && !isAdmin) showSection('dashboard');
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -1963,7 +2187,7 @@
      Per-prompt free-text responses a student will eventually fill in on
      every Apex Advantage module page. Hidden from students entirely for
      now: the nav item stays `hidden` unless renderAdminIfApplicable()
-     unhides it, and showSection()/enforceGuidedNotesAccess() bounce any
+     unhides it, and showSection()/enforceAdminPreviewAccess() bounce any
      non-admin who reaches #guided-notes straight back to the dashboard.
      None of that is the real security boundary, though -- it's UI
      convenience on top of the actual one, same as loadPremiumContent()
@@ -2191,8 +2415,13 @@
   function sendThrottledEmail(emailType, to, subject, contentHtml, minDays) {
     if (!member || daysSinceEmail(emailType) < minDays) return;
     emailedTypes[emailType] = Date.now();
-    sendPortalEmail(to, subject, contentHtml);
-    apexSupabase.from('portal_email_log').insert({ profile_id: member.id, email_type: emailType });
+    apexSupabase.from('portal_email_log').insert({ profile_id: member.id, email_type: emailType }).then(function (res) {
+      if (res.error) {
+        if (res.error.code !== '23505') console.warn('Email log insert failed', res.error);
+        return;
+      }
+      sendPortalEmail(to, subject, contentHtml);
+    });
   }
 
   // One-time milestone emails dedupe via portal_events (loggedEventTypes,
@@ -2611,32 +2840,42 @@
     document.getElementById('statOverallPct').textContent = Math.round((overallDone / overallItems) * 100) + '%';
   }
 
+  function safeInitStep(label, fn) {
+    try {
+      return fn();
+    } catch (e) {
+      console.error('Portal init step failed:', label, e);
+      return null;
+    }
+  }
+
   /* ── Init — waits for the real Supabase session + profile ────── */
   function initPortalData() {
     return loadProgress().then(function () {
-      renderLessons();
-      renderQuickRef();
-      renderDpeLibrary();
-      renderScenarios();
-      renderProgress();
-      renderDashboardStats();
-      renderReadiness();
-      renderStreak();
-      renderWeakAreas();
-      renderAcsCoverage();
-      renderQotd();
-      renderAchievements();
-      checkAchievements();
-      renderAdminIfApplicable();
-      enforceGuidedNotesAccess();
-      renderCheckrideCountdown();
-      renderMembership();
-      renderBillingHistory();
-      renderMySessions();
-      ensureReferralCode();
-      renderPassedBanner();
-      renderSuccessWall();
-      checkWeakAreaEmail();
+      safeInitStep('renderLessons', renderLessons);
+      safeInitStep('renderQuickRef', renderQuickRef);
+      safeInitStep('renderDpeLibrary', renderDpeLibrary);
+      safeInitStep('renderScenarios', renderScenarios);
+      safeInitStep('renderProgress', renderProgress);
+      safeInitStep('renderDashboardStats', renderDashboardStats);
+      safeInitStep('renderReadiness', renderReadiness);
+      safeInitStep('renderStreak', renderStreak);
+      safeInitStep('renderWeakAreas', renderWeakAreas);
+      safeInitStep('renderAcsCoverage', renderAcsCoverage);
+      safeInitStep('renderQotd', renderQotd);
+      safeInitStep('renderAchievements', renderAchievements);
+      safeInitStep('checkAchievements', checkAchievements);
+      safeInitStep('renderStaffIfApplicable', renderStaffIfApplicable);
+      safeInitStep('renderAdminIfApplicable', renderAdminIfApplicable);
+      safeInitStep('enforceAdminPreviewAccess', enforceAdminPreviewAccess);
+      safeInitStep('renderCheckrideCountdown', renderCheckrideCountdown);
+      safeInitStep('renderMembership', renderMembership);
+      safeInitStep('renderBillingHistory', renderBillingHistory);
+      safeInitStep('renderMySessions', renderMySessions);
+      safeInitStep('ensureReferralCode', ensureReferralCode);
+      safeInitStep('renderPassedBanner', renderPassedBanner);
+      safeInitStep('renderSuccessWall', renderSuccessWall);
+      safeInitStep('checkWeakAreaEmail', checkWeakAreaEmail);
     });
   }
 })();
