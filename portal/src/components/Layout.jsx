@@ -24,6 +24,7 @@ const navItems = [
   { to: '/messages',        label: 'Messages',        roles: ['admin', 'instructor', 'student'] },
   { to: '/announcements',   label: 'Announcements',   roles: ['admin', 'instructor', 'student'] },
   { to: '/reports',         label: 'Reports',         roles: ['admin'] },
+  { to: '/portal-select',   label: 'Switch Portal',   roles: ['admin', 'instructor'] },
 ]
 
 
