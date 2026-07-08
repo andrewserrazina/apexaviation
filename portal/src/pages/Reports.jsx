@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
@@ -18,7 +17,6 @@ function downloadCSV(filename, csv) {
 }
 
 export default function Reports() {
-  const { profile } = useAuth()
   const [tab, setTab] = useState('monthly')
   const [loading, setLoading] = useState(true)
 
