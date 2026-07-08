@@ -109,6 +109,10 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Account Management
         </button>
+        <button class="portal-nav__item" data-section="operations" id="operationsNavItem" hidden>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 20V8l8-4 8 4v12M8 20v-7h8v7M8 10h.01M12 10h.01M16 10h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Operations
+        </button>
         <button class="portal-nav__item" data-section="admin" id="adminNavItem" hidden>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Admin Analytics
@@ -793,6 +797,10 @@
               <strong>Support</strong>
               <span><a href="mailto:info@apexaviationtx.com" style="color:var(--gold)">info@apexaviationtx.com</a></span>
             </div>
+            <div style="margin-top:18px;padding-top:18px;border-top:1px solid rgba(255,255,255,0.08)">
+              <button class="btn btn--ghost btn--full" id="refreshAccessBtn">Refresh Access</button>
+              <p id="refreshAccessStatus" style="color:rgba(255,255,255,0.42);font-size:12px;margin:10px 0 0;line-height:1.5">Use this if Stripe processed your payment but the Checkride Prep areas still appear locked.</p>
+            </div>
             <div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.08)">
               <button class="btn btn--ghost btn--full" id="signOutBtn2">Sign Out</button>
             </div>
@@ -848,6 +856,27 @@
       </section>
 
       <div id="passedOverlay" class="portal-practice-overlay" hidden></div>
+
+      <!-- ─────────── OPERATIONS (admin/instructor role only) ─────────── -->
+      <section class="portal-section" id="section-operations">
+        <div class="portal-header">
+          <div class="portal-header__eyebrow">Apex Operations</div>
+          <h1>Flight school operations.</h1>
+          <p>Internal tools for scheduling, ground school management, instructors, students, and location operations.</p>
+        </div>
+        <div class="portal-grid portal-grid--2">
+          <div class="portal-card">
+            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Ground School Scheduler</h3>
+            <p style="color:rgba(255,255,255,0.48);font-size:13px;margin-bottom:16px">Create live ground school classes, assign instructors, and review upcoming sessions.</p>
+            <button class="btn btn--primary btn--full" data-goto="admin-ground-schedule">Open Class Scheduler</button>
+          </div>
+          <div class="portal-card">
+            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Operations Workspace</h3>
+            <p style="color:rgba(255,255,255,0.48);font-size:13px;margin-bottom:16px">Open the full Operations dashboard for schedule and resource planning.</p>
+            <button class="btn btn--ghost btn--full" data-goto="operations">Open Operations Dashboard</button>
+          </div>
+        </div>
+      </section>
 
       <!-- ─────────── ADMIN ANALYTICS (admin role only) ─────────── -->
       <section class="portal-section" id="section-admin">
