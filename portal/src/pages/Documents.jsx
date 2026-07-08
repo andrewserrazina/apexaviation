@@ -98,7 +98,6 @@ export default function Documents() {
     setUploading(true)
     setUploadError('')
 
-    const ext = file.name.split('.').pop()
     const path = `${targetId}/${Date.now()}_${file.name}`
     const { error: storageErr } = await supabase.storage.from('student-docs').upload(path, file, { upsert: false })
     if (storageErr) { setUploading(false); setUploadError(storageErr.message); return }
