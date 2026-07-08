@@ -40,16 +40,23 @@ export async function hasPremiumAccess(
   const { data: userData, error: userErr } = await supabase.auth.getUser(token)
   if (userErr || !userData?.user) throw new PremiumAccessError('Invalid or expired session', 401)
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('checkride_prep_unlocked')
-    .eq('id', userData.user.id)
-    .maybeSingle()
+  const [{ data: profile }, { data: purchaseRows }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('checkride_prep_unlocked')
+      .eq('id', userData.user.id)
+      .maybeSingle(),
+    supabase
+      .from('portal_access_purchases')
+      .select('id')
+      .eq('profile_id', userData.user.id)
+      .limit(1),
+  ])
 
   return {
     userId: userData.user.id,
     email: userData.user.email ?? null,
-    unlocked: !!profile?.checkride_prep_unlocked,
+    unlocked: !!profile?.checkride_prep_unlocked || !!purchaseRows?.length,
   }
 }
 
