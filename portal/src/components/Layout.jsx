@@ -17,20 +17,16 @@ const navItems = [
   { to: '/billing',         label: 'Billing',         roles: ['admin', 'instructor', 'student'] },
   { to: '/documents',       label: 'Documents',       roles: ['admin', 'instructor', 'student'] },
   { to: '/ground-schedule', label: 'Ground School',   roles: ['admin', 'instructor', 'student'] },
+  { to: '/admin/ground-school-schedule', label: 'Class Scheduler', roles: ['admin'] },
   { to: '/endorsements',    label: 'Endorsements',    roles: ['admin', 'instructor', 'student'] },
   { to: '/instructor-hub',  label: 'Instructor Hub',  roles: ['admin', 'instructor'] },
   { to: '/crm',             label: 'CRM',             roles: ['admin', 'instructor'] },
   { to: '/messages',        label: 'Messages',        roles: ['admin', 'instructor', 'student'] },
   { to: '/announcements',   label: 'Announcements',   roles: ['admin', 'instructor', 'student'] },
   { to: '/reports',         label: 'Reports',         roles: ['admin'] },
+  { to: '/portal-select',   label: 'Switch Portal',   roles: ['admin', 'instructor'] },
 ]
 
-const SEARCH_TABLES = [
-  { table: 'profiles',        labelCol: 'full_name',   sub: 'role',        link: id => `/students` },
-  { table: 'lessons',         labelCol: 'lesson_type', sub: 'starts_at',   link: () => '/schedule' },
-  { table: 'logbook_entries', labelCol: 'route',       sub: 'date',        link: () => '/logbook' },
-  { table: 'invoices',        labelCol: 'description', sub: 'status',      link: () => '/billing' },
-]
 
 export default function Layout({ children }) {
   const { profile, signOut } = useAuth()

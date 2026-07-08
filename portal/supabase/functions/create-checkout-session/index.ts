@@ -124,9 +124,59 @@ serve(async (req) => {
     }
 
     if (purpose === 'ground-school-registration') {
-      const { sessionId, name, email } = body
-      if (!sessionId || !name || !email) {
-        return jsonError('Missing required fields: sessionId, name, email', 400)
+      const { sessionId, scheduledClassId, name, email } = body
+      if ((!sessionId && !scheduledClassId) || !name || !email) {
+        return jsonError('Missing required fields: scheduledClassId/sessionId, name, email', 400)
+      }
+
+      if (scheduledClassId) {
+        const today = new Date().toISOString().slice(0, 10)
+        const { data: scheduledClass, error: classErr } = await supabase
+          .from('scheduled_ground_classes')
+          .select('id, title, lesson_title, class_date, start_time, timezone, capacity, enrolled_count, status')
+          .eq('id', scheduledClassId)
+          .eq('status', 'published')
+          .gte('class_date', today)
+          .maybeSingle()
+
+        if (classErr || !scheduledClass) return jsonError('Ground school class not found or not open for registration', 404)
+        if ((scheduledClass.enrolled_count ?? 0) >= scheduledClass.capacity) return jsonError('Ground school class is full', 409)
+
+        const { data: existingEnrollment } = await supabase
+          .from('scheduled_ground_class_enrollments')
+          .select('id')
+          .eq('scheduled_ground_class_id', scheduledClassId)
+          .ilike('email', email)
+          .eq('payment_status', 'paid')
+          .maybeSingle()
+        if (existingEnrollment) return jsonError('This email is already registered for this class', 409)
+
+        const when = new Date(`${scheduledClass.class_date}T${scheduledClass.start_time}`).toLocaleString('en-US', {
+          weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+        })
+
+        const session = await stripe.checkout.sessions.create({
+          mode: 'payment',
+          customer_email: email,
+          line_items: [{
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: `Ground School — ${scheduledClass.title}`,
+                description: `${when} · ${scheduledClass.lesson_title}`,
+              },
+              unit_amount: GROUND_SCHOOL_PRICE_CENTS,
+            },
+            quantity: 1,
+          }],
+          metadata: { purpose: 'ground-school-registration', scheduled_class_id: scheduledClassId, full_name: name, email },
+          success_url: `${siteOrigin}/portal.html?registered=1#ground-school`,
+          cancel_url: `${siteOrigin}/portal.html#ground-school`,
+        })
+
+        return new Response(JSON.stringify({ url: session.url, amount: GROUND_SCHOOL_PRICE_CENTS }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
       }
 
       const { data: groundSession, error: gsErr } = await supabase
