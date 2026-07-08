@@ -1,38 +1,31 @@
+import { Link } from 'react-router-dom'
 import OperationsLayout from '../../components/OperationsLayout'
-import { operationsStats, todaySchedule } from '../../lib/operationsData'
+
+const widgets = [
+  { label: 'Today’s Schedule', value: 'Open schedule', detail: 'Flight and lesson calendar lives in the existing schedule module.', to: '/schedule' },
+  { label: 'Ground School', value: 'Manage sessions', detail: 'Create sessions, assign instructors, and manage registrants.', to: '/ground-schedule' },
+  { label: 'Simulator / Fleet', value: 'View resources', detail: 'Use Fleet for current aircraft and simulator resource tracking.', to: '/aircraft' },
+  { label: 'Instructors', value: 'Manage roster', detail: 'Create and edit instructor profiles, certificates, and bios.', to: '/instructors' },
+  { label: 'Students', value: 'Manage students', detail: 'Review active student records and training activity.', to: '/students' },
+  { label: 'Leads / CRM', value: 'Open CRM', detail: 'Track prospective students and enrollment pipeline.', to: '/crm' },
+]
 
 export default function OperationsDashboard() {
   return (
     <OperationsLayout>
       <div className="operations-page-header">
-        <p className="operations-eyebrow">Apex Operations</p>
-        <h1>Operations Dashboard</h1>
-        <p>Internal flight school management workspace for daily location operations.</p>
+        <p className="operations-eyebrow">Internal workspace</p>
+        <h1>Apex Operations</h1>
+        <p>Flight school management tools for scheduling, ground school, instructor management, resources, students, and CRM.</p>
       </div>
       <section className="operations-widget-grid">
-        {operationsStats.map(stat => (
-          <article className="operations-widget" key={stat.label}>
-            <span>{stat.label}</span>
-            <strong>{stat.value}</strong>
-            <p>{stat.detail}</p>
-          </article>
+        {widgets.map(widget => (
+          <Link className="operations-widget" key={widget.label} to={widget.to}>
+            <span>{widget.label}</span>
+            <strong>{widget.value}</strong>
+            <p>{widget.detail}</p>
+          </Link>
         ))}
-      </section>
-      <section className="operations-card">
-        <div className="operations-card__head">
-          <h2>Today’s Schedule</h2>
-          <span>Placeholder-ready</span>
-        </div>
-        <div className="operations-list">
-          {todaySchedule.map(item => (
-            <div className="operations-list__row" key={`${item.time}-${item.type}`}>
-              <strong>{item.time}</strong>
-              <span>{item.type}</span>
-              <p>{item.resource}</p>
-              <em>{item.status}</em>
-            </div>
-          ))}
-        </div>
       </section>
     </OperationsLayout>
   )

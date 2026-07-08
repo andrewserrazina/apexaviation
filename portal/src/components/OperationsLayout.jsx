@@ -1,7 +1,16 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { operationsNavItems } from '../lib/operationsData'
 import ApexLogo from './ApexLogo'
+
+const operationsNav = [
+  { to: '/operations/dashboard', label: 'Dashboard' },
+  { to: '/schedule', label: 'Schedule' },
+  { to: '/ground-schedule', label: 'Ground School' },
+  { to: '/aircraft', label: 'Fleet' },
+  { to: '/instructors', label: 'Instructors' },
+  { to: '/students', label: 'Students' },
+  { to: '/crm', label: 'CRM' },
+]
 
 export default function OperationsLayout({ children }) {
   const { profile, signOut } = useAuth()
@@ -23,7 +32,7 @@ export default function OperationsLayout({ children }) {
           </div>
         </div>
         <nav className="operations-nav" aria-label="Apex Operations">
-          {operationsNavItems.map(item => (
+          {operationsNav.map(item => (
             <NavLink key={item.to} to={item.to} className={({ isActive }) => `operations-nav__item${isActive ? ' operations-nav__item--active' : ''}`}>
               {item.label}
             </NavLink>
@@ -35,9 +44,7 @@ export default function OperationsLayout({ children }) {
           <button type="button" onClick={handleSignOut}>Sign out</button>
         </div>
       </aside>
-      <main className="operations-main">
-        {children}
-      </main>
+      <main className="operations-main">{children}</main>
     </div>
   )
 }
