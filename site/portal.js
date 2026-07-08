@@ -140,6 +140,7 @@
   var overlay = document.getElementById('sidebarOverlay');
 
   var GATED_SECTIONS = ['checkride-prep', 'dpe-library', 'scenarios', 'progress', 'vault'];
+  var ADMIN_PREVIEW_SECTIONS = ['guided-notes', 'learning-path'];
 
   function showSection(id) {
     if (!document.getElementById('section-' + id)) id = 'dashboard';
@@ -148,13 +149,13 @@
       openUnlockModal();
       return;
     }
-    // Guided Notes is an admin-only feature preview -- not just hidden from
-    // the nav. A non-admin who already has member.role loaded (e.g. clicked
-    // a stale link, or called this from the console) gets bounced to the
-    // dashboard instead of ever seeing the section become active. The other
-    // half of this guard is enforceGuidedNotesAccess(), which catches the
-    // same case on first page load, before member.role is known yet.
-    if (id === 'guided-notes' && member && member.role !== 'admin') id = 'dashboard';
+    // Admin preview sections are not just hidden from the nav. A non-admin
+    // who already has member.role loaded (e.g. clicked a stale link, or
+    // called this from the console) gets bounced to the dashboard instead
+    // of ever seeing the section become active. The other half of this
+    // guard is enforceAdminPreviewAccess(), which catches the same case on
+    // first page load, before member.role is known yet.
+    if (ADMIN_PREVIEW_SECTIONS.indexOf(id) !== -1 && member && member.role !== 'admin') id = 'dashboard';
     sections.forEach(function (s) { s.classList.toggle('active', s.id === 'section-' + id); });
     navItems.forEach(function (b) { b.classList.toggle('active', b.dataset.section === id); });
     window.scrollTo(0, 0);
@@ -1945,16 +1946,22 @@
     // the rendered list. Found via testing the new CMS, not by inspection.
     document.getElementById('adminNavItem').hidden = false;
     document.getElementById('guidedNotesNavItem').hidden = false;
+    var learningPathNavItem = document.querySelector('.portal-nav__item[data-section="learning-path"]');
+    if (learningPathNavItem) learningPathNavItem.hidden = false;
   }
 
-  // Catches a non-admin who bookmarked or typed #guided-notes directly.
-  // The very first showSection() call (script init, before the Supabase
-  // session/profile resolves) can't check member.role yet -- this runs
-  // once it's known. Real enforcement is still server-side: guided_notes'
-  // RLS policy rejects the query regardless of what the UI shows.
-  function enforceGuidedNotesAccess() {
+  // Catches a non-admin who bookmarked or typed an admin-preview section
+  // directly. The very first showSection() call (script init, before the
+  // Supabase session/profile resolves) can't check member.role yet -- this
+  // runs once it's known. Real enforcement still belongs at the data layer
+  // for preview features with backing tables, but this prevents unfinished
+  // UI from being exposed to students.
+  function enforceAdminPreviewAccess() {
+    var isAdmin = !!member && member.role === 'admin';
+    var learningPathNavItem = document.querySelector('.portal-nav__item[data-section="learning-path"]');
+    if (learningPathNavItem) learningPathNavItem.hidden = !isAdmin;
     var activeId = (window.location.hash || '#dashboard').replace('#', '');
-    if (activeId === 'guided-notes' && (!member || member.role !== 'admin')) showSection('dashboard');
+    if (ADMIN_PREVIEW_SECTIONS.indexOf(activeId) !== -1 && !isAdmin) showSection('dashboard');
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -1963,7 +1970,7 @@
      Per-prompt free-text responses a student will eventually fill in on
      every Apex Advantage module page. Hidden from students entirely for
      now: the nav item stays `hidden` unless renderAdminIfApplicable()
-     unhides it, and showSection()/enforceGuidedNotesAccess() bounce any
+     unhides it, and showSection()/enforceAdminPreviewAccess() bounce any
      non-admin who reaches #guided-notes straight back to the dashboard.
      None of that is the real security boundary, though -- it's UI
      convenience on top of the actual one, same as loadPremiumContent()
@@ -2191,8 +2198,13 @@
   function sendThrottledEmail(emailType, to, subject, contentHtml, minDays) {
     if (!member || daysSinceEmail(emailType) < minDays) return;
     emailedTypes[emailType] = Date.now();
-    sendPortalEmail(to, subject, contentHtml);
-    apexSupabase.from('portal_email_log').insert({ profile_id: member.id, email_type: emailType });
+    apexSupabase.from('portal_email_log').insert({ profile_id: member.id, email_type: emailType }).then(function (res) {
+      if (res.error) {
+        if (res.error.code !== '23505') console.warn('Email log insert failed', res.error);
+        return;
+      }
+      sendPortalEmail(to, subject, contentHtml);
+    });
   }
 
   // One-time milestone emails dedupe via portal_events (loggedEventTypes,
@@ -2628,7 +2640,7 @@
       renderAchievements();
       checkAchievements();
       renderAdminIfApplicable();
-      enforceGuidedNotesAccess();
+      enforceAdminPreviewAccess();
       renderCheckrideCountdown();
       renderMembership();
       renderBillingHistory();
