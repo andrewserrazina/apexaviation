@@ -2308,8 +2308,13 @@
   function sendThrottledEmail(emailType, to, subject, contentHtml, minDays) {
     if (!member || daysSinceEmail(emailType) < minDays) return;
     emailedTypes[emailType] = Date.now();
-    sendPortalEmail(to, subject, contentHtml);
-    apexSupabase.from('portal_email_log').insert({ profile_id: member.id, email_type: emailType });
+    apexSupabase.from('portal_email_log').insert({ profile_id: member.id, email_type: emailType }).then(function (res) {
+      if (res.error) {
+        if (res.error.code !== '23505') console.warn('Email log insert failed', res.error);
+        return;
+      }
+      sendPortalEmail(to, subject, contentHtml);
+    });
   }
 
   // One-time milestone emails dedupe via portal_events (loggedEventTypes,
