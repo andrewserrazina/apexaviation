@@ -24,6 +24,16 @@ function flightCategory(metar) {
   return { label: 'VFR', color: '#4ade80' }
 }
 
+
+function formatScheduledClass(row) {
+  const start = new Date(`${row.class_date}T${row.start_time}`)
+  const end = row.end_time ? new Date(`${row.class_date}T${row.end_time}`) : null
+  const date = start.toLocaleDateString([], { month: 'short', day: 'numeric' })
+  const startTime = start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  const endTime = end?.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  return `${date} · ${startTime}${endTime ? `–${endTime}` : ''}`
+}
+
 function WeatherWidget() {
   const [metar, setMetar] = useState(null)
   const [error, setError] = useState(false)
@@ -108,6 +118,7 @@ export default function Dashboard() {
   const [recentEntries, setRecentEntries] = useState([])
   const [enrolledSyllabi, setEnrolledSyllabi] = useState([])
   const [upcomingGroundSessions, setUpcomingGroundSessions] = useState([])
+  const [scheduledGroundClasses, setScheduledGroundClasses] = useState([])
 
   const isAdmin = profile?.role === 'admin'
   const isInstructor = profile?.role === 'instructor'
@@ -183,8 +194,26 @@ export default function Dashboard() {
       }
     }
 
+    async function loadScheduledGroundClasses() {
+      const today = new Date().toISOString().slice(0, 10)
+      let query = supabase
+        .from('scheduled_ground_classes')
+        .select('*')
+        .gte('class_date', today)
+        .order('class_date', { ascending: true })
+        .order('start_time', { ascending: true })
+        .limit(5)
+
+      if (isStudent) query = query.eq('status', 'published')
+      else if (!isAdmin) query = query.eq('status', 'published')
+
+      const { data } = await query
+      setScheduledGroundClasses(data ?? [])
+    }
+
     loadStats()
     loadStudentProgress()
+    loadScheduledGroundClasses()
   }, [profile, isAdmin, isInstructor, isStudent])
 
   const studentLabel = isAdmin ? 'Active Students' : isInstructor ? 'My Students' : null
@@ -262,6 +291,34 @@ export default function Dashboard() {
         </section>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+          {(isAdmin || isStudent) && (
+            <section className="card">
+              <h3 className="card__title">Upcoming Ground School Classes</h3>
+              {scheduledGroundClasses.length === 0 ? (
+                <p className="empty-state">No upcoming ground school classes scheduled.</p>
+              ) : scheduledGroundClasses.map(row => (
+                <div key={row.id} className="activity-row">
+                  <div>
+                    <p className="activity-row__primary">{row.title}</p>
+                    <p className="activity-row__sub">
+                      {formatScheduledClass(row)} · {row.instructor_name ?? 'Instructor TBD'}
+                    </p>
+                    {isAdmin && <p className="activity-row__sub">{row.status} · {row.enrolled_count ?? 0}/{row.capacity}</p>}
+                  </div>
+                  <div className="activity-row__meta">
+                    {row.meeting_url && row.status === 'published' ? (
+                      <a className="btn-link" href={row.meeting_url} target="_blank" rel="noopener noreferrer">Join</a>
+                    ) : (
+                      <span>{row.module_id ?? 'PPL'}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </section>
+          )}
+
+
           <section className="card">
             <h3 className="card__title">Today's Schedule</h3>
             {todayLessons.length === 0
