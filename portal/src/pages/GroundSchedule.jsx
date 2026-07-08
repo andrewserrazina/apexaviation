@@ -13,7 +13,7 @@ const CATEGORY_COLORS = { general: '#94a3b8', private: '#60a5fa', instrument: '#
 const FREQUENCIES = [{ value: 'weekly', label: 'Weekly' }, { value: 'biweekly', label: 'Every 2 Weeks' }, { value: 'monthly', label: 'Monthly' }]
 
 const BLANK_SESSION = {
-  title: '', description: '', location: '', meet_link: '',
+  title: '', description: '', location: '', meet_link: '', instructor_id: '',
   scheduled_at: '', duration_minutes: 90, max_students: 20, category: 'general',
   repeat: false, frequency: 'weekly', occurrences: 4,
 }
@@ -48,6 +48,7 @@ export default function GroundSchedule() {
 
   const [sessions, setSessions] = useState([])
   const [pastSessions, setPastSessions] = useState([])
+  const [instructors, setInstructors] = useState([])
   const [showPast, setShowPast] = useState(false)
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
@@ -70,12 +71,15 @@ export default function GroundSchedule() {
 
   async function load() {
     const now = new Date().toISOString()
-    const [{ data: upcoming }, { data: past }] = await Promise.all([
-      supabase.from('ground_sessions').select('*, ground_registrations(id, is_waitlisted)').gte('scheduled_at', now).order('scheduled_at'),
-      supabase.from('ground_sessions').select('*, ground_registrations(id, is_waitlisted)').lt('scheduled_at', now).order('scheduled_at', { ascending: false }),
+    const sessionSelect = '*, ground_registrations(id, is_waitlisted)'
+    const [{ data: upcoming }, { data: past }, { data: instructorData }] = await Promise.all([
+      supabase.from('ground_sessions').select(sessionSelect).gte('scheduled_at', now).order('scheduled_at'),
+      supabase.from('ground_sessions').select(sessionSelect).lt('scheduled_at', now).order('scheduled_at', { ascending: false }),
+      isAdmin ? supabase.from('profiles').select('id, full_name, email').eq('role', 'instructor').order('full_name') : Promise.resolve({ data: [] }),
     ])
     setSessions(upcoming ?? [])
     setPastSessions(past ?? [])
+    setInstructors(instructorData ?? [])
     setLoading(false)
   }
 
@@ -91,7 +95,7 @@ export default function GroundSchedule() {
     setTimeout(() => setCopiedLink(null), 2000)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [isAdmin])
 
   function field(k, v) { setForm(f => ({ ...f, [k]: v })) }
   function regField(k, v) { setRegForm(f => ({ ...f, [k]: v })) }
@@ -104,7 +108,7 @@ export default function GroundSchedule() {
       title: s.title, description: s.description ?? '', location: s.location ?? '',
       meet_link: s.meet_link ?? '', scheduled_at: new Date(s.scheduled_at).toISOString().slice(0, 16),
       duration_minutes: s.duration_minutes, max_students: s.max_students,
-      category: s.category ?? 'general', repeat: false, frequency: 'weekly', occurrences: 4,
+      category: s.category ?? 'general', instructor_id: s.instructor_id ?? '', repeat: false, frequency: 'weekly', occurrences: 4,
     })
     setFormError('')
     setModal('edit')
@@ -152,8 +156,9 @@ export default function GroundSchedule() {
     setFormError('')
     const base = {
       title: form.title, description: form.description || null, location: form.location || null,
-      meet_link: form.meet_link || null, duration_minutes: parseInt(form.duration_minutes),
-      max_students: parseInt(form.max_students), category: form.category,
+      meet_link: form.meet_link || null, instructor_id: form.instructor_id || null,
+      duration_minutes: parseInt(form.duration_minutes), max_students: parseInt(form.max_students),
+      category: form.category,
     }
     if (form.repeat) {
       const inserts = Array.from({ length: parseInt(form.occurrences) }, (_, i) => ({
@@ -178,7 +183,7 @@ export default function GroundSchedule() {
     setFormError('')
     const { error } = await supabase.from('ground_sessions').update({
       title: form.title, description: form.description || null, location: form.location || null,
-      meet_link: form.meet_link || null, scheduled_at: form.scheduled_at,
+      meet_link: form.meet_link || null, instructor_id: form.instructor_id || null, scheduled_at: form.scheduled_at,
       duration_minutes: parseInt(form.duration_minutes), max_students: parseInt(form.max_students),
       category: form.category,
     }).eq('id', activeSession.id)
@@ -311,6 +316,7 @@ export default function GroundSchedule() {
   }
 
   const filteredSessions = categoryFilter === 'all' ? sessions : sessions.filter(s => s.category === categoryFilter)
+  const instructorNameFor = (session) => instructors.find(i => i.id === session.instructor_id)?.full_name
 
   return (
     <div className="public-page">
@@ -400,6 +406,7 @@ export default function GroundSchedule() {
                     <div className="gs-card__meta">
                       {s.location && <span>📍 {s.location}</span>}
                       <span>⏱ {s.duration_minutes} min</span>
+                      {instructorNameFor(s) && <span>👨‍✈️ {instructorNameFor(s)}</span>}
                       <span>💵 $25</span>
                     </div>
                     {s.meet_link && (
@@ -451,6 +458,7 @@ export default function GroundSchedule() {
                         <div className="gs-card__meta">
                           {s.location && <span>📍 {s.location}</span>}
                           <span>⏱ {s.duration_minutes} min</span>
+                          {instructorNameFor(s) && <span>👨‍✈️ {instructorNameFor(s)}</span>}
                         </div>
                         {isAdmin && (
                           <div className="gs-card__actions">
@@ -488,6 +496,14 @@ export default function GroundSchedule() {
                 <label>Max Students</label>
                 <input type="number" value={form.max_students} onChange={e => field('max_students', e.target.value)} min={1} max={100} required />
               </div>
+            </div>
+            <div className="form-group">
+              <label>Assigned Instructor</label>
+              <select value={form.instructor_id} onChange={e => field('instructor_id', e.target.value)}>
+                <option value="">Unassigned</option>
+                {instructors.map(i => <option key={i.id} value={i.id}>{i.full_name}</option>)}
+              </select>
+              {isAdmin && <Link to="/instructors" className="form-help-link">Manage instructors</Link>}
             </div>
             <div className="form-group">
               <label>Description</label>
