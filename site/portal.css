@@ -747,3 +747,11 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Launch guard: Learning Path stays hidden until it is finished. */
+.portal-nav__item[data-section="learning-path"],
+a[href="#learning-path"],
+[data-goto="learning-path"],
+#section-learning-path {
+  display: none !important;
+}
