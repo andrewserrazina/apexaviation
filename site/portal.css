@@ -707,3 +707,51 @@
 .portal-modal__list li { display: flex; align-items: center; gap: 10px; font-size: 13px; color: rgba(255,255,255,0.75); }
 .portal-modal__error { color: #f87171; font-size: 13px; margin-top: 12px; display: none; }
 .portal-modal__error.show { display: block; }
+
+/* Admin ground-school scheduler */
+.portal-admin-ground-form {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.portal-admin-ground-form label {
+  color: rgba(255, 255, 255, 0.72);
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 6px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.portal-admin-ground-form input,
+.portal-admin-ground-form select,
+.portal-admin-ground-form textarea {
+  background: rgba(11, 31, 58, 0.65);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #fff;
+  font: inherit;
+  padding: 11px 14px;
+  text-transform: none;
+}
+
+.portal-admin-ground-form__wide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 760px) {
+  .portal-admin-ground-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Launch guard: Learning Path stays hidden until it is finished. */
+.portal-nav__item[data-section="learning-path"],
+a[href="#learning-path"],
+[data-goto="learning-path"],
+#section-learning-path {
+  display: none !important;
+}

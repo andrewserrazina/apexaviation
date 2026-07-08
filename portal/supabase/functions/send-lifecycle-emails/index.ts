@@ -27,10 +27,10 @@
 //     dedup flag) and portal_email_log (the complete audit trail Issue
 //     #5 in LAUNCH_READINESS_REPORT.md flagged as incomplete) going
 //     forward.
-//   - weak_area_<category>: throttled (not one-time) -- re-sent if it's
-//     been >=14 days since the last one for that exact category,
-//     exactly matching sendThrottledEmail()'s existing behavior in
-//     portal.js. Dedup source: portal_email_log.sent_at.
+//   - weak_area_<category>: logged before send and protected by the
+//     portal_email_log weak-area unique index. This makes each weak-area
+//     recommendation one-time per member/category so a misconfigured cron
+//     or repeated portal loads cannot drip the same subject repeatedly.
 //   - inactivity_7day: throttled to once every 30 days so a member who
 //     stays inactive doesn't get nudged daily forever. Dedup source:
 //     portal_email_log.sent_at.
@@ -292,8 +292,12 @@ async function processWeakArea(supabase: any, profile: any, questions: Question[
   const html = `<h2 style="color:#F4B400;margin:0 0 4px;">${content.subject}</h2>` +
     `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">${content.body}</p>` +
     `<a href="https://apexaviationtx.com/portal.html#dpe-library" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Review ${CATEGORY_LABELS[weakest.cat] || weakest.cat} →</a>`
+  const { error: logError } = await supabase.from('portal_email_log').insert({ profile_id: profile.id, email_type: emailType })
+  if (logError) {
+    if (logError.code !== '23505') results.errors.push(`weak_area_log:${profile.id}:${logError.message}`)
+    return
+  }
   await sendEmail(supabase, profile.email, content.subject, html)
-  await supabase.from('portal_email_log').insert({ profile_id: profile.id, email_type: emailType })
   results.weak_area++
 }
 
