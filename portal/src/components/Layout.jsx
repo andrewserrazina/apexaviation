@@ -23,6 +23,7 @@ const navItems = [
   { to: '/messages',        label: 'Messages',        roles: ['admin', 'instructor', 'student'] },
   { to: '/announcements',   label: 'Announcements',   roles: ['admin', 'instructor', 'student'] },
   { to: '/reports',         label: 'Reports',         roles: ['admin'] },
+  { to: '/operations/dashboard', label: 'Operations', roles: ['admin', 'instructor'] },
 ]
 
 const SEARCH_TABLES = [
