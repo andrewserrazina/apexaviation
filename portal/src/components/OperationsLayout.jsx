@@ -4,7 +4,7 @@ import ApexLogo from './ApexLogo'
 
 const operationsNav = [
   { to: '/operations/dashboard', label: 'Dashboard' },
-  { to: '/schedule', label: 'Schedule' },
+  { to: '/operations/schedule', label: 'Schedule' },
   { to: '/ground-schedule', label: 'Ground School' },
   { to: '/aircraft', label: 'Fleet' },
   { to: '/instructors', label: 'Instructors' },

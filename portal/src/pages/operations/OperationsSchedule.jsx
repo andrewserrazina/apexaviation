@@ -34,9 +34,7 @@ export default function OperationsSchedule() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    loadEvents()
-  }, [])
+  useEffect(() => { loadEvents() }, [])
 
   async function loadEvents() {
     setLoading(true)
@@ -90,13 +88,13 @@ export default function OperationsSchedule() {
       <div className="operations-page-header operations-page-header--row">
         <div>
           <p className="operations-eyebrow">Scheduling foundation</p>
-          <h1>Schedule</h1>
-          <p>Calendar/list foundation for flight, simulator, ground lesson, and instructor availability scheduling.</p>
+          <h1>Operations Schedule</h1>
+          <p>Create and view internal events for flights, simulator sessions, ground lessons, maintenance, and instructor availability.</p>
         </div>
         <button className="btn-primary" type="button" onClick={() => setShowForm(open => !open)}>{showForm ? 'Close Form' : 'Create Event'}</button>
       </div>
 
-      <section className="operations-card">
+      <section className="operations-panel">
         <div className="operations-filter-bar" aria-label="Schedule filters">
           <button type="button" className={activeType === 'all' ? 'is-active' : ''} onClick={() => setActiveType('all')}>All</button>
           {filters.map(filter => (

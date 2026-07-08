@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import OperationsLayout from '../../components/OperationsLayout'
 
 const widgets = [
-  { label: 'Today’s Schedule', value: 'Open schedule', detail: 'Flight and lesson calendar lives in the existing schedule module.', to: '/schedule' },
+  { label: 'Today’s Schedule', value: 'Open schedule', detail: 'Create and review internal Operations events.', to: '/operations/schedule' },
   { label: 'Ground School', value: 'Manage sessions', detail: 'Create sessions, assign instructors, and manage registrants.', to: '/ground-schedule' },
   { label: 'Simulator / Fleet', value: 'View resources', detail: 'Use Fleet for current aircraft and simulator resource tracking.', to: '/aircraft' },
   { label: 'Instructors', value: 'Manage roster', detail: 'Create and edit instructor profiles, certificates, and bios.', to: '/instructors' },
