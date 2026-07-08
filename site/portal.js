@@ -3269,35 +3269,42 @@
     renderStudentTrainingHub();
   }
 
+  function safeInitStep(label, fn) {
+    try {
+      return fn();
+    } catch (e) {
+      console.error('Portal init step failed:', label, e);
+      return null;
+    }
+  }
+
   /* ── Init — waits for the real Supabase session + profile ────── */
   function initPortalData() {
     return loadProgress().then(function () {
-      renderLessons();
-      renderQuickRef();
-      renderDpeLibrary();
-      renderScenarios();
-      renderProgress();
-      renderLearningPath();
-      loadLearningPathClasses().then(renderLearningPath);
-      renderDashboardStats();
-      renderReadiness();
-      renderStreak();
-      renderWeakAreas();
-      renderAcsCoverage();
-      renderQotd();
-      renderAchievements();
-      checkAchievements();
-      renderStaffIfApplicable();
-      renderAdminIfApplicable();
-      enforceAdminPreviewAccess();
-      renderCheckrideCountdown();
-      renderMembership();
-      renderBillingHistory();
-      renderMySessions();
-      ensureReferralCode();
-      renderPassedBanner();
-      renderSuccessWall();
-      checkWeakAreaEmail();
+      safeInitStep('renderLessons', renderLessons);
+      safeInitStep('renderQuickRef', renderQuickRef);
+      safeInitStep('renderDpeLibrary', renderDpeLibrary);
+      safeInitStep('renderScenarios', renderScenarios);
+      safeInitStep('renderProgress', renderProgress);
+      safeInitStep('renderDashboardStats', renderDashboardStats);
+      safeInitStep('renderReadiness', renderReadiness);
+      safeInitStep('renderStreak', renderStreak);
+      safeInitStep('renderWeakAreas', renderWeakAreas);
+      safeInitStep('renderAcsCoverage', renderAcsCoverage);
+      safeInitStep('renderQotd', renderQotd);
+      safeInitStep('renderAchievements', renderAchievements);
+      safeInitStep('checkAchievements', checkAchievements);
+      safeInitStep('renderStaffIfApplicable', renderStaffIfApplicable);
+      safeInitStep('renderAdminIfApplicable', renderAdminIfApplicable);
+      safeInitStep('enforceAdminPreviewAccess', enforceAdminPreviewAccess);
+      safeInitStep('renderCheckrideCountdown', renderCheckrideCountdown);
+      safeInitStep('renderMembership', renderMembership);
+      safeInitStep('renderBillingHistory', renderBillingHistory);
+      safeInitStep('renderMySessions', renderMySessions);
+      safeInitStep('ensureReferralCode', ensureReferralCode);
+      safeInitStep('renderPassedBanner', renderPassedBanner);
+      safeInitStep('renderSuccessWall', renderSuccessWall);
+      safeInitStep('checkWeakAreaEmail', checkWeakAreaEmail);
     });
   }
 })();
