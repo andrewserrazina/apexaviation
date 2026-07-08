@@ -140,6 +140,8 @@
   var overlay = document.getElementById('sidebarOverlay');
 
   var GATED_SECTIONS = ['checkride-prep', 'dpe-library', 'scenarios', 'progress', 'vault'];
+  var ADMIN_PREVIEW_SECTIONS = ['guided-notes', 'learning-path'];
+  var ADMIN_ONLY_SECTIONS = ['admin', 'admin-ground-schedule'];
 
   function showSection(id) {
     if (!document.getElementById('section-' + id)) id = 'dashboard';
@@ -148,13 +150,13 @@
       openUnlockModal();
       return;
     }
-    // Guided Notes is an admin-only feature preview -- not just hidden from
-    // the nav. A non-admin who already has member.role loaded (e.g. clicked
-    // a stale link, or called this from the console) gets bounced to the
-    // dashboard instead of ever seeing the section become active. The other
-    // half of this guard is enforceGuidedNotesAccess(), which catches the
-    // same case on first page load, before member.role is known yet.
-    if (id === 'guided-notes' && member && member.role !== 'admin') id = 'dashboard';
+    // Admin preview sections are not just hidden from the nav. A non-admin
+    // who already has member.role loaded (e.g. clicked a stale link, or
+    // called this from the console) gets bounced to the dashboard instead
+    // of ever seeing the section become active. The other half of this
+    // guard is enforceAdminPreviewAccess(), which catches the same case on
+    // first page load, before member.role is known yet.
+    if ((ADMIN_PREVIEW_SECTIONS.indexOf(id) !== -1 || ADMIN_ONLY_SECTIONS.indexOf(id) !== -1) && member && member.role !== 'admin') id = 'dashboard';
     sections.forEach(function (s) { s.classList.toggle('active', s.id === 'section-' + id); });
     navItems.forEach(function (b) { b.classList.toggle('active', b.dataset.section === id); });
     window.scrollTo(0, 0);
@@ -162,6 +164,7 @@
     closeSidebar();
     if (!member) return;
     if (id === 'admin' && member.role === 'admin') loadAdminDashboard();
+    if (id === 'admin-ground-schedule' && member.role === 'admin') loadAdminGroundSchedule();
     if (id === 'guided-notes' && member.role === 'admin') loadGuidedNotes();
     if (id === 'success-wall') renderSuccessWall();
     if (id === 'ground-school') loadGroundSchool();
@@ -333,6 +336,7 @@
       .gte('scheduled_at', new Date().toISOString())
       .order('scheduled_at')
       .then(function (res) {
+        if (res.error) throw res.error;
         var sessionsList = res.data || [];
         if (!sessionsList.length) {
           listEl.style.display = 'none';
@@ -356,6 +360,10 @@
           card.querySelector('[data-register]').addEventListener('click', function () { openGroundSchoolModal(s); });
           listEl.appendChild(card);
         });
+      }).catch(function (e) {
+        groundSchoolLoaded = false;
+        listEl.innerHTML = '<p style="color:#ff8b8b;font-size:14px">Could not load ground school sessions: ' + e.message + '</p>';
+        emptyEl.style.display = 'none';
       });
   }
 
@@ -1450,6 +1458,104 @@
     }
   }
 
+  var adminGroundScheduleLoaded = false;
+  var adminGroundInstructors = [];
+
+  function adminGroundSessionCard(s) {
+    var instructor = adminGroundInstructors.filter(function (i) { return i.id === s.instructor_id; })[0];
+    var when = s.scheduled_at ? fmtSessionDate(s.scheduled_at) : 'Date not set';
+    return '<div class="portal-card">' +
+      '<div class="portal-header__eyebrow" style="margin-bottom:8px">' + (s.category || 'General').toUpperCase() + '</div>' +
+      '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">' + (s.title || 'Untitled session') + '</h3>' +
+      '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:6px">' + when + '</p>' +
+      '<p style="color:rgba(255,255,255,0.45);font-size:13px;margin-bottom:6px">Instructor: ' + (instructor ? (instructor.full_name || instructor.email) : 'Not assigned') + '</p>' +
+      '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin:0">Capacity: ' + (s.max_students || 0) + ' · Duration: ' + (s.duration_minutes || 0) + ' min</p>' +
+    '</div>';
+  }
+
+  function adminGroundScheduleFormHtml() {
+    var instructorOptions = adminGroundInstructors.map(function (i) {
+      return '<option value="' + i.id + '">' + (i.full_name || i.email || 'Instructor') + '</option>';
+    }).join('');
+    return '<div class="portal-card" style="margin-bottom:20px">' +
+      '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:12px">Create Class</h3>' +
+      '<form id="adminGroundScheduleForm" class="portal-admin-ground-form">' +
+        '<label>Class Title<input required name="title" type="text" placeholder="Private Pilot Ground School" /></label>' +
+        '<label>Date & Time<input required name="scheduled_at" type="datetime-local" /></label>' +
+        '<label>Category<select name="category"><option value="private">Private Pilot</option><option value="instrument">Instrument</option><option value="commercial">Commercial</option><option value="general">General</option></select></label>' +
+        '<label>Instructor<select name="instructor_id"><option value="">Unassigned</option>' + instructorOptions + '</select></label>' +
+        '<label>Duration<select name="duration_minutes"><option>60</option><option selected>90</option><option>120</option><option>150</option><option>180</option></select></label>' +
+        '<label>Capacity<input required name="max_students" type="number" min="1" value="20" /></label>' +
+        '<label>Location<input name="location" type="text" placeholder="Apex Aviation / Online" /></label>' +
+        '<label>Meeting Link<input name="meet_link" type="url" placeholder="https://..." /></label>' +
+        '<label class="portal-admin-ground-form__wide">Description<textarea name="description" rows="3" placeholder="Optional class overview"></textarea></label>' +
+        '<div class="portal-admin-ground-form__wide"><button class="btn btn--primary" type="submit">Create Class</button><span id="adminGroundScheduleStatus" style="margin-left:12px;color:rgba(255,255,255,0.5);font-size:13px"></span></div>' +
+      '</form>' +
+    '</div>';
+  }
+
+  function renderAdminGroundSchedule(rows) {
+    var root = document.getElementById('adminGroundScheduleRoot');
+    root.innerHTML = adminGroundScheduleFormHtml() +
+      '<div class="portal-card"><h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:12px">Upcoming Classes</h3>' +
+      (rows.length ? '<div class="portal-grid portal-grid--2">' + rows.map(adminGroundSessionCard).join('') + '</div>' : '<p style="color:rgba(255,255,255,0.45);font-size:14px;margin:0">No upcoming classes scheduled yet.</p>') +
+      '</div>';
+
+    document.getElementById('adminGroundScheduleForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var form = e.currentTarget;
+      var status = document.getElementById('adminGroundScheduleStatus');
+      var payload = {
+        title: form.title.value.trim(),
+        scheduled_at: form.scheduled_at.value,
+        category: form.category.value,
+        instructor_id: form.instructor_id.value || null,
+        duration_minutes: parseInt(form.duration_minutes.value, 10),
+        max_students: parseInt(form.max_students.value, 10),
+        location: form.location.value.trim() || null,
+        meet_link: form.meet_link.value.trim() || null,
+        description: form.description.value.trim() || null
+      };
+      if (!payload.title || !payload.scheduled_at || !payload.max_students || payload.max_students < 1) {
+        status.style.color = '#ff8b8b';
+        status.textContent = 'Title, date/time, and positive capacity are required.';
+        return;
+      }
+      status.style.color = 'rgba(255,255,255,0.5)';
+      status.textContent = 'Saving…';
+      apexSupabase.from('ground_sessions').insert(payload).then(function (res) {
+        if (res.error) throw res.error;
+        status.style.color = 'var(--gold)';
+        status.textContent = 'Class created.';
+        adminGroundScheduleLoaded = false;
+        loadAdminGroundSchedule();
+      }).catch(function (err) {
+        status.style.color = '#ff8b8b';
+        status.textContent = err.message;
+      });
+    });
+  }
+
+  function loadAdminGroundSchedule() {
+    if (adminGroundScheduleLoaded) return;
+    adminGroundScheduleLoaded = true;
+    var root = document.getElementById('adminGroundScheduleRoot');
+    root.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:14px">Loading classes…</p>';
+    var now = new Date().toISOString();
+    Promise.all([
+      apexSupabase.from('profiles').select('id,full_name,email').eq('role', 'instructor').order('full_name'),
+      apexSupabase.from('ground_sessions').select('*').gte('scheduled_at', now).order('scheduled_at')
+    ]).then(function (results) {
+      if (results[0].error) throw results[0].error;
+      if (results[1].error) throw results[1].error;
+      adminGroundInstructors = results[0].data || [];
+      renderAdminGroundSchedule(results[1].data || []);
+    }).catch(function (e) {
+      adminGroundScheduleLoaded = false;
+      root.innerHTML = '<div class="portal-card"><p style="color:#ff8b8b;font-size:14px;margin:0">Could not load class scheduler: ' + e.message + '</p></div>';
+    });
+  }
+
   /* ══════════════════════════════════════════════════════════════
      ADMIN ANALYTICS (role = admin only)
      ══════════════════════════════════════════════════════════════ */
@@ -1945,16 +2051,36 @@
     // the rendered list. Found via testing the new CMS, not by inspection.
     document.getElementById('adminNavItem').hidden = false;
     document.getElementById('guidedNotesNavItem').hidden = false;
+    var adminGroundScheduleNavItem = document.getElementById('adminGroundScheduleNavItem');
+    if (adminGroundScheduleNavItem) adminGroundScheduleNavItem.hidden = false;
+    var learningPathNavItem = document.querySelector('.portal-nav__item[data-section="learning-path"]');
+    if (learningPathNavItem) learningPathNavItem.hidden = false;
+
+    // If an admin opens the portal directly to an admin-only hash, the
+    // first showSection() call happens before the profile has loaded and
+    // intentionally cannot run admin queries yet. Kick the lazy loader once
+    // the role is known so the page never stays stuck on its static
+    // "Loading…" placeholder.
+    var activeId = (window.location.hash || '#dashboard').replace('#', '');
+    if (activeId === 'admin') loadAdminDashboard();
+    if (activeId === 'admin-ground-schedule') loadAdminGroundSchedule();
+    if (activeId === 'guided-notes') loadGuidedNotes();
   }
 
-  // Catches a non-admin who bookmarked or typed #guided-notes directly.
-  // The very first showSection() call (script init, before the Supabase
-  // session/profile resolves) can't check member.role yet -- this runs
-  // once it's known. Real enforcement is still server-side: guided_notes'
-  // RLS policy rejects the query regardless of what the UI shows.
-  function enforceGuidedNotesAccess() {
+  // Catches a non-admin who bookmarked or typed an admin-preview section
+  // directly. The very first showSection() call (script init, before the
+  // Supabase session/profile resolves) can't check member.role yet -- this
+  // runs once it's known. Real enforcement still belongs at the data layer
+  // for preview features with backing tables, but this prevents unfinished
+  // UI from being exposed to students.
+  function enforceAdminPreviewAccess() {
+    var isAdmin = !!member && member.role === 'admin';
+    var learningPathNavItem = document.querySelector('.portal-nav__item[data-section="learning-path"]');
+    if (learningPathNavItem) learningPathNavItem.hidden = !isAdmin;
+    var adminGroundScheduleNavItem = document.getElementById('adminGroundScheduleNavItem');
+    if (adminGroundScheduleNavItem) adminGroundScheduleNavItem.hidden = !isAdmin;
     var activeId = (window.location.hash || '#dashboard').replace('#', '');
-    if (activeId === 'guided-notes' && (!member || member.role !== 'admin')) showSection('dashboard');
+    if ((ADMIN_PREVIEW_SECTIONS.indexOf(activeId) !== -1 || ADMIN_ONLY_SECTIONS.indexOf(activeId) !== -1) && !isAdmin) showSection('dashboard');
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -1963,7 +2089,7 @@
      Per-prompt free-text responses a student will eventually fill in on
      every Apex Advantage module page. Hidden from students entirely for
      now: the nav item stays `hidden` unless renderAdminIfApplicable()
-     unhides it, and showSection()/enforceGuidedNotesAccess() bounce any
+     unhides it, and showSection()/enforceAdminPreviewAccess() bounce any
      non-admin who reaches #guided-notes straight back to the dashboard.
      None of that is the real security boundary, though -- it's UI
      convenience on top of the actual one, same as loadPremiumContent()
@@ -2191,8 +2317,13 @@
   function sendThrottledEmail(emailType, to, subject, contentHtml, minDays) {
     if (!member || daysSinceEmail(emailType) < minDays) return;
     emailedTypes[emailType] = Date.now();
-    sendPortalEmail(to, subject, contentHtml);
-    apexSupabase.from('portal_email_log').insert({ profile_id: member.id, email_type: emailType });
+    apexSupabase.from('portal_email_log').insert({ profile_id: member.id, email_type: emailType }).then(function (res) {
+      if (res.error) {
+        if (res.error.code !== '23505') console.warn('Email log insert failed', res.error);
+        return;
+      }
+      sendPortalEmail(to, subject, contentHtml);
+    });
   }
 
   // One-time milestone emails dedupe via portal_events (loggedEventTypes,
@@ -2628,7 +2759,7 @@
       renderAchievements();
       checkAchievements();
       renderAdminIfApplicable();
-      enforceGuidedNotesAccess();
+      enforceAdminPreviewAccess();
       renderCheckrideCountdown();
       renderMembership();
       renderBillingHistory();
