@@ -796,3 +796,57 @@
   .portal-learning-module__complete { margin-left: 0; }
   .portal-learning-module__body { grid-template-columns: 1fr; }
 }
+
+.portal-learning-module__quiz {
+  border: 1px solid rgba(244, 180, 0, 0.16);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(244, 180, 0, 0.06);
+}
+
+.portal-learning-module__quiz strong {
+  display: block;
+  color: #fff;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.portal-learning-module__quiz span {
+  display: block;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  line-height: 1.45;
+  margin-bottom: 10px;
+}
+
+.portal-curriculum-quiz__answer {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.035);
+  margin: 14px 0;
+  text-align: left;
+}
+
+.portal-curriculum-quiz__answer h3 {
+  color: var(--gold);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0 0 6px;
+}
+
+.portal-curriculum-quiz__answer p {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 13.5px;
+  line-height: 1.65;
+  margin: 0 0 12px;
+}
+
+.portal-curriculum-quiz__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 16px;
+}
