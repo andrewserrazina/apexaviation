@@ -23,6 +23,7 @@ import Messages from './pages/Messages'
 import Announcements from './pages/Announcements'
 import Reports from './pages/Reports'
 import InstructorHub from './pages/InstructorHub'
+import OperationsDashboard from './pages/operations/OperationsDashboard'
 
 export default function App() {
   return (
@@ -33,6 +34,8 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/dashboard"   element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/operations" element={<ProtectedRoute roles={['admin', 'instructor']}><Navigate to="/operations/dashboard" replace /></ProtectedRoute>} />
+            <Route path="/operations/dashboard" element={<ProtectedRoute roles={['admin', 'instructor']}><OperationsDashboard /></ProtectedRoute>} />
             <Route path="/students"    element={<ProtectedRoute adminOnly><Students /></ProtectedRoute>} />
             <Route path="/instructors" element={<ProtectedRoute><Instructors /></ProtectedRoute>} />
             <Route path="/aircraft"    element={<ProtectedRoute><Aircraft /></ProtectedRoute>} />
