@@ -19,18 +19,33 @@
         memberSince: profile && profile.created_at,
         checkridePrepUnlocked: !!(profile && profile.checkride_prep_unlocked)
       };
-      populateMember();
-      applyUnlockState();
-      applyUnlockPricing();
-      // Fire-and-forget: feeds the 7-day inactivity nudge
-      // (send-lifecycle-emails, Phase 3) a real "last seen" signal.
-      // Once per page load is enough — this isn't a click-tracking beacon.
-      apexSupabase.from('profiles').update({ portal_last_active_at: new Date().toISOString() }).eq('id', member.id);
-      return loadPremiumContent().then(function () {
-        return initPortalData();
+      return reconcileUnlockFromPurchase().then(function () {
+        populateMember();
+        applyUnlockState();
+        applyUnlockPricing();
+        // Fire-and-forget: feeds the 7-day inactivity nudge
+        // (send-lifecycle-emails, Phase 3) a real "last seen" signal.
+        // Once per page load is enough — this isn't a click-tracking beacon.
+        apexSupabase.from('profiles').update({ portal_last_active_at: new Date().toISOString() }).eq('id', member.id);
+        return loadPremiumContent().then(function () {
+          return initPortalData();
+        });
       });
     });
   }).catch(function (e) { if (e !== 'no-session') console.error(e); });
+
+
+  function reconcileUnlockFromPurchase() {
+    if (!member || member.checkridePrepUnlocked) return Promise.resolve();
+    return apexSupabase
+      .from('portal_access_purchases')
+      .select('id')
+      .eq('profile_id', member.id)
+      .limit(1)
+      .then(function (res) {
+        if (res.data && res.data.length) member.checkridePrepUnlocked = true;
+      });
+  }
 
   /* ── Premium content — fetched server-side, never bundled here ──
      DPE_DATA/CATEGORY_META/QUICK_REF/FRAMEWORK_LESSON/CHECKRIDE_DAY_LESSON
@@ -335,12 +350,20 @@
   /* ── Ground School Scheduling ───────────────────────────────── */
   var groundSchoolLoaded = false;
   var activeGroundSession = null;
+  var activeGroundSessionMode = 'legacy';
 
   function fmtSessionDate(iso) {
     return new Date(iso).toLocaleString('en-US', {
       weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
     });
   }
+  function fmtScheduledClassDate(row) {
+    if (!row.class_date || !row.start_time) return 'Date TBD';
+    return new Date(row.class_date + 'T' + row.start_time).toLocaleString('en-US', {
+      weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+    });
+  }
+
 
   function loadGroundSchool() {
     if (groundSchoolLoaded) return;
@@ -390,10 +413,11 @@
   var groundSchoolModalCta = document.getElementById('groundSchoolModalCta');
   var groundSchoolModalError = document.getElementById('groundSchoolModalError');
 
-  function openGroundSchoolModal(s) {
+  function openGroundSchoolModal(s, mode) {
     activeGroundSession = s;
+    activeGroundSessionMode = mode || 'legacy';
     groundSchoolModalTitle.textContent = s.title;
-    groundSchoolModalWhen.textContent = fmtSessionDate(s.scheduled_at);
+    groundSchoolModalWhen.textContent = activeGroundSessionMode === 'scheduled' ? fmtScheduledClassDate(s) : fmtSessionDate(s.scheduled_at);
     groundSchoolModalError.classList.remove('show');
     groundSchoolModalOverlay.classList.add('show');
   }
@@ -411,7 +435,8 @@
     apexSupabase.functions.invoke('create-checkout-session', {
       body: {
         purpose: 'ground-school-registration',
-        sessionId: activeGroundSession.id,
+        sessionId: activeGroundSessionMode === 'legacy' ? activeGroundSession.id : null,
+        scheduledClassId: activeGroundSessionMode === 'scheduled' ? activeGroundSession.id : null,
         name: member.name,
         email: member.email,
         origin: window.location.origin
@@ -442,9 +467,20 @@
         if (unlocked) {
           toast('Unlocked! Welcome to the Checkride Prep System.');
           if (window.gtag) gtag('event', 'purchase', { currency: 'USD', items: [{ item_name: 'Checkride Prep Unlock' }] });
-        }
-      });
+        });
+        return;
+      }
+
+      if (attempt < 8) {
+        window.setTimeout(function () { refreshUnlockAfterCheckout(attempt + 1); }, 1000);
+      } else {
+        toast('Payment received. Your unlock is still processing — refresh in a moment if it does not appear.');
+      }
     });
+  }
+
+  if (urlParams.get('unlocked') === '1') {
+    authReady.then(function () { refreshUnlockAfterCheckout(1); });
   }
   if (urlParams.get('registered') === '1') {
     toast('You\'re registered for ground school!');
@@ -597,6 +633,8 @@
   var myPurchase = null;
   var myInvoices = [];
   var myGroundRegistrations = [];
+  var myScheduledGroundEnrollments = [];
+  var curriculumQuizAttempts = [];
 
   function loadProgress() {
     return Promise.all([
@@ -616,7 +654,9 @@
       apexSupabase.from('portal_checkride_results').select('*').eq('profile_id', member.id).maybeSingle(),
       apexSupabase.from('portal_access_purchases').select('*').eq('profile_id', member.id).maybeSingle(),
       apexSupabase.from('invoices').select('*').eq('student_id', member.id).order('issued_at', { ascending: false }),
-      apexSupabase.from('ground_registrations').select('*, session:ground_sessions(*)').eq('profile_id', member.id)
+      apexSupabase.from('ground_registrations').select('*, session:ground_sessions(*)').eq('profile_id', member.id),
+      apexSupabase.from('scheduled_ground_class_enrollments').select('*, scheduled_class:scheduled_ground_classes(*)').eq('profile_id', member.id),
+      apexSupabase.from('curriculum_quiz_attempts').select('*').eq('profile_id', member.id).order('submitted_at', { ascending: false })
     ]).then(function (results) {
       (results[0].data || []).forEach(function (r) {
         studied[r.question_id] = r.completed;
@@ -779,6 +819,8 @@
       bumpStudyDay(0);
       checkAchievements();
       renderProgress();
+      renderLearningPath();
+      loadLearningPathClasses().then(renderLearningPath);
       renderDashboardStats();
       renderReadiness();
     });
@@ -2141,6 +2183,7 @@
     // already in flight could silently clobber it or duplicate rows in
     // the rendered list. Found via testing the new CMS, not by inspection.
     document.getElementById('adminNavItem').hidden = false;
+    document.getElementById('adminGroundScheduleNavItem').hidden = false;
     document.getElementById('guidedNotesNavItem').hidden = false;
     var adminGroundScheduleNavItem = document.getElementById('adminGroundScheduleNavItem');
     if (adminGroundScheduleNavItem) adminGroundScheduleNavItem.hidden = false;
@@ -2631,22 +2674,39 @@
   function renderMySessions() {
     var listEl = document.getElementById('mySessionsList');
     var emptyEl = document.getElementById('mySessionsEmpty');
-    var rows = myGroundRegistrations.filter(function (r) { return r.session; })
-      .sort(function (a, b) { return new Date(b.session.scheduled_at) - new Date(a.session.scheduled_at); });
+    var legacyRows = myGroundRegistrations.filter(function (r) { return r.session; }).map(function (r) {
+      return { type: 'legacy', sortDate: r.session.scheduled_at, row: r };
+    });
+    var scheduledRows = myScheduledGroundEnrollments.filter(function (r) { return r.scheduled_class; }).map(function (r) {
+      return { type: 'scheduled', sortDate: r.scheduled_class.class_date + 'T' + r.scheduled_class.start_time, row: r };
+    });
+    var rows = legacyRows.concat(scheduledRows)
+      .sort(function (a, b) { return new Date(b.sortDate) - new Date(a.sortDate); });
     if (!rows.length) {
       listEl.innerHTML = '';
       emptyEl.style.display = 'block';
       return;
     }
     emptyEl.style.display = 'none';
-    listEl.innerHTML = rows.map(function (r) {
+    listEl.innerHTML = rows.map(function (entry) {
+      if (entry.type === 'scheduled') {
+        var r = entry.row;
+        var c = r.scheduled_class;
+        var scheduledDate = fmtScheduledClassDate(c);
+        var scheduledStatus = r.attendance_status || 'registered';
+        return '<div class="portal-session-row">' +
+          '<div><div class="portal-session-row__title">' + escapeAttr(c.title) + '</div><div class="portal-session-row__meta">' + escapeAttr(scheduledDate + (c.instructor_name ? ' · ' + c.instructor_name : '')) + '</div></div>' +
+          '<span class="portal-session-row__status portal-session-row__status--' + escapeAttr(scheduledStatus) + '">' + escapeAttr(SESSION_STATUS_LABEL[scheduledStatus] || 'Registered') + '</span>' +
+        '</div>';
+      }
+      var r = entry.row;
       var s = r.session;
       var date = new Date(s.scheduled_at).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
       var statusKey = r.is_waitlisted ? 'waitlisted' : (r.attendance_status || 'registered');
       var statusLabel = r.is_waitlisted ? 'Waitlisted' : (SESSION_STATUS_LABEL[r.attendance_status] || 'Registered');
       return '<div class="portal-session-row">' +
-        '<div><div class="portal-session-row__title">' + s.title + '</div><div class="portal-session-row__meta">' + date + (s.location ? ' · ' + s.location : '') + '</div></div>' +
-        '<span class="portal-session-row__status portal-session-row__status--' + statusKey + '">' + statusLabel + '</span>' +
+        '<div><div class="portal-session-row__title">' + escapeAttr(s.title) + '</div><div class="portal-session-row__meta">' + escapeAttr(date + (s.location ? ' · ' + s.location : '')) + '</div></div>' +
+        '<span class="portal-session-row__status portal-session-row__status--' + escapeAttr(statusKey) + '">' + escapeAttr(statusLabel) + '</span>' +
       '</div>';
     }).join('');
   }
@@ -2830,14 +2890,383 @@
     });
   }
 
+  var learningPathClasses = [];
+  var learningPathClassesLoaded = false;
+  var curriculumQuizState = null;
+  var CURRICULUM_QUIZ_CATEGORY = {
+    'PPL-M01': 'eligibility',
+    'PPL-M03': 'aircraft-systems',
+    'PPL-M05': 'airspace',
+    'PPL-M06': 'weather',
+    'PPL-M07': 'performance',
+    'PPL-M10': 'privileges',
+    'PPL-M11': 'aeromedical',
+    'PPL-M12': 'adm',
+    'PPL-M13': 'crosscountry',
+    'PPL-M14': 'eligibility'
+  };
+
+  function quizKeyForModule(moduleId) { return 'ppl-module-' + moduleId.toLowerCase(); }
+
+  function quizAttemptsForModule(moduleId) {
+    return curriculumQuizAttempts.filter(function (attempt) { return attempt.module_id === moduleId; });
+  }
+
+  function bestQuizAttempt(moduleId) {
+    return quizAttemptsForModule(moduleId).sort(function (a, b) { return (b.score / b.total) - (a.score / a.total); })[0] || null;
+  }
+
+  function latestQuizAttempt(moduleId) {
+    return quizAttemptsForModule(moduleId).sort(function (a, b) { return new Date(b.submitted_at) - new Date(a.submitted_at); })[0] || null;
+  }
+
+  function quizQuestionsForModule(moduleId) {
+    var category = CURRICULUM_QUIZ_CATEGORY[moduleId];
+    if (!category) return [];
+    return DPE_DATA.filter(function (q) { return q.section === category; }).slice(0, 5);
+  }
+
+  function startCurriculumQuiz(moduleId) {
+    var curriculum = window.APEX_PRIVATE_PILOT_CURRICULUM;
+    var module = curriculum && curriculum.modules.find(function (item) { return item.id === moduleId; });
+    var questions = quizQuestionsForModule(moduleId);
+    if (!member.checkridePrepUnlocked || !DPE_DATA.length) { openUnlockModal(); return; }
+    if (!module || !questions.length) { toast('Knowledge check is not available for this module yet.'); return; }
+    curriculumQuizState = { module: module, questions: questions, index: 0, answers: {}, revealed: false };
+    renderCurriculumQuiz();
+  }
+
+  function renderCurriculumQuiz() {
+    var overlay = document.getElementById('practiceOverlay');
+    var state = curriculumQuizState;
+    if (!state) return;
+    var q = state.questions[state.index];
+    var answered = state.answers[q.id];
+    overlay.hidden = false;
+    overlay.innerHTML = '<div class="portal-practice-panel portal-curriculum-quiz">' +
+      '<button class="portal-modal__close" id="curriculumQuizClose" aria-label="Close"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>' +
+      '<div class="portal-practice-panel__top"><span>Knowledge Check · ' + escapeAttr(state.module.title) + '</span><span>' + (state.index + 1) + ' / ' + state.questions.length + '</span></div>' +
+      '<h2>' + escapeAttr(q.q) + '</h2>' +
+      '<p style="color:rgba(255,255,255,0.52);font-size:13px;line-height:1.6;margin-bottom:16px">Answer out loud first, then reveal the model answer and score yourself honestly.</p>' +
+      (state.revealed ? '<div class="portal-curriculum-quiz__answer"><h3>Model Answer</h3><p>' + escapeAttr(q.model) + '</p><h3>DPE Insight</h3><p>' + escapeAttr(q.evaluating) + '</p></div>' : '<button class="btn btn--primary" id="curriculumQuizReveal">Reveal Model Answer</button>') +
+      (state.revealed ? '<div class="portal-curriculum-quiz__actions"><button class="btn btn--ghost" data-quiz-score="false">Needs Review</button><button class="btn btn--primary" data-quiz-score="true">Got It Correct</button></div>' : '') +
+      (answered != null ? '<p style="color:rgba(255,255,255,0.45);font-size:12px;margin-top:12px">Recorded: ' + (answered ? 'correct' : 'needs review') + '</p>' : '') +
+      '</div>';
+    document.getElementById('curriculumQuizClose').addEventListener('click', function () { overlay.hidden = true; curriculumQuizState = null; });
+    var reveal = document.getElementById('curriculumQuizReveal');
+    if (reveal) reveal.addEventListener('click', function () { state.revealed = true; touchLastViewed(q.id); renderCurriculumQuiz(); });
+    overlay.querySelectorAll('[data-quiz-score]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        state.answers[q.id] = btn.dataset.quizScore === 'true';
+        state.index += 1;
+        state.revealed = false;
+        if (state.index >= state.questions.length) finishCurriculumQuiz();
+        else renderCurriculumQuiz();
+      });
+    });
+  }
+
+  function finishCurriculumQuiz() {
+    var overlay = document.getElementById('practiceOverlay');
+    var state = curriculumQuizState;
+    var score = Object.keys(state.answers).filter(function (id) { return state.answers[id]; }).length;
+    var total = state.questions.length;
+    var passed = score / total >= 0.8;
+    var attempt = {
+      profile_id: member.id,
+      course_id: 'PPL',
+      module_id: state.module.id,
+      quiz_key: quizKeyForModule(state.module.id),
+      question_ids: state.questions.map(function (q) { return q.id; }),
+      answers: state.answers,
+      score: score,
+      total: total,
+      passed: passed
+    };
+    apexSupabase.from('curriculum_quiz_attempts').insert(attempt).then(function (res) {
+      if (!res.error) curriculumQuizAttempts.unshift(Object.assign({}, attempt, { submitted_at: new Date().toISOString() }));
+      renderLearningPath();
+      renderDashboardStats();
+    });
+    overlay.innerHTML = '<div class="portal-practice-panel portal-curriculum-quiz"><h2>' + (passed ? 'Knowledge Check Passed' : 'Keep Reviewing') + '</h2>' +
+      '<p>You scored ' + score + ' / ' + total + ' on ' + escapeAttr(state.module.title) + '.</p>' +
+      '<div class="portal-curriculum-quiz__actions"><button class="btn btn--ghost" id="curriculumQuizReview">Review Module</button><button class="btn btn--primary" id="curriculumQuizDone">Done</button></div></div>';
+    document.getElementById('curriculumQuizReview').addEventListener('click', function () { overlay.hidden = true; curriculumQuizState = null; showSection('learning-path'); });
+    document.getElementById('curriculumQuizDone').addEventListener('click', function () { overlay.hidden = true; curriculumQuizState = null; });
+  }
+
+  function curriculumModuleProgress(module) {
+    var id = 'curriculum-' + module.id;
+    return !!lessonComplete[id];
+  }
+
+  function nextIncompleteCurriculumModule() {
+    var curriculum = window.APEX_PRIVATE_PILOT_CURRICULUM;
+    if (!curriculum || !curriculum.modules) return null;
+    return curriculum.modules.find(function (module) { return !curriculumModuleProgress(module); }) || null;
+  }
+
+  function scheduledClassForModule(module) {
+    var today = new Date().toISOString().slice(0, 10);
+    return learningPathClasses
+      .filter(function (row) { return row.module_id === module.id && row.status === 'published' && row.class_date >= today; })
+      .sort(function (a, b) { return (a.class_date + a.start_time).localeCompare(b.class_date + b.start_time); })[0];
+  }
+
+  function loadLearningPathClasses() {
+    if (learningPathClassesLoaded) return Promise.resolve();
+    learningPathClassesLoaded = true;
+    return apexSupabase.from('scheduled_ground_classes')
+      .select('id,module_id,title,class_date,start_time,end_time,instructor_name,status')
+      .eq('status', 'published')
+      .gte('class_date', new Date().toISOString().slice(0, 10))
+      .then(function (res) {
+        learningPathClasses = res.data || [];
+      });
+  }
+
+  function renderLearningPath() {
+    var curriculum = window.APEX_PRIVATE_PILOT_CURRICULUM;
+    var summaryEl = document.getElementById('learningPathSummary');
+    var modulesEl = document.getElementById('learningPathModules');
+    if (!summaryEl || !modulesEl) return;
+    if (!curriculum || !curriculum.modules) {
+      modulesEl.innerHTML = '<div class="portal-card"><p style="color:rgba(255,255,255,0.5);font-size:14px">Curriculum data is unavailable. Refresh the page and try again.</p></div>';
+      return;
+    }
+
+    var modules = curriculum.modules;
+    var completed = modules.filter(curriculumModuleProgress).length;
+    var pct = modules.length ? Math.round((completed / modules.length) * 100) : 0;
+    var nextModule = nextIncompleteCurriculumModule();
+    summaryEl.innerHTML = '<div class="portal-learning-summary__stat"><span>' + pct + '%</span><small>Learning path complete</small></div>' +
+      '<div class="portal-learning-summary__body"><h3>' + escapeAttr(curriculum.course.title) + '</h3><p>' + completed + ' of ' + modules.length + ' modules complete' + (nextModule ? ' · Next: ' + escapeAttr(nextModule.title) : ' · All modules complete') + '</p></div>';
+
+    modulesEl.innerHTML = '<div class="portal-learning-list">' + modules.map(function (module, index) {
+      var done = curriculumModuleProgress(module);
+      var scheduled = scheduledClassForModule(module);
+      var objectives = module.objectives.map(function (item) { return '<li>' + escapeAttr(item) + '</li>'; }).join('');
+      var lessons = module.lessons.map(function (item) { return '<span>' + escapeAttr(item) + '</span>'; }).join('');
+      var resources = module.resources.map(function (item) { return '<span>' + escapeAttr(item) + '</span>'; }).join('');
+      var latestAttempt = latestQuizAttempt(module.id);
+      var bestAttempt = bestQuizAttempt(module.id);
+      var quizQuestions = quizQuestionsForModule(module.id);
+      var quizAvailable = !!CURRICULUM_QUIZ_CATEGORY[module.id];
+      var quizStatus = latestAttempt
+        ? (latestAttempt.passed ? 'Passed' : 'Needs review') + ' · latest ' + latestAttempt.score + '/' + latestAttempt.total
+        : quizAvailable ? 'Not started' : 'Coming soon';
+      var quizAction = quizAvailable && member.checkridePrepUnlocked && quizQuestions.length
+        ? '<button class="btn btn--primary" data-start-curriculum-quiz="' + escapeAttr(module.id) + '">' + (latestAttempt ? 'Retake Knowledge Check' : 'Start Knowledge Check') + '</button>'
+        : quizAvailable && !member.checkridePrepUnlocked
+          ? '<button class="btn btn--primary" data-unlock-trigger>Unlock Knowledge Check</button>'
+          : '<button class="btn btn--ghost" disabled style="opacity:0.55;cursor:not-allowed">Knowledge Check Coming Soon</button>';
+      var quizHtml = '<div class="portal-learning-module__quiz"><strong>Knowledge Check</strong><span>' + escapeAttr(quizStatus) + (bestAttempt ? ' · Best score: ' + bestAttempt.score + '/' + bestAttempt.total : '') + '</span>' + quizAction + '</div>';
+      return '<article class="portal-card portal-learning-module' + (done ? ' complete' : '') + '">' +
+        '<div class="portal-learning-module__head">' +
+          '<div class="portal-learning-module__num">' + String(index + 1).padStart(2, '0') + '</div>' +
+          '<div><p class="portal-header__eyebrow">' + escapeAttr(module.id) + '</p><h3>' + escapeAttr(module.title) + '</h3></div>' +
+          '<label class="portal-learning-module__complete"><input type="checkbox" data-curriculum-module="' + escapeAttr(module.id) + '" ' + (done ? 'checked' : '') + ' /> Complete</label>' +
+        '</div>' +
+        '<div class="portal-learning-module__body">' +
+          '<div><h4>Objectives</h4><ul>' + objectives + '</ul></div>' +
+          '<div><h4>Lessons</h4><div class="portal-learning-tags">' + lessons + '</div></div>' +
+          '<div><h4>Resources</h4><div class="portal-learning-tags portal-learning-tags--resources">' + resources + '</div></div>' +
+          '<div class="portal-learning-module__class">' + (scheduled ? '<strong>Upcoming live class</strong><span>' + escapeAttr(scheduled.title || module.title) + ' · ' + escapeAttr(fmtScheduledClassDate(scheduled)) + '</span>' : '<strong>No live class scheduled yet</strong><span>Use the module checklist now, then register when a class is published.</span>') + '</div>' +
+          quizHtml +
+        '</div>' +
+        '<div class="portal-learning-module__actions">' +
+          '<button class="btn btn--ghost" data-goto="ground-school">Browse Classes</button>' +
+          '<button class="btn btn--primary" data-goto="checkride-prep">Study Prep Pack</button>' +
+        '</div>' +
+      '</article>';
+    }).join('') + '</div>';
+
+    modulesEl.querySelectorAll('[data-curriculum-module]').forEach(function (input) {
+      input.addEventListener('change', function (e) {
+        var moduleId = e.target.dataset.curriculumModule;
+        var lessonId = 'curriculum-' + moduleId;
+        lessonComplete[lessonId] = e.target.checked;
+        upsertRow('portal_lesson_progress', 'lesson_id', lessonId, { completed: e.target.checked });
+        bumpStudyDay(0);
+        renderLearningPath();
+        renderDashboardStats();
+      });
+    });
+    modulesEl.querySelectorAll('[data-start-curriculum-quiz]').forEach(function (btn) {
+      btn.addEventListener('click', function () { startCurriculumQuiz(btn.dataset.startCurriculumQuiz); });
+    });
+    modulesEl.querySelectorAll('[data-unlock-trigger]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) { e.stopPropagation(); openUnlockModal(); });
+    });
+  }
+
+  function computeOverallProgress() {
+    var qTotal = DPE_DATA.length;
+    var scenarioTotal = SCENARIOS.length;
+    var lessonTotal = LESSON_LIST.length;
+    var qStudied = DPE_DATA.filter(function (d) { return studied[d.id]; }).length;
+    var scenarioDone = SCENARIOS.filter(function (s) { return studied[s.id]; }).length;
+    var lessonDone = LESSON_LIST.filter(function (id) { return lessonComplete[id]; }).length;
+    var total = qTotal + scenarioTotal + lessonTotal;
+    var done = qStudied + scenarioDone + lessonDone;
+    return { total: total, done: done, pct: total ? Math.round((done / total) * 100) : 0, qStudied: qStudied, scenarioDone: scenarioDone, lessonDone: lessonDone };
+  }
+
+  function nextScheduledClassEnrollment() {
+    var now = Date.now();
+    return myScheduledGroundEnrollments
+      .filter(function (r) { return r.scheduled_class && r.payment_status === 'paid'; })
+      .map(function (r) {
+        return { enrollment: r, startsAt: new Date(r.scheduled_class.class_date + 'T' + r.scheduled_class.start_time).getTime() };
+      })
+      .filter(function (entry) { return entry.startsAt >= now; })
+      .sort(function (a, b) { return a.startsAt - b.startsAt; })[0];
+  }
+
+  function googleCalendarUrlForClass(c) {
+    if (!c || !c.class_date || !c.start_time) return '';
+    function stamp(date, time) {
+      return (date + 'T' + time).replace(/[-:]/g, '').replace(/\.\d+$/, '');
+    }
+    var start = stamp(c.class_date, c.start_time);
+    var end = stamp(c.class_date, c.end_time || c.start_time);
+    var details = [c.description || '', c.meeting_url ? 'Meeting link: ' + c.meeting_url : ''].filter(Boolean).join('\n\n');
+    return 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
+      '&text=' + encodeURIComponent(c.title || 'Apex Ground School') +
+      '&dates=' + encodeURIComponent(start + '/' + end) +
+      '&details=' + encodeURIComponent(details) +
+      '&location=' + encodeURIComponent(c.meeting_url || 'Online');
+  }
+
+  function weakestCategory() {
+    return Object.keys(CATEGORY_META).map(function (cat) {
+      return { cat: cat, label: CATEGORY_META[cat].label, pct: Math.round(categoryPct(cat) * 100) };
+    }).filter(function (c) { return c.pct < 100; }).sort(function (a, b) { return a.pct - b.pct; })[0];
+  }
+
+  function resumeTarget() {
+    var latest = null;
+    Object.keys(lastViewed).forEach(function (id) {
+      if (!latest || lastViewed[id] > latest.ts) latest = { id: id, ts: lastViewed[id] };
+    });
+    if (!latest) return { section: member && member.checkridePrepUnlocked ? 'dpe-library' : 'dpe-questions', title: member && member.checkridePrepUnlocked ? 'Open the DPE Questions Library' : 'Start the free question guide', body: 'Answer one question out loud before reading the model answer.' };
+    if (latest.id.indexOf('scenario-') === 0) return { section: 'scenarios', title: 'Continue Scenario Training', body: 'Pick up with the last scenario you opened ' + timeAgo(latest.ts) + '.' };
+    if (latest.id.indexOf('lesson-') === 0) return { section: 'checkride-prep', title: 'Resume Checkride Prep Lessons', body: 'Continue the lesson you last viewed ' + timeAgo(latest.ts) + '.' };
+    return { section: 'dpe-library', title: 'Resume DPE Questions', body: 'Continue the question bank you last viewed ' + timeAgo(latest.ts) + '.' };
+  }
+
+  function nextQuizRecommendation() {
+    var curriculum = window.APEX_PRIVATE_PILOT_CURRICULUM;
+    if (!curriculum || !curriculum.modules || !member.checkridePrepUnlocked) return null;
+    var rows = curriculum.modules.map(function (module) {
+      return { module: module, latest: latestQuizAttempt(module.id), questions: quizQuestionsForModule(module.id) };
+    }).filter(function (row) { return row.questions.length; });
+    var review = rows.find(function (row) { return row.latest && !row.latest.passed; });
+    if (review) {
+      return {
+        module: review.module,
+        title: 'Retake ' + review.module.title + ' Knowledge Check',
+        body: 'Your latest score was ' + review.latest.score + '/' + review.latest.total + '. Review the module, then retake it.',
+        cta: 'Retake Quiz'
+      };
+    }
+    var next = rows.find(function (row) { return !row.latest; });
+    if (!next) return null;
+    return {
+      module: next.module,
+      title: 'Take ' + next.module.title + ' Knowledge Check',
+      body: 'Confirm you can explain the core ideas from this module before moving on.',
+      cta: 'Start Quiz'
+    };
+  }
+
+  function renderStudentTrainingHub() {
+    var nextActionEl = document.getElementById('studentNextActionCard');
+    var nextClassEl = document.getElementById('studentNextClassCard');
+    var resumeEl = document.getElementById('studentResumeCard');
+    var planEl = document.getElementById('studentStudyPlanList');
+    if (!nextActionEl || !nextClassEl || !resumeEl || !planEl) return;
+
+    var progress = computeOverallProgress();
+    var score = computeReadiness();
+    var weak = weakestCategory();
+    var nextClass = nextScheduledClassEnrollment();
+    var resume = resumeTarget();
+    var curriculumNext = nextIncompleteCurriculumModule();
+    var quizRec = nextQuizRecommendation();
+    var action = curriculumNext
+      ? { section: 'learning-path', title: 'Continue ' + curriculumNext.title, body: 'Work through the next Private Pilot ground school module, then register for the matching live class when available.', cta: 'Open Learning Path' }
+      : { section: 'ground-school', title: 'Register for live ground school', body: 'Choose an upcoming instructor-led session and get it on your calendar.', cta: 'Browse Classes' };
+
+    if (nextClass) {
+      action = { section: 'checkride-prep', title: 'Prepare for your next class', body: 'Review the matching lesson before ' + fmtScheduledClassDate(nextClass.enrollment.scheduled_class) + '.', cta: 'Review Prep' };
+    } else if (quizRec) {
+      action = { section: 'learning-path', quizModule: quizRec.module.id, title: quizRec.title, body: quizRec.body, cta: quizRec.cta };
+    } else if (!member.checkridePrepUnlocked) {
+      action = { section: 'dpe-questions', title: 'Build momentum with the free guide', body: 'Use the 10-question guide first, then unlock the full Checkride Prep System when you are ready.', cta: 'Study Free Guide' };
+    } else if (weak) {
+      action = { section: 'dpe-library', cat: weak.cat, title: 'Review ' + weak.label, body: 'This is currently your lowest ACS coverage area at ' + weak.pct + '%.', cta: 'Review Weak Area' };
+    } else if (!checkrideModeDone && score >= 60) {
+      action = { section: 'dpe-library', practice: 'checkride', title: 'Run Checkride Mode', body: 'Simulate the oral exam with 20 randomized questions and no hints.', cta: 'Start Checkride Mode' };
+    } else if (progress.pct >= 90) {
+      action = { section: 'progress', title: 'Tighten the last few gaps', body: 'You are close. Finish any unchecked lessons, scenarios, or questions.', cta: 'Open Progress' };
+    }
+
+    nextActionEl.innerHTML = '<p class="portal-my-training__label">Next Best Action</p>' +
+      '<h3>' + escapeAttr(action.title) + '</h3>' +
+      '<p>' + escapeAttr(action.body) + '</p>' +
+      '<button class="btn btn--primary" data-student-action="next">' + escapeAttr(action.cta) + '</button>';
+
+    if (nextClass) {
+      var c = nextClass.enrollment.scheduled_class;
+      var calUrl = googleCalendarUrlForClass(c);
+      nextClassEl.innerHTML = '<p class="portal-my-training__label">Next Class</p>' +
+        '<h3>' + escapeAttr(c.title || 'Ground School Class') + '</h3>' +
+        '<p>' + escapeAttr(fmtScheduledClassDate(c) + (c.instructor_name ? ' · ' + c.instructor_name : '')) + '</p>' +
+        '<div class="portal-my-training__actions">' +
+          (c.meeting_url ? '<a class="btn btn--ghost" href="' + escapeAttr(c.meeting_url) + '" target="_blank" rel="noopener">Join</a>' : '') +
+          (calUrl ? '<a class="btn btn--ghost" href="' + escapeAttr(calUrl) + '" target="_blank" rel="noopener">Add to Calendar</a>' : '') +
+        '</div>';
+    } else {
+      nextClassEl.innerHTML = '<p class="portal-my-training__label">Next Class</p><h3>No registered class yet</h3><p>Browse upcoming live ground school classes and register when one fits your schedule.</p><button class="btn btn--ghost" data-goto="ground-school">Browse Classes</button>';
+    }
+
+    resumeEl.innerHTML = '<p class="portal-my-training__label">Resume Studying</p>' +
+      '<h3>' + escapeAttr(resume.title) + '</h3>' +
+      '<p>' + escapeAttr(resume.body) + '</p>' +
+      '<button class="btn btn--ghost" data-student-action="resume">Resume</button>';
+
+    var planRows = [
+      { label: 'Progress', value: progress.pct + '% complete', section: 'progress' },
+      { label: 'Readiness', value: score + '% · ' + (score >= 90 ? 'Checkride ready' : score >= 70 ? 'Almost there' : score >= 40 ? 'Building momentum' : 'Just getting started'), section: 'progress' },
+      { label: 'Study Plan', value: weak ? 'Focus next on ' + weak.label : 'All ACS areas complete — keep skills fresh', section: weak ? 'dpe-library' : 'progress', cat: weak && weak.cat }
+    ];
+    planEl.innerHTML = planRows.map(function (row) {
+      return '<button class="portal-my-training__plan-row" data-plan-section="' + escapeAttr(row.section) + '"' + (row.cat ? ' data-plan-cat="' + escapeAttr(row.cat) + '"' : '') + '><span>' + escapeAttr(row.label) + '</span><strong>' + escapeAttr(row.value) + '</strong></button>';
+    }).join('');
+
+    nextActionEl.querySelector('[data-student-action="next"]').addEventListener('click', function () {
+      showSection(action.section);
+      if (action.cat) setDpeCategory(action.cat);
+      if (action.practice === 'checkride') startPractice('checkride');
+      if (action.quizModule) startCurriculumQuiz(action.quizModule);
+    });
+    resumeEl.querySelector('[data-student-action="resume"]').addEventListener('click', function () { showSection(resume.section); });
+    planEl.querySelectorAll('[data-plan-section]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        showSection(btn.dataset.planSection);
+        if (btn.dataset.planCat) setDpeCategory(btn.dataset.planCat);
+      });
+    });
+  }
+
   /* ══════════════════════════════════════════════════════════════
      DASHBOARD STATS
      ══════════════════════════════════════════════════════════════ */
   function renderDashboardStats() {
-    var qStudied = DPE_DATA.filter(function (d) { return studied[d.id]; }).length;
-    var overallItems = DPE_DATA.length + SCENARIOS.length + LESSON_LIST.length;
-    var overallDone = qStudied + SCENARIOS.filter(function (s) { return studied[s.id]; }).length + LESSON_LIST.filter(function (id) { return lessonComplete[id]; }).length;
-    document.getElementById('statOverallPct').textContent = Math.round((overallDone / overallItems) * 100) + '%';
+    var progress = computeOverallProgress();
+    document.getElementById('statOverallPct').textContent = progress.pct + '%';
+    renderStudentTrainingHub();
   }
 
   function safeInitStep(label, fn) {
