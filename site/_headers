@@ -1,0 +1,12 @@
+/portal
+  Cache-Control: no-store, max-age=0
+
+/portal.html
+  Cache-Control: no-store, max-age=0
+
+/portal-stable.js
+  Cache-Control: no-cache, max-age=0
+
+/portal.js
+  Cache-Control: no-cache, max-age=0
+
