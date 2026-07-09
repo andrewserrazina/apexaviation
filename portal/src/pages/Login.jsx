@@ -19,7 +19,7 @@ export default function Login() {
     setLoading(true)
     const { error } = await signIn(email, password)
     if (error) { setError(error.message); setLoading(false) }
-    else navigate('/dashboard')
+    else navigate('/portal-select')
   }
 
   async function handleForgot(e) {
