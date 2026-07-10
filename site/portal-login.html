@@ -142,8 +142,9 @@
 
       <!-- ─── SIGN UP SUCCESS ─── -->
       <div data-view="signup-success">
-        <h1>Check your email.</h1>
-        <p class="sub">We sent you a link to set your password. Once that's done, sign in and you're ready to book ground school sessions — or unlock the Checkride Prep System whenever you're ready.</p>
+        <h1 id="signupSuccessHeading">Check your email.</h1>
+        <p class="sub" id="signupSuccessSub">We sent you a link to set your password. Once that's done, sign in and you're ready to book ground school sessions — or unlock the Checkride Prep System whenever you're ready.</p>
+        <button type="button" id="signupSuccessResetBtn" class="btn btn--primary" style="display:none;width:100%;margin-bottom:14px">Reset Password Now</button>
         <div class="login-forgot">
           <button type="button" id="backToSignInFromSuccess">← Back to Sign In</button>
         </div>
@@ -308,6 +309,26 @@
           });
         }
         if (window.gtag) gtag('event', 'sign_up', { method: 'email' });
+        // Account creation and the welcome email are two separate steps
+        // server-side (create-free-account/index.ts) -- the account can
+        // succeed even if Resend fails to send. Point them at "Forgot
+        // Password" (a real, independent recovery path -- it calls
+        // Supabase's own reset endpoint, not this same email) instead of
+        // promising an email that may never arrive.
+        var resetBtn = document.getElementById('signupSuccessResetBtn');
+        if (res.data.emailSent === false) {
+          document.getElementById('signupSuccessHeading').textContent = 'Account created.';
+          document.getElementById('signupSuccessSub').textContent = "Your account is ready, but we couldn't send the welcome email just now. Reset your password below to get in.";
+          resetBtn.style.display = 'block';
+          resetBtn.onclick = function () {
+            showView('forgot');
+            document.getElementById('forgotEmail').value = email;
+          };
+        } else {
+          document.getElementById('signupSuccessHeading').textContent = 'Check your email.';
+          document.getElementById('signupSuccessSub').textContent = "We sent you a link to set your password. Once that's done, sign in and you're ready to book ground school sessions — or unlock the Checkride Prep System whenever you're ready.";
+          resetBtn.style.display = 'none';
+        }
         showView('signup-success');
       }).catch(function (err) {
         signupSubmit.disabled = false;
