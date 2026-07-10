@@ -6,9 +6,11 @@
 // without the portal tab open at the right moment never gets that
 // email. This function recomputes the exact same conditions
 // server-side so nothing depends on the client being open, plus adds
-// three email types nothing client-side can do at all: the 7-day
-// inactivity nudge, the checkride countdown (30/14/7/3/1 days out), and
-// (Phase 6) a post-attendance ground school follow-up.
+// email types nothing client-side can do at all: the 7-day inactivity
+// nudge, the checkride countdown (30/14/7/3/1 days out), a pre-purchase
+// Checkride Prep upsell drip (1/3/7/14 days after signup, for members
+// who haven't unlocked it yet), and (Phase 6) a post-attendance ground
+// school follow-up.
 //
 // Meant to run on a schedule (daily), not per-request. See
 // RETENTION_SYSTEM.md for the exact Supabase cron/pg_net setup this
@@ -37,6 +39,15 @@
 //   - checkride_countdown_<N>: brand new, no client-side equivalent, no
 //     compatibility concern -- one-time per day-mark, dedup via
 //     portal_email_log alone.
+//   - checkride_upsell_day<1|3|7|14>: brand new, no client-side
+//     equivalent. One-time per stage via portal_events (reusing
+//     hasMilestoneFired/markMilestoneSent), keyed off days since
+//     profile.created_at rather than study progress. Only sent to
+//     members with checkride_prep_unlocked = false; stops entirely the
+//     moment they unlock it. Only the latest reached-but-unsent stage
+//     fires per run (see processCheckrideUpsell) so a profile that
+//     predates this feature doesn't get all four stages back-to-back
+//     in one run.
 //   - ground_followup_<registration_id>: brand new (Phase 6), no
 //     client-side equivalent. One-time per registration (not per
 //     profile/day), so a member who attends multiple sessions gets one
@@ -63,6 +74,7 @@ const WEAK_AREA_THROTTLE_DAYS = 14
 const INACTIVITY_THROTTLE_DAYS = 30
 const INACTIVITY_TRIGGER_DAYS = 7
 const STUDY_SECONDS_TARGET = 5 * 3600
+const UPSELL_DAYS = [1, 3, 7, 14]
 
 // Verbatim from site/portal.js's WEAK_AREA_CONTENT -- keep these two in
 // sync if the copy ever changes; duplicated rather than shared because
@@ -164,6 +176,49 @@ function emailTemplateGroundSchoolFollowUp(sessionTitle: string) {
     '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Hope it was a good session. Keep the momentum going with the Checkride Prep System in your member portal, or grab a spot at the next ground school session while it\'s fresh.</p>' +
     '<a href="https://apexaviationtx.com/portal.html#ground-school" style="display:inline-block;margin-top:8px;margin-right:10px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">See Upcoming Sessions →</a>' +
     '<a href="https://apexaviationtx.com/portal.html" style="display:inline-block;margin-top:8px;border:1.5px solid rgba(244,180,0,0.4);color:#F4B400;border-radius:8px;padding:11px 21px;text-decoration:none;font-weight:700;font-size:14px;">Go to My Portal →</a>'
+}
+
+type PricingPreview = { tier: 'founding' | 'standard'; amount_cents: number; founding_seats_remaining: number }
+
+// Pre-purchase drip for members who haven't unlocked Checkride Prep yet --
+// distinct from processMilestones/processWeakArea/processCountdown above,
+// which all require checkride_prep_unlocked (they're about studying
+// content the member already paid for). This one's job is the opposite:
+// nudge a free-portal member toward paying $29/$49 to unlock it, using
+// the exact same dedup/one-time-per-stage machinery as the milestone
+// emails (hasMilestoneFired/markMilestoneSent), keyed off days since
+// profile.created_at instead of a study-progress trigger.
+function emailTemplateUpsellDay1() {
+  return '<h2 style="color:#F4B400;margin:0 0 4px;">Here\'s what\'s waiting for you</h2>' +
+    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your free portal account already includes the "10 Questions DPEs Love to Ask" guide. When you\'re ready to go further, the full Checkride Prep System adds a 256-question DPE-style bank covering every ACS area of operation — each with a model answer, the common mistakes examiners watch for, and real-world context — plus scenario training and progress tracking.</p>' +
+    '<a href="https://apexaviationtx.com/portal.html#checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">See What\'s Inside →</a>'
+}
+
+function emailTemplateUpsellDay3() {
+  return '<h2 style="color:#F4B400;margin:0 0 4px;">A question DPEs love to ask</h2>' +
+    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">"You want to split the cost of a cross-country flight with a friend who isn\'t a pilot. Is that legal for a private pilot to do?"</p>' +
+    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Most applicants know the pro rata rule exists — fewer can explain it precisely enough to satisfy a DPE\'s follow-up questions. That\'s exactly the gap the full Checkride Prep System closes: 256 questions like this one, each with a model answer and the specific mistake examiners watch for.</p>' +
+    '<a href="https://apexaviationtx.com/portal.html#checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Unlock the Full System →</a>'
+}
+
+function emailTemplateUpsellDay7(pricing: PricingPreview) {
+  const price = '$' + Math.round(pricing.amount_cents / 100)
+  const heading = pricing.tier === 'founding'
+    ? `${pricing.founding_seats_remaining} founding spot${pricing.founding_seats_remaining === 1 ? '' : 's'} left at ${price}`
+    : 'Still thinking about the Checkride Prep System?'
+  const body = pricing.tier === 'founding'
+    ? `Founding pricing (${price}, versus $49 after the first 25 members) won't last much longer. The full system is 256 DPE-style questions, model answers, scenario training, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation.`
+    : `256 DPE-style questions, model answers, scenario training, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation. Unlock it whenever you're ready.`
+  return `<h2 style="color:#F4B400;margin:0 0 4px;">${heading}</h2>` +
+    `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">${body}</p>` +
+    `<a href="https://apexaviationtx.com/portal.html#checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Unlock for ${price} →</a>`
+}
+
+function emailTemplateUpsellDay14(pricing: PricingPreview) {
+  const price = '$' + Math.round(pricing.amount_cents / 100)
+  return '<h2 style="color:#F4B400;margin:0 0 4px;">One more look before we stop emailing about this</h2>' +
+    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">No pressure — the free guide is yours either way. But if your checkride is getting closer, the full 256-question Checkride Prep System (DPE insight, scenario training, progress tracking) is one click away whenever you want it.</p>' +
+    `<a href="https://apexaviationtx.com/portal.html#checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Unlock for ${price} →</a>`
 }
 
 type Question = { id: string; category: string; is_scenario: boolean }
@@ -318,6 +373,39 @@ async function processCountdown(supabase: any, profile: any, results: any) {
   results.countdown++
 }
 
+// Sends at most one upsell stage per run, picking the latest stage the
+// member has reached that they haven't already received (checked
+// highest-day-first). This deliberately does NOT send every stage the
+// member has passed in a single run: a profile that's 20 days old and
+// has never gotten one of these (e.g. signed up before this feature
+// shipped) gets only the day14 email, not day1+day3+day7+day14 all at
+// once. Each stage is still a one-time send via hasMilestoneFired/
+// markMilestoneSent -- once day14 fires, the sequence is exhausted and
+// this is a no-op for that profile going forward, same terminal
+// behavior as the other one-time milestone types above.
+async function processCheckrideUpsell(supabase: any, profile: any, pricing: PricingPreview, results: any) {
+  if (profile.checkride_prep_unlocked) return
+  const daysSinceSignup = (Date.now() - new Date(profile.created_at).getTime()) / 86400000
+
+  for (const day of [...UPSELL_DAYS].reverse()) {
+    if (daysSinceSignup < day) continue
+    const emailType = 'checkride_upsell_day' + day
+    if (await hasMilestoneFired(supabase, profile.id, emailType)) continue
+
+    const subjectsAndTemplates: Record<number, [string, string]> = {
+      1: ['Here\'s what\'s waiting in your Checkride Prep System', emailTemplateUpsellDay1()],
+      3: ['A question DPEs love to ask', emailTemplateUpsellDay3()],
+      7: [pricing.tier === 'founding' ? `${pricing.founding_seats_remaining} founding spots left at $${Math.round(pricing.amount_cents / 100)}` : 'Still thinking about the Checkride Prep System?', emailTemplateUpsellDay7(pricing)],
+      14: ['Last look: the Checkride Prep System', emailTemplateUpsellDay14(pricing)],
+    }
+    const [subject, html] = subjectsAndTemplates[day]
+    await sendEmail(supabase, profile.email, subject, html)
+    await markMilestoneSent(supabase, profile.id, emailType)
+    results.checkride_upsell++
+    return
+  }
+}
+
 // Phase 6: post-attendance follow-up. Iterates ground_registrations
 // directly rather than profiles -- a walk-in registrant with no matching
 // portal account (profile_id null) still has a real email on the
@@ -362,16 +450,22 @@ serve(async (req) => {
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
-  const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, ground_followup: 0, errors: [] as string[] }
+  const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, checkride_upsell: 0, ground_followup: 0, errors: [] as string[] }
 
-  const [{ data: categories }, { data: questions }, { data: profiles }] = await Promise.all([
+  const [{ data: categories }, { data: questions }, { data: profiles }, { data: pricingRows }] = await Promise.all([
     supabase.from('dpe_categories').select('id'),
     supabase.from('dpe_questions').select('id,category,is_scenario'),
     supabase.from('profiles').select('id,email,full_name,checkride_prep_unlocked,created_at,portal_last_active_at'),
+    supabase.rpc('get_checkride_prep_pricing'),
   ])
 
   const categoryIds: string[] = (categories ?? []).map((c: any) => c.id)
   const allQuestions: Question[] = questions ?? []
+  // Same tier/price every member currently sees on their own dashboard
+  // (applyUnlockPricing() in site/portal-stable.js calls this identical
+  // RPC) -- fetched once here rather than per-profile since it's a
+  // global count, not something that varies per member.
+  const pricing: PricingPreview = (pricingRows && pricingRows[0]) || { tier: 'standard', amount_cents: 4900, founding_seats_remaining: 0 }
 
   for (const profile of profiles ?? []) {
     if (!profile.email) continue
@@ -381,6 +475,8 @@ serve(async (req) => {
         await processMilestones(supabase, profile, allQuestions, categoryIds, results)
         await processWeakArea(supabase, profile, allQuestions, categoryIds, results)
         await processCountdown(supabase, profile, results)
+      } else {
+        await processCheckrideUpsell(supabase, profile, pricing, results)
       }
     } catch (err) {
       results.errors.push(`${profile.id}: ${err}`)

@@ -123,7 +123,7 @@
         </button>
         <!-- Feature preview, admin-only: renderAdminIfApplicable() is the only
              thing that ever unhides this. Not a student-facing feature yet —
-             see GUIDED_NOTES_PROMPTS in portal.js for the real access boundary. -->
+             see GUIDED_NOTES_PROMPTS in portal-stable.js for the real access boundary. -->
         <button class="portal-nav__item" data-section="guided-notes" id="guidedNotesNavItem" hidden>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 7h6M9 11h6M9 15h3M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Guided Notes
@@ -816,7 +816,8 @@
 
           <div class="portal-card">
             <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">Refer a Friend</h3>
-            <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:16px">Get a free mock oral, bonus study material, and future discounts for every friend who enrolls.</p>
+            <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:16px">Get a free Apex Advantage ground school session for every friend who enrolls.</p>
+            <div id="referralRewardBanner" style="display:none;margin-bottom:14px;padding:12px 14px;background:rgba(244,180,0,0.1);border:1px solid rgba(244,180,0,0.35);border-radius:8px;font-size:13px;color:#fff"></div>
             <div class="portal-referral-code">
               <code id="referralCode">—</code>
               <button class="btn btn--ghost" id="referralCopyBtn">Copy Link</button>
@@ -958,6 +959,7 @@
         <span class="portal-modal__price">$25</span>
       </div>
       <div class="portal-modal__price-note">Per session</div>
+      <button class="btn btn--ghost btn--full" id="groundSchoolModalRedeemBtn" style="display:none;margin-bottom:10px">🎁 Use a Free Referral Reward</button>
       <button class="btn btn--primary btn--full" id="groundSchoolModalCta">Pay &amp; Register</button>
       <p class="portal-modal__error" id="groundSchoolModalError"></p>
     </div>

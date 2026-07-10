@@ -16,7 +16,7 @@ export function emailTemplate(content: string): string {
     </div>
     ${content}
     <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:32px 0 16px;">
-    <p style="font-size:12px;color:rgba(255,255,255,0.35);margin:0 0 4px;text-align:center;">Apex Aviation · San Marcos, TX (KHYI)</p>
+    <p style="font-size:12px;color:rgba(255,255,255,0.35);margin:0 0 4px;text-align:center;">Apex Aviation · Austin, TX</p>
     <p style="font-size:11px;margin:0;text-align:center;">
       <a href="https://apexaviationtx.com" style="color:rgba(255,255,255,0.35);text-decoration:underline;">apexaviationtx.com</a>
     </p>
