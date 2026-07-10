@@ -12,6 +12,7 @@ export default function Students() {
   const [students, setStudents] = useState([])
   const [syllabi, setSyllabi] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(BLANK_EDIT)
@@ -24,10 +25,17 @@ export default function Students() {
   const [enrollSaving, setEnrollSaving] = useState(false)
 
   async function load() {
-    const [{ data: s }, { data: sy }] = await Promise.all([
-      supabase.from('profiles').select('*, logbook_entries(duration_hours)').eq('role', 'student').order('full_name'),
+    setError('')
+    // logbook_entries has two FKs to profiles (student_id and
+    // instructor_id) -- PostgREST can't auto-resolve which one to embed
+    // through without this hint, and errors the whole query out (which
+    // silently rendered as an empty student list before this fix, since
+    // the error was never checked).
+    const [{ data: s, error: studentsError }, { data: sy }] = await Promise.all([
+      supabase.from('profiles').select('*, logbook_entries!student_id(duration_hours)').eq('role', 'student').order('full_name'),
       supabase.from('syllabi').select('id, title').order('title'),
     ])
+    if (studentsError) setError(studentsError.message)
     setStudents(s ?? [])
     setSyllabi(sy ?? [])
     setLoading(false)
@@ -157,6 +165,8 @@ export default function Students() {
           <button className="btn-primary-sm" onClick={openCreate}>+ Add Student</button>
         </div>
       </div>
+
+      {error && <div className="form-error">{error}</div>}
 
       {loading ? <p className="empty-state">Loading…</p> : (
         <div className="table-wrap">
