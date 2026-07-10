@@ -287,8 +287,17 @@
       signupSubmit.disabled = true;
       signupSubmit.textContent = 'Creating your account…';
 
+      // Lead-magnet pages (e.g. checkride-prep.html) link here with
+      // ?dest=<section-id> so a signup started from a specific free
+      // resource lands on that resource in the portal, not the generic
+      // dashboard -- threaded through create-free-account's password-set
+      // email link since that's the actual first-login moment, not this
+      // page (see create-free-account/index.ts and
+      // portal-reset-password.html for the rest of the chain).
+      var dest = (new URLSearchParams(window.location.search)).get('dest') || '';
+
       apexSupabase.functions.invoke('create-free-account', {
-        body: { name: name, email: email }
+        body: { name: name, email: email, dest: dest }
       }).then(function (res) {
         signupSubmit.disabled = false;
         signupSubmit.textContent = 'Create Free Account';
