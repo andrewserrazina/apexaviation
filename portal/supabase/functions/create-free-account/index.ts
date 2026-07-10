@@ -27,7 +27,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    const { name, email } = await req.json()
+    const { name, email, dest } = await req.json()
     if (!name || !email) {
       return new Response(JSON.stringify({ error: 'Missing required fields: name, email' }), {
         status: 400,
@@ -63,10 +63,19 @@ serve(async (req) => {
     // http://localhost:3000 on a fresh Supabase project until someone
     // changes it in the dashboard. Setting it explicitly here means the
     // link is always correct regardless of that dashboard setting.
+    //
+    // `dest` (a portal section id, e.g. "dpe-questions") rides along as a
+    // query param on redirectTo -- Supabase appends its own auth tokens
+    // as a URL fragment, not the query string, so this survives to
+    // portal-reset-password.html untouched. Restricted to a plain
+    // lowercase-alphanumeric-and-hyphen id since it ends up in a URL and
+    // eventually a location.hash on the portal.
+    const safeDest = typeof dest === 'string' && /^[a-z0-9-]{1,60}$/.test(dest) ? dest : ''
+    const redirectTo = `${SITE_ORIGIN}/portal-reset-password.html${safeDest ? `?dest=${safeDest}` : ''}`
     const { data: linkData } = await supabase.auth.admin.generateLink({
       type: 'recovery',
       email,
-      options: { redirectTo: `${SITE_ORIGIN}/portal-reset-password.html` },
+      options: { redirectTo },
     })
     const actionLink = linkData?.properties?.action_link
 
