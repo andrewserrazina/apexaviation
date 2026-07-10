@@ -2113,6 +2113,35 @@ em { font-family: 'Playfair Display', serif; font-style: italic; }
 .operations-nav__item--active { color: var(--gold); background: rgba(244,180,0,0.1); }
 .operations-sidebar__footer { border-top: 1px solid var(--border); padding-top: 14px; }
 .operations-sidebar__footer p { color: var(--muted); font-size: 12px; margin: 12px 0; text-transform: capitalize; }
+
+/* ─── CURRICULUM CHIPS ───────────────────────── */
+.curriculum-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+.curriculum-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.curriculum-chip:hover { background: rgba(244,180,0,0.08); border-color: rgba(244,180,0,0.3); }
+.curriculum-chip span {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+}
 .operations-sidebar__footer button { width: 100%; border: 1px solid var(--border); background: transparent; color: var(--muted); border-radius: 8px; padding: 9px; font-family: inherit; cursor: pointer; }
 .operations-sidebar__footer button:hover { border-color: var(--gold); color: var(--gold); }
 .operations-main { margin-left: 272px; flex: 1; padding: 42px 48px; }
