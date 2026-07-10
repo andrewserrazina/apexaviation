@@ -36,6 +36,7 @@ import { PRIVATE_PILOT_COURSE, getPrivatePilotLesson, privatePilotLessons } from
 
 const TIME_ZONES = ['America/Chicago', 'America/New_York', 'America/Denver', 'America/Los_Angeles', 'UTC']
 const STATUS_OPTIONS = ['draft', 'published', 'canceled', 'completed']
+const ATTENDANCE_OPTIONS = ['registered', 'attended', 'no_show']
 
 const BLANK_FORM = {
   lesson_id: '',
@@ -103,6 +104,11 @@ export default function AdminGroundSchoolSchedule() {
   const [formError, setFormError] = useState('')
   const [notice, setNotice] = useState('')
   const [saving, setSaving] = useState(false)
+
+  const [roster, setRoster] = useState([])
+  const [rosterLoading, setRosterLoading] = useState(false)
+  const [rosterError, setRosterError] = useState('')
+  const [rosterSavingId, setRosterSavingId] = useState(null)
 
   const upcomingClasses = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10)
@@ -252,6 +258,46 @@ export default function AdminGroundSchoolSchedule() {
     load()
   }
 
+  async function openRoster(row) {
+    setActiveClass(row)
+    setModal('roster')
+    setRosterError('')
+    await loadRoster(row.id)
+  }
+
+  async function loadRoster(classId) {
+    setRosterLoading(true)
+    const { data, error } = await supabase
+      .from('scheduled_ground_class_enrollments')
+      .select('*')
+      .eq('scheduled_ground_class_id', classId)
+      .order('registered_at')
+    if (error) setRosterError(error.message)
+    else setRoster(data ?? [])
+    setRosterLoading(false)
+  }
+
+  async function updateAttendance(enrollment, status) {
+    setRosterSavingId(enrollment.id)
+    const { error } = await supabase
+      .from('scheduled_ground_class_enrollments')
+      .update({ attendance_status: status, updated_at: new Date().toISOString() })
+      .eq('id', enrollment.id)
+    setRosterSavingId(null)
+    if (error) { setRosterError(error.message); return }
+    await loadRoster(activeClass.id)
+  }
+
+  async function cancelEnrollment(enrollment) {
+    if (!window.confirm(`Cancel ${enrollment.full_name}'s enrollment and free their seat? This does not issue a Stripe refund -- do that separately in the Stripe dashboard if one is owed.`)) return
+    setRosterSavingId(enrollment.id)
+    const { error } = await supabase.rpc('cancel_scheduled_ground_class_enrollment', { p_enrollment_id: enrollment.id })
+    setRosterSavingId(null)
+    if (error) { setRosterError(error.message); return }
+    await loadRoster(activeClass.id)
+    load()
+  }
+
   return (
     <Layout>
       <div className="page-header">
@@ -299,6 +345,7 @@ export default function AdminGroundSchoolSchedule() {
                     <td><span className={`status-badge status-badge--${row.status === 'published' ? 'success' : 'warning'}`}>{row.status}</span></td>
                     <td>
                       <div className="action-row">
+                        <button className="btn-link" onClick={() => openRoster(row)}>Roster{row.enrolled_count ? ` (${row.enrolled_count})` : ''}</button>
                         <button className="btn-link" onClick={() => openEdit(row)}>Edit</button>
                         {row.status !== 'canceled' && <button className="btn-link" onClick={() => cancelClass(row)}>Cancel</button>}
                       </div>
@@ -419,6 +466,76 @@ export default function AdminGroundSchoolSchedule() {
               </div>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {modal === 'roster' && activeClass && (
+        <Modal title={`Roster — ${activeClass.title}`} onClose={closeModal} wide>
+          <div className="modal-form">
+            <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 16 }}>
+              {formatDateTime(activeClass)} · {activeClass.enrolled_count ?? 0}/{activeClass.capacity} enrolled
+            </p>
+            {rosterError && <div className="form-error" style={{ marginBottom: 12 }}>{rosterError}</div>}
+            {rosterLoading ? (
+              <p className="empty-state">Loading roster…</p>
+            ) : roster.length === 0 ? (
+              <div className="empty-state-block">
+                <h3>No one enrolled yet</h3>
+                <p>Registrations will show up here as students pay for a seat.</p>
+              </div>
+            ) : (
+              <div className="table-scroll">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Student</th>
+                      <th>Email</th>
+                      <th>Payment</th>
+                      <th>Attendance</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {roster.map(enrollment => (
+                      <tr key={enrollment.id}>
+                        <td><strong>{enrollment.full_name}</strong></td>
+                        <td>{enrollment.email}</td>
+                        <td>
+                          <span className={`status-badge status-badge--${enrollment.payment_status === 'paid' ? 'success' : 'warning'}`}>
+                            {enrollment.payment_status}
+                          </span>
+                        </td>
+                        <td>
+                          <select
+                            value={enrollment.attendance_status}
+                            disabled={enrollment.payment_status === 'canceled' || rosterSavingId === enrollment.id}
+                            onChange={e => updateAttendance(enrollment, e.target.value)}
+                          >
+                            {ATTENDANCE_OPTIONS.map(status => <option key={status} value={status}>{status}</option>)}
+                            {enrollment.attendance_status === 'canceled' && <option value="canceled">canceled</option>}
+                          </select>
+                        </td>
+                        <td>
+                          {enrollment.payment_status !== 'canceled' && (
+                            <button
+                              className="btn-link"
+                              disabled={rosterSavingId === enrollment.id}
+                              onClick={() => cancelEnrollment(enrollment)}
+                            >
+                              Cancel
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div className="modal-form__actions">
+              <button type="button" className="btn-secondary" onClick={closeModal}>Close</button>
+            </div>
+          </div>
         </Modal>
       )}
     </Layout>
