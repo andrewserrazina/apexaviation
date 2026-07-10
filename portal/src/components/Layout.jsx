@@ -24,6 +24,7 @@ const navItems = [
   { to: '/messages',        label: 'Messages',        roles: ['admin', 'instructor', 'student'] },
   { to: '/announcements',   label: 'Announcements',   roles: ['admin', 'instructor', 'student'] },
   { to: '/reports',         label: 'Reports',         roles: ['admin'] },
+  { to: '/payroll',         label: 'Payroll',         roles: ['admin'] },
   { to: '/operations/dashboard', label: 'Operations',         roles: ['admin', 'instructor'] },
   { to: '/operations/schedule',  label: 'Operations Schedule', roles: ['admin', 'instructor'] },
   { to: '/operations/simulator', label: 'Simulator',          roles: ['admin', 'instructor'] },
