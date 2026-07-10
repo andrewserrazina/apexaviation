@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import OperationsLayout from '../../components/OperationsLayout'
+import Layout from '../../components/Layout'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
 
@@ -84,7 +84,7 @@ export default function OperationsSchedule() {
   const visibleEvents = activeType === 'all' ? events : events.filter(event => event.event_type === activeType)
 
   return (
-    <OperationsLayout>
+    <Layout>
       <div className="operations-page-header operations-page-header--row">
         <div>
           <p className="operations-eyebrow">Scheduling foundation</p>
@@ -137,6 +137,6 @@ export default function OperationsSchedule() {
           </div>
         )}
       </section>
-    </OperationsLayout>
+    </Layout>
   )
 }

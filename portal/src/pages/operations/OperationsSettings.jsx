@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import OperationsLayout from '../../components/OperationsLayout'
+import Layout from '../../components/Layout'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
 
@@ -44,7 +44,7 @@ export default function OperationsSettings() {
   }
 
   return (
-    <OperationsLayout>
+    <Layout>
       <div className="operations-page-header">
         <p className="operations-eyebrow">Operations configuration</p>
         <h1>Settings</h1>
@@ -79,6 +79,6 @@ export default function OperationsSettings() {
           </div>
         )}
       </section>
-    </OperationsLayout>
+    </Layout>
   )
 }

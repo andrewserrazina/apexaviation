@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import OperationsLayout from '../../components/OperationsLayout'
+import Layout from '../../components/Layout'
 import { supabase } from '../../lib/supabase'
 
 function formatEventTime(event) {
@@ -31,7 +31,7 @@ export default function OperationsSimulator() {
   }
 
   return (
-    <OperationsLayout>
+    <Layout>
       <div className="operations-page-header operations-page-header--row">
         <div>
           <p className="operations-eyebrow">Redbird FMX / AATD workflow</p>
@@ -63,6 +63,6 @@ export default function OperationsSimulator() {
           </div>
         )}
       </section>
-    </OperationsLayout>
+    </Layout>
   )
 }
