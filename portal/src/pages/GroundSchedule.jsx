@@ -271,6 +271,22 @@ export default function GroundSchedule() {
     await refreshRegistrants()
   }
 
+  async function handleCancelRegistration(reg) {
+    if (!window.confirm(`Cancel ${reg.full_name}'s registration for this session?`)) return
+    await supabase.from('ground_registrations').delete().eq('id', reg.id)
+    const updated = await refreshRegistrantsFor(reg.session_id)
+    // The freed confirmed spot goes to whoever has been on the waitlist
+    // longest (registrants is ordered by registered_at, so the first
+    // waitlisted entry is next in line).
+    const nextWaitlisted = updated.find(r => r.is_waitlisted)
+    if (nextWaitlisted) {
+      await supabase.from('ground_registrations').update({ is_waitlisted: false }).eq('id', nextWaitlisted.id)
+      sendWaitlistPromotion(nextWaitlisted, activeSession)
+      await refreshRegistrantsFor(reg.session_id)
+    }
+    load()
+  }
+
   async function handleBulkSend(e) {
     e.preventDefault()
     setSaving(true)
@@ -692,6 +708,7 @@ export default function GroundSchedule() {
                         {(r.attendance_status === 'registered' || !r.attendance_status) && (
                           <button className="btn-link" style={{ fontSize: 12, color: '#f87171' }} onClick={() => markNoShow(r.id)}>No-Show</button>
                         )}
+                        <button className="btn-link" style={{ fontSize: 12, color: '#f87171' }} onClick={() => handleCancelRegistration(r)}>Cancel</button>
                       </div>
                     </div>
                   )
