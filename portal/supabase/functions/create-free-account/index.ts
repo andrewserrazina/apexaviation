@@ -103,7 +103,7 @@ serve(async (req) => {
           <h2 style="color:#F4B400;margin:0 0 4px;">Welcome to Apex Advantage, ${name.split(' ')[0]}!</h2>
           <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your free member portal account is ready. Set your password to get in:</p>
           <a href="${actionLink}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Set Your Password →</a>
-          <p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">Once that's done, sign in any time at apexaviationtx.com/portal-login.html. From your dashboard you can register for live ground school sessions right away — and unlock the full Checkride Prep System (DPE question bank, scenario training, progress tracking) whenever you're ready.</p>
+          <p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">Once that's done, sign in any time at advantage.apexaviationtx.com/portal-login.html. From your dashboard you can register for live ground school sessions right away — and unlock the full Checkride Prep System (DPE question bank, scenario training, progress tracking) whenever you're ready.</p>
         `),
       },
     })

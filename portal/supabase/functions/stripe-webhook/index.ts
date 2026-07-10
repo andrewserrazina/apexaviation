@@ -105,7 +105,7 @@ async function handleUnlockCheckridePrep(supabase: any, session: Stripe.Checkout
       template(`
         <h2 style="color:#F4B400;margin:0 0 4px;">You're in, ${fullName.split(' ')[0]}!</h2>
         <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your payment went through and the full Checkride Prep System is unlocked — DPE question library, scenario training, Checkride Mode, progress tracking, and everything else in the sidebar.</p>
-        <a href="https://apexaviationtx.com/portal.html#checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Start Studying →</a>
+        <a href="https://advantage.apexaviationtx.com/portal.html#checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Start Studying →</a>
       `))
   }
 }
@@ -141,7 +141,31 @@ async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Che
       p_stripe_session_id: session.id,
       p_amount_cents: amountCents,
     })
-    if (enrollError) throw enrollError
+    if (enrollError) {
+      // The enrollment RPC locks the class row and checks capacity
+      // atomically, so this only fires when two people race for the
+      // last seat and both payments land before either webhook runs.
+      // Stripe has already captured the loser's payment by this point
+      // (checkout.session.completed only fires after a successful
+      // charge) -- without an explicit refund here, that student would
+      // be charged for a class they never got into, with nothing to
+      // tell them why.
+      if (session.payment_intent) {
+        try {
+          await stripe.refunds.create({ payment_intent: session.payment_intent as string })
+        } catch (refundErr) {
+          console.error('stripe-webhook: refund failed after full-class enrollment error', refundErr)
+        }
+      }
+      if (email) {
+        await sendEmail(supabase, email, 'Class full — you have been refunded',
+          template(`
+            <h2 style="color:#F4B400;margin:0 0 4px;">Sorry, ${fullName.split(' ')[0]} — that class just filled up</h2>
+            <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Someone grabbed the last seat right as your payment came through. You have not been enrolled, and your payment has been fully refunded. Head back to the Ground School page in your portal to pick another session.</p>
+          `))
+      }
+      throw enrollError
+    }
 
     await supabase.from('portal_events').insert({
       profile_id: matchingProfile?.id ?? null,
