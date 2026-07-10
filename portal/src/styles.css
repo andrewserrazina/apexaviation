@@ -3,16 +3,22 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --navy:    #06080f;
-  --navy-2:  #090e1a;
-  --navy-3:  #111d33;
+  /* Matches site/styles.css's Apex Advantage palette (--navy/--gold/etc.)
+     exactly for the first two tiers; --navy-3 is a third, lighter tier
+     this app already relies on for nested/interactive elements (inputs,
+     table hovers) that Apex Advantage's simpler two-tier system doesn't
+     need -- extrapolated to continue the same elevation curve rather
+     than introduced from nothing. */
+  --navy:    #0B1F3A;
+  --navy-2:  #162C4F;
+  --navy-3:  #1E3B68;
   --gold:    #F4B400;
-  --gold-2:  #C8910A;
-  --gold-light: #F9CC4A;
+  --gold-2:  #D4920A;
+  --gold-light: #F9D04A;
   --white:   #ffffff;
-  --text:    rgba(255,255,255,0.88);
+  --text:    rgba(255,255,255,0.85);
   --muted:   rgba(255,255,255,0.48);
-  --border:  rgba(255,255,255,0.07);
+  --border:  rgba(255,255,255,0.09);
   --sidebar-w: 248px;
   --font-sans: 'Montserrat', sans-serif;
   --font-serif: 'Playfair Display', serif;

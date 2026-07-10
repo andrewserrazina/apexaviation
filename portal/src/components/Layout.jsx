@@ -92,7 +92,7 @@ export default function Layout({ children }) {
         </button>
         <div className="topbar__brand">
           <ApexLogo size={26} />
-          <span className="topbar__name">APEX <em>Advantage</em></span>
+          <span className="topbar__name">APEX <em>Operations</em></span>
         </div>
         <NotificationBell />
       </header>
@@ -105,7 +105,7 @@ export default function Layout({ children }) {
           <ApexLogo size={34} />
           <div className="sidebar__brand-text">
             <span className="sidebar__name-apex">APEX</span>
-            <span className="sidebar__name-sub">— ADVANTAGE —</span>
+            <span className="sidebar__name-sub">— OPERATIONS —</span>
           </div>
           <button className="sidebar__close" onClick={closeSidebar} aria-label="Close menu">✕</button>
         </div>
