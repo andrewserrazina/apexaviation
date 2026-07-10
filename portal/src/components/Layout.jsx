@@ -5,30 +5,55 @@ import { supabase } from '../lib/supabase'
 import ApexLogo from './ApexLogo'
 import NotificationBell from './NotificationBell'
 
-const navItems = [
-  { to: '/dashboard',       label: 'Dashboard',       roles: ['admin', 'instructor', 'student'] },
-  { to: '/analytics',       label: 'Analytics',       roles: ['admin'] },
-  { to: '/students',        label: 'Students',        roles: ['admin'] },
-  { to: '/instructors',     label: 'Instructors',     roles: ['admin', 'instructor', 'student'] },
-  { to: '/aircraft',        label: 'Fleet',           roles: ['admin', 'instructor', 'student'] },
-  { to: '/syllabi',         label: 'Syllabi',         roles: ['admin', 'instructor', 'student'] },
-  { to: '/schedule',        label: 'Schedule',        roles: ['admin', 'instructor', 'student'] },
-  { to: '/logbook',         label: 'Logbook',         roles: ['admin', 'instructor', 'student'] },
-  { to: '/billing',         label: 'Billing',         roles: ['admin', 'instructor', 'student'] },
-  { to: '/documents',       label: 'Documents',       roles: ['admin', 'instructor', 'student'] },
-  { to: '/ground-schedule', label: 'Ground School',   roles: ['admin', 'instructor', 'student'] },
-  { to: '/admin/ground-school-schedule', label: 'Class Scheduler', roles: ['admin'] },
-  { to: '/endorsements',    label: 'Endorsements',    roles: ['admin', 'instructor', 'student'] },
-  { to: '/instructor-hub',  label: 'Instructor Hub',  roles: ['admin', 'instructor'] },
-  { to: '/crm',             label: 'CRM',             roles: ['admin', 'instructor'] },
-  { to: '/messages',        label: 'Messages',        roles: ['admin', 'instructor', 'student'] },
-  { to: '/announcements',   label: 'Announcements',   roles: ['admin', 'instructor', 'student'] },
-  { to: '/reports',         label: 'Reports',         roles: ['admin'] },
-  { to: '/payroll',         label: 'Payroll',         roles: ['admin'] },
-  { to: '/operations/dashboard', label: 'Operations',         roles: ['admin', 'instructor'] },
-  { to: '/operations/schedule',  label: 'Operations Schedule', roles: ['admin', 'instructor'] },
-  { to: '/operations/simulator', label: 'Simulator',          roles: ['admin', 'instructor'] },
-  { to: '/operations/settings',  label: 'Operations Settings', roles: ['admin'] },
+const navGroups = [
+  {
+    label: 'Overview',
+    items: [
+      { to: '/dashboard', label: 'Dashboard', roles: ['admin', 'instructor', 'student'] },
+      { to: '/analytics', label: 'Analytics',  roles: ['admin'] },
+    ],
+  },
+  {
+    label: 'Training',
+    items: [
+      { to: '/students',        label: 'Students',        roles: ['admin'] },
+      { to: '/instructors',     label: 'Instructors',     roles: ['admin', 'instructor', 'student'] },
+      { to: '/aircraft',        label: 'Fleet',           roles: ['admin', 'instructor', 'student'] },
+      { to: '/syllabi',         label: 'Syllabi',         roles: ['admin', 'instructor', 'student'] },
+      { to: '/schedule',        label: 'Schedule',        roles: ['admin', 'instructor', 'student'] },
+      { to: '/logbook',         label: 'Logbook',         roles: ['admin', 'instructor', 'student'] },
+      { to: '/endorsements',    label: 'Endorsements',    roles: ['admin', 'instructor', 'student'] },
+      { to: '/ground-schedule', label: 'Ground School',   roles: ['admin', 'instructor', 'student'] },
+      { to: '/admin/ground-school-schedule', label: 'Class Scheduler', roles: ['admin'] },
+      { to: '/instructor-hub',  label: 'Instructor Hub',  roles: ['admin', 'instructor'] },
+    ],
+  },
+  {
+    label: 'Business',
+    items: [
+      { to: '/crm',      label: 'CRM',      roles: ['admin', 'instructor'] },
+      { to: '/billing',  label: 'Billing',  roles: ['admin', 'instructor', 'student'] },
+      { to: '/documents', label: 'Documents', roles: ['admin', 'instructor', 'student'] },
+      { to: '/reports',  label: 'Reports',  roles: ['admin'] },
+      { to: '/payroll',  label: 'Payroll',  roles: ['admin'] },
+    ],
+  },
+  {
+    label: 'Communication',
+    items: [
+      { to: '/messages',      label: 'Messages',      roles: ['admin', 'instructor', 'student'] },
+      { to: '/announcements', label: 'Announcements', roles: ['admin', 'instructor', 'student'] },
+    ],
+  },
+  {
+    label: 'Operations',
+    items: [
+      { to: '/operations/dashboard', label: 'Overview',    roles: ['admin', 'instructor'] },
+      { to: '/operations/schedule',  label: 'Schedule',    roles: ['admin', 'instructor'] },
+      { to: '/operations/simulator', label: 'Simulator',   roles: ['admin', 'instructor'] },
+      { to: '/operations/settings',  label: 'Settings',    roles: ['admin'] },
+    ],
+  },
 ]
 
 
@@ -46,7 +71,9 @@ export default function Layout({ children }) {
   const searchTimer = useRef()
 
   const role = profile?.role ?? 'student'
-  const visibleNav = navItems.filter(item => item.roles.includes(role))
+  const visibleGroups = navGroups
+    .map(group => ({ ...group, items: group.items.filter(item => item.roles.includes(role)) }))
+    .filter(group => group.items.length > 0)
 
   async function handleSignOut() {
     await signOut()
@@ -146,15 +173,20 @@ export default function Layout({ children }) {
         </div>
 
         <nav className="sidebar__nav">
-          {visibleNav.map(({ to, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              onClick={closeSidebar}
-              className={({ isActive }) => `nav-item${isActive ? ' nav-item--active' : ''}`}
-            >
-              <span>{label}</span>
-            </NavLink>
+          {visibleGroups.map(group => (
+            <div className="sidebar__nav-group" key={group.label}>
+              <p className="sidebar__nav-heading">{group.label}</p>
+              {group.items.map(({ to, label }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  onClick={closeSidebar}
+                  className={({ isActive }) => `nav-item${isActive ? ' nav-item--active' : ''}`}
+                >
+                  <span>{label}</span>
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
 
