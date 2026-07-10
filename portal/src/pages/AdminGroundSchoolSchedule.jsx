@@ -42,13 +42,19 @@ const BLANK_FORM = {
   title: '',
   description: '',
   class_date: '',
-  start_time: '',
-  end_time: '',
+  // Framework's own Class Duration Recommendation: 2 hours per session,
+  // matching Apex's existing weeknight 7:00-9:00 PM virtual ground
+  // school window. Pre-filled as a starting point, not enforced --
+  // admins can still set any time.
+  start_time: '19:00',
+  end_time: '21:00',
   timezone: 'America/Chicago',
   instructor_id: '',
   instructor_name: '',
   meeting_url: '',
-  capacity: 20,
+  // Framework's own Student Capacity Recommendation: 4-10 students per
+  // cohort, 8 is the sweet spot for a single-instructor Austin cohort.
+  capacity: 8,
   status: 'draft',
 }
 
@@ -139,7 +145,7 @@ export default function AdminGroundSchoolSchedule() {
     setForm(current => ({
       ...current,
       lesson_id: lesson.id,
-      title: current.title || `${lesson.moduleTitle} — ${lesson.title}`,
+      title: current.title || lesson.title,
       description: current.description || lesson.overview,
     }))
   }
@@ -174,7 +180,7 @@ export default function AdminGroundSchoolSchedule() {
       instructor_id: row.instructor_id ?? '',
       instructor_name: row.instructor_name ?? '',
       meeting_url: row.meeting_url ?? '',
-      capacity: row.capacity ?? 20,
+      capacity: row.capacity ?? 8,
       status: row.status ?? 'draft',
     })
     setFormError('')
@@ -342,7 +348,7 @@ export default function AdminGroundSchoolSchedule() {
               <select value={form.lesson_id} onChange={e => selectLesson(e.target.value)} required>
                 <option value="">Select a Private Pilot lesson…</option>
                 {privatePilotLessons.map(lesson => (
-                  <option key={lesson.id} value={lesson.id}>{lesson.moduleId} · {lesson.moduleTitle} — {lesson.title}</option>
+                  <option key={lesson.id} value={lesson.id}>{lesson.phase} — {lesson.title}</option>
                 ))}
               </select>
             </div>
