@@ -327,36 +327,72 @@
     groundSchoolLoaded = true;
     var listEl = document.getElementById('groundSchoolList');
     var emptyEl = document.getElementById('groundSchoolEmpty');
+    var today = new Date().toISOString().slice(0, 10);
 
-    apexSupabase.from('ground_sessions')
-      .select('*, ground_registrations(id, is_waitlisted)')
-      .gte('scheduled_at', new Date().toISOString())
-      .order('scheduled_at')
-      .then(function (res) {
-        var sessionsList = res.data || [];
-        if (!sessionsList.length) {
-          listEl.style.display = 'none';
-          emptyEl.style.display = 'block';
-          return;
-        }
-        listEl.innerHTML = '';
-        listEl.className = 'portal-grid portal-grid--2';
-        sessionsList.forEach(function (s) {
-          var confirmed = (s.ground_registrations || []).filter(function (r) { return !r.is_waitlisted; }).length;
-          var spotsLeft = s.max_students - confirmed;
-          var full = spotsLeft <= 0;
-          var card = document.createElement('div');
-          card.className = 'portal-card';
-          card.innerHTML =
-            '<div class="portal-header__eyebrow" style="margin-bottom:8px">' + (s.category || 'General').toUpperCase() + '</div>' +
-            '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">' + s.title + '</h3>' +
-            '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:4px">' + fmtSessionDate(s.scheduled_at) + '</p>' +
-            '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-bottom:16px">' + (full ? 'Full — join the waitlist' : spotsLeft + ' spot' + (spotsLeft === 1 ? '' : 's') + ' left') + '</p>' +
-            '<button class="btn btn--primary" data-register style="width:100%">' + (full ? 'Join Waitlist — $25' : 'Register — $25') + '</button>';
-          card.querySelector('[data-register]').addEventListener('click', function () { openGroundSchoolModal(s); });
-          listEl.appendChild(card);
-        });
+    Promise.all([
+      apexSupabase.from('ground_sessions')
+        .select('*, ground_registrations(id, is_waitlisted)')
+        .gte('scheduled_at', new Date().toISOString())
+        .order('scheduled_at'),
+      // Admin-scheduled Private Pilot curriculum classes
+      // (supabase-portal-schema-v15.sql/v17.sql) -- a separate table from
+      // the legacy ground_sessions above, with its own capacity/enrolled
+      // tracking maintained server-side by confirm_scheduled_ground_class_
+      // enrollment() (v17), so no join/count needed here the way the
+      // legacy path needs ground_registrations.
+      apexSupabase.from('scheduled_ground_classes')
+        .select('*')
+        .eq('status', 'published')
+        .gte('class_date', today)
+        .order('class_date')
+        .order('start_time')
+    ]).then(function (results) {
+      var legacy = (results[0].data || []).map(function (s) {
+        var confirmed = (s.ground_registrations || []).filter(function (r) { return !r.is_waitlisted; }).length;
+        return {
+          kind: 'legacy',
+          id: s.id,
+          title: s.title,
+          category: s.category || 'General',
+          scheduled_at: s.scheduled_at,
+          spotsLeft: s.max_students - confirmed
+        };
       });
+      var scheduled = (results[1].data || []).map(function (s) {
+        return {
+          kind: 'scheduled_class',
+          id: s.id,
+          title: s.title,
+          category: s.module_title || 'Private Pilot',
+          scheduled_at: new Date(s.class_date + 'T' + s.start_time).toISOString(),
+          spotsLeft: s.capacity - s.enrolled_count
+        };
+      });
+      var sessionsList = legacy.concat(scheduled).sort(function (a, b) {
+        return new Date(a.scheduled_at) - new Date(b.scheduled_at);
+      });
+
+      if (!sessionsList.length) {
+        listEl.style.display = 'none';
+        emptyEl.style.display = 'block';
+        return;
+      }
+      listEl.innerHTML = '';
+      listEl.className = 'portal-grid portal-grid--2';
+      sessionsList.forEach(function (s) {
+        var full = s.spotsLeft <= 0;
+        var card = document.createElement('div');
+        card.className = 'portal-card';
+        card.innerHTML =
+          '<div class="portal-header__eyebrow" style="margin-bottom:8px">' + s.category.toUpperCase() + '</div>' +
+          '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">' + s.title + '</h3>' +
+          '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:4px">' + fmtSessionDate(s.scheduled_at) + '</p>' +
+          '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-bottom:16px">' + (full ? 'Full — join the waitlist' : s.spotsLeft + ' spot' + (s.spotsLeft === 1 ? '' : 's') + ' left') + '</p>' +
+          '<button class="btn btn--primary" data-register style="width:100%">' + (full ? 'Join Waitlist — $25' : 'Register — $25') + '</button>';
+        card.querySelector('[data-register]').addEventListener('click', function () { openGroundSchoolModal(s); });
+        listEl.appendChild(card);
+      });
+    });
   }
 
   var groundSchoolModalOverlay = document.getElementById('groundSchoolModalOverlay');
@@ -371,7 +407,10 @@
     groundSchoolModalTitle.textContent = s.title;
     groundSchoolModalWhen.textContent = fmtSessionDate(s.scheduled_at);
     groundSchoolModalError.classList.remove('show');
-    groundSchoolModalRedeemBtn.style.display = availableReferralRewards > 0 ? 'block' : 'none';
+    // redeem_referral_reward() (v24) only spends against the legacy
+    // ground_sessions/ground_registrations path -- not wired to
+    // scheduled_ground_classes, so the option isn't offered there.
+    groundSchoolModalRedeemBtn.style.display = (s.kind === 'legacy' && availableReferralRewards > 0) ? 'block' : 'none';
     groundSchoolModalOverlay.classList.add('show');
   }
   function closeGroundSchoolModal() { groundSchoolModalOverlay.classList.remove('show'); }
@@ -388,7 +427,8 @@
     apexSupabase.functions.invoke('create-checkout-session', {
       body: {
         purpose: 'ground-school-registration',
-        sessionId: activeGroundSession.id,
+        sessionId: activeGroundSession.kind === 'legacy' ? activeGroundSession.id : undefined,
+        scheduledClassId: activeGroundSession.kind === 'scheduled_class' ? activeGroundSession.id : undefined,
         name: member.name,
         email: member.email,
         origin: window.location.origin

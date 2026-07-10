@@ -5,11 +5,14 @@ import ApexLogo from './ApexLogo'
 const operationsNav = [
   { to: '/operations/dashboard', label: 'Dashboard' },
   { to: '/operations/schedule', label: 'Schedule' },
+  { to: '/operations/simulator', label: 'Simulator' },
   { to: '/ground-schedule', label: 'Ground School' },
+  { to: '/admin/ground-school-schedule', label: 'Class Scheduler', adminOnly: true },
   { to: '/aircraft', label: 'Fleet' },
   { to: '/instructors', label: 'Instructors' },
   { to: '/students', label: 'Students' },
   { to: '/crm', label: 'CRM' },
+  { to: '/operations/settings', label: 'Settings', adminOnly: true },
 ]
 
 export default function OperationsLayout({ children }) {
@@ -32,7 +35,7 @@ export default function OperationsLayout({ children }) {
           </div>
         </div>
         <nav className="operations-nav" aria-label="Apex Operations">
-          {operationsNav.map(item => (
+          {operationsNav.filter(item => !item.adminOnly || profile?.role === 'admin').map(item => (
             <NavLink key={item.to} to={item.to} className={({ isActive }) => `operations-nav__item${isActive ? ' operations-nav__item--active' : ''}`}>
               {item.label}
             </NavLink>
