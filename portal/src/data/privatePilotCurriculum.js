@@ -45,7 +45,14 @@ export const privatePilotLessons = privatePilotModules.map((module, index) => ({
   courseId: PRIVATE_PILOT_COURSE.id,
   courseTitle: PRIVATE_PILOT_COURSE.title,
   moduleId: module.id,
-  moduleTitle: module.phase,
+  // The module's own name (e.g. "Aerodynamics"), not the phase --
+  // this flows straight into scheduled_ground_classes.module_title,
+  // which is the category badge students see when browsing Ground
+  // School. Phase grouping is exposed separately (below) for dropdown
+  // context only, so every module keeps a distinct, meaningful badge
+  // instead of 3+ modules all showing the same phase name.
+  moduleTitle: module.title,
+  phase: module.phase,
   title: `Module ${index + 1}: ${module.title}`,
   overview: module.purpose,
 }))
