@@ -114,7 +114,18 @@ em { font-family: 'Playfair Display', serif; font-style: italic; }
   padding: 16px 12px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 14px;
+  overflow-y: auto;
+}
+
+.sidebar__nav-group { display: flex; flex-direction: column; gap: 2px; }
+.sidebar__nav-heading {
+  padding: 6px 14px 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
 }
 
 .nav-item {
