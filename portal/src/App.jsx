@@ -28,6 +28,10 @@ const Reports = lazy(() => import('./pages/Reports'))
 const InstructorHub = lazy(() => import('./pages/InstructorHub'))
 const OperationsDashboard = lazy(() => import('./pages/operations/OperationsDashboard'))
 const OperationsSchedule = lazy(() => import('./pages/operations/OperationsSchedule'))
+const OperationsSimulator = lazy(() => import('./pages/operations/OperationsSimulator'))
+const OperationsSettings = lazy(() => import('./pages/operations/OperationsSettings'))
+const PortalSelector = lazy(() => import('./pages/PortalSelector'))
+const AdminGroundSchoolSchedule = lazy(() => import('./pages/AdminGroundSchoolSchedule'))
 
 export default function App() {
   return (
@@ -38,10 +42,14 @@ export default function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/portal-select" element={<ProtectedRoute><PortalSelector /></ProtectedRoute>} />
               <Route path="/dashboard"   element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/operations" element={<ProtectedRoute roles={['admin', 'instructor']}><Navigate to="/operations/dashboard" replace /></ProtectedRoute>} />
               <Route path="/operations/dashboard" element={<ProtectedRoute roles={['admin', 'instructor']}><OperationsDashboard /></ProtectedRoute>} />
               <Route path="/operations/schedule" element={<ProtectedRoute roles={['admin', 'instructor']}><OperationsSchedule /></ProtectedRoute>} />
+              <Route path="/operations/simulator" element={<ProtectedRoute roles={['admin', 'instructor']}><OperationsSimulator /></ProtectedRoute>} />
+              <Route path="/operations/settings" element={<ProtectedRoute adminOnly><OperationsSettings /></ProtectedRoute>} />
+              <Route path="/admin/ground-school-schedule" element={<ProtectedRoute adminOnly><AdminGroundSchoolSchedule /></ProtectedRoute>} />
               <Route path="/students"    element={<ProtectedRoute adminOnly><Students /></ProtectedRoute>} />
               <Route path="/instructors" element={<ProtectedRoute><Instructors /></ProtectedRoute>} />
               <Route path="/aircraft"    element={<ProtectedRoute><Aircraft /></ProtectedRoute>} />
