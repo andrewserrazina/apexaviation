@@ -312,6 +312,36 @@
     });
   });
 
+  /* ── Mock Oral booking ──────────────────────────────────────── */
+  var mockOralBookBtn = document.getElementById('mockOralBookBtn');
+  var mockOralError = document.getElementById('mockOralError');
+
+  mockOralBookBtn.addEventListener('click', function () {
+    mockOralError.classList.remove('show');
+    mockOralBookBtn.disabled = true;
+    mockOralBookBtn.textContent = 'Redirecting to secure checkout…';
+
+    apexSupabase.functions.invoke('create-checkout-session', {
+      body: { purpose: 'book-mock-oral', origin: window.location.origin },
+      headers: { Authorization: 'Bearer ' + accessToken }
+    }).then(function (res) {
+      if (res.error || !res.data || !res.data.url) {
+        return extractInvokeError(res).then(function (msg) {
+          mockOralBookBtn.disabled = false;
+          mockOralBookBtn.textContent = 'Book Now — $99';
+          mockOralError.textContent = msg;
+          mockOralError.classList.add('show');
+        });
+      }
+      window.location.href = res.data.url;
+    }).catch(function () {
+      mockOralBookBtn.disabled = false;
+      mockOralBookBtn.textContent = 'Book Now — $99';
+      mockOralError.textContent = 'Could not start checkout. Please try again.';
+      mockOralError.classList.add('show');
+    });
+  });
+
   /* ── Ground School Scheduling ───────────────────────────────── */
   var groundSchoolLoaded = false;
   var activeGroundSession = null;
@@ -505,6 +535,9 @@
   }
   if (urlParams.get('registered') === '1') {
     toast('You\'re registered for ground school!');
+  }
+  if (urlParams.get('mockoral') === '1') {
+    toast('Payment received! Andrew will email you to schedule your Mock Oral.');
   }
 
   /* ── Account form ───────────────────────────────────────────── */

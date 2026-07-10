@@ -36,6 +36,7 @@ const navGroups = [
       { to: '/documents', label: 'Documents', roles: ['admin', 'instructor', 'student'] },
       { to: '/reports',  label: 'Reports',  roles: ['admin'] },
       { to: '/payroll',  label: 'Payroll',  roles: ['admin'] },
+      { to: '/mock-oral-requests', label: 'Mock Oral Requests', roles: ['admin', 'instructor'] },
     ],
   },
   {

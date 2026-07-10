@@ -16,6 +16,14 @@
 //     session. Anonymous-friendly — no login required, same as the old
 //     cash-at-door flow, just paid online now.
 //
+//   purpose: 'book-mock-oral'
+//     An already-signed-in member booking a $99 60-minute Mock Oral.
+//     Requires the caller's Supabase access token, same as
+//     unlock-checkride-prep -- a mock oral is a 1:1 session against an
+//     instructor's calendar, not a fixed class slot, so payment just
+//     creates a request row (handled in stripe-webhook) for admin to
+//     actually schedule a time with the student.
+//
 // Env vars required (set as Supabase Edge Function secrets):
 //   STRIPE_SECRET_KEY
 //   SUPABASE_URL              (auto-provided by Supabase)
@@ -46,6 +54,7 @@ const FOUNDING_PRICE_CENTS = 2900 // $29 — first 25 unlocks
 const STANDARD_PRICE_CENTS = 4900 // $49 — everyone after
 const FOUNDING_SEATS = 25
 const GROUND_SCHOOL_PRICE_CENTS = 2500 // $25 per session
+const MOCK_ORAL_PRICE_CENTS = 9900 // $99 per 60-minute mock oral
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -119,6 +128,51 @@ serve(async (req) => {
       })
 
       return new Response(JSON.stringify({ url: session.url, tier, amount }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (purpose === 'book-mock-oral') {
+      const authHeader = req.headers.get('Authorization') || ''
+      const token = authHeader.replace('Bearer ', '').trim()
+      if (!token) return jsonError('Missing Authorization header', 401)
+
+      const { data: userData, error: userErr } = await supabase.auth.getUser(token)
+      if (userErr || !userData?.user) return jsonError('Invalid or expired session', 401)
+
+      const profileId = userData.user.id
+      const email = userData.user.email
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', profileId)
+        .maybeSingle()
+
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        customer_email: email,
+        line_items: [{
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: '60-Minute Mock Oral',
+              description: 'A live 1:1 mock oral exam session with an Apex Advantage instructor.',
+            },
+            unit_amount: MOCK_ORAL_PRICE_CENTS,
+          },
+          quantity: 1,
+        }],
+        metadata: {
+          purpose: 'book-mock-oral',
+          profile_id: profileId,
+          full_name: profile?.full_name || '',
+          email: email || '',
+        },
+        success_url: `${siteOrigin}/portal.html?mockoral=1#mock-oral`,
+        cancel_url: `${siteOrigin}/portal.html#mock-oral`,
+      })
+
+      return new Response(JSON.stringify({ url: session.url, amount: MOCK_ORAL_PRICE_CENTS }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
