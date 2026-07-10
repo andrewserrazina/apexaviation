@@ -363,6 +363,7 @@
   var groundSchoolModalTitle = document.getElementById('groundSchoolModalTitle');
   var groundSchoolModalWhen = document.getElementById('groundSchoolModalWhen');
   var groundSchoolModalCta = document.getElementById('groundSchoolModalCta');
+  var groundSchoolModalRedeemBtn = document.getElementById('groundSchoolModalRedeemBtn');
   var groundSchoolModalError = document.getElementById('groundSchoolModalError');
 
   function openGroundSchoolModal(s) {
@@ -370,6 +371,7 @@
     groundSchoolModalTitle.textContent = s.title;
     groundSchoolModalWhen.textContent = fmtSessionDate(s.scheduled_at);
     groundSchoolModalError.classList.remove('show');
+    groundSchoolModalRedeemBtn.style.display = availableReferralRewards > 0 ? 'block' : 'none';
     groundSchoolModalOverlay.classList.add('show');
   }
   function closeGroundSchoolModal() { groundSchoolModalOverlay.classList.remove('show'); }
@@ -406,6 +408,44 @@
       groundSchoolModalCta.textContent = 'Pay & Register';
       groundSchoolModalError.textContent = 'Could not start checkout. Please try again.';
       groundSchoolModalError.classList.add('show');
+    });
+  });
+
+  // Spends one earned-but-unredeemed referral reward on the selected
+  // session. redeem_referral_reward() (supabase-portal-schema-v24.sql)
+  // is the real boundary here -- it picks the caller's own oldest
+  // unredeemed 'rewarded' referral server-side and raises an exception
+  // if there isn't one, rather than trusting availableReferralRewards
+  // (which only controls whether this button is shown, same as every
+  // other gated-UI/server-boundary split in this file).
+  groundSchoolModalRedeemBtn.addEventListener('click', function () {
+    if (!activeGroundSession || !member) return;
+    groundSchoolModalError.classList.remove('show');
+    groundSchoolModalRedeemBtn.disabled = true;
+    groundSchoolModalRedeemBtn.textContent = 'Redeeming…';
+
+    apexSupabase.rpc('redeem_referral_reward', { p_session_id: activeGroundSession.id }).then(function (res) {
+      groundSchoolModalRedeemBtn.disabled = false;
+      groundSchoolModalRedeemBtn.textContent = '🎁 Use a Free Referral Reward';
+      if (res.error) {
+        groundSchoolModalError.textContent = res.error.message || 'Could not redeem your reward. Please try again.';
+        groundSchoolModalError.classList.add('show');
+        return;
+      }
+      var row = res.data && res.data[0];
+      closeGroundSchoolModal();
+      toast(row && row.is_waitlisted ? 'Added to the waitlist with your free session credit.' : 'Registered! Your free session credit has been used.');
+
+      // Reflect the spent credit locally (oldest unredeemed row, matching
+      // the RPC's own ordering) so the banner/list update immediately
+      // without waiting on a full refetch.
+      var spent = referrals.filter(function (r) { return r.status === 'rewarded' && !r.redeemed_at; })[0];
+      if (spent) spent.redeemed_at = new Date().toISOString();
+      renderReferralProgram();
+
+      groundSchoolLoaded = false;
+      loadGroundSchool();
+      renderMySessions();
     });
   });
 
@@ -543,6 +583,7 @@
   var askAndrewData = {};         // question_id -> array of {message, answer, status, mine}
   var referralCode = null;
   var referrals = [];
+  var availableReferralRewards = 0; // rewarded referrals not yet spent on a free session — see renderReferralProgram
   var checkrideDate = null;
   var testimonialSubmitted = false;
   var checkrideResult = null;
@@ -1732,7 +1773,8 @@
       var referrerName = (profileMap[r.referrer_id] && profileMap[r.referrer_id].full_name) || 'A student';
       var next = REFERRAL_NEXT_STATUS[r.status];
       var actionBtn = next ? '<button class="btn btn--ghost" style="margin-left:10px;padding:4px 12px;font-size:11.5px" data-referral-advance="' + r.id + '" data-next-status="' + next + '">' + REFERRAL_NEXT_LABEL[r.status] + '</button>' : '';
-      return '<div class="portal-referral-row" data-referral-row="' + r.id + '"><span class="email">' + referrerName + ' → ' + r.referred_email + '</span><span style="display:flex;align-items:center"><span class="status">' + r.status + '</span>' + actionBtn + '</span></div>';
+      var statusText = r.status === 'rewarded' && r.redeemed_at ? 'rewarded (redeemed)' : r.status;
+      return '<div class="portal-referral-row" data-referral-row="' + r.id + '"><span class="email">' + referrerName + ' → ' + r.referred_email + '</span><span style="display:flex;align-items:center"><span class="status">' + statusText + '</span>' + actionBtn + '</span></div>';
     }).join('');
     el.querySelectorAll('[data-referral-advance]').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -2430,16 +2472,29 @@
     return base + Math.floor(1000 + Math.random() * 9000);
   }
 
+  var REFERRAL_STATUS_LABEL = { pending: 'Pending', signed_up: 'Signed Up', rewarded: '🎁 Reward Ready' };
+
   function renderReferralProgram() {
     var codeEl = document.getElementById('referralCode');
     var link = referralCode ? ('https://apexaviationtx.com/contact.html?ref=' + referralCode) : '—';
     codeEl.textContent = link;
 
+    availableReferralRewards = referrals.filter(function (r) { return r.status === 'rewarded' && !r.redeemed_at; }).length;
+
+    var banner = document.getElementById('referralRewardBanner');
+    if (availableReferralRewards > 0) {
+      banner.style.display = 'block';
+      banner.textContent = '🎁 You have ' + availableReferralRewards + ' free ground school session' + (availableReferralRewards === 1 ? '' : 's') + ' to use — register for any session and choose "Use a Free Referral Reward" instead of paying.';
+    } else {
+      banner.style.display = 'none';
+    }
+
     var listEl = document.getElementById('referralList');
     if (!referrals.length) { listEl.innerHTML = ''; }
     else {
       listEl.innerHTML = referrals.map(function (r) {
-        return '<div class="portal-referral-row"><span class="email">' + r.referred_email + '</span><span class="status">' + r.status + '</span></div>';
+        var statusText = r.status === 'rewarded' && r.redeemed_at ? '✓ Redeemed' : (REFERRAL_STATUS_LABEL[r.status] || r.status);
+        return '<div class="portal-referral-row"><span class="email">' + r.referred_email + '</span><span class="status">' + statusText + '</span></div>';
       }).join('');
     }
   }
