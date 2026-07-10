@@ -13,6 +13,7 @@ export default function Instructors() {
 
   const [instructors, setInstructors] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(BLANK_EDIT)
@@ -21,11 +22,18 @@ export default function Instructors() {
   const [viewModal, setViewModal] = useState(null) // { instructor } for non-admin profile view
 
   async function load() {
-    const { data } = await supabase
+    setError('')
+    // lessons has two FKs to profiles (student_id and instructor_id) --
+    // PostgREST can't auto-resolve which one to embed through without
+    // this hint, and errors the whole query out (which silently
+    // rendered as an empty instructor list before this fix, since the
+    // error was never checked).
+    const { data, error: loadError } = await supabase
       .from('profiles')
-      .select('*, lessons(id)')
+      .select('*, lessons!instructor_id(id)')
       .eq('role', 'instructor')
       .order('full_name')
+    if (loadError) setError(loadError.message)
     setInstructors(data ?? [])
     setLoading(false)
   }
@@ -110,6 +118,8 @@ export default function Instructors() {
           {isAdmin && <button className="btn-primary-sm" onClick={openCreate}>+ Add Instructor</button>}
         </div>
       </div>
+
+      {error && <div className="form-error">{error}</div>}
 
       {loading ? <p className="empty-state">Loading…</p> : filtered.length === 0 ? (
         <p className="empty-state">No instructors found.</p>
