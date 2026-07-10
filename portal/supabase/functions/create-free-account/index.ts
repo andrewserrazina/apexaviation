@@ -72,14 +72,30 @@ serve(async (req) => {
     // eventually a location.hash on the portal.
     const safeDest = typeof dest === 'string' && /^[a-z0-9-]{1,60}$/.test(dest) ? dest : ''
     const redirectTo = `${SITE_ORIGIN}/portal-reset-password.html${safeDest ? `?dest=${safeDest}` : ''}`
-    const { data: linkData } = await supabase.auth.admin.generateLink({
+    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
       type: 'recovery',
       email,
       options: { redirectTo },
     })
     const actionLink = linkData?.properties?.action_link
+    // A missing link means there is no way to construct a working email at
+    // all -- the account already exists in auth.users at this point (a
+    // stray, password-less orphan), but better to surface a real error
+    // here than to silently "succeed" and let a broken/undefined link
+    // ship in the welcome email.
+    if (linkError || !actionLink) {
+      throw linkError ?? new Error('Failed to generate the account activation link.')
+    }
 
-    await supabase.functions.invoke('send-email', {
+    // send-email's result was previously never checked here -- if Resend
+    // rejected the send (bad API key, rate limit, etc.), this function
+    // still returned { ok: true } to the client, so the signup form
+    // showed success while the member had no way to ever log in and
+    // nothing was logged anywhere pointing at why. The account itself
+    // was already created successfully above, so a failed send here
+    // isn't fatal to the request -- but it must be visible to the
+    // caller (see emailSent below) rather than swallowed.
+    const emailResult = await supabase.functions.invoke('send-email', {
       body: {
         to: email,
         subject: 'Welcome to Apex Advantage — set your password',
@@ -91,8 +107,12 @@ serve(async (req) => {
         `),
       },
     })
+    const emailSent = !emailResult.error
+    if (emailResult.error) {
+      console.error('create-free-account: send-email failed for', email, emailResult.error)
+    }
 
-    return new Response(JSON.stringify({ ok: true, id: created.user.id }), {
+    return new Response(JSON.stringify({ ok: true, id: created.user.id, emailSent }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (err) {
