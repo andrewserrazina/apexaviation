@@ -12,6 +12,12 @@
 //     for the new admin-managed scheduler when scheduled_class_id is present,
 //     falling back to the legacy ground_registrations path for older sessions.
 //
+//   'book-mock-oral' — creates a mock_oral_requests row and emails both
+//     the student (confirmation) and Andrew (ADMIN_NOTIFICATION_EMAIL,
+//     defaults to info@apexaviationtx.com) so the actual 1:1 time can be
+//     coordinated -- there's no calendar/slot system for this, just a
+//     paid request queue.
+//
 // Idempotency: every event is recorded in stripe_webhook_events first;
 // a unique-constraint failure there means Stripe is retrying an event
 // we already processed, so we skip straight to returning 200.
@@ -35,6 +41,7 @@ const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY')!
 const STRIPE_WEBHOOK_SECRET = Deno.env.get('STRIPE_WEBHOOK_SECRET')!
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const ADMIN_NOTIFICATION_EMAIL = Deno.env.get('ADMIN_NOTIFICATION_EMAIL') || 'info@apexaviationtx.com'
 
 const stripe = new Stripe(STRIPE_SECRET_KEY, {
   apiVersion: '2023-10-16',
@@ -246,6 +253,36 @@ async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Che
   }
 }
 
+async function handleMockOralBooking(supabase: any, session: Stripe.Checkout.Session) {
+  const profileId = (session.metadata?.profile_id as string) || null
+  const fullName = (session.metadata?.full_name as string) || 'Student'
+  const email = (session.metadata?.email as string) || session.customer_details?.email || session.customer_email
+  const amountCents = session.amount_total ?? 0
+
+  if (!email) throw new Error('No email on checkout session')
+
+  const { error: insertError } = await supabase.from('mock_oral_requests').insert({
+    profile_id: profileId,
+    full_name: fullName,
+    email,
+    stripe_session_id: session.id,
+    amount_cents: amountCents,
+  })
+  if (insertError) throw insertError
+
+  await sendEmail(supabase, email, "You're booked — 60-Minute Mock Oral",
+    template(`
+      <h2 style="color:#F4B400;margin:0 0 4px;">Thanks, ${fullName.split(' ')[0]}!</h2>
+      <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your Mock Oral is paid for. Andrew will reach out shortly by email to schedule your 1:1 session at a time that works for you.</p>
+    `))
+
+  await sendEmail(supabase, ADMIN_NOTIFICATION_EMAIL, `New Mock Oral request — ${fullName}`,
+    template(`
+      <h2 style="color:#F4B400;margin:0 0 4px;">New Mock Oral request</h2>
+      <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;"><strong style="color:#fff">${fullName}</strong> (${email}) just paid for a 60-Minute Mock Oral. Schedule a time with them and update the request in the CRM under Mock Oral Requests.</p>
+    `))
+}
+
 serve(async (req) => {
   const signature = req.headers.get('Stripe-Signature')
   const body = await req.text()
@@ -280,6 +317,8 @@ serve(async (req) => {
       await handleUnlockCheckridePrep(supabase, session)
     } else if (purpose === 'ground-school-registration') {
       await handleGroundSchoolRegistration(supabase, session)
+    } else if (purpose === 'book-mock-oral') {
+      await handleMockOralBooking(supabase, session)
     } else {
       throw new Error(`Unknown checkout purpose: ${purpose}`)
     }

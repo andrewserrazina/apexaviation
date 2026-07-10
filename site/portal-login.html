@@ -229,9 +229,19 @@
     var requestedView = (new URLSearchParams(window.location.search)).get('view') || window.location.hash.replace('#', '');
     if (requestedView === 'signup') showView('signup');
 
+    // Carries a requested portal section through login the same way
+    // signup already carries it through create-free-account -- an
+    // existing member clicking a "dest=" link (e.g. Book a Mock Oral)
+    // should land on that section too, not just the dashboard.
+    function portalDestUrl() {
+      var dest = (new URLSearchParams(window.location.search)).get('dest') || '';
+      var safeDest = /^[a-z0-9-]{1,60}$/.test(dest) ? dest : '';
+      return 'portal.html' + (safeDest ? '#' + safeDest : '');
+    }
+
     // Already signed in? Skip straight to the portal.
     apexSupabase.auth.getSession().then(function (res) {
-      if (res.data.session) window.location.href = 'portal.html';
+      if (res.data.session) window.location.href = portalDestUrl();
     });
 
     loginForm.addEventListener('submit', function (e) {
@@ -251,7 +261,7 @@
           loginError.classList.add('show');
           return;
         }
-        window.location.href = 'portal.html';
+        window.location.href = portalDestUrl();
       });
     });
 
