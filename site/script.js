@@ -67,13 +67,37 @@ if (form) {
   });
 }
 
-// Waitlist form
+// Waitlist form -- also lands the lead in the CRM (leads table), in
+// parallel with the Formspree submission above. Fire-and-forget: if
+// this fails, the visitor still sees the normal Formspree success
+// state, since Formspree remains the primary, user-visible path.
+function captureWaitlistLead(form) {
+  const data = new FormData(form);
+  fetch('https://wqzfhcjsfzwrimvsudxy.supabase.co/functions/v1/capture-waitlist-lead', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': 'sb_publishable_8mFbiW9M0dkIv9K2fcwDxQ_oRJnlBUo',
+      'Authorization': 'Bearer sb_publishable_8mFbiW9M0dkIv9K2fcwDxQ_oRJnlBUo',
+    },
+    body: JSON.stringify({
+      firstName: data.get('firstName') || '',
+      lastName: data.get('lastName') || '',
+      email: data.get('email') || '',
+      zip: data.get('zip') || '',
+      services: data.getAll('services'),
+      source: 'Website Waitlist (home.html)',
+    }),
+  }).catch(() => {});
+}
+
 const waitlistForm = document.getElementById('waitlistForm');
 const waitlistSuccess = document.getElementById('waitlistSuccess');
 if (waitlistForm) {
   waitlistForm.addEventListener('submit', (e) => {
     e.preventDefault();
     submitToFormspree(waitlistForm, waitlistSuccess);
+    captureWaitlistLead(waitlistForm);
   });
 }
 
