@@ -1163,6 +1163,22 @@
           form.style.display = 'none';
           successEl.classList.add('visible');
           if (window.gtag) gtag('event', 'generate_lead', { currency: 'USD', value: 0 });
+          // Also lands the lead in the CRM, in parallel with Formspree
+          // above. Fire-and-forget -- the visitor's success state
+          // already happened, this failing silently changes nothing
+          // they'd see.
+          fetch('https://wqzfhcjsfzwrimvsudxy.supabase.co/functions/v1/capture-waitlist-lead', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': 'sb_publishable_8mFbiW9M0dkIv9K2fcwDxQ_oRJnlBUo',
+              'Authorization': 'Bearer sb_publishable_8mFbiW9M0dkIv9K2fcwDxQ_oRJnlBUo',
+            },
+            body: JSON.stringify({
+              email: new FormData(form).get('email') || '',
+              source: 'Website Waitlist (landing.html)',
+            }),
+          }).catch(() => {});
         } else {
           submitBtn.disabled = false;
           submitBtn.innerHTML = originalText;
