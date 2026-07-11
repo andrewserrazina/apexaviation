@@ -528,16 +528,37 @@
           member.checkridePrepUnlocked = true;
           applyUnlockState();
           toast('Unlocked! Welcome to the Checkride Prep System.');
-          if (window.gtag) gtag('event', 'purchase', { currency: 'USD', items: [{ item_name: 'Checkride Prep Unlock' }] });
+          // Founding ($29) vs standard ($49) isn't known client-side --
+          // pull the real charged amount from the purchase record itself
+          // so GA4 revenue reporting reflects what was actually paid,
+          // not a guessed/static value.
+          apexSupabase.from('portal_access_purchases').select('amount_cents, tier')
+            .eq('profile_id', member.id).order('created_at', { ascending: false }).limit(1)
+            .then(function (purchaseRes) {
+              var purchase = purchaseRes.data && purchaseRes.data[0];
+              var value = purchase ? purchase.amount_cents / 100 : 49;
+              if (window.gtag) gtag('event', 'purchase', {
+                currency: 'USD', value: value,
+                items: [{ item_name: 'Checkride Prep Unlock', item_variant: purchase ? purchase.tier : undefined, price: value, quantity: 1 }]
+              });
+            });
         }
       });
     });
   }
   if (urlParams.get('registered') === '1') {
     toast('You\'re registered for ground school!');
+    if (window.gtag) gtag('event', 'purchase', {
+      currency: 'USD', value: 25,
+      items: [{ item_name: 'Ground School Session', price: 25, quantity: 1 }]
+    });
   }
   if (urlParams.get('mockoral') === '1') {
     toast('Payment received! Andrew will email you to schedule your Mock Oral.');
+    if (window.gtag) gtag('event', 'purchase', {
+      currency: 'USD', value: 99,
+      items: [{ item_name: '60-Minute Mock Oral', price: 99, quantity: 1 }]
+    });
   }
 
   /* ── Account form ───────────────────────────────────────────── */

@@ -1,0 +1,1138 @@
+[
+  {
+    "filename": "ground-school-birmingham-al.html",
+    "city": "Birmingham",
+    "state": "Alabama",
+    "stateAbbr": "AL",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-huntsville-al.html",
+    "city": "Huntsville",
+    "state": "Alabama",
+    "stateAbbr": "AL",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-montgomery-al.html",
+    "city": "Montgomery",
+    "state": "Alabama",
+    "stateAbbr": "AL",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-anchorage-ak.html",
+    "city": "Anchorage",
+    "state": "Alaska",
+    "stateAbbr": "AK",
+    "timezone": "Alaska",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-fairbanks-ak.html",
+    "city": "Fairbanks",
+    "state": "Alaska",
+    "stateAbbr": "AK",
+    "timezone": "Alaska",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-phoenix-az.html",
+    "city": "Phoenix",
+    "state": "Arizona",
+    "stateAbbr": "AZ",
+    "timezone": "Mountain",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-tucson-az.html",
+    "city": "Tucson",
+    "state": "Arizona",
+    "stateAbbr": "AZ",
+    "timezone": "Mountain",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-mesa-az.html",
+    "city": "Mesa",
+    "state": "Arizona",
+    "stateAbbr": "AZ",
+    "timezone": "Mountain",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-little-rock-ar.html",
+    "city": "Little Rock",
+    "state": "Arkansas",
+    "stateAbbr": "AR",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-fayetteville-ar.html",
+    "city": "Fayetteville",
+    "state": "Arkansas",
+    "stateAbbr": "AR",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-fort-smith-ar.html",
+    "city": "Fort Smith",
+    "state": "Arkansas",
+    "stateAbbr": "AR",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-los-angeles-ca.html",
+    "city": "Los Angeles",
+    "state": "California",
+    "stateAbbr": "CA",
+    "timezone": "Pacific",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-san-diego-ca.html",
+    "city": "San Diego",
+    "state": "California",
+    "stateAbbr": "CA",
+    "timezone": "Pacific",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-sacramento-ca.html",
+    "city": "Sacramento",
+    "state": "California",
+    "stateAbbr": "CA",
+    "timezone": "Pacific",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-san-francisco-ca.html",
+    "city": "San Francisco",
+    "state": "California",
+    "stateAbbr": "CA",
+    "timezone": "Pacific",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-san-jose-ca.html",
+    "city": "San Jose",
+    "state": "California",
+    "stateAbbr": "CA",
+    "timezone": "Pacific",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-denver-co.html",
+    "city": "Denver",
+    "state": "Colorado",
+    "stateAbbr": "CO",
+    "timezone": "Mountain",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-colorado-springs-co.html",
+    "city": "Colorado Springs",
+    "state": "Colorado",
+    "stateAbbr": "CO",
+    "timezone": "Mountain",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-fort-collins-co.html",
+    "city": "Fort Collins",
+    "state": "Colorado",
+    "stateAbbr": "CO",
+    "timezone": "Mountain",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-hartford-ct.html",
+    "city": "Hartford",
+    "state": "Connecticut",
+    "stateAbbr": "CT",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-stamford-ct.html",
+    "city": "Stamford",
+    "state": "Connecticut",
+    "stateAbbr": "CT",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-new-haven-ct.html",
+    "city": "New Haven",
+    "state": "Connecticut",
+    "stateAbbr": "CT",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-wilmington-de.html",
+    "city": "Wilmington",
+    "state": "Delaware",
+    "stateAbbr": "DE",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-dover-de.html",
+    "city": "Dover",
+    "state": "Delaware",
+    "stateAbbr": "DE",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-jacksonville-fl.html",
+    "city": "Jacksonville",
+    "state": "Florida",
+    "stateAbbr": "FL",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-miami-fl.html",
+    "city": "Miami",
+    "state": "Florida",
+    "stateAbbr": "FL",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-tampa-fl.html",
+    "city": "Tampa",
+    "state": "Florida",
+    "stateAbbr": "FL",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-orlando-fl.html",
+    "city": "Orlando",
+    "state": "Florida",
+    "stateAbbr": "FL",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-atlanta-ga.html",
+    "city": "Atlanta",
+    "state": "Georgia",
+    "stateAbbr": "GA",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-savannah-ga.html",
+    "city": "Savannah",
+    "state": "Georgia",
+    "stateAbbr": "GA",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-columbus-ga.html",
+    "city": "Columbus",
+    "state": "Georgia",
+    "stateAbbr": "GA",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-honolulu-hi.html",
+    "city": "Honolulu",
+    "state": "Hawaii",
+    "stateAbbr": "HI",
+    "timezone": "Hawaii",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-hilo-hi.html",
+    "city": "Hilo",
+    "state": "Hawaii",
+    "stateAbbr": "HI",
+    "timezone": "Hawaii",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-boise-id.html",
+    "city": "Boise",
+    "state": "Idaho",
+    "stateAbbr": "ID",
+    "timezone": "Mountain",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-meridian-id.html",
+    "city": "Meridian",
+    "state": "Idaho",
+    "stateAbbr": "ID",
+    "timezone": "Mountain",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-idaho-falls-id.html",
+    "city": "Idaho Falls",
+    "state": "Idaho",
+    "stateAbbr": "ID",
+    "timezone": "Mountain",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-chicago-il.html",
+    "city": "Chicago",
+    "state": "Illinois",
+    "stateAbbr": "IL",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-naperville-il.html",
+    "city": "Naperville",
+    "state": "Illinois",
+    "stateAbbr": "IL",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-springfield-il.html",
+    "city": "Springfield",
+    "state": "Illinois",
+    "stateAbbr": "IL",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-indianapolis-in.html",
+    "city": "Indianapolis",
+    "state": "Indiana",
+    "stateAbbr": "IN",
+    "timezone": "Eastern",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-fort-wayne-in.html",
+    "city": "Fort Wayne",
+    "state": "Indiana",
+    "stateAbbr": "IN",
+    "timezone": "Eastern",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-evansville-in.html",
+    "city": "Evansville",
+    "state": "Indiana",
+    "stateAbbr": "IN",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-des-moines-ia.html",
+    "city": "Des Moines",
+    "state": "Iowa",
+    "stateAbbr": "IA",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-cedar-rapids-ia.html",
+    "city": "Cedar Rapids",
+    "state": "Iowa",
+    "stateAbbr": "IA",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-wichita-ks.html",
+    "city": "Wichita",
+    "state": "Kansas",
+    "stateAbbr": "KS",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-overland-park-ks.html",
+    "city": "Overland Park",
+    "state": "Kansas",
+    "stateAbbr": "KS",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-topeka-ks.html",
+    "city": "Topeka",
+    "state": "Kansas",
+    "stateAbbr": "KS",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-louisville-ky.html",
+    "city": "Louisville",
+    "state": "Kentucky",
+    "stateAbbr": "KY",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-lexington-ky.html",
+    "city": "Lexington",
+    "state": "Kentucky",
+    "stateAbbr": "KY",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-bowling-green-ky.html",
+    "city": "Bowling Green",
+    "state": "Kentucky",
+    "stateAbbr": "KY",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-new-orleans-la.html",
+    "city": "New Orleans",
+    "state": "Louisiana",
+    "stateAbbr": "LA",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-baton-rouge-la.html",
+    "city": "Baton Rouge",
+    "state": "Louisiana",
+    "stateAbbr": "LA",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-shreveport-la.html",
+    "city": "Shreveport",
+    "state": "Louisiana",
+    "stateAbbr": "LA",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-portland-me.html",
+    "city": "Portland",
+    "state": "Maine",
+    "stateAbbr": "ME",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-bangor-me.html",
+    "city": "Bangor",
+    "state": "Maine",
+    "stateAbbr": "ME",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-baltimore-md.html",
+    "city": "Baltimore",
+    "state": "Maryland",
+    "stateAbbr": "MD",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-annapolis-md.html",
+    "city": "Annapolis",
+    "state": "Maryland",
+    "stateAbbr": "MD",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-rockville-md.html",
+    "city": "Rockville",
+    "state": "Maryland",
+    "stateAbbr": "MD",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-boston-ma.html",
+    "city": "Boston",
+    "state": "Massachusetts",
+    "stateAbbr": "MA",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-worcester-ma.html",
+    "city": "Worcester",
+    "state": "Massachusetts",
+    "stateAbbr": "MA",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-springfield-ma.html",
+    "city": "Springfield",
+    "state": "Massachusetts",
+    "stateAbbr": "MA",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-detroit-mi.html",
+    "city": "Detroit",
+    "state": "Michigan",
+    "stateAbbr": "MI",
+    "timezone": "Eastern",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-grand-rapids-mi.html",
+    "city": "Grand Rapids",
+    "state": "Michigan",
+    "stateAbbr": "MI",
+    "timezone": "Eastern",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-ann-arbor-mi.html",
+    "city": "Ann Arbor",
+    "state": "Michigan",
+    "stateAbbr": "MI",
+    "timezone": "Eastern",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-minneapolis-mn.html",
+    "city": "Minneapolis",
+    "state": "Minnesota",
+    "stateAbbr": "MN",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-saint-paul-mn.html",
+    "city": "Saint Paul",
+    "state": "Minnesota",
+    "stateAbbr": "MN",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-rochester-mn.html",
+    "city": "Rochester",
+    "state": "Minnesota",
+    "stateAbbr": "MN",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-jackson-ms.html",
+    "city": "Jackson",
+    "state": "Mississippi",
+    "stateAbbr": "MS",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-gulfport-ms.html",
+    "city": "Gulfport",
+    "state": "Mississippi",
+    "stateAbbr": "MS",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-kansas-city-mo.html",
+    "city": "Kansas City",
+    "state": "Missouri",
+    "stateAbbr": "MO",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-st-louis-mo.html",
+    "city": "St. Louis",
+    "state": "Missouri",
+    "stateAbbr": "MO",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-springfield-mo.html",
+    "city": "Springfield",
+    "state": "Missouri",
+    "stateAbbr": "MO",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-billings-mt.html",
+    "city": "Billings",
+    "state": "Montana",
+    "stateAbbr": "MT",
+    "timezone": "Mountain",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-missoula-mt.html",
+    "city": "Missoula",
+    "state": "Montana",
+    "stateAbbr": "MT",
+    "timezone": "Mountain",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-omaha-ne.html",
+    "city": "Omaha",
+    "state": "Nebraska",
+    "stateAbbr": "NE",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-lincoln-ne.html",
+    "city": "Lincoln",
+    "state": "Nebraska",
+    "stateAbbr": "NE",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-las-vegas-nv.html",
+    "city": "Las Vegas",
+    "state": "Nevada",
+    "stateAbbr": "NV",
+    "timezone": "Pacific",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-reno-nv.html",
+    "city": "Reno",
+    "state": "Nevada",
+    "stateAbbr": "NV",
+    "timezone": "Pacific",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-henderson-nv.html",
+    "city": "Henderson",
+    "state": "Nevada",
+    "stateAbbr": "NV",
+    "timezone": "Pacific",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-manchester-nh.html",
+    "city": "Manchester",
+    "state": "New Hampshire",
+    "stateAbbr": "NH",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-nashua-nh.html",
+    "city": "Nashua",
+    "state": "New Hampshire",
+    "stateAbbr": "NH",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-newark-nj.html",
+    "city": "Newark",
+    "state": "New Jersey",
+    "stateAbbr": "NJ",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-jersey-city-nj.html",
+    "city": "Jersey City",
+    "state": "New Jersey",
+    "stateAbbr": "NJ",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-trenton-nj.html",
+    "city": "Trenton",
+    "state": "New Jersey",
+    "stateAbbr": "NJ",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-albuquerque-nm.html",
+    "city": "Albuquerque",
+    "state": "New Mexico",
+    "stateAbbr": "NM",
+    "timezone": "Mountain",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-santa-fe-nm.html",
+    "city": "Santa Fe",
+    "state": "New Mexico",
+    "stateAbbr": "NM",
+    "timezone": "Mountain",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-new-york-ny.html",
+    "city": "New York",
+    "state": "New York",
+    "stateAbbr": "NY",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-buffalo-ny.html",
+    "city": "Buffalo",
+    "state": "New York",
+    "stateAbbr": "NY",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-rochester-ny.html",
+    "city": "Rochester",
+    "state": "New York",
+    "stateAbbr": "NY",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-albany-ny.html",
+    "city": "Albany",
+    "state": "New York",
+    "stateAbbr": "NY",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-charlotte-nc.html",
+    "city": "Charlotte",
+    "state": "North Carolina",
+    "stateAbbr": "NC",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-raleigh-nc.html",
+    "city": "Raleigh",
+    "state": "North Carolina",
+    "stateAbbr": "NC",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-durham-nc.html",
+    "city": "Durham",
+    "state": "North Carolina",
+    "stateAbbr": "NC",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-fargo-nd.html",
+    "city": "Fargo",
+    "state": "North Dakota",
+    "stateAbbr": "ND",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-bismarck-nd.html",
+    "city": "Bismarck",
+    "state": "North Dakota",
+    "stateAbbr": "ND",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-columbus-oh.html",
+    "city": "Columbus",
+    "state": "Ohio",
+    "stateAbbr": "OH",
+    "timezone": "Eastern",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-cleveland-oh.html",
+    "city": "Cleveland",
+    "state": "Ohio",
+    "stateAbbr": "OH",
+    "timezone": "Eastern",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-cincinnati-oh.html",
+    "city": "Cincinnati",
+    "state": "Ohio",
+    "stateAbbr": "OH",
+    "timezone": "Eastern",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-toledo-oh.html",
+    "city": "Toledo",
+    "state": "Ohio",
+    "stateAbbr": "OH",
+    "timezone": "Eastern",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-oklahoma-city-ok.html",
+    "city": "Oklahoma City",
+    "state": "Oklahoma",
+    "stateAbbr": "OK",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-tulsa-ok.html",
+    "city": "Tulsa",
+    "state": "Oklahoma",
+    "stateAbbr": "OK",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-norman-ok.html",
+    "city": "Norman",
+    "state": "Oklahoma",
+    "stateAbbr": "OK",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-portland-or.html",
+    "city": "Portland",
+    "state": "Oregon",
+    "stateAbbr": "OR",
+    "timezone": "Pacific",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-eugene-or.html",
+    "city": "Eugene",
+    "state": "Oregon",
+    "stateAbbr": "OR",
+    "timezone": "Pacific",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-salem-or.html",
+    "city": "Salem",
+    "state": "Oregon",
+    "stateAbbr": "OR",
+    "timezone": "Pacific",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-philadelphia-pa.html",
+    "city": "Philadelphia",
+    "state": "Pennsylvania",
+    "stateAbbr": "PA",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-pittsburgh-pa.html",
+    "city": "Pittsburgh",
+    "state": "Pennsylvania",
+    "stateAbbr": "PA",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-harrisburg-pa.html",
+    "city": "Harrisburg",
+    "state": "Pennsylvania",
+    "stateAbbr": "PA",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-providence-ri.html",
+    "city": "Providence",
+    "state": "Rhode Island",
+    "stateAbbr": "RI",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-warwick-ri.html",
+    "city": "Warwick",
+    "state": "Rhode Island",
+    "stateAbbr": "RI",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-charleston-sc.html",
+    "city": "Charleston",
+    "state": "South Carolina",
+    "stateAbbr": "SC",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-columbia-sc.html",
+    "city": "Columbia",
+    "state": "South Carolina",
+    "stateAbbr": "SC",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-greenville-sc.html",
+    "city": "Greenville",
+    "state": "South Carolina",
+    "stateAbbr": "SC",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-sioux-falls-sd.html",
+    "city": "Sioux Falls",
+    "state": "South Dakota",
+    "stateAbbr": "SD",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-rapid-city-sd.html",
+    "city": "Rapid City",
+    "state": "South Dakota",
+    "stateAbbr": "SD",
+    "timezone": "Mountain",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-nashville-tn.html",
+    "city": "Nashville",
+    "state": "Tennessee",
+    "stateAbbr": "TN",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-memphis-tn.html",
+    "city": "Memphis",
+    "state": "Tennessee",
+    "stateAbbr": "TN",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-knoxville-tn.html",
+    "city": "Knoxville",
+    "state": "Tennessee",
+    "stateAbbr": "TN",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-chattanooga-tn.html",
+    "city": "Chattanooga",
+    "state": "Tennessee",
+    "stateAbbr": "TN",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-houston-tx.html",
+    "city": "Houston",
+    "state": "Texas",
+    "stateAbbr": "TX",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-san-antonio-tx.html",
+    "city": "San Antonio",
+    "state": "Texas",
+    "stateAbbr": "TX",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-dallas-tx.html",
+    "city": "Dallas",
+    "state": "Texas",
+    "stateAbbr": "TX",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-el-paso-tx.html",
+    "city": "El Paso",
+    "state": "Texas",
+    "stateAbbr": "TX",
+    "timezone": "Mountain",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-fort-worth-tx.html",
+    "city": "Fort Worth",
+    "state": "Texas",
+    "stateAbbr": "TX",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-salt-lake-city-ut.html",
+    "city": "Salt Lake City",
+    "state": "Utah",
+    "stateAbbr": "UT",
+    "timezone": "Mountain",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-provo-ut.html",
+    "city": "Provo",
+    "state": "Utah",
+    "stateAbbr": "UT",
+    "timezone": "Mountain",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-ogden-ut.html",
+    "city": "Ogden",
+    "state": "Utah",
+    "stateAbbr": "UT",
+    "timezone": "Mountain",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-burlington-vt.html",
+    "city": "Burlington",
+    "state": "Vermont",
+    "stateAbbr": "VT",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-montpelier-vt.html",
+    "city": "Montpelier",
+    "state": "Vermont",
+    "stateAbbr": "VT",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-virginia-beach-va.html",
+    "city": "Virginia Beach",
+    "state": "Virginia",
+    "stateAbbr": "VA",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-richmond-va.html",
+    "city": "Richmond",
+    "state": "Virginia",
+    "stateAbbr": "VA",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-arlington-va.html",
+    "city": "Arlington",
+    "state": "Virginia",
+    "stateAbbr": "VA",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-seattle-wa.html",
+    "city": "Seattle",
+    "state": "Washington",
+    "stateAbbr": "WA",
+    "timezone": "Pacific",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-spokane-wa.html",
+    "city": "Spokane",
+    "state": "Washington",
+    "stateAbbr": "WA",
+    "timezone": "Pacific",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-tacoma-wa.html",
+    "city": "Tacoma",
+    "state": "Washington",
+    "stateAbbr": "WA",
+    "timezone": "Pacific",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-charleston-wv.html",
+    "city": "Charleston",
+    "state": "West Virginia",
+    "stateAbbr": "WV",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-morgantown-wv.html",
+    "city": "Morgantown",
+    "state": "West Virginia",
+    "stateAbbr": "WV",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-milwaukee-wi.html",
+    "city": "Milwaukee",
+    "state": "Wisconsin",
+    "stateAbbr": "WI",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-madison-wi.html",
+    "city": "Madison",
+    "state": "Wisconsin",
+    "stateAbbr": "WI",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-green-bay-wi.html",
+    "city": "Green Bay",
+    "state": "Wisconsin",
+    "stateAbbr": "WI",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-cheyenne-wy.html",
+    "city": "Cheyenne",
+    "state": "Wyoming",
+    "stateAbbr": "WY",
+    "timezone": "Mountain",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-casper-wy.html",
+    "city": "Casper",
+    "state": "Wyoming",
+    "stateAbbr": "WY",
+    "timezone": "Mountain",
+    "region": "West"
+  }
+]

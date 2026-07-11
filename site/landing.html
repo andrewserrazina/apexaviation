@@ -1162,6 +1162,7 @@
         if (res.ok) {
           form.style.display = 'none';
           successEl.classList.add('visible');
+          if (window.gtag) gtag('event', 'generate_lead', { currency: 'USD', value: 0 });
         } else {
           submitBtn.disabled = false;
           submitBtn.innerHTML = originalText;
