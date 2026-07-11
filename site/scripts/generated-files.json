@@ -16,8 +16,24 @@
     "region": "South"
   },
   {
+    "filename": "ground-school-montgomery-al.html",
+    "city": "Montgomery",
+    "state": "Alabama",
+    "stateAbbr": "AL",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
     "filename": "ground-school-anchorage-ak.html",
     "city": "Anchorage",
+    "state": "Alaska",
+    "stateAbbr": "AK",
+    "timezone": "Alaska",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-fairbanks-ak.html",
+    "city": "Fairbanks",
     "state": "Alaska",
     "stateAbbr": "AK",
     "timezone": "Alaska",
@@ -40,6 +56,14 @@
     "region": "West"
   },
   {
+    "filename": "ground-school-mesa-az.html",
+    "city": "Mesa",
+    "state": "Arizona",
+    "stateAbbr": "AZ",
+    "timezone": "Mountain",
+    "region": "West"
+  },
+  {
     "filename": "ground-school-little-rock-ar.html",
     "city": "Little Rock",
     "state": "Arkansas",
@@ -50,6 +74,14 @@
   {
     "filename": "ground-school-fayetteville-ar.html",
     "city": "Fayetteville",
+    "state": "Arkansas",
+    "stateAbbr": "AR",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-fort-smith-ar.html",
+    "city": "Fort Smith",
     "state": "Arkansas",
     "stateAbbr": "AR",
     "timezone": "Central",
@@ -80,6 +112,22 @@
     "region": "West"
   },
   {
+    "filename": "ground-school-san-francisco-ca.html",
+    "city": "San Francisco",
+    "state": "California",
+    "stateAbbr": "CA",
+    "timezone": "Pacific",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-san-jose-ca.html",
+    "city": "San Jose",
+    "state": "California",
+    "stateAbbr": "CA",
+    "timezone": "Pacific",
+    "region": "West"
+  },
+  {
     "filename": "ground-school-denver-co.html",
     "city": "Denver",
     "state": "Colorado",
@@ -96,6 +144,14 @@
     "region": "West"
   },
   {
+    "filename": "ground-school-fort-collins-co.html",
+    "city": "Fort Collins",
+    "state": "Colorado",
+    "stateAbbr": "CO",
+    "timezone": "Mountain",
+    "region": "West"
+  },
+  {
     "filename": "ground-school-hartford-ct.html",
     "city": "Hartford",
     "state": "Connecticut",
@@ -106,6 +162,14 @@
   {
     "filename": "ground-school-stamford-ct.html",
     "city": "Stamford",
+    "state": "Connecticut",
+    "stateAbbr": "CT",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-new-haven-ct.html",
+    "city": "New Haven",
     "state": "Connecticut",
     "stateAbbr": "CT",
     "timezone": "Eastern",
@@ -152,6 +216,14 @@
     "region": "South"
   },
   {
+    "filename": "ground-school-orlando-fl.html",
+    "city": "Orlando",
+    "state": "Florida",
+    "stateAbbr": "FL",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
     "filename": "ground-school-atlanta-ga.html",
     "city": "Atlanta",
     "state": "Georgia",
@@ -168,8 +240,24 @@
     "region": "South"
   },
   {
+    "filename": "ground-school-columbus-ga.html",
+    "city": "Columbus",
+    "state": "Georgia",
+    "stateAbbr": "GA",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
     "filename": "ground-school-honolulu-hi.html",
     "city": "Honolulu",
+    "state": "Hawaii",
+    "stateAbbr": "HI",
+    "timezone": "Hawaii",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-hilo-hi.html",
+    "city": "Hilo",
     "state": "Hawaii",
     "stateAbbr": "HI",
     "timezone": "Hawaii",
@@ -192,6 +280,14 @@
     "region": "West"
   },
   {
+    "filename": "ground-school-idaho-falls-id.html",
+    "city": "Idaho Falls",
+    "state": "Idaho",
+    "stateAbbr": "ID",
+    "timezone": "Mountain",
+    "region": "West"
+  },
+  {
     "filename": "ground-school-chicago-il.html",
     "city": "Chicago",
     "state": "Illinois",
@@ -202,6 +298,14 @@
   {
     "filename": "ground-school-naperville-il.html",
     "city": "Naperville",
+    "state": "Illinois",
+    "stateAbbr": "IL",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-springfield-il.html",
+    "city": "Springfield",
     "state": "Illinois",
     "stateAbbr": "IL",
     "timezone": "Central",
@@ -221,6 +325,14 @@
     "state": "Indiana",
     "stateAbbr": "IN",
     "timezone": "Eastern",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-evansville-in.html",
+    "city": "Evansville",
+    "state": "Indiana",
+    "stateAbbr": "IN",
+    "timezone": "Central",
     "region": "Midwest"
   },
   {
@@ -256,6 +368,14 @@
     "region": "Midwest"
   },
   {
+    "filename": "ground-school-topeka-ks.html",
+    "city": "Topeka",
+    "state": "Kansas",
+    "stateAbbr": "KS",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
     "filename": "ground-school-louisville-ky.html",
     "city": "Louisville",
     "state": "Kentucky",
@@ -272,6 +392,14 @@
     "region": "South"
   },
   {
+    "filename": "ground-school-bowling-green-ky.html",
+    "city": "Bowling Green",
+    "state": "Kentucky",
+    "stateAbbr": "KY",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
     "filename": "ground-school-new-orleans-la.html",
     "city": "New Orleans",
     "state": "Louisiana",
@@ -282,6 +410,14 @@
   {
     "filename": "ground-school-baton-rouge-la.html",
     "city": "Baton Rouge",
+    "state": "Louisiana",
+    "stateAbbr": "LA",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-shreveport-la.html",
+    "city": "Shreveport",
     "state": "Louisiana",
     "stateAbbr": "LA",
     "timezone": "Central",
@@ -320,6 +456,14 @@
     "region": "Northeast"
   },
   {
+    "filename": "ground-school-rockville-md.html",
+    "city": "Rockville",
+    "state": "Maryland",
+    "stateAbbr": "MD",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
     "filename": "ground-school-boston-ma.html",
     "city": "Boston",
     "state": "Massachusetts",
@@ -330,6 +474,14 @@
   {
     "filename": "ground-school-worcester-ma.html",
     "city": "Worcester",
+    "state": "Massachusetts",
+    "stateAbbr": "MA",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-springfield-ma.html",
+    "city": "Springfield",
     "state": "Massachusetts",
     "stateAbbr": "MA",
     "timezone": "Eastern",
@@ -352,6 +504,14 @@
     "region": "Midwest"
   },
   {
+    "filename": "ground-school-ann-arbor-mi.html",
+    "city": "Ann Arbor",
+    "state": "Michigan",
+    "stateAbbr": "MI",
+    "timezone": "Eastern",
+    "region": "Midwest"
+  },
+  {
     "filename": "ground-school-minneapolis-mn.html",
     "city": "Minneapolis",
     "state": "Minnesota",
@@ -362,6 +522,14 @@
   {
     "filename": "ground-school-saint-paul-mn.html",
     "city": "Saint Paul",
+    "state": "Minnesota",
+    "stateAbbr": "MN",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-rochester-mn.html",
+    "city": "Rochester",
     "state": "Minnesota",
     "stateAbbr": "MN",
     "timezone": "Central",
@@ -394,6 +562,14 @@
   {
     "filename": "ground-school-st-louis-mo.html",
     "city": "St. Louis",
+    "state": "Missouri",
+    "stateAbbr": "MO",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-springfield-mo.html",
+    "city": "Springfield",
     "state": "Missouri",
     "stateAbbr": "MO",
     "timezone": "Central",
@@ -448,6 +624,14 @@
     "region": "West"
   },
   {
+    "filename": "ground-school-henderson-nv.html",
+    "city": "Henderson",
+    "state": "Nevada",
+    "stateAbbr": "NV",
+    "timezone": "Pacific",
+    "region": "West"
+  },
+  {
     "filename": "ground-school-manchester-nh.html",
     "city": "Manchester",
     "state": "New Hampshire",
@@ -474,6 +658,14 @@
   {
     "filename": "ground-school-jersey-city-nj.html",
     "city": "Jersey City",
+    "state": "New Jersey",
+    "stateAbbr": "NJ",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-trenton-nj.html",
+    "city": "Trenton",
     "state": "New Jersey",
     "stateAbbr": "NJ",
     "timezone": "Eastern",
@@ -520,6 +712,14 @@
     "region": "Northeast"
   },
   {
+    "filename": "ground-school-albany-ny.html",
+    "city": "Albany",
+    "state": "New York",
+    "stateAbbr": "NY",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
     "filename": "ground-school-charlotte-nc.html",
     "city": "Charlotte",
     "state": "North Carolina",
@@ -530,6 +730,14 @@
   {
     "filename": "ground-school-raleigh-nc.html",
     "city": "Raleigh",
+    "state": "North Carolina",
+    "stateAbbr": "NC",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-durham-nc.html",
+    "city": "Durham",
     "state": "North Carolina",
     "stateAbbr": "NC",
     "timezone": "Eastern",
@@ -576,6 +784,14 @@
     "region": "Midwest"
   },
   {
+    "filename": "ground-school-toledo-oh.html",
+    "city": "Toledo",
+    "state": "Ohio",
+    "stateAbbr": "OH",
+    "timezone": "Eastern",
+    "region": "Midwest"
+  },
+  {
     "filename": "ground-school-oklahoma-city-ok.html",
     "city": "Oklahoma City",
     "state": "Oklahoma",
@@ -586,6 +802,14 @@
   {
     "filename": "ground-school-tulsa-ok.html",
     "city": "Tulsa",
+    "state": "Oklahoma",
+    "stateAbbr": "OK",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-norman-ok.html",
+    "city": "Norman",
     "state": "Oklahoma",
     "stateAbbr": "OK",
     "timezone": "Central",
@@ -608,6 +832,14 @@
     "region": "West"
   },
   {
+    "filename": "ground-school-salem-or.html",
+    "city": "Salem",
+    "state": "Oregon",
+    "stateAbbr": "OR",
+    "timezone": "Pacific",
+    "region": "West"
+  },
+  {
     "filename": "ground-school-philadelphia-pa.html",
     "city": "Philadelphia",
     "state": "Pennsylvania",
@@ -618,6 +850,14 @@
   {
     "filename": "ground-school-pittsburgh-pa.html",
     "city": "Pittsburgh",
+    "state": "Pennsylvania",
+    "stateAbbr": "PA",
+    "timezone": "Eastern",
+    "region": "Northeast"
+  },
+  {
+    "filename": "ground-school-harrisburg-pa.html",
+    "city": "Harrisburg",
     "state": "Pennsylvania",
     "stateAbbr": "PA",
     "timezone": "Eastern",
@@ -650,6 +890,14 @@
   {
     "filename": "ground-school-columbia-sc.html",
     "city": "Columbia",
+    "state": "South Carolina",
+    "stateAbbr": "SC",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
+    "filename": "ground-school-greenville-sc.html",
+    "city": "Greenville",
     "state": "South Carolina",
     "stateAbbr": "SC",
     "timezone": "Eastern",
@@ -696,6 +944,14 @@
     "region": "South"
   },
   {
+    "filename": "ground-school-chattanooga-tn.html",
+    "city": "Chattanooga",
+    "state": "Tennessee",
+    "stateAbbr": "TN",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
     "filename": "ground-school-houston-tx.html",
     "city": "Houston",
     "state": "Texas",
@@ -728,6 +984,14 @@
     "region": "South"
   },
   {
+    "filename": "ground-school-fort-worth-tx.html",
+    "city": "Fort Worth",
+    "state": "Texas",
+    "stateAbbr": "TX",
+    "timezone": "Central",
+    "region": "South"
+  },
+  {
     "filename": "ground-school-salt-lake-city-ut.html",
     "city": "Salt Lake City",
     "state": "Utah",
@@ -738,6 +1002,14 @@
   {
     "filename": "ground-school-provo-ut.html",
     "city": "Provo",
+    "state": "Utah",
+    "stateAbbr": "UT",
+    "timezone": "Mountain",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-ogden-ut.html",
+    "city": "Ogden",
     "state": "Utah",
     "stateAbbr": "UT",
     "timezone": "Mountain",
@@ -776,6 +1048,14 @@
     "region": "South"
   },
   {
+    "filename": "ground-school-arlington-va.html",
+    "city": "Arlington",
+    "state": "Virginia",
+    "stateAbbr": "VA",
+    "timezone": "Eastern",
+    "region": "South"
+  },
+  {
     "filename": "ground-school-seattle-wa.html",
     "city": "Seattle",
     "state": "Washington",
@@ -786,6 +1066,14 @@
   {
     "filename": "ground-school-spokane-wa.html",
     "city": "Spokane",
+    "state": "Washington",
+    "stateAbbr": "WA",
+    "timezone": "Pacific",
+    "region": "West"
+  },
+  {
+    "filename": "ground-school-tacoma-wa.html",
+    "city": "Tacoma",
     "state": "Washington",
     "stateAbbr": "WA",
     "timezone": "Pacific",
@@ -818,6 +1106,14 @@
   {
     "filename": "ground-school-madison-wi.html",
     "city": "Madison",
+    "state": "Wisconsin",
+    "stateAbbr": "WI",
+    "timezone": "Central",
+    "region": "Midwest"
+  },
+  {
+    "filename": "ground-school-green-bay-wi.html",
+    "city": "Green Bay",
     "state": "Wisconsin",
     "stateAbbr": "WI",
     "timezone": "Central",
