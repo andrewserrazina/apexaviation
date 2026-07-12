@@ -88,10 +88,42 @@ export default function InstructorHub() {
     const { data: studentProfiles } = await supabase.from('profiles')
       .select('id, full_name, email')
       .in('id', Object.keys(studentMap).length ? Object.keys(studentMap) : ['none'])
+
+    // Flight syllabus progress per student, so the roster shows what
+    // each student is actually working on at a glance instead of just
+    // lesson counts. Ground (Apex Advantage) enrollments are excluded --
+    // this roster is specifically about flight training.
+    const studentIds = studentProfiles?.length ? studentProfiles.map(sp => sp.id) : []
+    const { data: enrollments } = studentIds.length
+      ? await supabase.from('student_syllabi').select('*, syllabus:syllabi(id, name, type)').in('student_id', studentIds)
+      : { data: [] }
+    const flightEnrollments = (enrollments ?? []).filter(en => en.syllabus?.type === 'flight')
+    const progressByStudent = {}
+    await Promise.all(flightEnrollments.map(async en => {
+      const [{ data: syllabusLessons }, { data: completions }] = await Promise.all([
+        supabase.from('syllabus_lessons').select('*').eq('syllabus_id', en.syllabus.id).order('sort_order'),
+        supabase.from('lesson_completions').select('syllabus_lesson_id').eq('student_syllabus_id', en.id),
+      ])
+      const lessonList = syllabusLessons ?? []
+      const doneIds = new Set((completions ?? []).map(c => c.syllabus_lesson_id))
+      const nextUp = lessonList.find(l => !doneIds.has(l.id))
+      // A student could have more than one active flight syllabus --
+      // keep the first one found rather than overwriting silently.
+      if (!progressByStudent[en.student_id]) {
+        progressByStudent[en.student_id] = {
+          syllabusName: en.syllabus.name,
+          total: lessonList.length,
+          done: doneIds.size,
+          nextUp: nextUp?.title ?? null,
+        }
+      }
+    }))
+
     const roster = (studentProfiles ?? []).map(sp => ({
       ...sp,
       lastLesson: studentMap[sp.id]?.lastLesson,
       lessonCount: studentMap[sp.id]?.count ?? 0,
+      progress: progressByStudent[sp.id] ?? null,
     })).sort((a, b) => a.full_name.localeCompare(b.full_name))
     setStudents(roster)
 
@@ -246,12 +278,20 @@ export default function InstructorHub() {
             ) : (
               <div className="table-wrap">
                 <table className="data-table">
-                  <thead><tr><th>Name</th><th>Email</th><th>Total Lessons</th><th>Last Lesson</th></tr></thead>
+                  <thead><tr><th>Name</th><th>Email</th><th>Program</th><th>Next Topic</th><th>Total Lessons</th><th>Last Lesson</th></tr></thead>
                   <tbody>
                     {students.map(s => (
                       <tr key={s.id}>
                         <td style={{ fontWeight: 600 }}>{s.full_name}</td>
                         <td>{s.email ?? '—'}</td>
+                        <td>
+                          {s.progress ? (
+                            <span>{s.progress.syllabusName} · {s.progress.done}/{s.progress.total}</span>
+                          ) : (
+                            <span style={{ color: 'var(--muted)' }}>Not enrolled</span>
+                          )}
+                        </td>
+                        <td>{s.progress?.nextUp ?? '—'}</td>
                         <td>{s.lessonCount}</td>
                         <td>{s.lastLesson ? new Date(s.lastLesson).toLocaleDateString() : '—'}</td>
                       </tr>

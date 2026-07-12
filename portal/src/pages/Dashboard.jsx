@@ -175,13 +175,16 @@ export default function Dashboard() {
       if (!isStudent) return
       const { data: enrollments } = await supabase
         .from('student_syllabi')
-        .select('*, syllabus:syllabi(id, title)')
+        .select('*, syllabus:syllabi(id, name)')
         .eq('student_id', profile.id)
       if (!enrollments?.length) return
 
+      // lesson_completions links to the enrollment (student_syllabus_id),
+      // not directly to student_id/syllabus_id -- this previously queried
+      // columns that don't exist on the table, so "done" was always 0.
       const enriched = await Promise.all(enrollments.map(async en => {
         const { count: total } = await supabase.from('syllabus_lessons').select('*', { count: 'exact', head: true }).eq('syllabus_id', en.syllabus_id)
-        const { count: done } = await supabase.from('lesson_completions').select('*', { count: 'exact', head: true }).eq('student_id', profile.id).eq('syllabus_id', en.syllabus_id)
+        const { count: done } = await supabase.from('lesson_completions').select('*', { count: 'exact', head: true }).eq('student_syllabus_id', en.id)
         return { ...en, total: total ?? 0, done: done ?? 0 }
       }))
       setEnrolledSyllabi(enriched)
@@ -253,7 +256,7 @@ export default function Dashboard() {
               return (
                 <div key={en.id}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600 }}>{en.syllabus?.title ?? 'Syllabus'}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>{en.syllabus?.name ?? 'Syllabus'}</span>
                     <span style={{ fontSize: 13, color: 'var(--muted)' }}>{en.done}/{en.total} · {pct}%</span>
                   </div>
                   <div className="progress-bar">
