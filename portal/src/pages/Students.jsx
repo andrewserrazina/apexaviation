@@ -37,7 +37,7 @@ export default function Students() {
     // the error was never checked).
     const [{ data: s, error: studentsError }, { data: sy }] = await Promise.all([
       supabase.from('profiles').select('*, logbook_entries!student_id(duration_hours)').eq('role', 'student').order('full_name'),
-      supabase.from('syllabi').select('id, title').order('title'),
+      supabase.from('syllabi').select('id, name').order('name'),
     ])
     if (studentsError) setError(studentsError.message)
     setStudents(s ?? [])
@@ -314,7 +314,7 @@ export default function Students() {
                     checked={enrollments.includes(sy.id)}
                     onChange={() => toggleEnroll(sy.id)}
                   />
-                  <span>{sy.title}</span>
+                  <span>{sy.name}</span>
                 </label>
               ))}
             </div>
