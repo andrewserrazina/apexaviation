@@ -77,6 +77,15 @@
       border-radius: 100px; padding: 8px 16px; font-size: 13px; font-weight: 700;
       color: var(--gold-light); margin-bottom: 22px; text-align: center;
     }
+    .signup-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; color: rgba(255,255,255,0.3); font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+    .signup-divider::before, .signup-divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.08); }
+    .instant-access-box {
+      border: 1.5px solid rgba(244,180,0,0.35); border-radius: 10px; padding: 18px 18px 16px;
+      background: linear-gradient(145deg, rgba(244,180,0,0.08), rgba(244,180,0,0.02));
+    }
+    .instant-access-box__title { font-size: 14px; font-weight: 800; color: #fff; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+    .instant-access-box__sub { font-size: 12.5px; color: rgba(255,255,255,0.55); line-height: 1.6; margin-bottom: 14px; }
+    .btn--instant { width: 100%; }
     [data-view="forgot"], [data-view="signup"], [data-view="signup-success"] { display: none; }
   </style>
 </head>
@@ -134,6 +143,14 @@
           <button type="submit" class="btn btn--primary btn--full" id="signupSubmit">Create Free Account</button>
         </form>
         <p class="login-note" style="margin-top:12px">You'll get an email to set your password right away — no payment required to join.</p>
+
+        <div class="signup-divider">or</div>
+
+        <div class="instant-access-box">
+          <div class="instant-access-box__title">⚡ Get Instant Access — $29</div>
+          <div class="instant-access-box__sub">Already know you want it? Skip the wait — create your account and unlock the full 256-question Checkride Prep System in one step. New-member pricing, guaranteed $29 (regular price $49 later).</div>
+          <button type="button" class="btn btn--primary btn--instant" id="instantAccessSubmit">Get Instant Access — $29</button>
+        </div>
 
         <div class="login-forgot">
           <button type="button" id="backToSignInFromSignup">← Back to Sign In</button>
@@ -228,6 +245,20 @@
     // Deep link support: portal-login.html?view=signup or #signup
     var requestedView = (new URLSearchParams(window.location.search)).get('view') || window.location.hash.replace('#', '');
     if (requestedView === 'signup') showView('signup');
+
+    // Landing here as ?view=signup-success&paid=1 means the visitor came
+    // back from a completed "Get Instant Access" Stripe Checkout (see
+    // instantAccessSubmit below) -- the account + unlock both already
+    // happened server-side (create-checkout-session +
+    // stripe-webhook), so this is purely a confirmation message, not a
+    // form result to compute client-side like the free-signup path below.
+    if (requestedView === 'signup-success') {
+      showView('signup-success');
+      if ((new URLSearchParams(window.location.search)).get('paid') === '1') {
+        document.getElementById('signupSuccessHeading').textContent = "You're in — Checkride Prep unlocked!";
+        document.getElementById('signupSuccessSub').textContent = 'Your payment went through and the full Checkride Prep System is already unlocked on your account. Check your email for a link to set your password, then sign in to start studying.';
+      }
+    }
 
     // Carries a requested portal section through login the same way
     // signup already carries it through create-free-account -- an
@@ -344,6 +375,47 @@
         signupSubmit.disabled = false;
         signupSubmit.textContent = 'Create Free Account';
         signupError.textContent = 'Could not create account. Please try again.';
+        signupError.classList.add('show');
+      });
+    });
+
+    // "Get Instant Access" -- one-step signup + Checkride Prep unlock.
+    // Shares the same name/email fields as the free-signup form above
+    // rather than duplicating inputs, since both paths need the same two
+    // fields and only differ in what happens after submit.
+    var instantAccessSubmit = document.getElementById('instantAccessSubmit');
+    instantAccessSubmit.addEventListener('click', function () {
+      signupError.classList.remove('show');
+      var name = document.getElementById('signupName').value.trim();
+      var email = document.getElementById('signupEmail').value.trim();
+      if (!name || !email) {
+        signupError.textContent = 'Enter your name and email above first.';
+        signupError.classList.add('show');
+        return;
+      }
+
+      instantAccessSubmit.disabled = true;
+      instantAccessSubmit.textContent = 'Redirecting to secure checkout…';
+
+      var dest = (new URLSearchParams(window.location.search)).get('dest') || '';
+
+      apexSupabase.functions.invoke('create-checkout-session', {
+        body: { purpose: 'signup-and-unlock-checkride-prep', name: name, email: email, dest: dest, origin: window.location.origin }
+      }).then(function (res) {
+        if (res.error || !res.data || !res.data.url) {
+          return extractInvokeError(res).then(function (msg) {
+            instantAccessSubmit.disabled = false;
+            instantAccessSubmit.textContent = 'Get Instant Access — $29';
+            signupError.textContent = msg;
+            signupError.classList.add('show');
+          });
+        }
+        if (window.gtag) gtag('event', 'sign_up', { method: 'email_instant_access' });
+        window.location.href = res.data.url;
+      }).catch(function () {
+        instantAccessSubmit.disabled = false;
+        instantAccessSubmit.textContent = 'Get Instant Access — $29';
+        signupError.textContent = 'Could not start checkout. Please try again.';
         signupError.classList.add('show');
       });
     });

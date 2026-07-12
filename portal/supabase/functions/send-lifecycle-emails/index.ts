@@ -47,7 +47,13 @@
 //     moment they unlock it. Only the latest reached-but-unsent stage
 //     fires per run (see processCheckrideUpsell) so a profile that
 //     predates this feature doesn't get all four stages back-to-back
-//     in one run.
+//     in one run. Pricing (get_checkride_prep_pricing) is fetched fresh
+//     per-profile inside processCheckrideUpsell, not once globally, since
+//     the launch tier depends on that profile's own created_at -- day1
+//     is the stage most likely to still land inside the 48-hour launch
+//     window given this job's daily cron cadence, so it's the one with
+//     real urgency copy; day3/7/14 fall back to whatever live tier the
+//     RPC actually returns by the time they fire.
 //   - ground_followup_<registration_id>: brand new (Phase 6), no
 //     client-side equivalent. One-time per registration (not per
 //     profile/day), so a member who attends multiple sessions gets one
@@ -178,7 +184,7 @@ function emailTemplateGroundSchoolFollowUp(sessionTitle: string) {
     '<a href="https://advantage.apexaviationtx.com/portal.html" style="display:inline-block;margin-top:8px;border:1.5px solid rgba(244,180,0,0.4);color:#F4B400;border-radius:8px;padding:11px 21px;text-decoration:none;font-weight:700;font-size:14px;">Go to My Portal →</a>'
 }
 
-type PricingPreview = { tier: 'founding' | 'standard'; amount_cents: number; founding_seats_remaining: number }
+type PricingPreview = { tier: 'founding' | 'launch' | 'standard'; amount_cents: number; founding_seats_remaining: number; launch_expires_at: string | null }
 
 // Pre-purchase drip for members who haven't unlocked Checkride Prep yet --
 // distinct from processMilestones/processWeakArea/processCountdown above,
@@ -188,9 +194,23 @@ type PricingPreview = { tier: 'founding' | 'standard'; amount_cents: number; fou
 // the exact same dedup/one-time-per-stage machinery as the milestone
 // emails (hasMilestoneFired/markMilestoneSent), keyed off days since
 // profile.created_at instead of a study-progress trigger.
-function emailTemplateUpsellDay1() {
-  return '<h2 style="color:#F4B400;margin:0 0 4px;">Here\'s what\'s waiting for you</h2>' +
-    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your free portal account already includes the "10 Questions DPEs Love to Ask" guide. When you\'re ready to go further, the full Checkride Prep System adds a 256-question DPE-style bank covering every ACS area of operation — each with a model answer, the common mistakes examiners watch for, and real-world context — plus scenario training and progress tracking.</p>' +
+// If the member is still inside their founding/launch discount window
+// when this fires, day1 pushes real urgency (exact price, exact hours
+// left) instead of a generic "here's what's waiting" pitch -- day1 is
+// the most likely email to still land inside the 48-hour launch window
+// (see UPSELL_DAYS/launch-window comment below), so it's worth being
+// specific here even though day3/day7/day14 mostly can't be anymore.
+function emailTemplateUpsellDay1(pricing: PricingPreview) {
+  const intro = '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your free portal account already includes the "10 Questions DPEs Love to Ask" guide. The full Checkride Prep System adds a 256-question DPE-style bank covering every ACS area of operation — each with a model answer, the common mistakes examiners watch for, and real-world context — plus scenario training and progress tracking.</p>'
+  if (pricing.tier === 'founding' || pricing.tier === 'launch') {
+    const price = '$' + Math.round(pricing.amount_cents / 100)
+    const urgency = pricing.tier === 'founding'
+      ? `${pricing.founding_seats_remaining} founding spot${pricing.founding_seats_remaining === 1 ? '' : 's'} left at ${price}, then $49`
+      : `${price} new-member pricing is still active on your account for a limited time, then $49`
+    return `<h2 style="color:#F4B400;margin:0 0 4px;">${urgency}</h2>` + intro +
+      `<a href="https://advantage.apexaviationtx.com/portal.html#checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Unlock for ${price} →</a>`
+  }
+  return '<h2 style="color:#F4B400;margin:0 0 4px;">Here\'s what\'s waiting for you</h2>' + intro +
     '<a href="https://advantage.apexaviationtx.com/portal.html#checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">See What\'s Inside →</a>'
 }
 
@@ -203,12 +223,18 @@ function emailTemplateUpsellDay3() {
 
 function emailTemplateUpsellDay7(pricing: PricingPreview) {
   const price = '$' + Math.round(pricing.amount_cents / 100)
-  const heading = pricing.tier === 'founding'
-    ? `${pricing.founding_seats_remaining} founding spot${pricing.founding_seats_remaining === 1 ? '' : 's'} left at ${price}`
-    : 'Still thinking about the Checkride Prep System?'
-  const body = pricing.tier === 'founding'
-    ? `Founding pricing (${price}, versus $49 after the first 25 members) won't last much longer. The full system is 256 DPE-style questions, model answers, scenario training, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation.`
-    : `256 DPE-style questions, model answers, scenario training, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation. Unlock it whenever you're ready.`
+  let heading: string
+  let body: string
+  if (pricing.tier === 'founding') {
+    heading = `${pricing.founding_seats_remaining} founding spot${pricing.founding_seats_remaining === 1 ? '' : 's'} left at ${price}`
+    body = `Founding pricing (${price}, versus $49 after the first 25 members) won't last much longer. The full system is 256 DPE-style questions, model answers, scenario training, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation.`
+  } else if (pricing.tier === 'launch') {
+    heading = `Your ${price} new-member price is still active`
+    body = `You're still inside your new-member pricing window — ${price} instead of the usual $49. The full system is 256 DPE-style questions, model answers, scenario training, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation.`
+  } else {
+    heading = 'Still thinking about the Checkride Prep System?'
+    body = `256 DPE-style questions, model answers, scenario training, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation. Unlock it whenever you're ready.`
+  }
   return `<h2 style="color:#F4B400;margin:0 0 4px;">${heading}</h2>` +
     `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">${body}</p>` +
     `<a href="https://advantage.apexaviationtx.com/portal.html#checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Unlock for ${price} →</a>`
@@ -383,7 +409,11 @@ async function processCountdown(supabase: any, profile: any, results: any) {
 // markMilestoneSent -- once day14 fires, the sequence is exhausted and
 // this is a no-op for that profile going forward, same terminal
 // behavior as the other one-time milestone types above.
-async function processCheckrideUpsell(supabase: any, profile: any, pricing: PricingPreview, results: any) {
+// Pricing is fetched per-profile (not once globally) because the
+// launch tier depends on *this* profile's created_at -- two members at
+// different signup ages can legitimately see different tiers/prices on
+// the same run of this job.
+async function processCheckrideUpsell(supabase: any, profile: any, results: any) {
   if (profile.checkride_prep_unlocked) return
   const daysSinceSignup = (Date.now() - new Date(profile.created_at).getTime()) / 86400000
 
@@ -392,8 +422,11 @@ async function processCheckrideUpsell(supabase: any, profile: any, pricing: Pric
     const emailType = 'checkride_upsell_day' + day
     if (await hasMilestoneFired(supabase, profile.id, emailType)) continue
 
+    const { data: pricingRows } = await supabase.rpc('get_checkride_prep_pricing', { p_profile_id: profile.id })
+    const pricing: PricingPreview = (pricingRows && pricingRows[0]) || { tier: 'standard', amount_cents: 4900, founding_seats_remaining: 0, launch_expires_at: null }
+
     const subjectsAndTemplates: Record<number, [string, string]> = {
-      1: ['Here\'s what\'s waiting in your Checkride Prep System', emailTemplateUpsellDay1()],
+      1: ['Here\'s what\'s waiting in your Checkride Prep System', emailTemplateUpsellDay1(pricing)],
       3: ['A question DPEs love to ask', emailTemplateUpsellDay3()],
       7: [pricing.tier === 'founding' ? `${pricing.founding_seats_remaining} founding spots left at $${Math.round(pricing.amount_cents / 100)}` : 'Still thinking about the Checkride Prep System?', emailTemplateUpsellDay7(pricing)],
       14: ['Last look: the Checkride Prep System', emailTemplateUpsellDay14(pricing)],
@@ -452,20 +485,14 @@ serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
   const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, checkride_upsell: 0, ground_followup: 0, errors: [] as string[] }
 
-  const [{ data: categories }, { data: questions }, { data: profiles }, { data: pricingRows }] = await Promise.all([
+  const [{ data: categories }, { data: questions }, { data: profiles }] = await Promise.all([
     supabase.from('dpe_categories').select('id'),
     supabase.from('dpe_questions').select('id,category,is_scenario'),
     supabase.from('profiles').select('id,email,full_name,checkride_prep_unlocked,created_at,portal_last_active_at'),
-    supabase.rpc('get_checkride_prep_pricing'),
   ])
 
   const categoryIds: string[] = (categories ?? []).map((c: any) => c.id)
   const allQuestions: Question[] = questions ?? []
-  // Same tier/price every member currently sees on their own dashboard
-  // (applyUnlockPricing() in site/portal-stable.js calls this identical
-  // RPC) -- fetched once here rather than per-profile since it's a
-  // global count, not something that varies per member.
-  const pricing: PricingPreview = (pricingRows && pricingRows[0]) || { tier: 'standard', amount_cents: 4900, founding_seats_remaining: 0 }
 
   for (const profile of profiles ?? []) {
     if (!profile.email) continue
@@ -476,7 +503,7 @@ serve(async (req) => {
         await processWeakArea(supabase, profile, allQuestions, categoryIds, results)
         await processCountdown(supabase, profile, results)
       } else {
-        await processCheckrideUpsell(supabase, profile, pricing, results)
+        await processCheckrideUpsell(supabase, profile, results)
       }
     } catch (err) {
       results.errors.push(`${profile.id}: ${err}`)

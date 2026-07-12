@@ -1,15 +1,28 @@
 // Creates Stripe Checkout Sessions for the Apex Advantage portal.
 //
 // Portal signup itself is free (see create-free-account). This function
-// handles the two things that actually cost money after signup:
+// handles the things that actually cost money after (or during) signup:
 //
 //   purpose: 'unlock-checkride-prep'
 //     An already-signed-in free member unlocking the Checkride Prep
 //     System (DPE library, scenarios, progress tracking, etc). Priced
-//     the same $29/first-25-then-$49 founder tier as before, decided
-//     server-side from portal_access_purchases — never trusted from the
-//     client. Requires the caller's Supabase access token so we know
-//     *which* profile to unlock; never trust a client-supplied id.
+//     via get_checkride_prep_pricing() (founding/launch/standard tiers,
+//     decided server-side from portal_access_purchases and the caller's
+//     own profiles.created_at — never trusted from the client). Requires
+//     the caller's Supabase access token so we know *which* profile to
+//     unlock; never trust a client-supplied id.
+//
+//   purpose: 'signup-and-unlock-checkride-prep'
+//     One-step "Get Instant Access" signup: creates the free account
+//     (same logic as create-free-account) AND starts a Checkride Prep
+//     checkout in a single request, for a visitor who already knows they
+//     want it rather than making them come back later from the
+//     dashboard. Always prices at the founding/launch discount since the
+//     account is (by construction) brand new at the moment this runs —
+//     see get_checkride_prep_pricing()'s launch-window rule. No auth
+//     token available yet (the account doesn't have a password set) —
+//     the new profile id comes directly from auth.admin.createUser's
+//     result, not from a client-supplied value.
 //
 //   purpose: 'ground-school-registration'
 //     Registering (and paying $25) for a specific live ground school
@@ -28,6 +41,8 @@
 //   STRIPE_SECRET_KEY
 //   SUPABASE_URL              (auto-provided by Supabase)
 //   SUPABASE_SERVICE_ROLE_KEY (auto-provided by Supabase)
+//   SITE_ORIGIN               (used for the welcome-email action link,
+//                              same var create-free-account already uses)
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -40,21 +55,28 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 // function logs. `denonext` is esm.sh's build target for this exact
 // runtime and doesn't hit that code path.
 import Stripe from 'https://esm.sh/stripe@14?target=denonext'
+import { emailTemplate } from '../_shared/emailTemplate.ts'
 
 const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY')!
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const SITE_ORIGIN = Deno.env.get('SITE_ORIGIN') ?? 'https://apexaviationtx.com'
 
 const stripe = new Stripe(STRIPE_SECRET_KEY, {
   apiVersion: '2023-10-16',
   httpClient: Stripe.createFetchHttpClient(),
 })
 
-const FOUNDING_PRICE_CENTS = 2900 // $29 — first 25 unlocks
-const STANDARD_PRICE_CENTS = 4900 // $49 — everyone after
-const FOUNDING_SEATS = 25
 const GROUND_SCHOOL_PRICE_CENTS = 2500 // $25 per session
 const MOCK_ORAL_PRICE_CENTS = 9900 // $99 per 60-minute mock oral
+
+type PricingRow = { tier: string; amount_cents: number; founding_seats_remaining: number; launch_expires_at: string | null }
+
+function tierDescription(tier: string): string {
+  if (tier === 'founding') return 'Founding pilot pricing — locked in for the first 25 members'
+  if (tier === 'launch') return 'New-member fast-action pricing — locked in within 48 hours of signup'
+  return 'Full access to the Checkride Prep System inside your member portal'
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -98,13 +120,8 @@ serve(async (req) => {
         return jsonError('Checkride Prep is already unlocked on this account', 400)
       }
 
-      const { count } = await supabase
-        .from('portal_access_purchases')
-        .select('id', { count: 'exact', head: true })
-
-      const isFounding = (count ?? 0) < FOUNDING_SEATS
-      const amount = isFounding ? FOUNDING_PRICE_CENTS : STANDARD_PRICE_CENTS
-      const tier = isFounding ? 'founding' : 'standard'
+      const { data: pricingRows } = await supabase.rpc('get_checkride_prep_pricing', { p_profile_id: profileId })
+      const pricing: PricingRow = (pricingRows && pricingRows[0]) || { tier: 'standard', amount_cents: 4900, founding_seats_remaining: 0, launch_expires_at: null }
 
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
@@ -114,20 +131,99 @@ serve(async (req) => {
             currency: 'usd',
             product_data: {
               name: 'Apex Advantage Checkride Prep Unlock',
-              description: isFounding
-                ? 'Founding pilot pricing — locked in for the first 25 members'
-                : 'Full access to the Checkride Prep System inside your member portal',
+              description: tierDescription(pricing.tier),
             },
-            unit_amount: amount,
+            unit_amount: pricing.amount_cents,
           },
           quantity: 1,
         }],
-        metadata: { purpose: 'unlock-checkride-prep', profile_id: profileId, tier },
+        metadata: { purpose: 'unlock-checkride-prep', profile_id: profileId, tier: pricing.tier },
         success_url: `${siteOrigin}/portal.html?unlocked=1#checkride-prep`,
         cancel_url: `${siteOrigin}/portal.html#dashboard`,
       })
 
-      return new Response(JSON.stringify({ url: session.url, tier, amount }), {
+      return new Response(JSON.stringify({ url: session.url, tier: pricing.tier, amount: pricing.amount_cents }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (purpose === 'signup-and-unlock-checkride-prep') {
+      const { name, email, dest } = body
+      if (!name || !email) return jsonError('Missing required fields: name, email', 400)
+
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle()
+      if (existingProfile) {
+        return jsonError('An account with this email already exists. Sign in and unlock from your dashboard instead.', 409)
+      }
+
+      const { data: created, error: createErr } = await supabase.auth.admin.createUser({
+        email,
+        email_confirm: true,
+        password: crypto.randomUUID(),
+        user_metadata: { full_name: name },
+      })
+      if (createErr) return jsonError(String(createErr), 500)
+      const newProfileId = created.user.id
+
+      // Brand new profile, so this is always founding-or-launch ($29),
+      // never standard -- get_checkride_prep_pricing()'s launch window
+      // is measured from profiles.created_at, which is effectively "now"
+      // for a profile created a few lines above.
+      const { data: pricingRows } = await supabase.rpc('get_checkride_prep_pricing', { p_profile_id: newProfileId })
+      const pricing: PricingRow = (pricingRows && pricingRows[0]) || { tier: 'launch', amount_cents: 2900, founding_seats_remaining: 0, launch_expires_at: null }
+
+      // Same "set your password" email as create-free-account, sent
+      // immediately rather than waiting on the Stripe webhook -- the
+      // account is real and usable (for signing in, not yet for
+      // Checkride Prep) the moment it's created, independent of whether
+      // this checkout is ever completed.
+      const safeDest = typeof dest === 'string' && /^[a-z0-9-]{1,60}$/.test(dest) ? dest : ''
+      const redirectTo = `${SITE_ORIGIN}/portal-reset-password.html${safeDest ? `?dest=${safeDest}` : ''}`
+      const { data: linkData } = await supabase.auth.admin.generateLink({
+        type: 'recovery',
+        email,
+        options: { redirectTo },
+      })
+      const actionLink = linkData?.properties?.action_link
+      if (actionLink) {
+        await supabase.functions.invoke('send-email', {
+          body: {
+            to: email,
+            subject: 'Welcome to Apex Advantage — set your password',
+            html: emailTemplate(`
+              <h2 style="color:#F4B400;margin:0 0 4px;">Welcome to Apex Advantage, ${name.split(' ')[0]}!</h2>
+              <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your account is ready and your Checkride Prep purchase is being processed. Set your password to get in:</p>
+              <a href="${actionLink}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Set Your Password →</a>
+              <p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">Once that's done, sign in any time at advantage.apexaviationtx.com/portal-login.html — the full Checkride Prep System (DPE question bank, scenario training, progress tracking) will already be unlocked.</p>
+            `),
+          },
+        })
+      }
+
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        customer_email: email,
+        line_items: [{
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: 'Apex Advantage Checkride Prep Unlock',
+              description: tierDescription(pricing.tier),
+            },
+            unit_amount: pricing.amount_cents,
+          },
+          quantity: 1,
+        }],
+        metadata: { purpose: 'unlock-checkride-prep', profile_id: newProfileId, tier: pricing.tier },
+        success_url: `${siteOrigin}/portal-login.html?view=signup-success&paid=1`,
+        cancel_url: `${siteOrigin}/portal-login.html?view=signup-success`,
+      })
+
+      return new Response(JSON.stringify({ url: session.url, tier: pricing.tier, amount: pricing.amount_cents }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
