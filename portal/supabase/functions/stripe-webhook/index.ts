@@ -89,9 +89,10 @@ async function handleUnlockCheckridePrep(supabase: any, session: Stripe.Checkout
     tier,
   })
 
+  const tierSuffix = tier === 'founding' ? ' (Founding Pilot Pricing)' : tier === 'launch' ? ' (New-Member Fast-Action Pricing)' : ''
   await supabase.from('invoices').insert({
     student_id: profileId,
-    description: 'Apex Advantage Checkride Prep Unlock' + (tier === 'founding' ? ' (Founding Pilot Pricing)' : ''),
+    description: 'Apex Advantage Checkride Prep Unlock' + tierSuffix,
     amount_cents: amountCents,
     status: 'paid',
   })

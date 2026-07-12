@@ -245,9 +245,16 @@
      get_checkride_prep_pricing() mirrors the same server-side rule
      create-checkout-session uses to decide the real charge, so what a
      member sees here always matches what they're about to pay. ──────── */
+  function launchCountdownLabel(expiresAt) {
+    var msLeft = new Date(expiresAt).getTime() - Date.now();
+    if (msLeft <= 0) return 'expiring any moment';
+    var hoursLeft = Math.max(1, Math.ceil(msLeft / 3600000));
+    return hoursLeft + ' hour' + (hoursLeft === 1 ? '' : 's') + ' left';
+  }
+
   function applyUnlockPricing() {
     if (member && member.checkridePrepUnlocked) return;
-    apexSupabase.rpc('get_checkride_prep_pricing').then(function (res) {
+    apexSupabase.rpc('get_checkride_prep_pricing', { p_profile_id: member ? member.id : null }).then(function (res) {
       var row = res.data && res.data[0];
       if (res.error || !row) return;
       var priceLabel = '$' + Math.round(row.amount_cents / 100);
@@ -258,9 +265,22 @@
       var modalNote = document.getElementById('unlockModalPriceNote');
       if (modalPrice) modalPrice.textContent = priceLabel;
       if (modalNote) {
-        modalNote.textContent = row.tier === 'founding'
-          ? row.founding_seats_remaining + ' founding spot' + (row.founding_seats_remaining === 1 ? '' : 's') + ' left at $29, then $49'
-          : 'Founding pricing has ended — $49 for full access';
+        if (row.tier === 'founding') {
+          modalNote.textContent = row.founding_seats_remaining + ' founding spot' + (row.founding_seats_remaining === 1 ? '' : 's') + ' left at $29, then $49';
+        } else if (row.tier === 'launch') {
+          modalNote.textContent = 'New-member pricing — ' + launchCountdownLabel(row.launch_expires_at) + ' at $29, then $49';
+        } else {
+          modalNote.textContent = 'Founding pricing has ended — $49 for full access';
+        }
+      }
+      // The DPE guide's final CTA card (site/portal.html
+      // #section-dpe-questions) mirrors the same live price/urgency
+      // rather than the static "$29" it used to hardcode.
+      var guideCtaPrice = document.getElementById('dpeGuideCtaPrice');
+      if (guideCtaPrice) {
+        guideCtaPrice.textContent = row.tier === 'launch'
+          ? priceLabel + ' — ' + launchCountdownLabel(row.launch_expires_at)
+          : priceLabel;
       }
     }).catch(function (e) { console.error('applyUnlockPricing failed', e); });
   }
