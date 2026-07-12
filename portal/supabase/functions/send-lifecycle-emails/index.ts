@@ -58,6 +58,21 @@
 //     client-side equivalent. One-time per registration (not per
 //     profile/day), so a member who attends multiple sessions gets one
 //     follow-up per session attended.
+//   - abandoned_checkout_<attempt_id>: brand new. Reads
+//     checkout_session_attempts (populated by create-checkout-session,
+//     stamped completed_at by stripe-webhook) for rows still
+//     uncompleted between ABANDONED_CHECKOUT_MIN_HOURS and
+//     ABANDONED_CHECKOUT_MAX_DAYS after creation, and sends exactly one
+//     recovery nudge per attempt (dedup: checkout_session_attempts.
+//     recovery_email_sent_at itself, not portal_email_log -- an attempt
+//     row is already a one-per-checkout-click record, so it doubles as
+//     its own dedup key). Deliberately does not regenerate a fresh
+//     Stripe Checkout Session or link directly to one: prices/seat
+//     availability can change between the attempt and the recovery
+//     email, so the email links back into the portal (or portal-login,
+//     for a visitor who never finished setting a password) and lets the
+//     existing "click to check out" buttons compute a fresh, correct
+//     price at click time -- same as any other visit.
 //
 // Env vars required (Supabase Edge Function secrets):
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (both auto-provided)
@@ -81,6 +96,8 @@ const INACTIVITY_THROTTLE_DAYS = 30
 const INACTIVITY_TRIGGER_DAYS = 7
 const STUDY_SECONDS_TARGET = 5 * 3600
 const UPSELL_DAYS = [1, 3, 7, 14]
+const ABANDONED_CHECKOUT_MIN_HOURS = 1
+const ABANDONED_CHECKOUT_MAX_DAYS = 7
 
 // Verbatim from site/portal.js's WEAK_AREA_CONTENT -- keep these two in
 // sync if the copy ever changes; duplicated rather than shared because
@@ -474,6 +491,95 @@ async function processGroundSchoolFollowUps(supabase: any, results: any) {
   }
 }
 
+const PORTAL_LOGIN_URL = 'https://advantage.apexaviationtx.com/portal-login.html'
+
+function emailTemplateAbandonedCheckridePrep(firstName: string) {
+  return `<h2 style="color:#F4B400;margin:0 0 4px;">Still want in, ${firstName}?</h2>` +
+    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Looks like you started unlocking the Checkride Prep System but didn\'t finish checkout. Nothing was charged — pick up right where you left off whenever you\'re ready.</p>' +
+    `<a href="${PORTAL_LOGIN_URL}?dest=checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Finish Unlocking →</a>`
+}
+
+function emailTemplateAbandonedGroundSchool(firstName: string) {
+  return `<h2 style="color:#F4B400;margin:0 0 4px;">Still want a seat, ${firstName}?</h2>` +
+    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Looks like you started registering for a live ground school session but didn\'t finish checkout. Nothing was charged — spots are first-come, first-served, so it\'s worth finishing up if you still want in.</p>' +
+    `<a href="${PORTAL_LOGIN_URL}?dest=ground-school" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Finish Registering →</a>`
+}
+
+function emailTemplateAbandonedMockOral(firstName: string) {
+  return `<h2 style="color:#F4B400;margin:0 0 4px;">Still want to book, ${firstName}?</h2>` +
+    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Looks like you started booking a Mock Oral but didn\'t finish checkout. Nothing was charged — pick up right where you left off whenever you\'re ready.</p>' +
+    `<a href="${PORTAL_LOGIN_URL}?dest=mock-oral" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Finish Booking →</a>`
+}
+
+// Abandoned-checkout recovery: a one-time nudge per checkout_session_
+// attempts row still uncompleted between ABANDONED_CHECKOUT_MIN_HOURS
+// and ABANDONED_CHECKOUT_MAX_DAYS after it was created. Deliberately
+// links back to portal-login.html (not a regenerated Stripe session or
+// the plain portal.html dashboard) since that page already handles
+// both "not signed in yet" (e.g. a signup-and-unlock-checkride-prep
+// attempt whose password was never set) and "already signed in"
+// (auto-redirects straight past the login form) correctly today -- see
+// its existing apexSupabase.auth.getSession() check.
+async function processAbandonedCheckouts(supabase: any, results: any) {
+  const minAge = new Date(Date.now() - ABANDONED_CHECKOUT_MIN_HOURS * 3600000).toISOString()
+  const maxAge = new Date(Date.now() - ABANDONED_CHECKOUT_MAX_DAYS * 86400000).toISOString()
+
+  const { data: attempts } = await supabase
+    .from('checkout_session_attempts')
+    .select('id, purpose, email, profile_id, created_at')
+    .is('completed_at', null)
+    .is('recovery_email_sent_at', null)
+    .lte('created_at', minAge)
+    .gte('created_at', maxAge)
+
+  for (const attempt of attempts ?? []) {
+    if (!attempt.email) continue
+    try {
+      let firstName = 'there'
+      if (attempt.profile_id) {
+        const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', attempt.profile_id).maybeSingle()
+        if (profile?.full_name) firstName = profile.full_name.split(' ')[0]
+      }
+
+      let subject: string
+      let html: string
+      if (attempt.purpose === 'unlock-checkride-prep' || attempt.purpose === 'signup-and-unlock-checkride-prep') {
+        subject = 'You started unlocking Checkride Prep'
+        html = emailTemplateAbandonedCheckridePrep(firstName)
+      } else if (attempt.purpose === 'ground-school-registration') {
+        subject = 'You started registering for ground school'
+        html = emailTemplateAbandonedGroundSchool(firstName)
+      } else if (attempt.purpose === 'book-mock-oral') {
+        subject = 'You started booking a Mock Oral'
+        html = emailTemplateAbandonedMockOral(firstName)
+      } else {
+        continue
+      }
+
+      // Mark before sending, not after -- same reasoning as
+      // processWeakArea's log-before-send: a crash between send and log
+      // would otherwise re-send this exact nudge on every future run
+      // forever, which is worse than the reverse (a rare skipped send on
+      // a genuine one-off failure, same tradeoff already accepted
+      // elsewhere in this file).
+      const { error: markError } = await supabase
+        .from('checkout_session_attempts')
+        .update({ recovery_email_sent_at: new Date().toISOString() })
+        .eq('id', attempt.id)
+        .is('recovery_email_sent_at', null)
+      if (markError) {
+        results.errors.push(`abandoned_checkout_mark:${attempt.id}:${markError.message}`)
+        continue
+      }
+
+      await sendEmail(supabase, attempt.email, subject, html)
+      results.abandoned_checkout++
+    } catch (err) {
+      results.errors.push(`abandoned_checkout:${attempt.id}: ${err}`)
+    }
+  }
+}
+
 serve(async (req) => {
   if (CRON_SECRET) {
     const authHeader = req.headers.get('Authorization') || ''
@@ -483,7 +589,7 @@ serve(async (req) => {
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
-  const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, checkride_upsell: 0, ground_followup: 0, errors: [] as string[] }
+  const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, checkride_upsell: 0, ground_followup: 0, abandoned_checkout: 0, errors: [] as string[] }
 
   const [{ data: categories }, { data: questions }, { data: profiles }] = await Promise.all([
     supabase.from('dpe_categories').select('id'),
@@ -511,6 +617,7 @@ serve(async (req) => {
   }
 
   await processGroundSchoolFollowUps(supabase, results)
+  await processAbandonedCheckouts(supabase, results)
 
   return new Response(JSON.stringify(results), { headers: { 'Content-Type': 'application/json' } })
 })
