@@ -4,6 +4,10 @@ import Layout from '../components/Layout'
 import Modal from '../components/Modal'
 
 const CERT_OPTIONS = ['None', 'Student Pilot', 'Private Pilot', 'Instrument Rating', 'Commercial Pilot', 'ATP']
+const STUDENT_TYPE_OPTIONS = [
+  { value: 'apex_advantage', label: 'Apex Advantage' },
+  { value: 'flight_student', label: 'Flight Student' },
+]
 
 const BLANK_EDIT = { full_name: '', email: '', certificate_status: 'None', medical_expiry: '' }
 const BLANK_CREATE = { full_name: '', email: '', password: '', certificate_status: 'None', medical_expiry: '' }
@@ -142,6 +146,11 @@ export default function Students() {
     setEnrollModal(null)
   }
 
+  async function updateStudentType(student, studentType) {
+    await supabase.from('profiles').update({ student_type: studentType }).eq('id', student.id)
+    setStudents(prev => prev.map(s => s.id === student.id ? { ...s, student_type: studentType } : s))
+  }
+
   function toggleEnroll(syllabusId) {
     setEnrollments(prev =>
       prev.includes(syllabusId) ? prev.filter(id => id !== syllabusId) : [...prev, syllabusId]
@@ -175,6 +184,7 @@ export default function Students() {
               <tr>
                 <th>Name</th>
                 <th>Email</th>
+                <th>Type</th>
                 <th>Certificate</th>
                 <th>Medical Expiry</th>
                 <th>Total Hours</th>
@@ -183,11 +193,16 @@ export default function Students() {
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={6} className="empty-state">No students found.</td></tr>
+                <tr><td colSpan={7} className="empty-state">No students found.</td></tr>
               ) : filtered.map(s => (
                 <tr key={s.id}>
                   <td><strong>{s.full_name}</strong></td>
                   <td>{s.email}</td>
+                  <td>
+                    <select value={s.student_type ?? 'apex_advantage'} onChange={e => updateStudentType(s, e.target.value)}>
+                      {STUDENT_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </td>
                   <td><span className="badge">{s.certificate_status ?? 'None'}</span></td>
                   <td>
                     {s.medical_expiry

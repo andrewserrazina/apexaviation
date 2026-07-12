@@ -33,6 +33,7 @@ const OperationsSchedule = lazy(() => import('./pages/operations/OperationsSched
 const OperationsSimulator = lazy(() => import('./pages/operations/OperationsSimulator'))
 const OperationsSettings = lazy(() => import('./pages/operations/OperationsSettings'))
 const PortalSelector = lazy(() => import('./pages/PortalSelector'))
+const FlightStudentDashboard = lazy(() => import('./pages/FlightStudentDashboard'))
 const AdminGroundSchoolSchedule = lazy(() => import('./pages/AdminGroundSchoolSchedule'))
 
 export default function App() {
@@ -46,6 +47,7 @@ export default function App() {
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/portal-select" element={<ProtectedRoute><PortalSelector /></ProtectedRoute>} />
               <Route path="/dashboard"   element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/flight-dashboard" element={<ProtectedRoute roles={['student']}><FlightStudentDashboard /></ProtectedRoute>} />
               <Route path="/operations" element={<ProtectedRoute roles={['admin', 'instructor']}><Navigate to="/operations/dashboard" replace /></ProtectedRoute>} />
               <Route path="/operations/dashboard" element={<ProtectedRoute roles={['admin', 'instructor']}><OperationsDashboard /></ProtectedRoute>} />
               <Route path="/operations/schedule" element={<ProtectedRoute roles={['admin', 'instructor']}><OperationsSchedule /></ProtectedRoute>} />

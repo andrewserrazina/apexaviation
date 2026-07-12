@@ -15,16 +15,27 @@ export default function PortalSelector() {
   const navigate = useNavigate()
   const role = profile?.role ?? 'student'
 
+  const isFlightStudent = role === 'student' && profile?.student_type === 'flight_student'
+
   useEffect(() => {
-    // Students have no reason to see the Apex Operations option -- send
-    // them straight to Apex Advantage rather than making them pick.
-    if (role === 'student') window.location.replace(APEX_ADVANTAGE_URL)
-  }, [role])
+    // Apex Advantage students (free guide / Checkride Prep / ground
+    // school members) have no reason to see the Apex Operations option
+    // -- send them straight to Apex Advantage rather than making them
+    // pick. Flight students -- real students taking lessons with Apex
+    // -- get their own in-CRM dashboard instead, since the CRM is
+    // where their lessons, syllabus, and logbook actually live.
+    if (role === 'student') {
+      if (isFlightStudent) navigate('/flight-dashboard', { replace: true })
+      else window.location.replace(APEX_ADVANTAGE_URL)
+    }
+  }, [role, isFlightStudent])
 
   if (role === 'student') {
     return (
       <main className="portal-selector">
-        <p style={{ color: 'var(--muted)', textAlign: 'center', marginTop: 80 }}>Redirecting to Apex Advantage…</p>
+        <p style={{ color: 'var(--muted)', textAlign: 'center', marginTop: 80 }}>
+          {isFlightStudent ? 'Loading your dashboard…' : 'Redirecting to Apex Advantage…'}
+        </p>
       </main>
     )
   }

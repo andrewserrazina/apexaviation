@@ -72,8 +72,17 @@ export default function Layout({ children }) {
   const searchTimer = useRef()
 
   const role = profile?.role ?? 'student'
+  const isFlightStudent = role === 'student' && profile?.student_type === 'flight_student'
   const visibleGroups = navGroups
-    .map(group => ({ ...group, items: group.items.filter(item => item.roles.includes(role)) }))
+    .map(group => ({
+      ...group,
+      items: group.items
+        .filter(item => item.roles.includes(role))
+        // Flight students (real students taking lessons with Apex) get
+        // their own dashboard -- Apex Advantage students never reach
+        // the CRM at all, so this only ever applies to flight students.
+        .map(item => item.to === '/dashboard' && isFlightStudent ? { ...item, to: '/flight-dashboard' } : item),
+    }))
     .filter(group => group.items.length > 0)
 
   async function handleSignOut() {

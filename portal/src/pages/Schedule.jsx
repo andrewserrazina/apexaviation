@@ -8,7 +8,7 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const LESSON_TYPES = ['Discovery Flight', 'Private Pilot Training', 'Instrument Training', 'Commercial Training', 'Flight Review', 'Check Ride Prep', 'Other']
 
-const BLANK_FORM = { student_id: '', instructor_id: '', date: '', start_time: '', end_time: '', aircraft_id: '', lesson_type: 'Private Pilot Training' }
+const BLANK_FORM = { student_id: '', instructor_id: '', date: '', start_time: '', end_time: '', aircraft_id: '', lesson_type: 'Private Pilot Training', debrief_notes: '' }
 const BLANK_REQ = { instructor_id: '', preferred_date: '', preferred_time: '', lesson_type: 'Private Pilot Training', notes: '' }
 
 export default function Schedule() {
@@ -128,6 +128,7 @@ export default function Schedule() {
       end_time: end.toTimeString().slice(0, 5),
       aircraft_id: lesson.aircraft_id ?? '',
       lesson_type: lesson.lesson_type ?? 'Private Pilot Training',
+      debrief_notes: lesson.debrief_notes ?? '',
     })
     setFormError('')
     setModal({ mode: 'edit', lesson })
@@ -197,7 +198,13 @@ export default function Schedule() {
     if (modal.mode === 'create') {
       ;({ error } = await supabase.from('lessons').insert(payload))
     } else {
-      ;({ error } = await supabase.from('lessons').update(payload).eq('id', modal.lesson.id))
+      const debriefChanged = form.debrief_notes !== (modal.lesson.debrief_notes ?? '')
+      const editPayload = {
+        ...payload,
+        debrief_notes: form.debrief_notes || null,
+        ...(debriefChanged ? { debrief_updated_at: new Date().toISOString() } : {}),
+      }
+      ;({ error } = await supabase.from('lessons').update(editPayload).eq('id', modal.lesson.id))
     }
     setSaving(false)
     if (error) { setFormError(error.message); return }
@@ -471,6 +478,17 @@ export default function Schedule() {
                 </select>
               </div>
             </div>
+            {modal.mode === 'edit' && (
+              <div className="form-group">
+                <label>Debrief Notes</label>
+                <textarea
+                  value={form.debrief_notes}
+                  onChange={e => field('debrief_notes', e.target.value)}
+                  rows={4}
+                  placeholder="Visible to the student on their dashboard — what went well, what to work on next…"
+                />
+              </div>
+            )}
             <div className="modal-form__actions">
               {modal.mode === 'edit' && isAdmin && (
                 <button type="button" className="btn-danger" onClick={handleDelete}>Delete</button>
