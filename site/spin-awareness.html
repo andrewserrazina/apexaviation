@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Free Guide: Spin Awareness | Apex Advantage</title>
+  <meta name="description" content="Get the free Spin Awareness guide instantly when you create your Apex Advantage account — the four stages of a spin, the PARE recovery checklist, why spins happen, and the most dangerous spin scenario." />
+  <meta property="og:title" content="Free Guide: Spin Awareness | Apex Advantage" />
+  <meta property="og:description" content="Most pilots never see this before it happens to them. Recognize a spin early, and know exactly how to recover — free the moment you sign up." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://apexaviationtx.com/spin-awareness.html" />
+  <meta property="og:image" content="https://apexaviationtx.com/ApexPrivate.png" />
+  <meta property="og:site_name" content="Apex Aviation" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Free Guide: Spin Awareness | Apex Advantage" />
+  <meta name="twitter:description" content="The four stages of a spin, the PARE recovery checklist, and the most dangerous spin scenario — free the moment you sign up." />
+  <meta name="twitter:image" content="https://apexaviationtx.com/ApexPrivate.png" />
+  <link rel="canonical" href="https://apexaviationtx.com/spin-awareness.html" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="pages.css" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": "Apex Advantage Free Portal Account",
+    "description": "Free Apex Advantage member portal account, including the Spin Awareness guide -- built by a CFI to help student pilots recognize and recover from spins.",
+    "brand": { "@type": "Brand", "name": "Apex Aviation" },
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": "https://apexaviationtx.com/spin-awareness.html"
+  }
+  </script>
+  <!-- Google Analytics 4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-JFPBCF2GXE"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-JFPBCF2GXE');
+  </script>
+  <!-- Microsoft Clarity -->
+  <script>
+    (function(c,l,a,r,i,t,y){
+      c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+      t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+      y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window,document,'clarity','script','x95g0qe0g6');
+  </script>
+  <style>
+    /* ── Spin Awareness guide — page-specific styles (same shared visual
+       language as checkride-prep.html / radio-calls.html) ── */
+
+    .cp-launch-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--gold); color: #080f1e;
+      font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 14px; border-radius: 100px; margin-bottom: 20px;
+    }
+    .cp-info-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 100px; padding: 6px 14px; font-size: 12px; font-weight: 600;
+      color: rgba(255,255,255,0.6); margin-bottom: 32px;
+    }
+    .cp-problem-card {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+      border-left: 3px solid rgba(255,100,100,0.4); border-radius: 12px; padding: 24px 22px;
+    }
+    .cp-problem-card__icon { font-size: 20px; margin-bottom: 12px; display: block; }
+    .cp-problem-card h3 { font-size: 15px; font-weight: 700; color: #fff; margin: 0 0 8px; line-height: 1.4; }
+    .cp-problem-card p { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.7; margin: 0; }
+    .cp-stage-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; max-width: 1000px; margin: 0 auto;
+    }
+    .cp-stage-card {
+      background: #162C4F; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 24px 20px;
+    }
+    .cp-stage-card__icon { font-size: 22px; margin-bottom: 10px; display: block; }
+    .cp-stage-card h3 { font-size: 15px; font-weight: 700; color: #fff; margin: 0 0 10px; }
+    .cp-stage-card ul { list-style: none; padding: 0; margin: 0 0 12px; }
+    .cp-stage-card li { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.8; }
+    .cp-stage-card__note { font-size: 12.5px; font-weight: 700; color: var(--gold); margin: 0; }
+    .cp-pare-box {
+      background: #162C4F; border: 2px solid rgba(244,180,0,0.3); border-radius: 16px; padding: 32px;
+      max-width: 480px; margin: 0 auto; text-align: center;
+    }
+    .cp-pare-row { display: flex; align-items: baseline; gap: 14px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); text-align: left; }
+    .cp-pare-row:last-of-type { border-bottom: none; }
+    .cp-pare-letter { font-size: 28px; font-weight: 800; color: var(--gold); width: 32px; flex-shrink: 0; }
+    .cp-pare-text { font-size: 16px; font-weight: 600; color: #fff; }
+    .cp-why-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 900px; margin: 0 auto; }
+    .cp-why-card { background: #162C4F; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 30px 26px; border-top: 3px solid var(--gold); }
+    .cp-why-card__icon { width: 44px; height: 44px; border-radius: 10px; background: rgba(244,180,0,0.1); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+    .cp-why-card h3 { font-size: 16px; font-weight: 700; color: #fff; margin: 0 0 10px; }
+    .cp-why-card p { font-size: 14px; color: rgba(255,255,255,0.6); line-height: 1.75; margin: 0; }
+    .cp-creator {
+      display: grid; grid-template-columns: auto 1fr; gap: 36px; align-items: start; max-width: 780px; margin: 0 auto;
+      background: #162C4F; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 40px;
+    }
+    .cp-creator__avatar { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(244,180,0,0.3); flex-shrink: 0; }
+    .cp-creator__name { font-size: 18px; font-weight: 800; color: #fff; margin: 0 0 4px; }
+    .cp-creator__title { font-size: 12px; font-weight: 700; color: var(--gold); letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 16px; }
+    .cp-creator__bio { font-size: 14px; color: rgba(255,255,255,0.65); line-height: 1.85; margin: 0; }
+    .cp-offer-box {
+      background: linear-gradient(145deg, #162C4F, #0d1e35); border: 2px solid rgba(244,180,0,0.35); border-radius: 20px;
+      padding: 48px 40px; max-width: 600px; margin: 0 auto; text-align: center; position: relative; overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+    }
+    .cp-offer-box::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+    .cp-delivery-list { list-style: none; padding: 0; margin: 0 0 28px; display: flex; flex-direction: column; gap: 8px; text-align: left; }
+    .cp-delivery-list li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: rgba(255,255,255,0.75); }
+    .cp-delivery-list li svg { flex-shrink: 0; }
+    .btn--cta-primary {
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      background: var(--gold); color: #080f1e; font-weight: 800; font-size: 17px; letter-spacing: 0.02em;
+      padding: 20px 36px; border-radius: 10px; text-decoration: none; border: none; cursor: pointer;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s; box-shadow: 0 4px 20px rgba(244,180,0,0.35); width: 100%;
+    }
+    .btn--cta-primary:hover { background: #f5be10; transform: translateY(-2px); box-shadow: 0 8px 28px rgba(244,180,0,0.45); }
+    .btn--cta-primary:active { transform: translateY(0); }
+    .btn--outline-gold {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      background: transparent; border: 2px solid var(--gold); color: var(--gold); font-weight: 700; font-size: 15px;
+      padding: 14px 32px; border-radius: 10px; text-decoration: none; transition: background 0.2s, color 0.2s;
+    }
+    .btn--outline-gold:hover { background: var(--gold); color: #080f1e; }
+    .cp-upsell { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 40px; max-width: 680px; margin: 0 auto; text-align: center; }
+    .section--deep { background: #080f1e; }
+    .section--navy { background: var(--navy); }
+    .cp-offer-wrap { position: relative; }
+    .cp-offer-wrap::before {
+      content: ''; position: absolute; inset: -60px 0 auto 0; height: 300px;
+      background: radial-gradient(ellipse at center, rgba(244,180,0,0.1) 0%, transparent 70%); pointer-events: none;
+    }
+    .cp-sticky-cta {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 300;
+      background: rgba(11,31,58,0.97); backdrop-filter: blur(10px);
+      border-top: 1px solid rgba(244,180,0,0.25); box-shadow: 0 -8px 32px rgba(0,0,0,0.35);
+      padding: 12px 20px; transform: translateY(100%); transition: transform 0.3s ease;
+    }
+    .cp-sticky-cta.show { transform: translateY(0); }
+    .cp-sticky-cta__inner { max-width: 1140px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .cp-sticky-cta__copy { font-size: 13px; color: rgba(255,255,255,0.7); font-weight: 600; }
+    .cp-sticky-cta__copy strong { color: var(--gold); }
+    .cp-sticky-cta a.btn--cta-primary { width: auto; padding: 12px 24px; font-size: 14px; }
+    @media (max-width: 640px) { .cp-sticky-cta__copy { display: none; } .cp-sticky-cta__inner { justify-content: center; } }
+    .cp-reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .cp-reveal.in-view { opacity: 1; transform: translateY(0); }
+    @media (prefers-reduced-motion: reduce) { .cp-reveal { opacity: 1; transform: none; transition: none; } }
+    @media (max-width: 900px) {
+      .cp-stage-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    }
+    @media (max-width: 768px) {
+      .cp-why-grid, .cp-problem-grid { grid-template-columns: 1fr !important; }
+      .cp-stage-grid { grid-template-columns: 1fr !important; }
+      .cp-hero-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
+      .cp-offer-box { padding: 36px 24px !important; }
+      .cp-creator { grid-template-columns: 1fr !important; text-align: center; padding: 28px 24px; }
+      .cp-creator__avatar { margin: 0 auto; }
+      .cp-upsell { padding: 28px 20px; }
+    }
+    @media (max-width: 480px) {
+      .cp-hero-cta-row { flex-direction: column !important; align-items: stretch !important; }
+      .btn--cta-primary { font-size: 15px !important; padding: 17px 24px !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="nav" id="nav">
+    <div class="container nav__inner">
+      <a href="home.html" class="nav__logo">
+        <img src="apexwhite.png" alt="Apex Aviation" height="40" style="display:block;width:auto" />
+      </a>
+      <nav class="nav__links">
+        <a href="programs.html">Services</a>
+        <div class="nav__dropdown" id="trainingDropdown">
+          <button class="nav__dropdown-toggle" aria-expanded="false" aria-haspopup="true">
+            Training
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="nav__dropdown-menu">
+            <a href="private-pilot-training.html">Private Pilot</a>
+            <a href="instrument-rating-training.html">Instrument Rating</a>
+            <a href="commercial-pilot-training.html">Commercial Pilot</a>
+            <a href="apex-advantage.html">Apex Advantage</a>
+            <a href="ground-school-locations.html">Ground School Near You</a>
+          </div>
+        </div>
+        <a href="fleet.html">Facility</a>
+        <a href="about.html">About</a>
+        <a href="instructors.html">Team</a>
+        <a href="pricing.html">Pricing</a>
+        <a href="apex-advantage.html" class="btn btn--nav-outline">Apex Advantage</a>
+        <a href="portal-login.html" class="btn btn--nav-ghost">Login</a>
+        <a href="contact.html" class="btn btn--nav">Book a Session</a>
+      </nav>
+      <button class="nav__hamburger" id="hamburger" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <div class="nav__mobile" id="mobileMenu">
+      <a href="programs.html">Services</a>
+      <a href="private-pilot-training.html">Private Pilot Training</a>
+      <a href="instrument-rating-training.html">Instrument Rating</a>
+      <a href="commercial-pilot-training.html">Commercial Pilot</a>
+      <a href="apex-advantage.html">Apex Advantage Ground School</a>
+      <a href="fleet.html">Facility</a>
+      <a href="about.html">About</a>
+      <a href="instructors.html">Team</a>
+      <a href="pricing.html">Pricing</a>
+      <a href="portal-login.html">Login</a>
+      <a href="contact.html">Book a Session</a>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       1. HERO
+  ════════════════════════════════════════════════════════════ -->
+  <section style="background:#080f1e;padding:120px 0 80px;position:relative;overflow:hidden">
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 60% 40%, rgba(244,180,0,0.07) 0%, transparent 65%);pointer-events:none"></div>
+    <div style="position:absolute;inset:0;background:repeating-linear-gradient(-45deg,transparent,transparent 40px,rgba(255,255,255,0.012) 40px,rgba(255,255,255,0.012) 41px);pointer-events:none"></div>
+
+    <div class="container" style="position:relative;z-index:1">
+      <div class="cp-hero-grid" style="display:grid;grid-template-columns:1fr 400px;gap:64px;align-items:center;max-width:1060px;margin:0 auto">
+
+        <div>
+          <div class="cp-launch-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="#080f1e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Free Guide — Yours Instantly at Signup
+          </div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--gold);margin-bottom:16px">Apex Advantage · Free Resource</div>
+          <h1 style="font-size:clamp(1.9rem,4.2vw,2.85rem);font-weight:800;color:#fff;line-height:1.15;margin:0 0 20px;letter-spacing:-0.02em">Most Pilots Never<br/>See This.</h1>
+          <p style="color:rgba(255,255,255,0.75);line-height:1.85;font-size:17px;margin:0 0 28px;max-width:520px">The stages of a spin, and exactly what to do about it. This free guide breaks down how a spin actually develops — entry, incipient, developed, recovery — plus the PARE checklist for recovering correctly, the moment it starts.</p>
+
+          <div class="cp-info-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            No Card Required · Delivered Inside Your Free Member Portal
+          </div>
+
+          <div class="cp-hero-cta-row" style="display:flex;flex-direction:column;gap:14px;max-width:420px">
+            <a href="portal-login.html?view=signup&dest=spin-awareness" class="btn--cta-primary">
+              Get the Free Guide
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
+            <div style="font-size:12px;color:rgba(255,255,255,0.4);text-align:center">
+              Free Forever &nbsp;·&nbsp; No Credit Card &nbsp;·&nbsp; Works on Phone, Tablet, or Computer
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:center;align-items:center">
+          <img src="ApexPrivate.png" alt="Apex Advantage member portal — Spin Awareness guide" style="width:100%;max-width:400px;height:auto;display:block;filter:drop-shadow(0 24px 48px rgba(0,0,0,0.55))" />
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Trust bar -->
+  <div style="background:rgba(244,180,0,0.06);border-top:1px solid rgba(244,180,0,0.12);border-bottom:1px solid rgba(244,180,0,0.12)">
+    <div class="container" style="display:flex;flex-wrap:wrap;justify-content:center;gap:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:16px 28px;border-right:1px solid rgba(244,180,0,0.1)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.75)">Built by a CFI</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:16px 28px;border-right:1px solid rgba(244,180,0,0.1)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.75)">The PARE Checklist</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:16px 28px;border-right:1px solid rgba(244,180,0,0.1)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.75)">Free Forever</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:16px 28px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.75)">Instant Portal Access</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       2. PROBLEM
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--deep cp-reveal">
+    <div class="container">
+      <div style="max-width:820px;margin:0 auto">
+        <div class="section__eyebrow">Why This Matters</div>
+        <h2 style="text-align:center;font-size:clamp(1.5rem,3.5vw,2.1rem);font-weight:800;color:#fff;line-height:1.3;margin:0 0 16px">Recognizing a spin early is the difference<br/>between a non-event and an emergency.</h2>
+        <p style="text-align:center;color:rgba(255,255,255,0.6);line-height:1.85;font-size:15px;max-width:620px;margin:0 auto 48px">Most pilots never actually see a spin develop before it happens to them. By the time it's obvious, you're already past the easiest phase to recover. Knowing the stages — and reacting correctly the moment you recognize one — is what keeps this a training topic instead of an accident report.</p>
+
+        <div class="cp-problem-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+          <div class="cp-problem-card">
+            <span class="cp-problem-card__icon">⚠️</span>
+            <h3>It starts with an uncoordinated stall.</h3>
+            <p>Excessive rudder or a skidding turn during an already-stalled wing is almost always where it begins — often without much warning.</p>
+          </div>
+          <div class="cp-problem-card">
+            <span class="cp-problem-card__icon">🔄</span>
+            <h3>The incipient phase is your best chance.</h3>
+            <p>Recovery gets harder the longer a spin develops. The earliest phase — right as rotation begins — is the easiest to stop.</p>
+          </div>
+          <div class="cp-problem-card">
+            <span class="cp-problem-card__icon">🛬</span>
+            <h3>Base-to-final is where it gets dangerous.</h3>
+            <p>An overshoot plus rudder input in the pattern means a spin with very little altitude to recover in — the single most dangerous version of this scenario.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       3. THE STAGES OF A SPIN
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--navy cp-reveal">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Free Resource Preview</div>
+        <h2 class="section__title">The Stages<br/><em class="accent">of a Spin.</em></h2>
+        <p class="section__desc" style="max-width:620px">Recognize it early. Recover correctly.</p>
+      </div>
+
+      <div class="cp-stage-grid">
+        <div class="cp-stage-card">
+          <span class="cp-stage-card__icon">⚠️</span>
+          <h3>Entry</h3>
+          <ul>
+            <li>Stall is initiated</li>
+            <li>Yaw/rudder is introduced</li>
+            <li>Aircraft departs controlled flight</li>
+          </ul>
+          <p class="cp-stage-card__note">This is where control is lost.</p>
+        </div>
+        <div class="cp-stage-card">
+          <span class="cp-stage-card__icon">🔄</span>
+          <h3>Incipient</h3>
+          <ul>
+            <li>Rotation begins</li>
+            <li>Noticable wing drop</li>
+            <li>Transitioning horizontal to vertical speed</li>
+          </ul>
+          <p class="cp-stage-card__note">Easiest phase to recover.</p>
+        </div>
+        <div class="cp-stage-card">
+          <span class="cp-stage-card__icon">🌀</span>
+          <h3>Developed</h3>
+          <ul>
+            <li>Stable rotation</li>
+            <li>Constant rate of turn + descent</li>
+            <li>Fully stalled condition</li>
+          </ul>
+          <p class="cp-stage-card__note">Fully developed spin condition.</p>
+        </div>
+        <div class="cp-stage-card">
+          <span class="cp-stage-card__icon">✔️</span>
+          <h3>Recovery</h3>
+          <ul>
+            <li>Correct recovery inputs applied</li>
+            <li>Rotation stops</li>
+            <li>Wings regain lift</li>
+          </ul>
+          <p class="cp-stage-card__note">Back to controlled flight.</p>
+        </div>
+      </div>
+
+      <div style="text-align:center;margin-top:32px">
+        <a href="portal-login.html?view=signup&dest=spin-awareness" class="btn--cta-primary" style="max-width:340px">
+          Get the Free Guide
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <p style="color:rgba(255,255,255,0.4);font-size:13px;margin-top:14px">Plus the PARE recovery checklist, why spins happen, common mistakes, and the most dangerous spin scenario — all free, all inside your member portal.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       4. PARE CHECKLIST
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--deep cp-reveal">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Spin Recovery</div>
+        <h2 class="section__title">Apply immediately<br/><em class="accent">at first sign of a spin.</em></h2>
+      </div>
+      <div class="cp-pare-box">
+        <div class="cp-pare-row"><span class="cp-pare-letter">P</span><span class="cp-pare-text">Power: Idle</span></div>
+        <div class="cp-pare-row"><span class="cp-pare-letter">A</span><span class="cp-pare-text">Ailerons: Neutral</span></div>
+        <div class="cp-pare-row"><span class="cp-pare-letter">R</span><span class="cp-pare-text">Rudder: Opposite</span></div>
+        <div class="cp-pare-row"><span class="cp-pare-letter">E</span><span class="cp-pare-text">Elevator: Forward</span></div>
+        <p style="color:rgba(255,255,255,0.55);font-size:13px;margin:16px 0 0">Then recover smoothly from the dive.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       5. WHY IT WORKS
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--navy cp-reveal">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">The Method</div>
+        <h2 class="section__title">Built for what actually<br/><em class="accent">causes a spin.</em></h2>
+      </div>
+      <div class="cp-why-grid">
+        <div class="cp-why-card">
+          <div class="cp-why-card__icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <h3>Why Spins Happen</h3>
+          <p>Uncoordinated stall, excessive rudder, skidding base-to-final — the same three root causes, every time.</p>
+        </div>
+        <div class="cp-why-card">
+          <div class="cp-why-card__icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M18.364 5.636l-12.728 12.728M5.636 5.636l12.728 12.728" stroke="#F4B400" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <h3>Common Mistakes</h3>
+          <p>Using ailerons, not enough rudder, and hesitating are the three most common ways a recovery attempt goes wrong.</p>
+        </div>
+        <div class="cp-why-card">
+          <div class="cp-why-card__icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <h3>The Most Dangerous Scenario</h3>
+          <p>Base-to-final overshoot plus rudder input equals a spin at low altitude — the scenario with the least margin to recover.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       6. CREATOR — ANDREW CREDIBILITY
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--deep cp-reveal">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">About the Creator</div>
+        <h2 class="section__title">Built by someone who<br/><em class="accent">teaches spin awareness first-hand.</em></h2>
+      </div>
+      <div class="cp-creator">
+        <img src="images/AndrewHeadshot.JPG" alt="Andrew Serrazina, CFI and founder of Apex Aviation" class="cp-creator__avatar" onerror="this.style.display='none'" />
+        <div>
+          <div class="cp-creator__name">Andrew Serrazina</div>
+          <div class="cp-creator__title">Commercial Pilot · CFI · Founder, Apex Aviation</div>
+          <p class="cp-creator__bio">Created by Andrew Serrazina, Commercial Pilot, CFI, and founder of Apex Aviation. Andrew has spent years teaching stall/spin awareness to student pilots — the kind of understanding that has to be internalized before it's ever needed for real.<br/><br/>This guide brings that same practical teaching style to a topic most pilots only ever read about, never actually see: exactly how a spin develops, and exactly what to do the moment you recognize one.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       7. SIGNUP OFFER
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--deep cp-reveal" id="get-guide">
+    <div class="container">
+      <div class="cp-offer-wrap">
+      <div class="section__eyebrow" style="display:flex;justify-content:center;position:relative">Get the Guide</div>
+      <div class="cp-offer-box" style="position:relative">
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Apex Advantage · Spin Awareness</div>
+        <h2 style="font-size:20px;font-weight:800;color:#fff;margin:0 0 24px;line-height:1.35">Free, the moment you create your account.</h2>
+
+        <ul class="cp-delivery-list">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Instant access inside your free member portal</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>No payment required, ever — this guide is free forever</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Also unlocks live ground school registration &amp; the "10 Questions DPEs Love to Ask" guide</li>
+        </ul>
+
+        <a href="portal-login.html?view=signup&dest=spin-awareness" class="btn--cta-primary">
+          Create Your Free Account
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <p style="color:rgba(255,255,255,0.3);font-size:12px;margin:14px 0 0">Free to join. The full 256-question Checkride Prep System is available separately for $29, whenever you're ready.</p>
+      </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       8. FAQ
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section faq-section section--navy cp-reveal">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Common Questions</div>
+        <h2 class="section__title">Spin Awareness Guide FAQs</h2>
+      </div>
+      <div class="faq-list">
+        <div class="faq-item">
+          <button class="faq-item__question">
+            Is this guide actually free?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>Yes, completely free, forever — no card required. Creating a free Apex Advantage account also gets you live ground school registration and the "10 Questions DPEs Love to Ask" guide.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            Does this replace actual spin training?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>No. This is an awareness and recognition guide, not a substitute for hands-on spin training with a qualified instructor in an aircraft certified for it. Use it to understand the stages and the PARE checklist before you ever practice it in the airplane.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            Is this only for Apex Aviation students?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>No. Any student pilot can use it, regardless of where they train — spin aerodynamics and the PARE recovery checklist are the same in any airplane.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            How do I actually get access?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>Signing up is free — right after you create your account you'll get an email to set your password and sign in to the Apex Advantage member portal, where this guide is waiting for you under "Spin Awareness."</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       9. MOCK ORAL / CHECKRIDE PREP UPSELL
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--deep cp-reveal">
+    <div class="container">
+      <div class="cp-upsell">
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Ready to Go Further?</div>
+        <h2 style="font-size:22px;font-weight:800;color:#fff;margin:0 0 10px;line-height:1.3">The Full Checkride Prep System</h2>
+        <p style="color:rgba(255,255,255,0.55);font-size:14px;line-height:1.75;margin:0 auto 24px;max-width:480px">Stall/spin scenarios are a core part of the ACS Emergency Operations area — the full Checkride Prep System covers them alongside 255 other DPE-style questions, model answers, and scenario training.</p>
+        <a href="checkride-prep.html" class="btn--outline-gold">
+          Explore Checkride Prep
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <p style="color:rgba(255,255,255,0.3);font-size:12px;margin:14px 0 0">$29 founding pricing for the first 25 members, $49 after that.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       10. FINAL CTA
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--dark">
+    <div class="container" style="text-align:center;max-width:640px">
+      <div class="section__eyebrow">Confidence Comes With Repetition</div>
+      <h2 class="section__title" style="font-size:clamp(1.6rem,4vw,2.4rem)">Nobody is born knowing<br/>how to <em class="accent">recognize a spin.</em></h2>
+      <p style="color:rgba(255,255,255,0.65);line-height:1.85;font-size:16px;margin:0 0 32px">The more you understand it, the less it has to be a surprise. Keep flying. Keep learning.</p>
+
+      <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+        <a href="portal-login.html?view=signup&dest=spin-awareness" class="btn--cta-primary" style="max-width:400px">
+          Create Your Free Account
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:center">
+          <span style="font-size:13px;font-weight:700;color:var(--gold)">Free Forever</span>
+          <span style="color:rgba(255,255,255,0.2)">·</span>
+          <span style="font-size:13px;color:rgba(255,255,255,0.5)">No Card Required</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container footer__inner">
+      <div class="footer__brand">
+        <a href="home.html" class="nav__logo">
+          <img src="apexwhite.png" alt="Apex Aviation" height="40" style="display:block;width:auto" />
+        </a>
+        <p>Train Beyond the Checkride. Premium simulator-based aviation training opening in Austin, Texas — January 2027.</p>
+        <div class="footer__social">
+          <a href="https://www.facebook.com/profile.php?id=61590455400224" target="_blank" rel="noopener" aria-label="Facebook"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></a>
+          <a href="https://www.instagram.com/apexaviationtx" target="_blank" rel="noopener" aria-label="Instagram"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.5" cy="6.5" r="1.5"/></svg></a>
+          <a href="https://www.youtube.com/@apexaviationtx" target="_blank" rel="noopener" aria-label="YouTube"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M22.54 6.42a2.78 2.78 0 00-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46a2.78 2.78 0 00-1.95 1.96A29 29 0 001 12a29 29 0 00.46 5.58a2.78 2.78 0 001.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 001.95-1.96A29 29 0 0023 12a29 29 0 00-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="white"/></svg></a>
+          <a href="https://www.tiktok.com/@apexaviationtx" target="_blank" rel="noopener" aria-label="TikTok"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/></svg></a>
+          <a href="https://www.linkedin.com/company/apex-aviation-tx" target="_blank" rel="noopener" aria-label="LinkedIn"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg></a>
+        </div>
+      </div>
+      <div class="footer__links">
+        <div>
+          <h4>Training</h4>
+          <a href="apex-advantage.html">Apex Advantage</a>
+          <a href="apex-advantage.html">Virtual Ground School</a>
+          <a href="checkride-prep.html">Checkride Prep</a>
+          <a href="radio-calls.html">Radio Calls Made Simple</a>
+          <a href="spin-awareness.html">Spin Awareness</a>
+          <a href="ground-school-locations.html">Ground School Near You</a>
+        </div>
+        <div>
+          <h4>Company</h4>
+          <a href="about.html">About Apex</a>
+          <a href="instructors.html">Our Instructors</a>
+          <a href="fleet.html">The Simulator</a>
+          <a href="about.html#founder">Andrew Serrazina</a>
+          <a href="home.html#waitlist">Founding Members</a>
+        </div>
+        <div>
+          <h4>Contact</h4>
+          <a href="mailto:info@apexaviationtx.com">info@apexaviationtx.com</a>
+          <a href="contact.html">Book a Session</a>
+          <span style="color:var(--gray-2);font-size:14px">Austin, Texas</span>
+        </div>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <div class="container">
+        <p>&copy; 2026 Apex Aviation. All rights reserved. · <a href="privacy.html" style="color:var(--gray-2)">Privacy Policy</a></p>
+        <p>Train Beyond the Checkride. · Austin, Texas</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Sticky mini-CTA -->
+  <div class="cp-sticky-cta" id="cpStickyCta">
+    <div class="cp-sticky-cta__inner">
+      <div class="cp-sticky-cta__copy">Spin Awareness · <strong>Free forever</strong></div>
+      <a href="portal-login.html?view=signup&dest=spin-awareness" class="btn--cta-primary">
+        Get the Free Guide
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+    </div>
+  </div>
+
+  <script>
+    window.APEX_EXIT_POPUP = {
+      mode: 'cta',
+      eyebrow: 'Free Guide, No Card Required',
+      heading: "Wait — this guide's free.",
+      body: 'Create your free Apex Advantage account and get the Spin Awareness guide instantly. The four stages of a spin, plus the PARE recovery checklist.',
+      ctaText: 'Get the Free Guide',
+      ctaHref: 'portal-login.html?view=signup&dest=spin-awareness',
+      ctaNote: 'Free forever. No credit card required.'
+    };
+  </script>
+  <script src="script.js"></script>
+  <script>
+    (function () {
+      var stickyCta = document.getElementById('cpStickyCta');
+      var hero = document.querySelector('.cp-hero-grid');
+      var footer = document.querySelector('.footer');
+      if (!stickyCta || !hero || !('IntersectionObserver' in window)) return;
+      var pastHero = false, overFooter = false;
+      function sync() { stickyCta.classList.toggle('show', pastHero && !overFooter); }
+      new IntersectionObserver(function (entries) {
+        pastHero = !entries[0].isIntersecting;
+        sync();
+      }, { threshold: 0 }).observe(hero.closest('section'));
+      if (footer) {
+        new IntersectionObserver(function (entries) {
+          overFooter = entries[0].isIntersecting;
+          sync();
+        }, { threshold: 0 }).observe(footer);
+      }
+    })();
+
+    (function () {
+      var reveals = document.querySelectorAll('.cp-reveal');
+      if (!reveals.length) return;
+      if (!('IntersectionObserver' in window)) {
+        reveals.forEach(function (el) { el.classList.add('in-view'); });
+        return;
+      }
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('in-view');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1, rootMargin: '0px 0px -60px 0px' });
+      reveals.forEach(function (el) { observer.observe(el); });
+    })();
+  </script>
+</body>
+</html>
