@@ -314,6 +314,18 @@ serve(async (req) => {
     const session = event.data.object as Stripe.Checkout.Session
     const purpose = session.metadata?.purpose
 
+    // Marks this session as completed for the abandoned-checkout
+    // recovery job (send-lifecycle-emails' processAbandonedCheckouts) --
+    // done generically for every purpose, before the purpose-specific
+    // handling below, since it's the same bookkeeping regardless of what
+    // the session was for. Best-effort: a row that predates this
+    // feature (or a logging failure in create-checkout-session) simply
+    // won't exist here, which is fine -- there's nothing to mark.
+    await supabase
+      .from('checkout_session_attempts')
+      .update({ completed_at: new Date().toISOString() })
+      .eq('stripe_session_id', session.id)
+
     if (purpose === 'unlock-checkride-prep') {
       await handleUnlockCheckridePrep(supabase, session)
     } else if (purpose === 'ground-school-registration') {
