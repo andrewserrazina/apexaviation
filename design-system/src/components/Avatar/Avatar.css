@@ -1,0 +1,14 @@
+/* Matches .portal-avatar / .portal-account-avatar (site/portal.css). */
+.apex-avatar {
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold), var(--gold-2));
+  color: #0b1f3a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  flex-shrink: 0;
+  font-family: var(--font);
+}
+.apex-avatar--sm { width: 32px; height: 32px; font-size: 13px; }
+.apex-avatar--lg { width: 72px; height: 72px; font-size: 26px; }

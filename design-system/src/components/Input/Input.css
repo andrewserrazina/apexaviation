@@ -1,0 +1,36 @@
+/* Matches .form-group input (site/portal-login.html) and .portal-search
+   input (site/portal.css) -- same border/background/focus treatment. */
+.apex-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.apex-field__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+}
+.apex-field__control {
+  padding: 13px 14px;
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  font-family: var(--font);
+  font-size: 15px;
+  color: #fff;
+  background: rgba(11, 31, 58, 0.6);
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  width: 100%;
+}
+.apex-field__control:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(244, 180, 0, 0.18);
+}
+.apex-field__control::placeholder {
+  color: rgba(255, 255, 255, 0.22);
+}
+.apex-field__error {
+  font-size: 12.5px;
+  color: #ff8b8b;
+}

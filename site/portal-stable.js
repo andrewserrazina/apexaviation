@@ -139,7 +139,7 @@
   var sidebar = document.getElementById('portalSidebar');
   var overlay = document.getElementById('sidebarOverlay');
 
-  var GATED_SECTIONS = ['checkride-prep', 'dpe-library', 'scenarios', 'progress', 'vault'];
+  var GATED_SECTIONS = ['checkride-prep', 'dpe-library', 'ai-dpe-practice', 'scenarios', 'progress', 'vault'];
 
   function showSection(id) {
     if (!document.getElementById('section-' + id)) id = 'dashboard';
@@ -361,6 +361,181 @@
       mockOralError.classList.add('show');
     });
   });
+
+  /* ── AI DPE Practice (simulated oral exam) ─────────────────────
+     Chat client for the dpe-chat Edge Function. The function itself
+     owns all exam logic (question sequencing, follow-ups, the
+     debrief) via a Claude call per turn -- this is just render +
+     transport. Every response is the same shape regardless of action
+     (start/message/end): {sessionId, phase, message, debrief,
+     questionsAsked, status}, so one handleTurn() covers all three. */
+  (function () {
+    var startCard = document.getElementById('aiDpeStart');
+    if (!startCard) return; // section not present on this page
+
+    var startBtn = document.getElementById('aiDpeStartBtn');
+    var startError = document.getElementById('aiDpeStartError');
+    var chatEl = document.getElementById('aiDpeChat');
+    var messagesEl = document.getElementById('aiDpeMessages');
+    var typingEl = document.getElementById('aiDpeTyping');
+    var formEl = document.getElementById('aiDpeForm');
+    var inputEl = document.getElementById('aiDpeInput');
+    var sendBtn = document.getElementById('aiDpeSendBtn');
+    var endBtn = document.getElementById('aiDpeEndBtn');
+    var debriefEl = document.getElementById('aiDpeDebrief');
+
+    var sessionId = null;
+    var busy = false;
+
+    function escapeHtml(str) {
+      var div = document.createElement('div');
+      div.textContent = str == null ? '' : String(str);
+      return div.innerHTML;
+    }
+
+    function addBubble(role, text) {
+      var bubble = document.createElement('div');
+      bubble.className = 'portal-chat__bubble portal-chat__bubble--' + role;
+      bubble.textContent = text;
+      messagesEl.appendChild(bubble);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function setBusy(isBusy) {
+      busy = isBusy;
+      typingEl.hidden = !isBusy;
+      inputEl.disabled = isBusy;
+      sendBtn.disabled = isBusy;
+      endBtn.disabled = isBusy;
+      if (isBusy) messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function verdictLabel(v) {
+      return v === 'ready' ? 'Ready for Checkride' : v === 'not_yet' ? 'Not Yet — Keep Practicing' : 'Almost There';
+    }
+
+    function renderDebrief(debrief) {
+      chatEl.hidden = true;
+      debriefEl.hidden = false;
+      var badgeClass = 'portal-debrief__badge--' + (debrief.overallReadiness || 'almost');
+      var strengths = (debrief.strengths || []).map(function (s) { return '<li>' + escapeHtml(s) + '</li>'; }).join('');
+      var weaknesses = (debrief.weaknesses || []).map(function (s) { return '<li>' + escapeHtml(s) + '</li>'; }).join('');
+      var domains = (debrief.perDomain || []).map(function (d) {
+        return '<div class="portal-debrief__domain"><span>' + escapeHtml(d.domain) + ' — ' + escapeHtml(d.note) + '</span>' +
+          '<span class="portal-debrief__domain-verdict portal-debrief__domain-verdict--' + escapeHtml(d.verdict) + '">' + escapeHtml(d.verdict) + '</span></div>';
+      }).join('');
+      debriefEl.innerHTML =
+        '<span class="portal-debrief__badge ' + badgeClass + '">' + verdictLabel(debrief.overallReadiness) + '</span>' +
+        '<p class="portal-debrief__summary">' + escapeHtml(debrief.summary || '') + '</p>' +
+        '<div class="portal-debrief__cols">' +
+          '<div><h4 style="color:#fff;font-size:14px;font-weight:700">Strengths</h4><ul class="portal-debrief__list">' + (strengths || '<li>—</li>') + '</ul></div>' +
+          '<div><h4 style="color:#fff;font-size:14px;font-weight:700">Focus Areas</h4><ul class="portal-debrief__list">' + (weaknesses || '<li>—</li>') + '</ul></div>' +
+        '</div>' +
+        (domains ? '<h4 style="color:#fff;font-size:14px;font-weight:700;margin-bottom:10px">By ACS Area</h4>' + domains : '') +
+        '<div class="portal-debrief__actions">' +
+          '<button class="btn btn--primary" id="aiDpeAgainBtn">Practice Again</button>' +
+          '<button class="btn btn--ghost" data-goto="dpe-library" type="button">Review DPE Questions Library</button>' +
+        '</div>';
+      document.getElementById('aiDpeAgainBtn').addEventListener('click', resetToStart);
+      debriefEl.querySelectorAll('[data-goto]').forEach(function (el) {
+        el.addEventListener('click', function () { window.apexShowSection(el.dataset.goto); });
+      });
+    }
+
+    function resetToStart() {
+      sessionId = null;
+      messagesEl.innerHTML = '';
+      debriefEl.hidden = true;
+      debriefEl.innerHTML = '';
+      chatEl.hidden = true;
+      startCard.hidden = false;
+      startBtn.disabled = false;
+      startBtn.textContent = 'Start Practice Oral Exam';
+    }
+
+    function handleTurn(res) {
+      setBusy(false);
+      var data = res.data;
+      sessionId = data.sessionId;
+      addBubble('dpe', data.message);
+      if (data.phase === 'debrief' || data.status === 'completed') {
+        renderDebrief(data.debrief || {});
+      }
+    }
+
+    startBtn.addEventListener('click', function () {
+      startError.classList.remove('show');
+      startBtn.disabled = true;
+      startBtn.textContent = 'Starting…';
+
+      apexSupabase.functions.invoke('dpe-chat', {
+        body: { action: 'start' },
+        headers: { Authorization: 'Bearer ' + accessToken }
+      }).then(function (res) {
+        if (res.error || !res.data || res.data.error) {
+          return extractInvokeError(res).then(function (msg) {
+            startBtn.disabled = false;
+            startBtn.textContent = 'Start Practice Oral Exam';
+            startError.textContent = msg;
+            startError.classList.add('show');
+          });
+        }
+        startCard.hidden = true;
+        chatEl.hidden = false;
+        messagesEl.innerHTML = '';
+        handleTurn(res);
+        inputEl.focus();
+      }).catch(function () {
+        startBtn.disabled = false;
+        startBtn.textContent = 'Start Practice Oral Exam';
+        startError.textContent = 'Could not start your session. Please try again.';
+        startError.classList.add('show');
+      });
+    });
+
+    formEl.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (busy || !sessionId) return;
+      var text = inputEl.value.trim();
+      if (!text) return;
+      addBubble('student', text);
+      inputEl.value = '';
+      setBusy(true);
+
+      apexSupabase.functions.invoke('dpe-chat', {
+        body: { action: 'message', sessionId: sessionId, message: text },
+        headers: { Authorization: 'Bearer ' + accessToken }
+      }).then(function (res) {
+        if (res.error || !res.data || res.data.error) {
+          setBusy(false);
+          return extractInvokeError(res).then(function (msg) { addBubble('dpe', 'Sorry — something went wrong on my end: ' + msg); });
+        }
+        handleTurn(res);
+      }).catch(function () {
+        setBusy(false);
+        addBubble('dpe', 'Sorry — something went wrong on my end. Please try again.');
+      });
+    });
+
+    endBtn.addEventListener('click', function () {
+      if (busy || !sessionId) return;
+      setBusy(true);
+
+      apexSupabase.functions.invoke('dpe-chat', {
+        body: { action: 'end', sessionId: sessionId },
+        headers: { Authorization: 'Bearer ' + accessToken }
+      }).then(function (res) {
+        if (res.error || !res.data || res.data.error) {
+          setBusy(false);
+          return extractInvokeError(res).then(function (msg) { addBubble('dpe', 'Sorry — something went wrong on my end: ' + msg); });
+        }
+        handleTurn(res);
+      }).catch(function () {
+        setBusy(false);
+        addBubble('dpe', 'Sorry — something went wrong ending the session. Please try again.');
+      });
+    });
+  })();
 
   /* ── Ground School Scheduling ───────────────────────────────── */
   var groundSchoolLoaded = false;

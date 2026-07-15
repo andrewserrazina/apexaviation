@@ -1,0 +1,33 @@
+/* Matches .portal-quicklink / __icon (site/portal.css). */
+.apex-quicklink {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 22px;
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--transition);
+  background: #101f38;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  font-family: var(--font);
+}
+.apex-quicklink:hover {
+  transform: translateY(-3px);
+  border-color: rgba(244, 180, 0, 0.35);
+  background: #142544;
+}
+.apex-quicklink__icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  background: rgba(244, 180, 0, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold);
+}
+.apex-quicklink__title { font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+.apex-quicklink__desc { font-size: 13px; color: rgba(255, 255, 255, 0.5); line-height: 1.5; }

@@ -1,0 +1,27 @@
+/* Real Apex Aviation brand fonts, fetched from Google Fonts (matching the
+   exact family/weight/style set requested by site/*.html's <link> tags)
+   and vendored here so the compiled bundle carries real glyphs instead of
+   a system-font substitute. Google served one static instance across all
+   requested Montserrat weights for this fetch (same underlying file for
+   400-800) -- see .design-sync/NOTES.md for the caveat this implies. */
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('./montserrat-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./playfair-italic-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./playfair-normal-400.woff2') format('woff2');
+}

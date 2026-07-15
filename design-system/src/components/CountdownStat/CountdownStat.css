@@ -1,0 +1,22 @@
+/* Matches .portal-countdown__value and its --urgent/--soon color states
+   (site/portal.css). */
+.apex-countdown {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.apex-countdown__eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.apex-countdown__value {
+  font-size: 34px;
+  font-weight: 800;
+  color: var(--gold);
+  line-height: 1.1;
+}
+.apex-countdown--soon .apex-countdown__value { color: var(--gold-light); }
+.apex-countdown--urgent .apex-countdown__value { color: #ff8b8b; }

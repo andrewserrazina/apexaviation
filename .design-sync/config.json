@@ -1,0 +1,16 @@
+{
+  "projectId": "5d70a264-f062-4002-9d86-be7cad08c9a3",
+  "shape": "storybook",
+  "pkg": "@apex-aviation/design-system",
+  "globalName": "ApexDesignSystem",
+  "storybookStatic": ".design-sync/sb-reference",
+  "storybookConfigDir": "design-system/.storybook",
+  "buildCmd": "npm run build --prefix design-system",
+  "cssEntry": "dist/apex-design-system.css",
+  "extraFonts": ["fonts/fonts.css"],
+  "overrides": {
+    "Button": { "cardMode": "column" },
+    "Modal": { "cardMode": "single", "primaryStory": "UnlockCheckridePrep" }
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}

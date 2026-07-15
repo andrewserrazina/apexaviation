@@ -1,0 +1,35 @@
+/* Apex Aviation design tokens — copied verbatim from the production
+   site's :root block (site/styles.css) so this package always matches
+   the brand exactly, not a reinterpretation of it. Consuming apps must
+   load Montserrat + Playfair Display themselves (Google Fonts), same
+   as site/*.html already does — this stylesheet only sets the
+   font-family stack, it does not fetch fonts. */
+:root {
+  --navy: #0b1f3a;
+  --navy-2: #162c4f;
+  --gold: #f4b400;
+  --gold-2: #d4920a;
+  --gold-light: #f9d04a;
+  --white: #ffffff;
+  --off-white: #0b1627;
+  --light: #091522;
+  --gray: rgba(255, 255, 255, 0.55);
+  --gray-2: rgba(255, 255, 255, 0.38);
+  --border: rgba(255, 255, 255, 0.09);
+  --text: rgba(255, 255, 255, 0.85);
+
+  /* alias kept for backward compat with the original site tokens */
+  --blue: #f4b400;
+  --blue-2: #d4920a;
+
+  --font: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-accent: 'Playfair Display', Georgia, serif;
+  --radius: 12px;
+  --radius-lg: 20px;
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 48px rgba(0, 0, 0, 0.55);
+  --transition: 0.22s ease;
+
+  /* Portal-specific tint, from portal.css (--navy-2 based cards) */
+  --portal-card-bg: #162c4f;
+}

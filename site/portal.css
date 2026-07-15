@@ -109,6 +109,13 @@
 @keyframes portalFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
 .portal-header { margin-bottom: 32px; }
+.portal-back-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: none; border: none; cursor: pointer; padding: 0;
+  font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.5);
+  margin-bottom: 14px; transition: color var(--transition);
+}
+.portal-back-link:hover { color: var(--gold); }
 .portal-header__eyebrow {
   font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--gold); margin-bottom: 8px;
@@ -707,6 +714,91 @@
 .portal-modal__list li { display: flex; align-items: center; gap: 10px; font-size: 13px; color: rgba(255,255,255,0.75); }
 .portal-modal__error { color: #f87171; font-size: 13px; margin-top: 12px; display: none; }
 .portal-modal__error.show { display: block; }
+
+/* ─── AI DPE Practice — chat + debrief ──────────────────────────── */
+.portal-chat {
+  display: flex; flex-direction: column; max-width: 680px;
+  background: #101f38; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px;
+  overflow: hidden;
+}
+.portal-chat[hidden] { display: none; }
+.portal-chat__messages {
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 22px; max-height: 520px; overflow-y: auto;
+}
+.portal-chat__bubble {
+  max-width: 82%; padding: 12px 16px; border-radius: 14px;
+  font-size: 14px; line-height: 1.6; white-space: pre-wrap;
+}
+.portal-chat__bubble--dpe {
+  align-self: flex-start; background: #16294a; color: rgba(255,255,255,0.88);
+  border-bottom-left-radius: 4px;
+}
+.portal-chat__bubble--dpe::before {
+  content: "DPE"; display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  color: var(--gold); margin-bottom: 5px; text-transform: uppercase;
+}
+.portal-chat__bubble--student {
+  align-self: flex-end; background: rgba(244,180,0,0.14); color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.portal-chat__typing {
+  display: flex; align-items: center; gap: 4px; padding: 0 22px 14px;
+}
+.portal-chat__typing[hidden] { display: none; }
+.portal-chat__typing span {
+  width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.4);
+  animation: portalTypingPulse 1.2s infinite ease-in-out;
+}
+.portal-chat__typing span:nth-child(2) { animation-delay: 0.15s; }
+.portal-chat__typing span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes portalTypingPulse {
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}
+.portal-chat__input-row {
+  display: flex; gap: 10px; padding: 16px; border-top: 1px solid rgba(255,255,255,0.08);
+}
+.portal-chat__input-row input {
+  flex: 1; background: #0b1830; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px;
+  padding: 11px 14px; color: #fff; font-size: 14px;
+}
+.portal-chat__input-row input:focus { outline: none; border-color: var(--gold); }
+.portal-chat__input-row input:disabled { opacity: 0.5; }
+.portal-chat__end-link {
+  background: none; border: none; cursor: pointer; padding: 0 16px 16px;
+  font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.4); text-align: left;
+  transition: color var(--transition);
+}
+.portal-chat__end-link:hover { color: #f87171; }
+.portal-chat__end-link:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.portal-debrief { max-width: 680px; }
+.portal-debrief__badge {
+  display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px;
+  border-radius: 100px; font-size: 13px; font-weight: 700; margin-bottom: 18px;
+}
+.portal-debrief__badge--ready { background: rgba(74,222,128,0.14); color: #4ade80; }
+.portal-debrief__badge--almost { background: rgba(244,180,0,0.14); color: var(--gold-light, #f9d04a); }
+.portal-debrief__badge--not_yet { background: rgba(248,113,113,0.14); color: #f87171; }
+.portal-debrief__summary { color: rgba(255,255,255,0.75); font-size: 15px; line-height: 1.7; margin-bottom: 24px; }
+.portal-debrief__cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+.portal-debrief__list { list-style: none; padding: 0; margin: 10px 0 0; display: flex; flex-direction: column; gap: 8px; }
+.portal-debrief__list li { font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.6; padding-left: 16px; position: relative; }
+.portal-debrief__list li::before { content: "•"; position: absolute; left: 0; color: var(--gold); }
+.portal-debrief__domain {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 14px; border-radius: 10px; background: #101f38; margin-bottom: 8px;
+}
+.portal-debrief__domain-verdict { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 3px 9px; border-radius: 100px; flex-shrink: 0; }
+.portal-debrief__domain-verdict--strong { background: rgba(74,222,128,0.14); color: #4ade80; }
+.portal-debrief__domain-verdict--ok { background: rgba(244,180,0,0.14); color: var(--gold-light, #f9d04a); }
+.portal-debrief__domain-verdict--weak { background: rgba(248,113,113,0.14); color: #f87171; }
+.portal-debrief__actions { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+@media (max-width: 640px) {
+  .portal-debrief__cols { grid-template-columns: 1fr; }
+  .portal-chat__bubble { max-width: 90%; }
+}
 
 /* Admin ground-school scheduler */
 .portal-admin-ground-form {

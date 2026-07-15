@@ -1,0 +1,41 @@
+/* Matches .portal-card (site/portal.css) as the base surface, with a
+   --featured variant matching .program-card--featured / the gold-gradient
+   "welcome" and "offer" cards used throughout the marketing site. */
+.apex-card {
+  background: #101f38;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+}
+.apex-card--featured {
+  background: linear-gradient(120deg, rgba(244, 180, 0, 0.14), rgba(11, 31, 58, 0.4));
+  border-color: rgba(244, 180, 0, 0.25);
+}
+.apex-card--interactive {
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.apex-card--interactive:hover {
+  transform: translateY(-3px);
+  border-color: rgba(244, 180, 0, 0.35);
+  background: #142544;
+}
+.apex-card__eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+.apex-card__title {
+  font-size: 19px;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 6px;
+}
+.apex-card__body {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  line-height: 1.6;
+}
