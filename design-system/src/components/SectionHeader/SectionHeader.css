@@ -1,0 +1,50 @@
+/* Matches .section__eyebrow / .section__title / .section__desc and the
+   portal's simpler .portal-header__eyebrow variant. */
+.apex-section-header {
+  text-align: center;
+  max-width: 640px;
+  margin: 0 auto 64px;
+}
+.apex-section-header--left {
+  text-align: left;
+  margin: 0 0 32px;
+}
+.apex-section-header__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 16px;
+}
+.apex-section-header--centered .apex-section-header__eyebrow::before,
+.apex-section-header--centered .apex-section-header__eyebrow::after {
+  content: '';
+  display: inline-block;
+  width: 28px;
+  height: 1.5px;
+  background: var(--gold);
+  flex-shrink: 0;
+  align-self: center;
+}
+.apex-section-header__title {
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 800;
+  line-height: 1.15;
+  margin-bottom: 16px;
+  color: #fff;
+}
+.apex-section-header__title em {
+  font-family: var(--font-accent);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--gold-light);
+}
+.apex-section-header__desc {
+  font-size: 17px;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.7;
+}

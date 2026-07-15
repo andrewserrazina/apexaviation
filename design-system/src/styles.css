@@ -1,0 +1,23 @@
+/* Apex Aviation design system — component styles. Import this file (and
+   tokens/tokens.css) once at your app root. Mirrors the reset already
+   applied by site/styles.css so components look identical wherever
+   they're used. @import rules must come first per the CSS spec, so the
+   box-sizing reset below sits after them instead of at the top. */
+@import './components/Button/Button.css';
+@import './components/Badge/Badge.css';
+@import './components/Card/Card.css';
+@import './components/StatTile/StatTile.css';
+@import './components/SectionHeader/SectionHeader.css';
+@import './components/Input/Input.css';
+@import './components/Alert/Alert.css';
+@import './components/Modal/Modal.css';
+@import './components/NavItem/NavItem.css';
+@import './components/Tabs/Tabs.css';
+@import './components/Toast/Toast.css';
+@import './components/CountdownStat/CountdownStat.css';
+@import './components/Avatar/Avatar.css';
+@import './components/Table/Table.css';
+@import './components/QuickLinkCard/QuickLinkCard.css';
+@import './components/ProgressBar/ProgressBar.css';
+
+*, *::before, *::after { box-sizing: border-box; }

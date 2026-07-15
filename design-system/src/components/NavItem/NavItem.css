@@ -1,0 +1,27 @@
+/* Matches .portal-nav__item (site/portal.css) exactly, including the
+   inset-box-shadow active indicator and the gated-content lock icon. */
+.apex-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: background var(--transition), color var(--transition);
+}
+.apex-nav-item svg { flex-shrink: 0; opacity: 0.85; }
+.apex-nav-item:hover { background: rgba(255, 255, 255, 0.05); color: #fff; }
+.apex-nav-item--active {
+  background: rgba(244, 180, 0, 0.12);
+  color: var(--gold-light);
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+.apex-nav-item__lock { margin-left: auto; opacity: 0.6; }

@@ -1,0 +1,60 @@
+/* Matches site/styles.css .btn / .btn--primary / .btn--ghost / .btn--outline
+   / .btn--nav* verbatim -- same tokens, same hover behavior. */
+.apex-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 28px;
+  border-radius: 8px;
+  font-family: var(--font);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all var(--transition);
+  white-space: nowrap;
+  text-decoration: none;
+}
+.apex-btn--primary {
+  background: var(--gold);
+  color: var(--white);
+  border-color: var(--gold);
+}
+.apex-btn--primary:hover {
+  background: var(--gold-2);
+  border-color: var(--gold-2);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(244, 180, 0, 0.4);
+}
+.apex-btn--ghost {
+  background: transparent;
+  color: var(--white);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+.apex-btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--white);
+}
+.apex-btn--outline {
+  background: transparent;
+  color: var(--gold);
+  border-color: var(--gold);
+}
+.apex-btn--outline:hover {
+  background: var(--gold);
+  color: var(--white);
+  transform: translateY(-1px);
+}
+.apex-btn--nav {
+  padding: 10px 20px;
+  font-size: 14px;
+  border-radius: 6px;
+}
+.apex-btn--full { width: 100%; }
+.apex-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}

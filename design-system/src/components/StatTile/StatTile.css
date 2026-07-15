@@ -1,0 +1,28 @@
+/* Matches .portal-stat / .portal-stat__icon (site/portal.css). */
+.apex-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.apex-stat__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(244, 180, 0, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  color: var(--gold);
+}
+.apex-stat__value {
+  font-size: 28px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+}
+.apex-stat__label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 500;
+}
