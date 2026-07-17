@@ -20,6 +20,23 @@
     gtag('js', new Date());
     gtag('config', 'G-JFPBCF2GXE');
   </script>
+  <!-- Meta Pixel Code -->
+  <script>
+  !function(f,b,e,v,n,t,s)
+  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+  n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];
+  s.parentNode.insertBefore(t,s)}(window, document,'script',
+  'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '1049117198055794');
+  fbq('track', 'PageView');
+  </script>
+  <noscript><img height="1" width="1" style="display:none"
+  src="https://www.facebook.com/tr?id=1049117198055794&ev=PageView&noscript=1"
+  /></noscript>
+  <!-- End Meta Pixel Code -->
   <!-- Microsoft Clarity -->
   <script>
     (function(c,l,a,r,i,t,y){
@@ -254,9 +271,27 @@
     // form result to compute client-side like the free-signup path below.
     if (requestedView === 'signup-success') {
       showView('signup-success');
-      if ((new URLSearchParams(window.location.search)).get('paid') === '1') {
+      var successParams = new URLSearchParams(window.location.search);
+      if (successParams.get('paid') === '1') {
         document.getElementById('signupSuccessHeading').textContent = "You're in — Checkride Prep unlocked!";
         document.getElementById('signupSuccessSub').textContent = 'Your payment went through and the full Checkride Prep System is already unlocked on your account. Check your email for a link to set your password, then sign in to start studying.';
+
+        // Meta Pixel Purchase event -- fires once per completed checkout.
+        // amount_cents/session_id come from create-checkout-session's
+        // success_url (the real charged price, never guessed), and the
+        // session_id-keyed localStorage guard stops a page refresh or
+        // back-button visit from double-counting the same sale.
+        var sessionId = successParams.get('session_id');
+        var amountCents = parseInt(successParams.get('amount_cents'), 10);
+        var dedupeKey = sessionId ? 'apex_fbq_purchase_' + sessionId : null;
+        if (window.fbq && (!dedupeKey || !localStorage.getItem(dedupeKey))) {
+          fbq('track', 'Purchase', {
+            value: isNaN(amountCents) ? 29 : amountCents / 100,
+            currency: 'USD',
+            content_name: 'Checkride Prep Pack',
+          });
+          if (dedupeKey) localStorage.setItem(dedupeKey, '1');
+        }
       }
     }
 

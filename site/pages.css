@@ -2234,3 +2234,49 @@
   .exit-popup { padding: 36px 24px 28px; }
   .exit-popup h2 { font-size: 22px; }
 }
+
+/* ─── Social proof strip (checkride-prep / radio-calls / spin-awareness) ─── */
+.social-proof-strip {
+  padding: 40px 24px;
+  text-align: center;
+  background: #0b1830;
+}
+.social-proof-strip__stars {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+.social-proof-strip__stars svg { width: 20px; height: 20px; }
+.social-proof-strip__caption {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.4);
+  margin: 0 0 28px;
+}
+.social-proof-strip__quotes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  max-width: 780px;
+  margin: 0 auto;
+}
+.social-proof-strip__quote { margin: 0; }
+.social-proof-strip__quote p {
+  font-size: 15px;
+  line-height: 1.7;
+  color: rgba(255,255,255,0.75);
+  font-style: italic;
+  margin: 0 0 10px;
+}
+.social-proof-strip__quote cite {
+  font-size: 13px;
+  font-weight: 700;
+  color: #F4B400;
+  font-style: normal;
+}
+@media (max-width: 720px) {
+  .social-proof-strip__quotes { grid-template-columns: 1fr; }
+}
