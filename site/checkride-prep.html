@@ -356,17 +356,9 @@
     .cp-preview-panel__media {
       aspect-ratio: 16 / 10;
       border-bottom: 1px solid rgba(255,255,255,0.1);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      background: repeating-linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0.02) 10px, transparent 10px, transparent 20px);
+      overflow: hidden;
     }
-    .cp-preview-panel__media span {
-      font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
-      color: rgba(255,255,255,0.35);
-    }
+    .cp-preview-panel__media img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
     .cp-preview-panel__body { padding: 18px 20px; }
     .cp-preview-panel h3 { font-size: 14px; font-weight: 700; color: #fff; margin: 0 0 6px; }
     .cp-preview-panel p { font-size: 13px; color: #E5E7EB; line-height: 1.6; margin: 0; }
@@ -639,15 +631,9 @@
   </section>
 
   <!-- ═══ 5. SEE INSIDE THE SYSTEM ═══
-       ASSET GAP: no real product screenshots exist in this repository
-       yet. The four panels below are clearly-labeled placeholders, not
-       fabricated UI. Please supply real screenshots (recommended
-       1200x750px, PNG or WebP) of these four portal views and swap
-       each cp-preview-panel__media placeholder for a real <img>:
-         1. DPE Questions Library — a question card with model answer
-         2. Scenario Training Center — a scenario card
-         3. AI DPE Practice — an in-progress chat exchange
-         4. Progress Tracking — the checklist view
+       Real portal screenshots, supplied by the client. Files expected
+       at site/images/QuestionsLibrary.png, ModelAnswer.png,
+       ScenarioTraining.png, ProgressTracking.png.
   ════════════════════════════════════════════════════════════════ -->
   <section class="cp-section cp-section--deep cp-reveal">
     <div class="container">
@@ -655,39 +641,39 @@
       <h2 class="cp-section__title">SEE WHAT YOU ARE GETTING</h2>
       <div class="cp-preview-grid">
         <div class="cp-preview-panel">
-          <div class="cp-preview-panel__media" role="img" aria-label="Placeholder for a DPE Questions Library screenshot showing a question with its model answer">
-            <span>Screenshot Needed</span>
+          <div class="cp-preview-panel__media">
+            <img src="images/QuestionsLibrary.png" alt="DPE Questions Library screen showing Checkride Mode, DPE Rapid Fire, the search bar, and ACS category tabs" loading="lazy" width="1200" height="750" />
           </div>
           <div class="cp-preview-panel__body">
-            <h3>Question View</h3>
-            <p>See the exact question, model answer, and what the DPE is evaluating — side by side.</p>
+            <h3>Question Library</h3>
+            <p>Search or browse all 256 questions by ACS category, or launch Checkride Mode and DPE Rapid Fire for timed practice.</p>
           </div>
         </div>
         <div class="cp-preview-panel">
-          <div class="cp-preview-panel__media" role="img" aria-label="Placeholder for a model answer detail screenshot">
-            <span>Screenshot Needed</span>
+          <div class="cp-preview-panel__media">
+            <img src="images/ModelAnswer.png" alt="An expanded oral exam question showing the model answer, common student mistakes, what the DPE is evaluating, real-world application, and ACS connection" loading="lazy" width="1200" height="750" />
           </div>
           <div class="cp-preview-panel__body">
             <h3>Model Answer View</h3>
-            <p>Every answer explains the reasoning, not just the conclusion, so you can defend it under follow-up questions.</p>
+            <p>Every question breaks down the model answer, common mistakes, what the DPE is evaluating, and the ACS connection — not just a correct answer to memorize.</p>
           </div>
         </div>
         <div class="cp-preview-panel">
-          <div class="cp-preview-panel__media" role="img" aria-label="Placeholder for a Scenario Training Center screenshot">
-            <span>Screenshot Needed</span>
+          <div class="cp-preview-panel__media">
+            <img src="images/ScenarioTraining.png" alt="Four checkride scenario cards from Aircraft Systems and Aeronautical Decision-Making categories, each with a Reveal Model Answer control" loading="lazy" width="1200" height="750" />
           </div>
           <div class="cp-preview-panel__body">
             <h3>Scenario View</h3>
-            <p>Work through realistic Emergency Operations and Cross-Country Planning scenarios the way a DPE actually presents them.</p>
+            <p>Work through realistic Aircraft Systems and Aeronautical Decision-Making scenarios the way a DPE actually presents them.</p>
           </div>
         </div>
         <div class="cp-preview-panel">
-          <div class="cp-preview-panel__media" role="img" aria-label="Placeholder for a Progress Tracking dashboard screenshot">
-            <span>Screenshot Needed</span>
+          <div class="cp-preview-panel__media">
+            <img src="images/ProgressTracking.png" alt="Progress tracking checklist for the Private Pilot Checkride Prep lessons, showing each section and a completion percentage" loading="lazy" width="1200" height="750" />
           </div>
           <div class="cp-preview-panel__body">
             <h3>Progress View</h3>
-            <p>Track what you've completed across every lesson and question, so your final review stays focused.</p>
+            <p>Check off each lesson section as you complete it, so your final review stays focused on what's left.</p>
           </div>
         </div>
       </div>
