@@ -158,7 +158,7 @@ serve(async (req) => {
           quantity: 1,
         }],
         metadata: { purpose: 'unlock-checkride-prep', profile_id: profileId, tier: pricing.tier },
-        success_url: `${siteOrigin}/portal.html?unlocked=1#checkride-prep`,
+        success_url: `${siteOrigin}/portal.html?unlocked=1&amount_cents=${pricing.amount_cents}&session_id={CHECKOUT_SESSION_ID}#checkride-prep`,
         cancel_url: `${siteOrigin}/portal.html#dashboard`,
       })
       await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'unlock-checkride-prep', email, profileId, amountCents: pricing.amount_cents })
@@ -240,7 +240,7 @@ serve(async (req) => {
           quantity: 1,
         }],
         metadata: { purpose: 'unlock-checkride-prep', profile_id: newProfileId, tier: pricing.tier },
-        success_url: `${siteOrigin}/portal-login.html?view=signup-success&paid=1`,
+        success_url: `${siteOrigin}/portal-login.html?view=signup-success&paid=1&amount_cents=${pricing.amount_cents}&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${siteOrigin}/portal-login.html?view=signup-success`,
       })
       await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'signup-and-unlock-checkride-prep', email, profileId: newProfileId, amountCents: pricing.amount_cents })

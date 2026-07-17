@@ -1,6 +1,31 @@
 (function () {
   'use strict';
 
+  /* ── Meta Pixel Purchase event — Checkride Prep Pack unlock ─────
+     Fires when an already-registered member completes the dashboard
+     "Unlock Now" checkout (create-checkout-session's success_url for
+     purpose 'unlock-checkride-prep' redirects here as ?unlocked=1).
+     amount_cents/session_id come from that same success_url -- the
+     real charged price, never guessed -- and the session_id-keyed
+     localStorage guard stops a page refresh from double-counting the
+     same sale. Independent of the auth guard below since it only
+     needs the URL, not the signed-in member. */
+  (function () {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('unlocked') !== '1') return;
+    var sessionId = params.get('session_id');
+    var amountCents = parseInt(params.get('amount_cents'), 10);
+    var dedupeKey = sessionId ? 'apex_fbq_purchase_' + sessionId : null;
+    if (window.fbq && (!dedupeKey || !localStorage.getItem(dedupeKey))) {
+      fbq('track', 'Purchase', {
+        value: isNaN(amountCents) ? 29 : amountCents / 100,
+        currency: 'USD',
+        content_name: 'Checkride Prep Pack',
+      });
+      if (dedupeKey) localStorage.setItem(dedupeKey, '1');
+    }
+  })();
+
   /* ── Auth guard — real Supabase session + profile ────────────── */
   var member = null;
   var accessToken = null;

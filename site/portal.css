@@ -714,6 +714,13 @@
 .portal-modal__list li { display: flex; align-items: center; gap: 10px; font-size: 13px; color: rgba(255,255,255,0.75); }
 .portal-modal__error { color: #f87171; font-size: 13px; margin-top: 12px; display: none; }
 .portal-modal__error.show { display: block; }
+.portal-modal__social-proof {
+  margin: 4px 0 20px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.08);
+}
+.portal-modal__stars { display: flex; justify-content: center; gap: 3px; margin-bottom: 10px; }
+.portal-modal__stars svg { width: 15px; height: 15px; }
+.portal-modal__quote { font-size: 12.5px; line-height: 1.6; color: rgba(255,255,255,0.5); font-style: italic; margin: 0; }
+.portal-modal__quote cite { display: block; margin-top: 4px; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.4); font-style: normal; }
 
 /* ─── AI DPE Practice — chat + debrief ──────────────────────────── */
 .portal-chat {
