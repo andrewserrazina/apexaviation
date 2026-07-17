@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Apex Advantage Checkride Prep Pack | Apex Aviation</title>
-  <meta name="description" content="Prepare for your pilot checkride with DPE-style oral questions, ACS-based study, realistic scenarios, and model answers. Launch access is $29 for the first 25 pilots." />
-  <meta property="og:title" content="Would You Pass Your Checkride Today?" />
-  <meta property="og:description" content="Train with the Apex Advantage Checkride Prep Pack—an ACS-based system built for real checkride preparation." />
+  <title>Private Pilot Checkride Prep | Apex Advantage</title>
+  <meta name="description" content="Prepare for your private pilot oral exam with ACS-mapped questions, realistic checkride scenarios, model answers, and instructor-built study tools from Apex Advantage." />
+  <meta property="og:title" content="Private Pilot Checkride Prep | Apex Advantage" />
+  <meta property="og:description" content="ACS-mapped questions, realistic DPE-style scenarios, and model answers built to help you understand the checkride—not just memorize it." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://apexaviationtx.com/checkride-prep.html" />
   <meta property="og:image" content="https://apexaviationtx.com/ApexPrivate.png" />
   <meta property="og:site_name" content="Apex Aviation" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Would You Pass Your Checkride Today?" />
-  <meta name="twitter:description" content="Train with the Apex Advantage Checkride Prep Pack—an ACS-based system built for real checkride preparation." />
+  <meta name="twitter:title" content="Private Pilot Checkride Prep | Apex Advantage" />
+  <meta name="twitter:description" content="ACS-mapped questions, realistic DPE-style scenarios, and model answers built to help you understand the checkride—not just memorize it." />
   <meta name="twitter:image" content="https://apexaviationtx.com/ApexPrivate.png" />
   <link rel="canonical" href="https://apexaviationtx.com/checkride-prep.html" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
@@ -119,11 +119,29 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    .cp-header__nav {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      margin: 0 auto 0 40px;
+      list-style: none;
+    }
+    .cp-header__nav a {
+      font-size: 13px;
+      font-weight: 600;
+      color: #E5E7EB;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .cp-header__nav a:hover { color: #F4B400; }
     .cp-header .btn--cta-primary {
       width: auto;
       padding: 12px 20px;
       font-size: 13px;
       flex-shrink: 0;
+    }
+    @media (max-width: 900px) {
+      .cp-header__nav { display: none; }
     }
     @media (max-width: 480px) {
       .cp-header__inner { padding: 12px 16px; }
@@ -225,8 +243,6 @@
       letter-spacing: -0.025em;
     }
     .cp-hero h1 .cp-gold { color: #F4B400; }
-    .cp-hero__line-group { display: block; }
-    .cp-hero__line-group--2 { margin-top: 0.3em; }
     .cp-hero__sub {
       color: #E5E7EB;
       line-height: 1.65;
@@ -247,9 +263,10 @@
     .cp-hero__price-label { display: block; font-size: 14px; font-weight: 800; color: #fff; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 6px; }
     .cp-hero__urgency { font-size: 14px; color: #E5E7EB; line-height: 1.5; margin-top: 10px; }
     .cp-hero__cta-col { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 10px; }
-    .cp-hero__cta-col .btn--cta-primary { min-height: 56px; }
+    .cp-hero__cta-row { display: flex; gap: 12px; width: 100%; }
+    .cp-hero__cta-row .btn--cta-primary { min-height: 56px; flex: 1 1 auto; }
+    .cp-hero__cta-row .btn--outline-gold { min-height: 56px; flex: 0 0 auto; white-space: nowrap; }
     .cp-hero__microcopy { font-size: 13px; color: rgba(255,255,255,0.55); text-align: center; }
-    .cp-hero__trust-line { font-size: 13px; color: #E5E7EB; font-weight: 700; margin-top: 16px; }
 
     @media (max-width: 1024px) {
       .cp-hero h1 { font-size: clamp(2.75rem, 5.2vw, 3.75rem); }
@@ -263,6 +280,8 @@
       }
       .cp-hero h1 { max-width: none; font-size: clamp(2.5rem, 7vw, 3.8rem); }
       .cp-hero__sub, .cp-hero__offer, .cp-hero__cta-col { max-width: none; }
+      .cp-hero__cta-row { flex-direction: column; }
+      .cp-hero__cta-row .btn--outline-gold { width: 100%; }
     }
     @media (max-width: 480px) {
       .cp-hero__inner { padding: 32px 18px 44px; gap: 24px; }
@@ -302,6 +321,29 @@
       .cp-value-strip__item { border-right: none !important; }
     }
 
+    /* ─── Memorization vs. preparation contrast ─── */
+    .cp-contrast-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .cp-contrast-col__label {
+      font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.5); margin-bottom: 18px; padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+    .cp-contrast-col--gold .cp-contrast-col__label { color: #F4B400; border-bottom-color: rgba(244,180,0,0.3); }
+    .cp-contrast-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 16px; }
+    .cp-contrast-list li { font-size: 14.5px; color: #E5E7EB; line-height: 1.55; padding-left: 24px; position: relative; }
+    .cp-contrast-list li::before { content: '\2013'; position: absolute; left: 0; color: rgba(255,255,255,0.3); font-weight: 700; }
+    .cp-contrast-list--gold li { color: #fff; font-weight: 500; }
+    .cp-contrast-list--gold li::before { content: '\2713'; color: #F4B400; }
+    @media (max-width: 640px) {
+      .cp-contrast-grid { grid-template-columns: 1fr; gap: 36px; }
+    }
+
     /* ─── Generic section rhythm ─── */
     .cp-section { padding: 72px 0; }
     .cp-section--navy { background: #0B1F3A; }
@@ -319,8 +361,24 @@
       max-width: 640px; margin: 0 auto 44px;
     }
 
-    /* ─── What's included ─── */
-    .cp-included-grid {
+    /* ─── Product system overview: one featured stat + editorial grid,
+       instead of six identical cards ─── */
+    .cp-system-featured {
+      display: flex;
+      align-items: center;
+      gap: 40px;
+      max-width: 940px;
+      margin: 0 auto 24px;
+      background: #162C4F;
+      border-left: 4px solid #F4B400;
+      padding: 34px 40px;
+    }
+    .cp-system-featured__stat { flex-shrink: 0; text-align: center; }
+    .cp-system-featured__num { display: block; font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 56px; color: #F4B400; line-height: 1; }
+    .cp-system-featured__num-label { display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.55); margin-top: 8px; }
+    .cp-system-featured__body h3 { font-size: 16px; font-weight: 800; color: #fff; margin: 0 0 8px; letter-spacing: 0.01em; }
+    .cp-system-featured__body p { font-size: 14.5px; color: #E5E7EB; line-height: 1.7; margin: 0; }
+    .cp-system-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 1px;
@@ -328,23 +386,14 @@
       max-width: 940px;
       margin: 0 auto;
     }
-    .cp-included-card {
-      background: #162C4F;
-      padding: 26px 28px;
-      display: flex;
-      gap: 16px;
-      align-items: flex-start;
-    }
-    .cp-included-card__icon {
-      width: 30px; height: 30px; flex-shrink: 0;
-      border: 1px solid rgba(244,180,0,0.4);
-      display: flex; align-items: center; justify-content: center;
-      margin-top: 2px;
-    }
-    .cp-included-card h3 { font-size: 14px; font-weight: 700; color: #fff; margin: 0 0 8px; letter-spacing: 0.01em; }
-    .cp-included-card p { font-size: 14px; color: #E5E7EB; line-height: 1.65; margin: 0; }
+    .cp-system-card { background: #162C4F; padding: 26px 28px; }
+    .cp-system-card--wide { grid-column: span 2; }
+    .cp-system-card h3 { font-size: 14px; font-weight: 700; color: #fff; margin: 0 0 8px; letter-spacing: 0.01em; }
+    .cp-system-card p { font-size: 14px; color: #E5E7EB; line-height: 1.65; margin: 0; }
     @media (max-width: 720px) {
-      .cp-included-grid { grid-template-columns: 1fr; }
+      .cp-system-featured { flex-direction: column; text-align: center; gap: 16px; padding: 30px 26px; }
+      .cp-system-grid { grid-template-columns: 1fr; }
+      .cp-system-card--wide { grid-column: span 1; }
     }
 
     /* ─── See inside the system ─── */
@@ -367,6 +416,34 @@
     .cp-preview-panel p { font-size: 13px; color: #E5E7EB; line-height: 1.6; margin: 0; }
     @media (max-width: 640px) {
       .cp-preview-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ─── Why different — typical vs Apex comparison ─── */
+    .cp-compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: rgba(255,255,255,0.08);
+      max-width: 860px;
+      margin: 0 auto 48px;
+    }
+    .cp-compare-col { background: #162C4F; padding: 28px 30px; }
+    .cp-compare-col--gold { background: #1a2f52; border-top: 3px solid #F4B400; }
+    .cp-compare-col:not(.cp-compare-col--gold) { border-top: 3px solid rgba(255,255,255,0.15); }
+    .cp-compare-col__label {
+      font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.5); margin-bottom: 16px;
+    }
+    .cp-compare-col--gold .cp-compare-col__label { color: #F4B400; }
+    .cp-compare-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
+    .cp-compare-list li { font-size: 14.5px; color: #E5E7EB; line-height: 1.5; padding-left: 22px; position: relative; }
+    .cp-compare-list li::before {
+      content: '\2013'; position: absolute; left: 0; color: rgba(255,255,255,0.35); font-weight: 700;
+    }
+    .cp-compare-list--gold li { color: #fff; font-weight: 500; }
+    .cp-compare-list--gold li::before { content: '\2713'; color: #F4B400; }
+    @media (max-width: 640px) {
+      .cp-compare-grid { grid-template-columns: 1fr; }
     }
 
     /* ─── Why different — 3 pillars ─── */
@@ -409,6 +486,39 @@
       text-align: center; font-size: 13.5px; color: #E5E7EB; line-height: 1.75;
     }
 
+    /* ─── Meet your instructor ─── */
+    .cp-instructor {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 44px;
+      align-items: start;
+      max-width: 860px;
+      margin: 0 auto;
+    }
+    .cp-instructor__photo { width: 200px; height: 200px; overflow: hidden; border: 1px solid rgba(244,180,0,0.3); flex-shrink: 0; }
+    .cp-instructor__photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .cp-instructor__name { font-size: clamp(1.3rem, 2.6vw, 1.7rem); font-weight: 800; color: #fff; margin: 4px 0 14px; text-align: left; }
+    .cp-instructor__credentials { list-style: none; padding: 0; margin: 0 0 20px; display: flex; flex-wrap: wrap; gap: 10px 20px; }
+    .cp-instructor__credentials li {
+      font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+      color: #F4B400; position: relative; padding-left: 14px;
+    }
+    .cp-instructor__credentials li::before { content: ''; position: absolute; left: 0; top: 50%; width: 6px; height: 6px; background: #F4B400; transform: translateY(-50%); }
+    .cp-instructor__body p { font-size: 15px; color: #E5E7EB; line-height: 1.75; margin: 0 0 14px; text-align: left; }
+    .cp-instructor-quotes__grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+      max-width: 960px; margin: 20px auto 0;
+    }
+    .cp-instructor-quote { background: #162C4F; border-left: 3px solid #F4B400; padding: 22px 24px; }
+    .cp-instructor-quote p { font-size: 13.5px; color: #E5E7EB; line-height: 1.65; margin: 0 0 12px; font-style: italic; }
+    .cp-instructor-quote cite { font-size: 12.5px; font-weight: 700; color: #F4B400; font-style: normal; }
+    .cp-instructor-quotes__note { text-align: center; font-size: 12.5px; color: rgba(255,255,255,0.45); max-width: 560px; margin: 24px auto 0; line-height: 1.6; }
+    @media (max-width: 720px) {
+      .cp-instructor { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+      .cp-instructor__name, .cp-instructor__body p, .cp-instructor__credentials { text-align: center; justify-content: center; }
+      .cp-instructor-quotes__grid { grid-template-columns: 1fr; }
+    }
+
     /* ─── How it works ─── */
     .cp-steps-grid {
       display: grid;
@@ -441,7 +551,7 @@
       text-align: center;
     }
     .cp-offer-box__eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #F4B400; margin-bottom: 10px; }
-    .cp-offer-box h2 { font-size: 20px; font-weight: 800; color: #fff; margin: 0 0 20px; }
+    .cp-offer-box__title { font-size: 20px; font-weight: 800; color: #fff; margin: 0 0 20px; }
     .cp-offer-price-row { display: flex; align-items: baseline; gap: 10px; justify-content: center; margin-bottom: 8px; }
     .cp-offer-price { font-size: 52px; font-weight: 800; color: #F4B400; line-height: 1; font-family: 'Montserrat', sans-serif; }
     .cp-offer-urgency { font-size: 13px; font-weight: 700; color: #E5E7EB; letter-spacing: 0.02em; margin-bottom: 24px; }
@@ -449,6 +559,17 @@
     .cp-delivery-list li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #fff; }
     .cp-delivery-list li svg { flex-shrink: 0; }
     .cp-offer-box__microcopy { font-size: 12px; color: rgba(255,255,255,0.45); margin: 14px 0 0; }
+
+    /* ─── What you'll receive ─── */
+    .cp-receive-list {
+      list-style: none; padding: 0; margin: 0 auto; max-width: 620px;
+      display: flex; flex-direction: column; gap: 1px; background: rgba(255,255,255,0.08);
+    }
+    .cp-receive-list li {
+      background: #162C4F; display: flex; align-items: center; gap: 14px;
+      padding: 16px 22px; font-size: 14.5px; color: #fff; font-weight: 500; line-height: 1.5;
+    }
+    .cp-receive-list li svg { flex-shrink: 0; }
 
     /* ─── FAQ — page-scoped square override of the shared faq-item ─── */
     .cp-page .faq-section { background: #0B1F3A; padding: 72px 0; }
@@ -463,6 +584,7 @@
     .cp-final__desc { color: #E5E7EB; font-size: 15px; line-height: 1.75; max-width: 560px; margin: 0 auto 32px; }
     .cp-final__offer { font-size: 14px; font-weight: 700; color: #F4B400; margin-bottom: 20px; }
     .cp-final .btn--cta-primary { max-width: 380px; margin: 0 auto; }
+    .cp-final__reassurance { font-size: 13px; color: rgba(255,255,255,0.55); margin-top: 18px; }
     .cp-final__brandline { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-top: 28px; }
 
     /* ─── Minimal footer ─── */
@@ -477,6 +599,7 @@
     .cp-footer__links a { color: rgba(255,255,255,0.55); text-decoration: none; }
     .cp-footer__links a:hover { color: #F4B400; }
     .cp-footer__copyright { width: 100%; text-align: center; font-size: 12px; color: rgba(255,255,255,0.35); margin-top: 24px; }
+    .cp-footer__disclaimer { width: 100%; text-align: center; font-size: 11.5px; color: rgba(255,255,255,0.3); line-height: 1.6; max-width: 640px; margin: 12px auto 0; }
 
     /* ─── Sticky mini-CTA bar (not a popup — persistent bottom bar) ─── */
     .cp-sticky-cta {
@@ -523,6 +646,14 @@
         <img src="apexwhite.png" alt="Apex Aviation" />
         <span class="cp-header__label">Apex Advantage</span>
       </a>
+      <nav aria-label="Page sections">
+        <ul class="cp-header__nav">
+          <li><a href="#included">What&rsquo;s Included</a></li>
+          <li><a href="#why-it-works">Why It Works</a></li>
+          <li><a href="#instructor">Meet Your Instructor</a></li>
+          <li><a href="#faq">FAQ</a></li>
+        </ul>
+      </nav>
       <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-location="header">GET INSTANT ACCESS</a>
     </div>
   </header>
@@ -532,9 +663,9 @@
     <div class="cp-hero__bg" aria-hidden="true"></div>
     <div class="cp-hero__inner">
       <div class="cp-hero__content">
-        <div class="cp-hero__eyebrow">Apex Advantage</div>
-        <h1><span class="cp-hero__line-group">MOST PILOTS<br>MEMORIZE ANSWERS.</span><span class="cp-hero__line-group cp-hero__line-group--2">THE BEST PILOTS<br><span class="cp-gold">UNDERSTAND</span> THEM.</span></h1>
-        <p class="cp-hero__sub">ACS-based oral prep, DPE-style questions, realistic scenarios, and model answers designed to help you think like an examiner—not just memorize answers.</p>
+        <div class="cp-hero__eyebrow">Private Pilot Checkride Preparation</div>
+        <h1>WALK INTO YOUR<br>CHECKRIDE <span class="cp-gold">READY.</span></h1>
+        <p class="cp-hero__sub">Prepare for the private pilot oral exam with ACS-mapped questions, realistic DPE-style scenarios, model answers, and guided study tools built to help you understand&mdash;not just memorize.</p>
 
         <div class="cp-hero__offer">
           <span class="cp-hero__price" data-cp-price>$29</span>
@@ -543,10 +674,12 @@
         </div>
 
         <div class="cp-hero__cta-col">
-          <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-location="hero">GET INSTANT ACCESS</a>
-          <div class="cp-hero__microcopy">Instant digital access through the Apex Advantage portal.</div>
+          <div class="cp-hero__cta-row">
+            <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-location="hero">GET THE CHECKRIDE SYSTEM</a>
+            <a href="#included" class="btn--outline-gold" data-cp-secondary-cta data-cp-location="hero">SEE WHAT&rsquo;S INCLUDED</a>
+          </div>
+          <div class="cp-hero__microcopy">Instant digital access &bull; Built by flight instructors &bull; Designed around the Private Pilot ACS</div>
         </div>
-        <div class="cp-hero__trust-line">Built by active CFIs. Designed for checkride success.</div>
       </div>
     </div>
   </section>
@@ -573,55 +706,75 @@
     </div>
   </div>
 
+  <!-- ═══ 3B. MEMORIZATION VS. PREPARATION ═══ -->
+  <section class="cp-section cp-section--deep cp-reveal">
+    <div class="container">
+      <div class="cp-section__eyebrow">The Real Difference</div>
+      <h2 class="cp-section__title">MEMORIZING ANSWERS ISN&rsquo;T THE SAME AS BEING READY</h2>
+
+      <div class="cp-contrast-grid">
+        <div class="cp-contrast-col">
+          <div class="cp-contrast-col__label">Unprepared Students</div>
+          <ul class="cp-contrast-list">
+            <li>Memorize isolated answers</li>
+            <li>Cram the night before</li>
+            <li>Practice only familiar questions</li>
+            <li>Freeze when the examiner changes the scenario</li>
+            <li>Know definitions without understanding application</li>
+          </ul>
+        </div>
+        <div class="cp-contrast-col cp-contrast-col--gold">
+          <div class="cp-contrast-col__label">Prepared Pilots</div>
+          <ul class="cp-contrast-list cp-contrast-list--gold">
+            <li>Explain concepts in their own words</li>
+            <li>Apply knowledge to realistic scenarios</li>
+            <li>Connect regulations, systems, weather, and risk</li>
+            <li>Recognize why an answer changes with the situation</li>
+            <li>Communicate decisions confidently</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ═══ 4. WHAT IS INCLUDED ═══ -->
-  <section class="cp-section cp-section--navy cp-reveal">
+  <section class="cp-section cp-section--navy cp-reveal" id="included">
     <div class="container">
       <div class="cp-section__eyebrow">The Prep Pack</div>
       <h2 class="cp-section__title">EVERYTHING YOU NEED TO PREPARE WITH PURPOSE</h2>
       <p class="cp-section__desc">Every feature below is live inside the Apex Advantage member portal today.</p>
 
-      <div class="cp-included-grid">
-        <div class="cp-included-card">
-          <div class="cp-included-card__icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <div>
-            <h3>DPE-STYLE ORAL QUESTIONS</h3>
-            <p>Practice explaining concepts in the same conversational format you can expect during the oral exam — all 256 questions, with model answers and common mistakes for each.</p>
-          </div>
+      <div class="cp-system-featured">
+        <div class="cp-system-featured__stat">
+          <span class="cp-system-featured__num">256</span>
+          <span class="cp-system-featured__num-label">Oral Questions</span>
         </div>
-        <div class="cp-included-card">
-          <div class="cp-included-card__icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <div>
-            <h3>ACS-ORGANIZED STUDY SYSTEM</h3>
-            <p>Lessons organized by ACS area of operation, plus a full Quick Reference Appendix — with a downloadable PDF of the complete guide.</p>
-          </div>
+        <div class="cp-system-featured__body">
+          <h3>ACS-MAPPED ORAL EXAM QUESTIONS</h3>
+          <p>Practice explaining concepts in the same conversational format you can expect during the oral exam. Every one of the 256 questions is mapped to a Private Pilot ACS area of operation, with a model answer and common mistakes attached — so you're never relying on a random question bank.</p>
         </div>
-        <div class="cp-included-card">
-          <div class="cp-included-card__icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <div>
-            <h3>REALISTIC CHECKRIDE SCENARIOS</h3>
-            <p>Work through Emergency Operations and Cross-Country Planning scenarios the way a DPE actually presents them — as situations to reason through, not questions to recall.</p>
-          </div>
+      </div>
+
+      <div class="cp-system-grid">
+        <div class="cp-system-card">
+          <h3>DPE-STYLE SCENARIO WORKSHOPS</h3>
+          <p>Apply aerodynamics, regulations, systems, weather, and risk management to realistic Emergency Operations and Cross-Country Planning scenarios — the way a DPE actually presents them, as situations to reason through, not questions to recall.</p>
         </div>
-        <div class="cp-included-card">
-          <div class="cp-included-card__icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <div>
-            <h3>MODEL ANSWERS &amp; EXPLANATIONS</h3>
-            <p>Every question includes a model answer, common student mistakes, what the DPE is evaluating, and the real-world application — not just a correct answer to memorize.</p>
-          </div>
+        <div class="cp-system-card">
+          <h3>MODEL ANSWERS &amp; EXPLANATIONS</h3>
+          <p>Every question breaks down a model answer, common student mistakes, what the DPE is evaluating, and the real-world application — learn how to organize a complete response, not just memorize one.</p>
         </div>
-        <div class="cp-included-card">
-          <div class="cp-included-card__icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <div>
-            <h3>AI DPE PRACTICE</h3>
-            <p>Run a full simulated oral exam with an AI acting as your DPE — real follow-up questions, then an honest readiness debrief when you're done. Practice as many times as you want.</p>
-          </div>
+        <div class="cp-system-card cp-system-card--wide">
+          <h3>AI DPE PRACTICE</h3>
+          <p>Run a full simulated oral exam with an AI acting as your DPE — real follow-up questions, then an honest readiness debrief when you're done. Identify weak explanations and incomplete answers before test day, and practice as many times as you want.</p>
         </div>
-        <div class="cp-included-card">
-          <div class="cp-included-card__icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <div>
-            <h3>PROGRESS TRACKING</h3>
-            <p>Check off each lesson and question as you go, so your final week of prep is focused on what's left — not a guess.</p>
-          </div>
+        <div class="cp-system-card">
+          <h3>ACS QUICK-REFERENCE SHEETS</h3>
+          <p>Review high-value concepts organized by ACS area of operation, plus a full Quick Reference Appendix and a downloadable PDF of the complete guide, without digging through disconnected resources.</p>
+        </div>
+        <div class="cp-system-card">
+          <h3>GUIDED PROGRESS TRACKING</h3>
+          <p>Check off each lesson and question as you go, so your final week of prep follows a clear process and stays focused on what's actually left — not a guess.</p>
         </div>
       </div>
     </div>
@@ -678,11 +831,34 @@
   </section>
 
   <!-- ═══ 6. WHY THIS IS DIFFERENT ═══ -->
-  <section class="cp-section cp-section--navy cp-reveal">
+  <section class="cp-section cp-section--navy cp-reveal" id="why-it-works">
     <div class="container">
       <div class="cp-section__eyebrow">The Method</div>
-      <h2 class="cp-section__title">NOT ANOTHER LIST OF QUESTIONS TO MEMORIZE</h2>
+      <h2 class="cp-section__title">BUILT TO TEACH YOU HOW TO THINK&mdash;NOT WHAT TO RECITE</h2>
       <p class="cp-section__desc">A checkride is not only a test of recall. It is a test of understanding, judgment, communication, and decision-making. The Apex Advantage system is designed to help pilots explain what they know, apply it to realistic scenarios, and defend sound decisions under pressure.</p>
+
+      <div class="cp-compare-grid">
+        <div class="cp-compare-col">
+          <div class="cp-compare-col__label">Typical Question Bank</div>
+          <ul class="cp-compare-list">
+            <li>Isolated questions</li>
+            <li>Short memorized answers</li>
+            <li>Little context</li>
+            <li>Weak scenario application</li>
+            <li>Easy to forget under pressure</li>
+          </ul>
+        </div>
+        <div class="cp-compare-col cp-compare-col--gold">
+          <div class="cp-compare-col__label">Apex Advantage</div>
+          <ul class="cp-compare-list cp-compare-list--gold">
+            <li>Connected concepts</li>
+            <li>Realistic scenarios</li>
+            <li>Model explanations</li>
+            <li>Risk-management integration</li>
+            <li>Built for confident communication</li>
+          </ul>
+        </div>
+      </div>
 
       <div class="cp-pillar-grid">
         <div class="cp-pillar-card">
@@ -722,8 +898,50 @@
     </div>
   </section>
 
+  <!-- ═══ 7B. MEET YOUR INSTRUCTOR ═══ -->
+  <section class="cp-section cp-section--navy cp-reveal" id="instructor">
+    <div class="container">
+      <div class="cp-instructor">
+        <div class="cp-instructor__photo">
+          <img src="images/AndrewHeadshot.JPG" alt="Andrew Serrazina, Commercial Pilot and Flight Instructor, founder of Apex Aviation" loading="lazy" width="480" height="480" />
+        </div>
+        <div class="cp-instructor__body">
+          <div class="cp-section__eyebrow" style="text-align:left">Built by an Instructor</div>
+          <h2 class="cp-instructor__name">MEET ANDREW SERRAZINA</h2>
+          <ul class="cp-instructor__credentials">
+            <li>Commercial Pilot</li>
+            <li>Flight Instructor</li>
+            <li>Founder of Apex Aviation</li>
+            <li>Aviation Educator &amp; Content Creator</li>
+          </ul>
+          <p>After working with student pilots preparing for practical tests, the same pattern kept appearing: many students could repeat an answer but struggled when the examiner changed the wording or placed the concept into a scenario.</p>
+          <p>Apex Advantage was developed to help pilots build the understanding, structure, and confidence needed to explain their decisions&mdash;not simply repeat memorized definitions.</p>
+        </div>
+      </div>
+
+      <div class="cp-instructor-quotes">
+        <div class="cp-section__eyebrow" style="margin-top:56px">What Pilots Say About Training With Andrew</div>
+        <div class="cp-instructor-quotes__grid">
+          <blockquote class="cp-instructor-quote">
+            <p>&ldquo;I had an amazing experience training with Andrew as my Certified Flight Instructor. From day one, he made everything feel approachable and stress-free, even when learning some of the more challenging concepts. He's incredibly knowledgeable, patient, and knows how to explain things in a way that actually sticks.&rdquo;</p>
+            <cite>&mdash; Alyssa K.</cite>
+          </blockquote>
+          <blockquote class="cp-instructor-quote">
+            <p>&ldquo;Andrew was a terrific instructor &mdash; extremely knowledgeable and always able to explain concepts so I could understand everything. Very comforting whenever I needed it. I would definitely recommend him to anyone looking for a CFI.&rdquo;</p>
+            <cite>&mdash; Sabine C.</cite>
+          </blockquote>
+          <blockquote class="cp-instructor-quote">
+            <p>&ldquo;Andrew was great, knowledgeable, friendly, and made you feel comfortable in the plane. I highly recommend him for your pilot training needs.&rdquo;</p>
+            <cite>&mdash; Alex B.</cite>
+          </blockquote>
+        </div>
+        <p class="cp-instructor-quotes__note">Feedback shared by pilots who trained directly with Andrew &mdash; the same instructor who built the Apex Advantage Checkride Prep Pack.</p>
+      </div>
+    </div>
+  </section>
+
   <!-- ═══ 8. HOW IT WORKS ═══ -->
-  <section class="cp-section cp-section--navy cp-reveal">
+  <section class="cp-section cp-section--deep cp-reveal">
     <div class="container">
       <div class="cp-section__eyebrow">Getting Started</div>
       <h2 class="cp-section__title">START PREPARING IN MINUTES</h2>
@@ -748,13 +966,32 @@
     </div>
   </section>
 
+  <!-- ═══ 8B. WHAT YOU'LL RECEIVE ═══ -->
+  <section class="cp-section cp-section--navy cp-reveal">
+    <div class="container">
+      <div class="cp-section__eyebrow">The Full Package</div>
+      <h2 class="cp-section__title">WHAT YOU&rsquo;LL RECEIVE</h2>
+
+      <ul class="cp-receive-list">
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Private Pilot Checkride Prep Workbook (256 questions)</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg> ACS-mapped oral question bank with model answers</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg> DPE-style scenario collection (Emergency Ops &amp; Cross-Country Planning)</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg> AI DPE Practice &mdash; unlimited simulated oral exams</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg> ACS Quick Reference Appendix &amp; downloadable PDF guide</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Progress tracking through the Apex Advantage portal</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Instant digital access, one-time payment</li>
+      </ul>
+    </div>
+  </section>
+
   <!-- ═══ 9. PRICING / PURCHASE ═══ -->
   <section class="cp-section cp-section--deep cp-reveal" id="checkout">
     <div class="container">
       <div class="cp-section__eyebrow">Get the Pack</div>
+      <h2 class="cp-section__title">START PREPARING WITH THE APEX ADVANTAGE</h2>
       <div class="cp-offer-box">
         <div class="cp-offer-box__eyebrow">Apex Advantage</div>
-        <h2>APEX ADVANTAGE CHECKRIDE PREP PACK</h2>
+        <h3 class="cp-offer-box__title">CHECKRIDE PREP PACK</h3>
         <div class="cp-offer-price-row">
           <span class="cp-offer-price" data-cp-price>$29</span>
         </div>
@@ -774,7 +1011,7 @@
   </section>
 
   <!-- ═══ 10. FAQ ═══ -->
-  <section class="section faq-section cp-reveal">
+  <section class="section faq-section cp-reveal" id="faq">
     <div class="container">
       <div class="section__header">
         <div class="section__eyebrow">Common Questions</div>
@@ -787,6 +1024,13 @@
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
           <div class="faq-item__answer"><p>256 DPE-style oral questions with model answers, an ACS-organized study system with a Quick Reference Appendix, realistic checkride scenarios, AI DPE Practice (a simulated oral exam), and progress tracking — all through the Apex Advantage portal.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            Can I see a sample before purchasing?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>Yes. Scroll up to the &ldquo;Take a Look Inside&rdquo; section for real screenshots from the actual portal — the question library, a full model-answer breakdown, a scenario workshop, and progress tracking — so you know exactly what you're getting before you buy.</p></div>
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
@@ -839,6 +1083,13 @@
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
+            Does this guarantee I'll pass my checkride?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>No system can guarantee a practical-test outcome — that depends on your flying skills, your individual preparation, and the examiner's evaluation on the day. The Prep Pack is built to help you build real understanding and communicate your decisions confidently, which is the best preparation we can offer.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
             Is there a refund policy?
             <!-- TODO(product): no formal refund policy exists anywhere in this
                  codebase yet. This answer intentionally does not promise
@@ -856,10 +1107,11 @@
   <section class="cp-final">
     <div class="container">
       <div class="cp-final__eyebrow">Train Beyond the Checkride</div>
-      <h2>DO NOT WALK INTO YOUR CHECKRIDE HOPING YOU STUDIED THE RIGHT THINGS.</h2>
-      <p class="cp-final__desc">Prepare with a structured, scenario-based system designed around the way checkrides are actually conducted.</p>
+      <h2>STOP MEMORIZING.<br>START UNDERSTANDING.</h2>
+      <p class="cp-final__desc">Build the knowledge, scenario awareness, and communication skills you need to walk into your private pilot checkride prepared.</p>
       <div class="cp-final__offer" data-cp-urgency>$29 launch pricing for the first 25 pilots.</div>
-      <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-location="final">GET INSTANT ACCESS</a>
+      <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-location="final">GET THE CHECKRIDE SYSTEM</a>
+      <div class="cp-final__reassurance">Instant digital access &bull; Designed by flight instructors &bull; Built around the ACS</div>
       <div class="cp-final__brandline">Train Beyond the Checkride</div>
     </div>
   </section>
@@ -876,6 +1128,7 @@
         <a href="mailto:info@apexaviationtx.com">Support</a>
       </div>
       <div class="cp-footer__copyright">&copy; 2026 Apex Aviation. All rights reserved.</div>
+      <p class="cp-footer__disclaimer">Apex Advantage is an independent training resource and is not affiliated with or endorsed by the Federal Aviation Administration. Completion or purchase of these materials does not guarantee practical-test success.</p>
     </div>
   </footer>
 
@@ -902,6 +1155,15 @@
         if (!window.gtag) return;
         gtag('event', 'checkride_prep_cta_click', { location: el.dataset.cpLocation || 'unknown' });
         gtag('event', 'checkride_prep_checkout_start', { location: el.dataset.cpLocation || 'unknown' });
+      });
+    });
+
+    // ── Secondary CTA click tracking (anchor-jump only, not a
+    // checkout start — e.g. hero's "See What's Included" button) ──
+    document.querySelectorAll('[data-cp-secondary-cta]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        if (!window.gtag) return;
+        gtag('event', 'checkride_prep_secondary_cta_click', { location: el.dataset.cpLocation || 'unknown' });
       });
     });
 
