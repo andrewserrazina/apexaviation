@@ -182,15 +182,17 @@
       display: flex;
       align-items: center;
       overflow: hidden;
+      padding: 20px 0;
     }
-    /* Left-to-right scrim -- stronger over the text column, lighter
-       toward the pilot on the right, so the photo keeps its depth
-       instead of reading as a flat tinted rectangle. */
+    /* Readability scrim -- strong over the text column, fading out by
+       ~60% across so the desk's study materials (charts, notebook)
+       stay visible on the right, which is now open space rather than
+       a competing product image. */
     .cp-hero__bg {
       position: absolute;
       inset: 0;
       background:
-        linear-gradient(to right, rgba(11,31,58,0.78) 0%, rgba(11,31,58,0.5) 45%, rgba(11,31,58,0.3) 100%),
+        linear-gradient(90deg, rgba(11,31,58,0.96) 0%, rgba(11,31,58,0.88) 35%, rgba(11,31,58,0.55) 60%, rgba(11,31,58,0.18) 100%),
         url('images/CheckrideHero.png') center/cover no-repeat;
     }
     .cp-hero__inner {
@@ -201,7 +203,7 @@
       margin: 0 auto;
       padding: 0 24px;
       display: grid;
-      grid-template-columns: minmax(0, 560px) minmax(260px, 1fr);
+      grid-template-columns: minmax(0, 680px) minmax(0, 1fr);
       gap: 48px;
       align-items: center;
     }
@@ -211,59 +213,55 @@
       letter-spacing: 0.14em;
       text-transform: uppercase;
       color: #F4B400;
-      margin-bottom: 18px;
+      margin-bottom: 12px;
     }
     .cp-hero h1 {
-      font-size: clamp(2.4rem, 4.2vw, 4.5rem);
+      max-width: 680px;
+      font-size: clamp(2.5rem, 4.7vw, 4.8rem);
       font-weight: 800;
       color: #fff;
-      line-height: 1.06;
-      margin: 0 0 22px;
-      letter-spacing: -0.01em;
+      line-height: 1.05;
+      margin: 0 0 12px;
+      letter-spacing: -0.02em;
     }
     .cp-hero h1 .cp-gold { color: #F4B400; }
     .cp-hero__sub {
       color: #E5E7EB;
-      line-height: 1.75;
+      line-height: 1.55;
       font-size: 16px;
-      margin: 0 0 32px;
-      max-width: 520px;
+      margin: 0 0 16px;
+      max-width: 560px;
+      font-family: 'Inter', -apple-system, sans-serif;
     }
     .cp-hero__offer {
       background: rgba(11,31,58,0.55);
       border: 1px solid rgba(244,180,0,0.4);
       border-left: 4px solid #F4B400;
-      padding: 22px 24px;
-      margin-bottom: 20px;
+      padding: 18px 26px;
+      margin-bottom: 12px;
       width: 100%;
-      max-width: 440px;
+      max-width: 560px;
     }
-    .cp-hero__price-row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
-    .cp-hero__price { font-size: 40px; font-weight: 800; color: #F4B400; line-height: 1; }
-    .cp-hero__price-label { font-size: 13px; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 0.05em; }
-    .cp-hero__urgency { font-size: 13px; font-weight: 600; color: #E5E7EB; }
-    .cp-hero__cta-col { width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 12px; }
-    .cp-hero__microcopy { font-size: 13px; color: rgba(255,255,255,0.55); text-align: left; }
-    .cp-hero__trust-line { font-size: 13px; color: #E5E7EB; font-weight: 600; margin-top: 18px; }
-
-    /* Product mockup -- a normal grid column now, not an absolutely
-       positioned corner accent. Large enough to feel intentional,
-       vertically centered with the text column, no framing chrome. */
-    .cp-hero__visual { display: flex; justify-content: flex-end; align-items: center; }
-    .cp-hero__visual img { display: block; width: min(100%, 320px); height: auto; margin: 0; }
+    .cp-hero__price-row { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; }
+    .cp-hero__price { font-size: clamp(3.25rem, 4.6vw, 4rem); font-weight: 800; color: #F4B400; line-height: 1; font-family: 'Montserrat', sans-serif; }
+    .cp-hero__price-label { font-size: 14px; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 0.05em; }
+    .cp-hero__urgency { font-size: 14px; font-weight: 600; color: #E5E7EB; }
+    .cp-hero__cta-col { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 8px; }
+    .cp-hero__cta-col .btn--cta-primary { min-height: 56px; }
+    .cp-hero__microcopy { font-size: 13px; color: rgba(255,255,255,0.55); text-align: center; }
+    .cp-hero__trust-line { font-size: 13px; color: #E5E7EB; font-weight: 700; margin-top: 10px; }
 
     @media (max-width: 900px) {
-      .cp-hero { min-height: auto; }
+      .cp-hero { min-height: auto; padding: 0; }
       .cp-hero__inner {
         grid-template-columns: 1fr;
         gap: 32px;
         padding: 108px 24px 56px;
       }
-      .cp-hero__visual { justify-content: center; }
+      .cp-hero h1 { max-width: none; }
     }
     @media (max-width: 480px) {
-      .cp-hero__inner { padding: 32px 16px 44px; gap: 24px; }
-      .cp-hero__visual img { width: min(100%, 260px); }
+      .cp-hero__inner { padding: 32px 18px 44px; gap: 24px; }
     }
 
     /* ─── Value strip ─── */
@@ -531,7 +529,7 @@
       <div class="cp-hero__content">
         <div class="cp-hero__eyebrow">Apex Advantage</div>
         <h1>MOST PILOTS MEMORIZE ANSWERS. THE BEST PILOTS <span class="cp-gold">UNDERSTAND</span> THEM.</h1>
-        <p class="cp-hero__sub">Prepare for your checkride with an ACS-based study system built around DPE-style oral questions, realistic scenarios, model answers, and the decision-making skills examiners expect.</p>
+        <p class="cp-hero__sub">ACS-based oral prep, DPE-style questions, realistic scenarios, and model answers designed to help you think through the checkride — not just memorize answers.</p>
 
         <div class="cp-hero__offer">
           <div class="cp-hero__price-row">
@@ -546,10 +544,6 @@
           <div class="cp-hero__microcopy">Instant digital access through the Apex Advantage portal.</div>
         </div>
         <div class="cp-hero__trust-line">Built by active CFIs. Designed for checkride success.</div>
-      </div>
-
-      <div class="cp-hero__visual">
-        <img src="ApexPrivate.png" alt="Apex Advantage Checkride Prep Pack" width="320" height="320" loading="lazy" />
       </div>
     </div>
   </section>
