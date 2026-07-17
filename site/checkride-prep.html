@@ -136,8 +136,9 @@
     .cp-header__nav a:hover { color: #F4B400; }
     .cp-header .btn--cta-primary {
       width: auto;
-      padding: 12px 20px;
-      font-size: 13px;
+      padding: 10px 18px;
+      font-size: 12.5px;
+      min-height: 0;
       flex-shrink: 0;
     }
     @media (max-width: 900px) {
@@ -200,7 +201,7 @@
       display: flex;
       align-items: center;
       overflow: hidden;
-      padding: 20px 0;
+      padding: 20px 0 64px;
     }
     /* Readability scrim -- strong over the text column, fading out by
        ~60% across so the desk's study materials (charts, notebook)
@@ -210,7 +211,8 @@
       position: absolute;
       inset: 0;
       background:
-        linear-gradient(90deg, rgba(11,31,58,0.96) 0%, rgba(11,31,58,0.88) 35%, rgba(11,31,58,0.55) 60%, rgba(11,31,58,0.18) 100%),
+        radial-gradient(60% 55% at 76% 58%, rgba(244,180,0,0.16) 0%, rgba(244,180,0,0) 70%),
+        linear-gradient(90deg, rgba(11,31,58,0.96) 0%, rgba(11,31,58,0.85) 32%, rgba(11,31,58,0.42) 58%, rgba(11,31,58,0.24) 100%),
         url('images/CheckrideHero.png') center/cover no-repeat;
     }
     .cp-hero__inner {
@@ -221,52 +223,127 @@
       margin: 0 auto;
       padding: 0 24px;
       display: grid;
-      grid-template-columns: minmax(0, 820px) minmax(240px, 1fr);
-      gap: 40px;
+      grid-template-columns: minmax(0, 1.3fr) minmax(300px, 1fr);
+      grid-template-areas:
+        "eyebrow    showcase"
+        "headline   showcase"
+        "copy       showcase"
+        "instructor showcase"
+        "offer      showcase"
+        "cta        showcase";
+      gap: 8px 40px;
       align-items: center;
     }
     .cp-hero__eyebrow {
+      grid-area: eyebrow;
       font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.14em;
       text-transform: uppercase;
       color: #F4B400;
-      margin-bottom: 12px;
+      margin-bottom: 4px;
     }
     .cp-hero h1 {
+      grid-area: headline;
       max-width: 780px;
       font-size: clamp(3rem, 4.8vw, 4.6rem);
       font-weight: 800;
       color: #fff;
       line-height: 1.04;
-      margin: 0 0 22px;
+      margin: 0 0 8px;
       letter-spacing: -0.025em;
     }
     .cp-hero h1 .cp-gold { color: #F4B400; }
     .cp-hero__sub {
+      grid-area: copy;
       color: #E5E7EB;
       line-height: 1.65;
       font-size: 16px;
-      margin: 0 0 24px;
-      max-width: 650px;
+      margin: 0 0 8px;
+      max-width: 660px;
       font-family: 'Inter', -apple-system, sans-serif;
     }
+
+    /* ─── Product showcase: real cover + real portal screenshot,
+       layered as two offset cards rather than a flat mockup ─── */
+    .cp-hero__showcase { grid-area: showcase; position: relative; width: 100%; max-width: 380px; margin: 0 auto; }
+    .cp-hero__showcase-page {
+      width: 84%;
+      aspect-ratio: 4 / 3;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: 0 24px 48px rgba(0,0,0,0.5);
+      transform: rotate(-4deg);
+      background: #0B1F3A;
+    }
+    .cp-hero__showcase-page img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top left; }
+    .cp-hero__showcase-cover {
+      position: relative;
+      z-index: 1;
+      width: 58%;
+      aspect-ratio: 1 / 1;
+      margin: -18% 0 0 auto;
+      overflow: hidden;
+      border: 1px solid rgba(244,180,0,0.4);
+      box-shadow: 0 28px 56px rgba(0,0,0,0.55);
+      transform: rotate(3deg);
+      background: #0B1F3A;
+    }
+    .cp-hero__showcase-cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+    /* ─── Instructor credibility line ─── */
+    .cp-hero__instructor-line {
+      grid-area: instructor;
+      display: flex; align-items: center; gap: 12px;
+      padding: 6px 0 6px 14px;
+      border-left: 2px solid rgba(244,180,0,0.4);
+      margin: 0 0 4px;
+    }
+    .cp-hero__instructor-line img { width: 40px; height: 40px; object-fit: cover; border: 1px solid rgba(244,180,0,0.4); flex-shrink: 0; }
+    .cp-hero__instructor-name { display: block; font-size: 13.5px; font-weight: 700; color: #fff; }
+    .cp-hero__instructor-cred { display: block; font-size: 12px; color: rgba(255,255,255,0.55); margin-top: 2px; }
+
     .cp-hero__offer {
+      grid-area: offer;
       background: rgba(11,31,58,0.55);
       border-left: 4px solid #F4B400;
-      padding: 22px 26px;
-      margin-bottom: 16px;
+      padding: 16px 26px;
+      margin-bottom: 4px;
       width: 100%;
       max-width: 560px;
     }
-    .cp-hero__price { font-size: clamp(3.6rem, 4.8vw, 4.25rem); font-weight: 800; color: #F4B400; line-height: 1; font-family: 'Montserrat', sans-serif; }
-    .cp-hero__price-label { display: block; font-size: 14px; font-weight: 800; color: #fff; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 6px; }
-    .cp-hero__urgency { font-size: 14px; color: #E5E7EB; line-height: 1.5; margin-top: 10px; }
-    .cp-hero__cta-col { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 10px; }
+    .cp-hero__price-top { display: block; font-size: 12px; font-weight: 800; color: #F4B400; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+    .cp-hero__price { font-size: clamp(3.2rem, 4.4vw, 3.8rem); font-weight: 800; color: #F4B400; line-height: 1; font-family: 'Montserrat', sans-serif; }
+    .cp-hero__price-regular { display: block; font-size: 14px; font-weight: 700; color: #E5E7EB; margin-top: 6px; }
+    .cp-hero__price-note { font-size: 12.5px; color: rgba(255,255,255,0.5); margin-top: 8px; }
+    .cp-hero__cta-col { grid-area: cta; width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 14px; }
     .cp-hero__cta-row { display: flex; gap: 12px; width: 100%; }
     .cp-hero__cta-row .btn--cta-primary { min-height: 56px; flex: 1 1 auto; }
     .cp-hero__cta-row .btn--outline-gold { min-height: 56px; flex: 0 0 auto; white-space: nowrap; }
-    .cp-hero__microcopy { font-size: 13px; color: rgba(255,255,255,0.55); text-align: center; }
+    .cp-hero__benefits {
+      list-style: none; padding: 0; margin: 0;
+      display: flex; flex-wrap: wrap; gap: 8px 20px;
+    }
+    .cp-hero__benefits li {
+      font-size: 12.5px; color: rgba(255,255,255,0.65); font-weight: 500;
+      padding-left: 16px; position: relative;
+    }
+    .cp-hero__benefits li::before { content: '\2713'; position: absolute; left: 0; color: #F4B400; font-weight: 700; }
+
+    .cp-hero__scroll-cue {
+      position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      text-decoration: none; z-index: 1;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: rgba(255,255,255,0.55);
+      transition: color 0.15s ease;
+    }
+    .cp-hero__scroll-cue:hover { color: #F4B400; }
+    .cp-hero__scroll-cue svg { animation: cp-scroll-cue-bob 2s ease-in-out infinite; }
+    @media (prefers-reduced-motion: reduce) { .cp-hero__scroll-cue svg { animation: none; } }
+    @keyframes cp-scroll-cue-bob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(4px); }
+    }
 
     @media (max-width: 1024px) {
       .cp-hero h1 { font-size: clamp(2.75rem, 5.2vw, 3.75rem); }
@@ -275,13 +352,22 @@
       .cp-hero { min-height: auto; padding: 0; }
       .cp-hero__inner {
         grid-template-columns: 1fr;
-        gap: 32px;
-        padding: 108px 24px 56px;
+        grid-template-areas:
+          "eyebrow"
+          "headline"
+          "copy"
+          "showcase"
+          "instructor"
+          "offer"
+          "cta";
+        gap: 20px;
+        padding: 108px 24px 64px;
       }
       .cp-hero h1 { max-width: none; font-size: clamp(2.5rem, 7vw, 3.8rem); }
       .cp-hero__sub, .cp-hero__offer, .cp-hero__cta-col { max-width: none; }
       .cp-hero__cta-row { flex-direction: column; }
       .cp-hero__cta-row .btn--outline-gold { width: 100%; }
+      .cp-hero__scroll-cue { display: none; }
     }
     @media (max-width: 480px) {
       .cp-hero__inner { padding: 32px 18px 44px; gap: 24px; }
@@ -662,26 +748,52 @@
   <section class="cp-hero">
     <div class="cp-hero__bg" aria-hidden="true"></div>
     <div class="cp-hero__inner">
-      <div class="cp-hero__content">
-        <div class="cp-hero__eyebrow">Private Pilot Checkride Preparation</div>
-        <h1>WALK INTO YOUR<br>CHECKRIDE <span class="cp-gold">READY.</span></h1>
-        <p class="cp-hero__sub">Prepare for the private pilot oral exam with ACS-mapped questions, realistic DPE-style scenarios, model answers, and guided study tools built to help you understand&mdash;not just memorize.</p>
+      <div class="cp-hero__eyebrow">Private Pilot Checkride Preparation</div>
+      <h1>WALK INTO YOUR<br>CHECKRIDE <span class="cp-gold">READY.</span></h1>
+      <p class="cp-hero__sub">Walk into your checkride knowing why the airplane behaves the way it does&mdash;not just how to recite the answer. Apex Advantage combines ACS-mapped study tools, realistic DPE-style scenarios, and instructor-built explanations to help you respond confidently when the examiner changes the question.</p>
 
-        <div class="cp-hero__offer">
-          <span class="cp-hero__price" data-cp-price>$29</span>
-          <span class="cp-hero__price-label">Launch Pricing</span>
-          <div class="cp-hero__urgency" data-cp-urgency>First 25 pilots only</div>
+      <div class="cp-hero__showcase">
+        <div class="cp-hero__showcase-page">
+          <img src="images/ModelAnswer.png" alt="" loading="lazy" width="640" height="480" />
         </div>
-
-        <div class="cp-hero__cta-col">
-          <div class="cp-hero__cta-row">
-            <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-location="hero">GET THE CHECKRIDE SYSTEM</a>
-            <a href="#included" class="btn--outline-gold" data-cp-secondary-cta data-cp-location="hero">SEE WHAT&rsquo;S INCLUDED</a>
-          </div>
-          <div class="cp-hero__microcopy">Instant digital access &bull; Built by flight instructors &bull; Designed around the Private Pilot ACS</div>
+        <div class="cp-hero__showcase-cover">
+          <img src="images/ApexPrivate.png" alt="Apex Advantage Private Pilot Checkride Prep Pack workbook cover" loading="lazy" width="420" height="420" />
         </div>
       </div>
+
+      <div class="cp-hero__instructor-line">
+        <img src="images/AndrewHeadshot.JPG" alt="" loading="lazy" width="40" height="40" />
+        <div>
+          <span class="cp-hero__instructor-name">Created by Andrew Serrazina</span>
+          <span class="cp-hero__instructor-cred">Commercial Pilot &bull; Flight Instructor &bull; Founder of Apex Aviation</span>
+        </div>
+      </div>
+
+      <div class="cp-hero__offer">
+        <span class="cp-hero__price-top">Launch Pricing</span>
+        <span class="cp-hero__price" data-cp-price>$29</span>
+        <span class="cp-hero__price-regular" data-cp-regular-price>Regular Price $49</span>
+        <div class="cp-hero__price-note">Introductory pricing available for a limited time.</div>
+      </div>
+
+      <div class="cp-hero__cta-col">
+        <div class="cp-hero__cta-row">
+          <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-location="hero">GET THE CHECKRIDE SYSTEM</a>
+          <a href="#included" class="btn--outline-gold" data-cp-secondary-cta data-cp-location="hero">SEE WHAT&rsquo;S INCLUDED</a>
+        </div>
+        <ul class="cp-hero__benefits">
+          <li>ACS-Mapped Study System</li>
+          <li>DPE-Style Scenario Practice</li>
+          <li>Instant Digital Access</li>
+          <li>Built by Flight Instructors</li>
+        </ul>
+      </div>
     </div>
+
+    <a href="#included" class="cp-hero__scroll-cue" data-cp-secondary-cta data-cp-location="hero-scroll-cue">
+      <span>SEE WHAT&rsquo;S INSIDE</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </a>
   </section>
 
   <!-- ═══ 3. IMMEDIATE VALUE STRIP ═══ -->
@@ -1197,6 +1309,13 @@
           ? row.founding_seats_remaining + ' of 25 launch spots left at ' + price + ' — then $49'
           : 'Launch pricing has ended — $49 for full access';
         document.querySelectorAll('[data-cp-urgency]').forEach(function (el) { el.textContent = urgency; });
+
+        // Hero's clean pricing card has no scarcity copy — once launch
+        // pricing ends, $29 becomes $49 via data-cp-price above, so the
+        // separate "Regular Price $49" line would be redundant; hide it.
+        if (row.tier !== 'founding') {
+          document.querySelectorAll('[data-cp-regular-price]').forEach(function (el) { el.style.display = 'none'; });
+        }
       }).catch(function () {});
     })();
 
