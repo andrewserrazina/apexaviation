@@ -178,24 +178,32 @@
        page bolted onto the site. */
     .cp-hero {
       position: relative;
-      min-height: 82vh;
+      min-height: calc(100vh - 61px);
       display: flex;
       align-items: center;
       overflow: hidden;
     }
+    /* Left-to-right scrim -- stronger over the text column, lighter
+       toward the pilot on the right, so the photo keeps its depth
+       instead of reading as a flat tinted rectangle. */
     .cp-hero__bg {
       position: absolute;
       inset: 0;
       background:
-        linear-gradient(to bottom, rgba(11,31,58,0.74) 0%, rgba(11,31,58,0.58) 55%, rgba(11,31,58,0.94) 100%),
-        url('images/IMG_0224.JPG') center/cover no-repeat;
+        linear-gradient(to right, rgba(11,31,58,0.9) 0%, rgba(11,31,58,0.6) 45%, rgba(11,31,58,0.22) 100%),
+        url('images/IMG_0224.JPG') 80% center/cover no-repeat;
     }
-    .cp-hero-grid {
+    .cp-hero__inner {
       position: relative;
       z-index: 1;
-      max-width: 680px;
-      padding: 140px 24px 72px;
-      margin: 0 auto 0 0;
+      width: 100%;
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: grid;
+      grid-template-columns: minmax(0, 560px) minmax(260px, 1fr);
+      gap: 48px;
+      align-items: center;
     }
     .cp-hero__eyebrow {
       font-size: 12px;
@@ -206,10 +214,10 @@
       margin-bottom: 18px;
     }
     .cp-hero h1 {
-      font-size: clamp(2rem, 4.6vw, 3rem);
+      font-size: clamp(2.4rem, 4.2vw, 4.5rem);
       font-weight: 800;
       color: #fff;
-      line-height: 1.15;
+      line-height: 1.06;
       margin: 0 0 22px;
       letter-spacing: -0.01em;
     }
@@ -227,32 +235,35 @@
       border-left: 4px solid #F4B400;
       padding: 22px 24px;
       margin-bottom: 20px;
+      width: 100%;
       max-width: 440px;
     }
     .cp-hero__price-row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
     .cp-hero__price { font-size: 40px; font-weight: 800; color: #F4B400; line-height: 1; }
     .cp-hero__price-label { font-size: 13px; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 0.05em; }
     .cp-hero__urgency { font-size: 13px; font-weight: 600; color: #E5E7EB; }
-    .cp-hero__cta-col { max-width: 440px; display: flex; flex-direction: column; gap: 12px; }
-    .cp-hero__microcopy { font-size: 13px; color: rgba(255,255,255,0.55); text-align: center; }
+    .cp-hero__cta-col { width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 12px; }
+    .cp-hero__microcopy { font-size: 13px; color: rgba(255,255,255,0.55); text-align: left; }
     .cp-hero__trust-line { font-size: 13px; color: #E5E7EB; font-weight: 600; margin-top: 18px; }
 
-    /* De-emphasized product accent -- present, but secondary to the
-       photo; hidden entirely on narrow screens rather than competing
-       with the headline for space. */
-    .cp-hero__accent-mockup {
-      position: absolute;
-      right: 48px;
-      bottom: 48px;
-      width: 108px;
-      z-index: 1;
-      border: 1px solid rgba(255,255,255,0.25);
-      background: rgba(11,31,58,0.4);
-      padding: 6px;
-    }
-    .cp-hero__accent-mockup img { display: block; width: 100%; height: auto; }
+    /* Product mockup -- a normal grid column now, not an absolutely
+       positioned corner accent. Large enough to feel intentional,
+       vertically centered with the text column, no framing chrome. */
+    .cp-hero__visual { display: flex; justify-content: flex-end; align-items: center; }
+    .cp-hero__visual img { display: block; width: min(100%, 320px); height: auto; margin: 0; }
+
     @media (max-width: 900px) {
-      .cp-hero__accent-mockup { display: none; }
+      .cp-hero { min-height: auto; }
+      .cp-hero__inner {
+        grid-template-columns: 1fr;
+        gap: 32px;
+        padding: 108px 24px 56px;
+      }
+      .cp-hero__visual { justify-content: center; }
+    }
+    @media (max-width: 480px) {
+      .cp-hero__inner { padding: 32px 16px 44px; gap: 24px; }
+      .cp-hero__visual img { width: min(100%, 260px); }
     }
 
     /* ─── Value strip ─── */
@@ -501,12 +512,7 @@
       .cp-reveal { opacity: 1; transform: none; transition: none; }
     }
 
-    @media (max-width: 900px) {
-      .cp-hero { min-height: auto; }
-      .cp-hero-grid { padding: 108px 20px 56px; }
-    }
     @media (max-width: 480px) {
-      .cp-hero-grid { padding: 96px 18px 48px; }
       .cp-offer-box { padding: 32px 22px; }
       .cp-offer-price { font-size: 40px; }
       .cp-hero__offer { padding: 18px 18px; }
@@ -529,28 +535,30 @@
   <!-- ═══ 2. HERO ═══ -->
   <section class="cp-hero">
     <div class="cp-hero__bg" aria-hidden="true"></div>
-    <div class="container cp-hero-grid">
-      <div class="cp-hero__eyebrow">Apex Advantage</div>
-      <h1>MOST PILOTS MEMORIZE ANSWERS.<br/>THE BEST PILOTS <span class="cp-gold">UNDERSTAND</span> THEM.</h1>
-      <p class="cp-hero__sub">Prepare for your checkride with an ACS-based study system built around DPE-style oral questions, realistic scenarios, model answers, and the decision-making skills examiners expect.</p>
+    <div class="cp-hero__inner">
+      <div class="cp-hero__content">
+        <div class="cp-hero__eyebrow">Apex Advantage</div>
+        <h1>MOST PILOTS MEMORIZE ANSWERS. THE BEST PILOTS <span class="cp-gold">UNDERSTAND</span> THEM.</h1>
+        <p class="cp-hero__sub">Prepare for your checkride with an ACS-based study system built around DPE-style oral questions, realistic scenarios, model answers, and the decision-making skills examiners expect.</p>
 
-      <div class="cp-hero__offer">
-        <div class="cp-hero__price-row">
-          <span class="cp-hero__price" data-cp-price>$29</span>
-          <span class="cp-hero__price-label">Launch Pricing</span>
+        <div class="cp-hero__offer">
+          <div class="cp-hero__price-row">
+            <span class="cp-hero__price" data-cp-price>$29</span>
+            <span class="cp-hero__price-label">Launch Pricing</span>
+          </div>
+          <div class="cp-hero__urgency" data-cp-urgency>First 25 pilots only</div>
         </div>
-        <div class="cp-hero__urgency" data-cp-urgency>First 25 pilots only</div>
+
+        <div class="cp-hero__cta-col">
+          <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-location="hero">GET INSTANT ACCESS</a>
+          <div class="cp-hero__microcopy">Instant digital access through the Apex Advantage portal.</div>
+        </div>
+        <div class="cp-hero__trust-line">Built by active CFIs. Designed for checkride success.</div>
       </div>
 
-      <div class="cp-hero__cta-col">
-        <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-location="hero">GET INSTANT ACCESS</a>
-        <div class="cp-hero__microcopy">Instant digital access through the Apex Advantage portal.</div>
+      <div class="cp-hero__visual">
+        <img src="ApexPrivate.png" alt="Apex Advantage Checkride Prep Pack" width="320" height="320" loading="lazy" />
       </div>
-      <div class="cp-hero__trust-line">Built by active CFIs. Designed for checkride success.</div>
-    </div>
-
-    <div class="cp-hero__accent-mockup">
-      <img src="ApexPrivate.png" alt="Apex Advantage Checkride Prep Pack" width="108" height="108" loading="lazy" />
     </div>
   </section>
 
