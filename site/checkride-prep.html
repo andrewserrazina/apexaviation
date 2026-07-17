@@ -127,13 +127,25 @@
       list-style: none;
     }
     .cp-header__nav a {
+      position: relative;
       font-size: 13px;
       font-weight: 600;
       color: #E5E7EB;
       text-decoration: none;
       white-space: nowrap;
+      padding-bottom: 2px;
+    }
+    .cp-header__nav a::after {
+      content: '';
+      position: absolute; left: 0; right: 100%; bottom: -2px;
+      height: 1px; background: #F4B400;
+      transition: right 0.2s ease;
     }
     .cp-header__nav a:hover { color: #F4B400; }
+    .cp-header__nav a:hover::after { right: 0; }
+    @media (prefers-reduced-motion: reduce) {
+      .cp-header__nav a::after { transition: none; }
+    }
     .cp-header .btn--cta-primary {
       width: auto;
       padding: 10px 18px;
@@ -167,11 +179,11 @@
       text-decoration: none;
       border: none;
       cursor: pointer;
-      transition: background 0.15s ease;
+      transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
       width: 100%;
       min-height: 44px;
     }
-    .btn--cta-primary:hover { background: #D4920A; }
+    .btn--cta-primary:hover { background: #D4920A; box-shadow: 0 8px 20px rgba(0,0,0,0.3); transform: translateY(-1px); }
     .btn--outline-gold {
       display: inline-flex;
       align-items: center;
@@ -187,8 +199,13 @@
       border-radius: 0;
       text-decoration: none;
       min-height: 44px;
+      transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
     }
-    .btn--outline-gold:hover { background: #F4B400; color: #0B1F3A; }
+    .btn--outline-gold:hover { background: #F4B400; color: #0B1F3A; transform: translateY(-1px); }
+    @media (prefers-reduced-motion: reduce) {
+      .btn--cta-primary, .btn--outline-gold { transition: background-color 0.15s ease, color 0.15s ease; }
+      .btn--cta-primary:hover, .btn--outline-gold:hover { transform: none; }
+    }
 
     /* ─── Hero ─── */
     /* Full-bleed aviation photo + dark navy overlay -- the same
@@ -229,9 +246,10 @@
         "headline   showcase"
         "copy       showcase"
         "instructor showcase"
+        "benefits   showcase"
         "offer      showcase"
         "cta        showcase";
-      gap: 8px 40px;
+      gap: 6px 40px;
       align-items: center;
     }
     .cp-hero__eyebrow {
@@ -264,50 +282,95 @@
       font-family: 'Inter', -apple-system, sans-serif;
     }
 
-    /* ─── Product showcase: real cover + real portal screenshot,
-       layered as two offset cards rather than a flat mockup ─── */
-    .cp-hero__showcase { grid-area: showcase; position: relative; width: 100%; max-width: 380px; margin: 0 auto; }
+    /* ─── Product showcase: three real assets (scenario page, model-answer
+       page, workbook cover) layered with varied rotation/depth/shadow so
+       it reads as a photographed desk stack, not a flat mockup grid. The
+       cover is deliberately the largest, frontmost, sharpest-shadowed
+       object -- the eye should land there first. ─── */
+    .cp-hero__showcase {
+      grid-area: showcase;
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+      aspect-ratio: 10 / 11;
+      margin: 0 auto;
+    }
     .cp-hero__showcase-page {
-      width: 84%;
+      position: absolute;
       aspect-ratio: 4 / 3;
       overflow: hidden;
       border: 1px solid rgba(255,255,255,0.12);
-      box-shadow: 0 24px 48px rgba(0,0,0,0.5);
-      transform: rotate(-4deg);
       background: #0B1F3A;
     }
     .cp-hero__showcase-page img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top left; }
-    .cp-hero__showcase-cover {
-      position: relative;
+    .cp-hero__showcase-page--back {
+      width: 52%;
+      top: 2%;
+      left: 0;
+      transform: rotate(-8deg);
+      box-shadow: 0 14px 28px rgba(0,0,0,0.35);
+      opacity: 0.85;
       z-index: 1;
-      width: 58%;
+    }
+    .cp-hero__showcase-page--mid {
+      width: 64%;
+      top: 21%;
+      left: 20%;
+      transform: rotate(4deg);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.45);
+      z-index: 2;
+    }
+    .cp-hero__showcase-cover {
+      position: absolute;
+      z-index: 3;
+      width: 64%;
       aspect-ratio: 1 / 1;
-      margin: -18% 0 0 auto;
+      top: 44%;
+      left: 30%;
       overflow: hidden;
-      border: 1px solid rgba(244,180,0,0.4);
-      box-shadow: 0 28px 56px rgba(0,0,0,0.55);
-      transform: rotate(3deg);
+      border: 1px solid rgba(244,180,0,0.5);
+      box-shadow: 0 32px 64px rgba(0,0,0,0.6);
+      transform: rotate(-3deg);
       background: #0B1F3A;
+      transition: transform 0.3s ease;
     }
     .cp-hero__showcase-cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    @media (hover: hover) {
+      .cp-hero__showcase:hover .cp-hero__showcase-cover { transform: rotate(-1deg) scale(1.015); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .cp-hero__showcase-cover { transition: none; }
+    }
 
     /* ─── Instructor credibility line ─── */
     .cp-hero__instructor-line {
       grid-area: instructor;
-      display: flex; align-items: center; gap: 12px;
+      display: flex; align-items: center; gap: 14px;
       padding: 6px 0 6px 14px;
       border-left: 2px solid rgba(244,180,0,0.4);
       margin: 0 0 4px;
     }
-    .cp-hero__instructor-line img { width: 40px; height: 40px; object-fit: cover; border: 1px solid rgba(244,180,0,0.4); flex-shrink: 0; }
+    .cp-hero__instructor-line img { width: 44px; height: 44px; object-fit: cover; border: 1px solid rgba(244,180,0,0.4); flex-shrink: 0; }
     .cp-hero__instructor-name { display: block; font-size: 13.5px; font-weight: 700; color: #fff; }
-    .cp-hero__instructor-cred { display: block; font-size: 12px; color: rgba(255,255,255,0.55); margin-top: 2px; }
+    .cp-hero__instructor-cred { display: block; font-size: 12px; color: rgba(255,255,255,0.55); margin-top: 3px; }
+    .cp-hero__instructor-desc { display: block; font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 3px; line-height: 1.5; }
+
+    .cp-hero__benefits {
+      grid-area: benefits;
+      list-style: none; padding: 0; margin: 0 0 4px;
+      display: flex; flex-wrap: wrap; gap: 8px 22px;
+    }
+    .cp-hero__benefits li {
+      font-size: 12.5px; color: rgba(255,255,255,0.7); font-weight: 600;
+      padding-left: 17px; position: relative;
+    }
+    .cp-hero__benefits li::before { content: '\2713'; position: absolute; left: 0; color: #F4B400; font-weight: 700; }
 
     .cp-hero__offer {
       grid-area: offer;
-      background: rgba(11,31,58,0.55);
+      background: rgba(244,180,0,0.05);
       border-left: 4px solid #F4B400;
-      padding: 16px 26px;
+      padding: 14px 26px;
       margin-bottom: 4px;
       width: 100%;
       max-width: 560px;
@@ -320,15 +383,6 @@
     .cp-hero__cta-row { display: flex; gap: 12px; width: 100%; }
     .cp-hero__cta-row .btn--cta-primary { min-height: 56px; flex: 1 1 auto; }
     .cp-hero__cta-row .btn--outline-gold { min-height: 56px; flex: 0 0 auto; white-space: nowrap; }
-    .cp-hero__benefits {
-      list-style: none; padding: 0; margin: 0;
-      display: flex; flex-wrap: wrap; gap: 8px 20px;
-    }
-    .cp-hero__benefits li {
-      font-size: 12.5px; color: rgba(255,255,255,0.65); font-weight: 500;
-      padding-left: 16px; position: relative;
-    }
-    .cp-hero__benefits li::before { content: '\2713'; position: absolute; left: 0; color: #F4B400; font-weight: 700; }
 
     .cp-hero__scroll-cue {
       position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);
@@ -358,6 +412,7 @@
           "copy"
           "showcase"
           "instructor"
+          "benefits"
           "offer"
           "cta";
         gap: 20px;
@@ -374,37 +429,36 @@
       .cp-hero__price { font-size: 50px; }
     }
 
-    /* ─── Value strip ─── */
+    /* ─── Value strip: typography-led credibility strip (no icons) ─── */
     .cp-value-strip {
       background: #162C4F;
       border-top: 1px solid rgba(244,180,0,0.15);
       border-bottom: 1px solid rgba(244,180,0,0.15);
-      padding: 0;
+      padding: 20px 0;
     }
     .cp-value-strip__grid {
       max-width: 1140px;
       margin: 0 auto;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      padding: 0 24px;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      row-gap: 10px;
     }
     .cp-value-strip__item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 22px 20px;
-      border-right: 1px solid rgba(255,255,255,0.08);
+      padding: 0 28px;
+      border-left: 1px solid rgba(255,255,255,0.15);
     }
-    .cp-value-strip__item:last-child { border-right: none; }
-    .cp-value-strip__icon { flex-shrink: 0; display: flex; }
-    .cp-value-strip__item span { font-size: 13.5px; font-weight: 600; color: #fff; line-height: 1.4; }
-    @media (max-width: 900px) {
-      .cp-value-strip__grid { grid-template-columns: 1fr 1fr; }
-      .cp-value-strip__item:nth-child(2) { border-right: none; }
-      .cp-value-strip__item { border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .cp-value-strip__item:first-child { border-left: none; }
+    .cp-value-strip__item span {
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.75);
     }
-    @media (max-width: 480px) {
-      .cp-value-strip__grid { grid-template-columns: 1fr; }
-      .cp-value-strip__item { border-right: none !important; }
+    @media (max-width: 640px) {
+      .cp-value-strip__item { border-left: none; padding: 0 16px; }
     }
 
     /* ─── Memorization vs. preparation contrast ─── */
@@ -750,10 +804,13 @@
     <div class="cp-hero__inner">
       <div class="cp-hero__eyebrow">Private Pilot Checkride Preparation</div>
       <h1>WALK INTO YOUR<br>CHECKRIDE <span class="cp-gold">READY.</span></h1>
-      <p class="cp-hero__sub">Walk into your checkride knowing why the airplane behaves the way it does&mdash;not just how to recite the answer. Apex Advantage combines ACS-mapped study tools, realistic DPE-style scenarios, and instructor-built explanations to help you respond confidently when the examiner changes the question.</p>
+      <p class="cp-hero__sub">Most students know the material&mdash;the oral exam is where that knowledge actually gets tested. Apex Advantage helps you understand the reasoning behind each answer, work through realistic DPE-style scenarios, and stay confident when the examiner changes the question.</p>
 
       <div class="cp-hero__showcase">
-        <div class="cp-hero__showcase-page">
+        <div class="cp-hero__showcase-page cp-hero__showcase-page--back">
+          <img src="images/ScenarioTraining.png" alt="" loading="lazy" width="640" height="480" />
+        </div>
+        <div class="cp-hero__showcase-page cp-hero__showcase-page--mid">
           <img src="images/ModelAnswer.png" alt="" loading="lazy" width="640" height="480" />
         </div>
         <div class="cp-hero__showcase-cover">
@@ -762,12 +819,20 @@
       </div>
 
       <div class="cp-hero__instructor-line">
-        <img src="images/AndrewHeadshot.JPG" alt="" loading="lazy" width="40" height="40" />
+        <img src="images/AndrewHeadshot.JPG" alt="" loading="lazy" width="44" height="44" />
         <div>
-          <span class="cp-hero__instructor-name">Created by Andrew Serrazina</span>
+          <span class="cp-hero__instructor-name">Built by Andrew Serrazina</span>
           <span class="cp-hero__instructor-cred">Commercial Pilot &bull; Flight Instructor &bull; Founder of Apex Aviation</span>
+          <span class="cp-hero__instructor-desc">Helping student pilots prepare through structured, scenario-based instruction.</span>
         </div>
       </div>
+
+      <ul class="cp-hero__benefits">
+        <li>Understand Concepts</li>
+        <li>Practice Real DPE Scenarios</li>
+        <li>ACS-Mapped Study System</li>
+        <li>Instant Digital Access</li>
+      </ul>
 
       <div class="cp-hero__offer">
         <span class="cp-hero__price-top">Launch Pricing</span>
@@ -781,12 +846,6 @@
           <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-location="hero">GET THE CHECKRIDE SYSTEM</a>
           <a href="#included" class="btn--outline-gold" data-cp-secondary-cta data-cp-location="hero">SEE WHAT&rsquo;S INCLUDED</a>
         </div>
-        <ul class="cp-hero__benefits">
-          <li>ACS-Mapped Study System</li>
-          <li>DPE-Style Scenario Practice</li>
-          <li>Instant Digital Access</li>
-          <li>Built by Flight Instructors</li>
-        </ul>
       </div>
     </div>
 
@@ -799,22 +858,10 @@
   <!-- ═══ 3. IMMEDIATE VALUE STRIP ═══ -->
   <div class="cp-value-strip">
     <div class="cp-value-strip__grid">
-      <div class="cp-value-strip__item">
-        <span class="cp-value-strip__icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6l7-3z" stroke="#F4B400" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        <span>ACS-Based Study System</span>
-      </div>
-      <div class="cp-value-strip__item">
-        <span class="cp-value-strip__icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8 10h8M8 14h5M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4-.83L3 20l1.05-3.16A7.86 7.86 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        <span>DPE-Style Oral Questions</span>
-      </div>
-      <div class="cp-value-strip__item">
-        <span class="cp-value-strip__icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        <span>Scenario-Based Preparation</span>
-      </div>
-      <div class="cp-value-strip__item">
-        <span class="cp-value-strip__icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="4" y="3" width="16" height="14" rx="1" stroke="#F4B400" stroke-width="1.8"/><path d="M9 21h6M12 17v4" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round"/></svg></span>
-        <span>Instant Portal Access</span>
-      </div>
+      <div class="cp-value-strip__item"><span>ACS&#8209;Based Study System</span></div>
+      <div class="cp-value-strip__item"><span>DPE&#8209;Style Oral Questions</span></div>
+      <div class="cp-value-strip__item"><span>Scenario&#8209;Based Preparation</span></div>
+      <div class="cp-value-strip__item"><span>Instant Portal Access</span></div>
     </div>
   </div>
 
