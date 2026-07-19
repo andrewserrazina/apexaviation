@@ -26,3 +26,10 @@ verify_jwt = false
 # Only ever invoked server-to-server from other Edge Functions with the
 # service_role key, but no anonymous/browser caller needs a session either.
 verify_jwt = false
+
+[functions.andrewos-metrics]
+# Called on a daily schedule by pg_cron/pg_net (see
+# functions/andrewos-metrics/schedule.sql), not by a signed-in user -- no
+# Supabase session exists, so platform-level JWT verification must be
+# off; auth is instead enforced in code via ANDREWOS_CRON_SECRET.
+verify_jwt = false
