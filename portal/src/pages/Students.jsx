@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
+import { sendAdminEmail } from '../lib/email'
 
 const CERT_OPTIONS = ['None', 'Student Pilot', 'Private Pilot', 'Instrument Rating', 'Commercial Pilot', 'ATP']
 const STUDENT_TYPE_OPTIONS = [
@@ -13,6 +15,7 @@ const BLANK_EDIT = { full_name: '', email: '', certificate_status: 'None', medic
 const BLANK_CREATE = { full_name: '', email: '', password: '', certificate_status: 'None', medical_expiry: '' }
 
 export default function Students() {
+  const { profile } = useAuth()
   const [students, setStudents] = useState([])
   const [syllabi, setSyllabi] = useState([])
   const [loading, setLoading] = useState(true)
@@ -27,6 +30,13 @@ export default function Students() {
   const [enrollModal, setEnrollModal] = useState(null) // { student }
   const [enrollments, setEnrollments] = useState([]) // current student_syllabi for selected student
   const [enrollSaving, setEnrollSaving] = useState(false)
+
+  // Email modal
+  const [emailModal, setEmailModal] = useState(null) // { student }
+  const [emailForm, setEmailForm] = useState({ subject: '', message: '' })
+  const [emailSending, setEmailSending] = useState(false)
+  const [emailError, setEmailError] = useState('')
+  const [emailSent, setEmailSent] = useState(false)
 
   async function load() {
     setError('')
@@ -77,6 +87,32 @@ export default function Students() {
     const { data } = await supabase.from('student_syllabi').select('syllabus_id').eq('student_id', student.id)
     setEnrollments((data ?? []).map(e => e.syllabus_id))
     setEnrollModal({ student })
+  }
+
+  function openEmail(student) {
+    setEmailForm({ subject: '', message: '' })
+    setEmailError('')
+    setEmailSent(false)
+    setEmailModal({ student })
+  }
+
+  async function handleSendEmail(e) {
+    e.preventDefault()
+    setEmailSending(true)
+    setEmailError('')
+    try {
+      await sendAdminEmail({
+        recipients: [{ id: emailModal.student.id, email: emailModal.student.email }],
+        subject: emailForm.subject,
+        message: emailForm.message,
+        senderId: profile.id,
+      })
+      setEmailSent(true)
+    } catch (err) {
+      setEmailError(err.message)
+    } finally {
+      setEmailSending(false)
+    }
   }
 
   function closeModal() { setModal(null); setFormError('') }
@@ -217,6 +253,7 @@ export default function Students() {
                     <div style={{ display: 'flex', gap: 10 }}>
                       <button className="btn-link" onClick={() => openEdit(s)}>Edit</button>
                       <button className="btn-link" onClick={() => openEnroll(s)}>Syllabi</button>
+                      <button className="btn-link" onClick={() => openEmail(s)}>Email</button>
                     </div>
                   </td>
                 </tr>
@@ -327,6 +364,42 @@ export default function Students() {
               </div>
             </div>
           </div>
+        </Modal>
+      )}
+
+      {emailModal && (
+        <Modal title={`Email ${emailModal.student.full_name}`} onClose={() => setEmailModal(null)}>
+          {emailSent ? (
+            <div className="modal-form">
+              <div className="form-success">Email sent to {emailModal.student.email}.</div>
+              <div className="modal-form__actions" style={{ marginTop: 16 }}>
+                <div style={{ marginLeft: 'auto' }}>
+                  <button type="button" className="btn-primary-sm" onClick={() => setEmailModal(null)}>Done</button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleSendEmail} className="modal-form">
+              {emailError && <div className="form-error">{emailError}</div>}
+              <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>
+                Sends directly to {emailModal.student.email}.
+              </p>
+              <div className="form-group">
+                <label>Subject</label>
+                <input type="text" value={emailForm.subject} onChange={e => setEmailForm(f => ({ ...f, subject: e.target.value }))} required placeholder="e.g. Following up on your last lesson" />
+              </div>
+              <div className="form-group">
+                <label>Message</label>
+                <textarea value={emailForm.message} onChange={e => setEmailForm(f => ({ ...f, message: e.target.value }))} rows={6} required placeholder="Write your message…" />
+              </div>
+              <div className="modal-form__actions">
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                  <button type="button" className="btn-secondary" onClick={() => setEmailModal(null)}>Cancel</button>
+                  <button type="submit" className="btn-primary-sm" disabled={emailSending}>{emailSending ? 'Sending…' : 'Send Email'}</button>
+                </div>
+              </div>
+            </form>
+          )}
         </Modal>
       )}
     </Layout>

@@ -23,9 +23,14 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.send-email]
-# Only ever invoked server-to-server from other Edge Functions with the
-# service_role key, but no anonymous/browser caller needs a session either.
-verify_jwt = false
+# Every caller already carries a valid Supabase auth token: other Edge
+# Functions invoke it with the service_role key (createClient(...).functions
+# .invoke(...)), and the only browser callers are already-authenticated
+# portal users (ground-school bulk messages, admin broadcasts, per-student
+# admin emails). Verifying the JWT here (the platform default) costs
+# nothing for those legitimate callers and closes off what would otherwise
+# be a public, unauthenticated endpoint capable of sending arbitrary email
+# from the apexaviationtx.com domain via the Resend account.
 
 [functions.andrewos-metrics]
 # Called on a daily schedule by pg_cron/pg_net (see

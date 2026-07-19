@@ -119,3 +119,49 @@ async function invoke(payload) {
     console.warn('Email invoke error:', e)
   }
 }
+
+// Small concurrency cap so a large "all students" broadcast doesn't fire
+// dozens of concurrent requests at Resend at once.
+async function mapWithConcurrency(items, limit, fn) {
+  const results = Array.from({ length: items.length })
+  let next = 0
+  async function worker() {
+    for (;;) {
+      const i = next++
+      if (i >= items.length) return
+      results[i] = await fn(items[i])
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+  return results
+}
+
+// Admin-composed ad-hoc email to one or more students (per-student "Email"
+// action on the Students page, or the Broadcast page). Sends via the same
+// send-email function as everything else in this file, then logs the
+// broadcast + its recipients so admins can see who's already been
+// contacted and avoid duplicate outreach.
+export async function sendAdminEmail({ recipients, subject, message, senderId }) {
+  const html = template(`
+    <h2 style="color:#F4B400;margin:0 0 4px;">${subject}</h2>
+    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:20px;margin:20px 0;">
+      <p style="font-size:15px;line-height:1.75;margin:0;white-space:pre-wrap;color:#e0e0e0;">${message}</p>
+    </div>
+  `)
+
+  await mapWithConcurrency(recipients, 5, (r) => invoke({ to: r.email, subject, html }))
+
+  const { data: broadcast, error: broadcastError } = await supabase
+    .from('admin_broadcasts')
+    .insert({ sent_by: senderId, subject, body: message, recipient_count: recipients.length })
+    .select()
+    .single()
+  if (broadcastError) throw broadcastError
+
+  const { error: recipientsError } = await supabase
+    .from('admin_broadcast_recipients')
+    .insert(recipients.map((r) => ({ broadcast_id: broadcast.id, profile_id: r.id, email: r.email })))
+  if (recipientsError) throw recipientsError
+
+  return { sent: recipients.length, broadcastId: broadcast.id }
+}
