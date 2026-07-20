@@ -572,11 +572,19 @@
     });
   }
 
+  var groundSchoolSessions = [];
+  var groundSchoolView = 'cards';
+  var groundSchoolCalMonth = new Date();
+  var groundSchoolWeekStart = (function () {
+    var d = new Date();
+    d.setDate(d.getDate() - d.getDay());
+    d.setHours(0, 0, 0, 0);
+    return d;
+  })();
+
   function loadGroundSchool() {
     if (groundSchoolLoaded) return;
     groundSchoolLoaded = true;
-    var listEl = document.getElementById('groundSchoolList');
-    var emptyEl = document.getElementById('groundSchoolEmpty');
     var today = new Date().toISOString().slice(0, 10);
 
     Promise.all([
@@ -618,29 +626,161 @@
           spotsLeft: s.capacity - s.enrolled_count
         };
       });
-      var sessionsList = legacy.concat(scheduled).sort(function (a, b) {
+      groundSchoolSessions = legacy.concat(scheduled).sort(function (a, b) {
         return new Date(a.scheduled_at) - new Date(b.scheduled_at);
       });
 
-      if (!sessionsList.length) {
-        listEl.style.display = 'none';
+      var emptyEl = document.getElementById('groundSchoolEmpty');
+      if (!groundSchoolSessions.length) {
+        document.getElementById('groundSchoolList').style.display = 'none';
         emptyEl.style.display = 'block';
         return;
       }
-      listEl.innerHTML = '';
-      listEl.className = 'portal-grid portal-grid--2';
-      sessionsList.forEach(function (s) {
-        var full = s.spotsLeft <= 0;
-        var card = document.createElement('div');
-        card.className = 'portal-card';
-        card.innerHTML =
-          '<div class="portal-header__eyebrow" style="margin-bottom:8px">' + s.category.toUpperCase() + '</div>' +
-          '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">' + s.title + '</h3>' +
-          '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:4px">' + fmtSessionDate(s.scheduled_at) + '</p>' +
-          '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-bottom:16px">' + (full ? 'Full — join the waitlist' : s.spotsLeft + ' spot' + (s.spotsLeft === 1 ? '' : 's') + ' left') + '</p>' +
-          '<button class="btn btn--primary" data-register style="width:100%">' + (full ? 'Join Waitlist — $25' : 'Register — $25') + '</button>';
-        card.querySelector('[data-register]').addEventListener('click', function () { openGroundSchoolModal(s); });
-        listEl.appendChild(card);
+      emptyEl.style.display = 'none';
+      renderGroundSchoolView(groundSchoolView);
+    });
+  }
+
+  function renderGroundSchoolView(mode) {
+    groundSchoolView = mode;
+    var listEl = document.getElementById('groundSchoolList');
+    var calEl = document.getElementById('groundSchoolCalendar');
+    var weekEl = document.getElementById('groundSchoolWeek');
+    listEl.style.display = mode === 'cards' ? 'block' : 'none';
+    calEl.style.display = mode === 'calendar' ? 'block' : 'none';
+    weekEl.style.display = mode === 'week' ? 'block' : 'none';
+    if (mode === 'cards') renderGroundSchoolCards();
+    else if (mode === 'calendar') renderGroundSchoolCalendar();
+    else renderGroundSchoolWeek();
+  }
+
+  document.querySelectorAll('#groundSchoolViewTabs .portal-tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      document.querySelectorAll('#groundSchoolViewTabs .portal-tab').forEach(function (t) { t.classList.remove('active'); });
+      tab.classList.add('active');
+      renderGroundSchoolView(tab.dataset.gsView);
+    });
+  });
+
+  function renderGroundSchoolCards() {
+    var listEl = document.getElementById('groundSchoolList');
+    listEl.innerHTML = '';
+    listEl.className = 'portal-grid portal-grid--2';
+    groundSchoolSessions.forEach(function (s) {
+      var full = s.spotsLeft <= 0;
+      var card = document.createElement('div');
+      card.className = 'portal-card';
+      card.innerHTML =
+        '<div class="portal-header__eyebrow" style="margin-bottom:8px">' + s.category.toUpperCase() + '</div>' +
+        '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">' + s.title + '</h3>' +
+        '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:4px">' + fmtSessionDate(s.scheduled_at) + '</p>' +
+        '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-bottom:16px">' + (full ? 'Full — join the waitlist' : s.spotsLeft + ' spot' + (s.spotsLeft === 1 ? '' : 's') + ' left') + '</p>' +
+        '<button class="btn btn--primary" data-register style="width:100%">' + (full ? 'Join Waitlist — $25' : 'Register — $25') + '</button>';
+      card.querySelector('[data-register]').addEventListener('click', function () { openGroundSchoolModal(s); });
+      listEl.appendChild(card);
+    });
+  }
+
+  function renderGroundSchoolCalendar() {
+    var calEl = document.getElementById('groundSchoolCalendar');
+    var year = groundSchoolCalMonth.getFullYear();
+    var month = groundSchoolCalMonth.getMonth();
+    var firstDay = new Date(year, month, 1).getDay();
+    var daysInMonth = new Date(year, month + 1, 0).getDate();
+    var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    var dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    var today = new Date();
+
+    function sessionsOnDay(day) {
+      return groundSchoolSessions.filter(function (s) {
+        var d = new Date(s.scheduled_at);
+        return d.getDate() === day && d.getMonth() === month && d.getFullYear() === year;
+      });
+    }
+
+    var html = '<div class="gs-cal-nav">' +
+      '<button type="button" class="gs-cal-nav__btn" id="gsCalPrev">‹</button>' +
+      '<span class="gs-cal-nav__label">' + monthNames[month] + ' ' + year + '</span>' +
+      '<button type="button" class="gs-cal-nav__btn" id="gsCalNext">›</button>' +
+      '</div><div class="gs-calendar"><div class="gs-calendar__header">';
+    dayLabels.forEach(function (d) { html += '<div class="gs-calendar__day-label">' + d + '</div>'; });
+    html += '</div><div class="gs-calendar__grid">';
+    for (var e = 0; e < firstDay; e++) html += '<div class="gs-calendar__cell gs-calendar__cell--empty"></div>';
+    for (var day = 1; day <= daysInMonth; day++) {
+      var isToday = today.getDate() === day && today.getMonth() === month && today.getFullYear() === year;
+      html += '<div class="gs-calendar__cell' + (isToday ? ' gs-calendar__cell--today' : '') + '">' +
+        '<span class="gs-calendar__cell-num">' + day + '</span>';
+      sessionsOnDay(day).forEach(function (s) {
+        html += '<div class="gs-cal-event" data-gs-event="' + s.id + '">' +
+          '<span>' + new Date(s.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '</span>' +
+          '<span>' + s.title + '</span></div>';
+      });
+      html += '</div>';
+    }
+    html += '</div></div>';
+    calEl.innerHTML = html;
+
+    document.getElementById('gsCalPrev').addEventListener('click', function () {
+      groundSchoolCalMonth = new Date(year, month - 1, 1);
+      renderGroundSchoolCalendar();
+    });
+    document.getElementById('gsCalNext').addEventListener('click', function () {
+      groundSchoolCalMonth = new Date(year, month + 1, 1);
+      renderGroundSchoolCalendar();
+    });
+    calEl.querySelectorAll('[data-gs-event]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var session = groundSchoolSessions.filter(function (s) { return String(s.id) === el.dataset.gsEvent; })[0];
+        if (session) openGroundSchoolModal(session);
+      });
+    });
+  }
+
+  function renderGroundSchoolWeek() {
+    var weekEl = document.getElementById('groundSchoolWeek');
+    var start = groundSchoolWeekStart;
+    var end = new Date(start.getTime() + 6 * 86400000);
+    var html = '<div class="gs-cal-nav">' +
+      '<button type="button" class="gs-cal-nav__btn" id="gsWeekPrev">‹</button>' +
+      '<span class="gs-cal-nav__label">' + start.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' – ' + end.toLocaleDateString([], { month: 'short', day: 'numeric' }) + '</span>' +
+      '<button type="button" class="gs-cal-nav__btn" id="gsWeekNext">›</button>' +
+      '</div><div class="portal-card">';
+
+    for (var i = 0; i < 7; i++) {
+      var day = new Date(start.getTime() + i * 86400000);
+      var daySessions = groundSchoolSessions.filter(function (s) {
+        return new Date(s.scheduled_at).toDateString() === day.toDateString();
+      });
+      html += '<div class="gs-week-day"><div class="gs-week-day__label">' +
+        day.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }) + '</div>';
+      if (!daySessions.length) {
+        html += '<p class="gs-week-day__empty">No sessions</p>';
+      } else {
+        daySessions.forEach(function (s) {
+          html += '<div class="gs-week-row">' +
+            '<div><span class="gs-week-row__title">' + s.title + '</span>' +
+            '<span class="gs-week-row__time">' + new Date(s.scheduled_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '</span></div>' +
+            '<button type="button" class="btn btn--ghost" data-gs-event="' + s.id + '" style="padding:6px 14px;font-size:12px">' +
+            (s.spotsLeft <= 0 ? 'Waitlist' : 'Sign Up') + '</button></div>';
+        });
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+    weekEl.innerHTML = html;
+
+    document.getElementById('gsWeekPrev').addEventListener('click', function () {
+      groundSchoolWeekStart = new Date(groundSchoolWeekStart.getTime() - 7 * 86400000);
+      renderGroundSchoolWeek();
+    });
+    document.getElementById('gsWeekNext').addEventListener('click', function () {
+      groundSchoolWeekStart = new Date(groundSchoolWeekStart.getTime() + 7 * 86400000);
+      renderGroundSchoolWeek();
+    });
+    weekEl.querySelectorAll('[data-gs-event]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var session = groundSchoolSessions.filter(function (s) { return String(s.id) === el.dataset.gsEvent; })[0];
+        if (session) openGroundSchoolModal(session);
       });
     });
   }

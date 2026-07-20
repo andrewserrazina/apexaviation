@@ -843,7 +843,15 @@
           <p>Live instructor-led ground school, taught by Andrew. Pick any upcoming session below — pay online and you're confirmed instantly.</p>
         </div>
 
+        <div class="portal-tabs" id="groundSchoolViewTabs">
+          <button class="portal-tab active" data-gs-view="cards">Cards</button>
+          <button class="portal-tab" data-gs-view="calendar">Calendar</button>
+          <button class="portal-tab" data-gs-view="week">This Week</button>
+        </div>
+
         <div id="groundSchoolList"><p style="color:rgba(255,255,255,0.4);font-size:14px">Loading sessions…</p></div>
+        <div id="groundSchoolCalendar" style="display:none"></div>
+        <div id="groundSchoolWeek" style="display:none"></div>
         <div id="groundSchoolEmpty" style="display:none">
           <div class="portal-card" style="text-align:center;padding:48px 32px">
             <p style="color:rgba(255,255,255,0.5);font-size:14px;margin:0">No upcoming sessions scheduled right now — check back soon, or <a href="contact.html" style="color:var(--gold)">contact us</a> to ask about the next one.</p>
