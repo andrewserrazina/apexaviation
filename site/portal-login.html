@@ -142,9 +142,9 @@
 
       <!-- ─── SIGN UP (FREE) ─── -->
       <div data-view="signup">
-        <h1>Join Apex Advantage.</h1>
-        <div class="signup-price-badge">✓ Free to join — register for live ground school sessions right away</div>
-        <p class="sub">Create your free member portal account to book live ground school sessions ($25/session). Unlock the full Checkride Prep System — DPE Question Library, Scenario Training Center, and more — any time after you sign up.</p>
+        <h1 id="signupHeadline">Join Apex Advantage.</h1>
+        <div class="signup-price-badge" id="signupBadge">✓ Free to join — register for live ground school sessions right away</div>
+        <p class="sub" id="signupSub">Create your free member portal account to book live ground school sessions ($25/session). Unlock the full Checkride Prep System — DPE Question Library, Scenario Training Center, and more — any time after you sign up.</p>
 
         <div class="login-error" id="signupError"></div>
 
@@ -262,6 +262,36 @@
     // Deep link support: portal-login.html?view=signup or #signup
     var requestedView = (new URLSearchParams(window.location.search)).get('view') || window.location.hash.replace('#', '');
     if (requestedView === 'signup') showView('signup');
+
+    // Visitors arriving from a free-guide page (?dest=...) already asked
+    // for a specific resource -- the default copy below leads with paid
+    // ground-school pricing instead, which reads as a bait-and-switch
+    // right after they clicked a "free guide" CTA. Swap in guide-specific
+    // copy for those three funnels only; every other dest (checkride-prep,
+    // mock-oral, none) keeps the original copy unchanged.
+    var FREE_GUIDE_COPY = {
+      'dpe-questions': {
+        badge: '✓ Free to join — get your DPE Questions guide instantly',
+        headline: 'Get your free guide.',
+        sub: "Create your free member portal account to unlock the 10 Questions DPEs Love to Ask guide right now — plus book live ground school sessions ($25/session) and unlock the full Checkride Prep System any time after you sign up.",
+      },
+      'radio-calls': {
+        badge: '✓ Free to join — get Radio Calls Made Simple instantly',
+        headline: 'Get your free guide.',
+        sub: "Create your free member portal account to unlock Radio Calls Made Simple right now — plus book live ground school sessions ($25/session) and unlock the full Checkride Prep System any time after you sign up.",
+      },
+      'spin-awareness': {
+        badge: '✓ Free to join — get the Spin Awareness guide instantly',
+        headline: 'Get your free guide.',
+        sub: "Create your free member portal account to unlock the Spin Awareness guide right now — plus book live ground school sessions ($25/session) and unlock the full Checkride Prep System any time after you sign up.",
+      },
+    };
+    var signupDest = (new URLSearchParams(window.location.search)).get('dest') || '';
+    if (FREE_GUIDE_COPY[signupDest]) {
+      document.getElementById('signupHeadline').textContent = FREE_GUIDE_COPY[signupDest].headline;
+      document.getElementById('signupBadge').textContent = FREE_GUIDE_COPY[signupDest].badge;
+      document.getElementById('signupSub').textContent = FREE_GUIDE_COPY[signupDest].sub;
+    }
 
     // Landing here as ?view=signup-success&paid=1 means the visitor came
     // back from a completed "Get Instant Access" Stripe Checkout (see
