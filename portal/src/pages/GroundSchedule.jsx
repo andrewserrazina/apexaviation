@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
 import ApexLogo from '../components/ApexLogo'
+import CalendarGrid from '../components/CalendarGrid'
 import { sendRegistrationConfirmation, sendWaitlistConfirmation, sendWaitlistPromotion, sendBulkMessage } from '../lib/email'
 
 const DURATIONS = [60, 90, 120, 150, 180]
@@ -42,9 +43,36 @@ function addInterval(dateStr, frequency, n) {
   return d.toISOString()
 }
 
+function minutesBetween(startTime, endTime) {
+  const [sh, sm] = startTime.split(':').map(Number)
+  const [eh, em] = endTime.split(':').map(Number)
+  return (eh * 60 + em) - (sh * 60 + sm)
+}
+
+function startOfWeek(date) {
+  const d = new Date(date)
+  d.setDate(d.getDate() - d.getDay())
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+// Extracts a usable error message from a supabase.functions.invoke()
+// result -- matches the exact pattern already used for create-free-account
+// in site/portal-login.html, since the Edge Functions here return the
+// same jsonError({ error: '...' }) shape either way.
+function extractInvokeError(res) {
+  if (res.data && res.data.error) return Promise.resolve(res.data.error)
+  const fallback = (res.error && res.error.message) || 'Could not start checkout. Please try again.'
+  if (res.error && res.error.context && typeof res.error.context.json === 'function') {
+    return res.error.context.json().then(body => (body && body.error) || fallback).catch(() => fallback)
+  }
+  return Promise.resolve(fallback)
+}
+
 export default function GroundSchedule() {
   const { profile } = useAuth()
   const isAdmin = profile?.role === 'admin'
+  const navigate = useNavigate()
 
   const [sessions, setSessions] = useState([])
   const [pastSessions, setPastSessions] = useState([])
@@ -68,17 +96,45 @@ export default function GroundSchedule() {
   const [bulkSent, setBulkSent] = useState(false)
   const [manualAddError, setManualAddError] = useState('')
   const [manualAddSaving, setManualAddSaving] = useState(false)
+  const [view, setView] = useState('cards') // 'cards' | 'calendar' | 'week'
+  const [weekStart, setWeekStart] = useState(startOfWeek(new Date()))
 
   async function load() {
     const now = new Date().toISOString()
+    const today = now.slice(0, 10)
     const sessionSelect = '*, ground_registrations(id, is_waitlisted)'
-    const [{ data: upcoming }, { data: past }, { data: instructorData }] = await Promise.all([
+    const [{ data: upcoming }, { data: past }, { data: scheduledClasses }, { data: instructorData }] = await Promise.all([
       supabase.from('ground_sessions').select(sessionSelect).gte('scheduled_at', now).order('scheduled_at'),
       supabase.from('ground_sessions').select(sessionSelect).lt('scheduled_at', now).order('scheduled_at', { ascending: false }),
+      // Admin-scheduled Private Pilot curriculum classes
+      // (scheduled_ground_classes/scheduled_ground_class_enrollments) --
+      // a separate table from the legacy ground_sessions above. Merged
+      // in here the same way site/portal-stable.js's loadGroundSchool()
+      // already does for the live public portal, so this page shows the
+      // same complete picture instead of only half of what's scheduled.
+      supabase.from('scheduled_ground_classes').select('*').eq('status', 'published').gte('class_date', today).order('class_date').order('start_time'),
       isAdmin ? supabase.from('profiles').select('id, full_name, email').eq('role', 'instructor').order('full_name') : Promise.resolve({ data: [] }),
     ])
-    setSessions(upcoming ?? [])
-    setPastSessions(past ?? [])
+
+    const legacyUpcoming = (upcoming ?? []).map(s => ({ ...s, kind: 'legacy' }))
+    const scheduledUpcoming = (scheduledClasses ?? []).map(c => ({
+      kind: 'scheduled_class',
+      id: c.id,
+      title: c.title,
+      description: c.description,
+      location: null,
+      meet_link: c.meeting_url,
+      instructor_id: c.instructor_id,
+      scheduled_at: new Date(`${c.class_date}T${c.start_time}`).toISOString(),
+      duration_minutes: minutesBetween(c.start_time, c.end_time),
+      max_students: c.capacity,
+      category: 'private',
+      ground_registrations: [],
+      enrolled_count: c.enrolled_count ?? 0,
+    }))
+
+    setSessions([...legacyUpcoming, ...scheduledUpcoming].sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at)))
+    setPastSessions((past ?? []).map(s => ({ ...s, kind: 'legacy' })))
     setInstructors(instructorData ?? [])
     setLoading(false)
   }
@@ -120,6 +176,17 @@ export default function GroundSchedule() {
     setRegSuccess(false)
     setFormError('')
     setModal('register')
+  }
+
+  // Shared click handler for calendar/week events -- same routing as the
+  // card view's primary action per role/kind (see gs-card__actions below).
+  function handleEventClick(s) {
+    if (isAdmin) {
+      if (s.kind === 'scheduled_class') { navigate('/admin/ground-school-schedule'); return }
+      openEdit(s)
+      return
+    }
+    openRegister(s)
   }
 
   async function openRegistrants(s) {
@@ -203,6 +270,25 @@ export default function GroundSchedule() {
     e.preventDefault()
     setSaving(true)
     setFormError('')
+
+    // scheduled_ground_classes requires real payment up front (its
+    // enrollments table has stripe_session_id not null) -- unlike the
+    // legacy free-RSVP-then-pay-at-the-door flow below, this goes
+    // through the same Stripe Checkout path site/portal-stable.js
+    // already uses, then redirects out to complete payment.
+    if (activeSession.kind === 'scheduled_class') {
+      const res = await supabase.functions.invoke('create-checkout-session', {
+        body: { purpose: 'ground-school-registration', scheduledClassId: activeSession.id, name: regForm.full_name, email: regForm.email },
+      })
+      if (res.error || !res.data?.url) {
+        setSaving(false)
+        const message = await extractInvokeError(res)
+        setFormError(message)
+        return
+      }
+      window.location.href = res.data.url
+      return
+    }
 
     const { data: newReg, error } = await supabase
       .rpc('register_for_ground_school', {
@@ -317,8 +403,8 @@ export default function GroundSchedule() {
     URL.revokeObjectURL(url)
   }
 
-  const confirmedCount = (s) => s.ground_registrations?.filter(r => !r.is_waitlisted).length ?? 0
-  const waitlistCount = (s) => s.ground_registrations?.filter(r => r.is_waitlisted).length ?? 0
+  const confirmedCount = (s) => s.kind === 'scheduled_class' ? (s.enrolled_count ?? 0) : (s.ground_registrations?.filter(r => !r.is_waitlisted).length ?? 0)
+  const waitlistCount = (s) => s.kind === 'scheduled_class' ? 0 : (s.ground_registrations?.filter(r => r.is_waitlisted).length ?? 0)
   const spotsLeft = (s) => s.max_students - confirmedCount(s)
 
   const attendanceSummary = (regs) => {
@@ -384,9 +470,67 @@ export default function GroundSchedule() {
         ))}
       </div>
 
+      {/* View mode */}
+      <div className="gs-filter-bar" style={{ marginTop: -8 }}>
+        {[{ id: 'cards', label: 'Cards' }, { id: 'calendar', label: 'Calendar' }, { id: 'week', label: 'This Week' }].map(v => (
+          <button
+            key={v.id}
+            className={`gs-filter-btn${view === v.id ? ' gs-filter-btn--active' : ''}`}
+            onClick={() => setView(v.id)}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
+
       <div className="public-content">
         {loading ? (
           <p className="empty-state">Loading sessions…</p>
+        ) : view === 'calendar' ? (
+          <CalendarGrid
+            events={filteredSessions}
+            getEventDate={s => new Date(s.scheduled_at)}
+            renderEvent={s => (
+              <div key={s.id} className="cal-event" onClick={e => { e.stopPropagation(); handleEventClick(s) }}>
+                <span>{new Date(s.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                <span>{s.title}</span>
+              </div>
+            )}
+          />
+        ) : view === 'week' ? (
+          <div className="card">
+            <div className="cal-nav" style={{ marginBottom: 16 }}>
+              <button type="button" className="cal-nav__btn" onClick={() => setWeekStart(d => { const n = new Date(d); n.setDate(n.getDate() - 7); return n })}>‹</button>
+              <span className="cal-nav__label">
+                {weekStart.toLocaleDateString([], { month: 'short', day: 'numeric' })} – {new Date(weekStart.getTime() + 6 * 86400000).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+              </span>
+              <button type="button" className="cal-nav__btn" onClick={() => setWeekStart(d => { const n = new Date(d); n.setDate(n.getDate() + 7); return n })}>›</button>
+            </div>
+            {Array.from({ length: 7 }).map((_, i) => {
+              const day = new Date(weekStart.getTime() + i * 86400000)
+              const daySessions = filteredSessions.filter(s => new Date(s.scheduled_at).toDateString() === day.toDateString())
+              return (
+                <div key={i} style={{ borderBottom: '1px solid var(--border)', padding: '12px 0' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 8 }}>
+                    {day.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
+                  </div>
+                  {daySessions.length === 0 ? (
+                    <p style={{ fontSize: 13, color: 'var(--muted)' }}>No sessions</p>
+                  ) : daySessions.map(s => (
+                    <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', gap: 12 }}>
+                      <div>
+                        <strong style={{ fontSize: 14 }}>{s.title}</strong>
+                        <span style={{ fontSize: 12, color: 'var(--muted)', marginLeft: 8 }}>{new Date(s.scheduled_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                      </div>
+                      <button className="btn-link" style={{ fontSize: 12, flexShrink: 0 }} onClick={() => handleEventClick(s)}>
+                        {isAdmin ? (s.kind === 'scheduled_class' ? 'Manage →' : 'Edit') : (spotsLeft(s) <= 0 ? 'Waitlist' : 'Sign Up')}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )
+            })}
+          </div>
         ) : filteredSessions.length === 0 && !showPast ? (
           <div style={{ textAlign: 'center', padding: '40px 0' }}>
             <p className="empty-state" style={{ marginBottom: 16 }}>No upcoming sessions scheduled. Check back soon!</p>
@@ -433,13 +577,24 @@ export default function GroundSchedule() {
                     )}
                     <div className="gs-card__actions">
                       {isAdmin ? (
-                        <>
-                          <button className="btn-link" onClick={() => openRegistrants(s)}>
-                            {confirmedCount(s)} registered{wl > 0 ? ` · ${wl} waitlist` : ''}
-                          </button>
-                          <button className="btn-link" onClick={() => openEdit(s)}>Edit</button>
-                          <button className="btn-link" style={{ color: '#f87171' }} onClick={() => handleDelete(s.id)}>Delete</button>
-                        </>
+                        s.kind === 'scheduled_class' ? (
+                          // scheduled_ground_classes is managed entirely in the
+                          // admin Class Scheduler (its own roster/enrollment
+                          // model, no check-in tokens or bulk-email here) --
+                          // point there instead of half-building a second
+                          // admin tool for the same data.
+                          <Link to="/admin/ground-school-schedule" className="btn-link">
+                            {confirmedCount(s)} enrolled · Manage in Class Scheduler →
+                          </Link>
+                        ) : (
+                          <>
+                            <button className="btn-link" onClick={() => openRegistrants(s)}>
+                              {confirmedCount(s)} registered{wl > 0 ? ` · ${wl} waitlist` : ''}
+                            </button>
+                            <button className="btn-link" onClick={() => openEdit(s)}>Edit</button>
+                            <button className="btn-link" style={{ color: '#f87171' }} onClick={() => handleDelete(s.id)}>Delete</button>
+                          </>
+                        )
                       ) : (
                         <button className="btn-primary-sm" onClick={() => openRegister(s)}>
                           {full ? 'Join Waitlist' : 'Sign Up'}

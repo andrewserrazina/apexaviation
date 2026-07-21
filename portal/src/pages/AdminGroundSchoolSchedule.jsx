@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
+import CalendarGrid from '../components/CalendarGrid'
 import { supabase } from '../lib/supabase'
 import { PRIVATE_PILOT_COURSE, getPrivatePilotLesson, privatePilotLessons } from '../data/privatePilotCurriculum'
 
@@ -75,9 +76,11 @@ function normalizeTime(time) {
 
 function validateClass(form, targetStatus = form.status) {
   const errors = []
-  if (!form.lesson_id) errors.push('Select a Private Pilot lesson.')
+  // Lesson/description are not required here (unlike the DB's not-null
+  // columns) -- Quick Add mode auto-fills both from the title in
+  // payloadFor, so a curriculum lesson is optional, not mandatory, for a
+  // fast draft. Full-mode admins can still fill them in normally.
   if (!form.title.trim()) errors.push('Class title is required.')
-  if (!form.description.trim()) errors.push('Description / overview is required.')
   if (!form.class_date) errors.push('Date is required.')
   if (!form.start_time) errors.push('Start time is required.')
   if (!form.end_time) errors.push('End time is required.')
@@ -104,6 +107,8 @@ export default function AdminGroundSchoolSchedule() {
   const [formError, setFormError] = useState('')
   const [notice, setNotice] = useState('')
   const [saving, setSaving] = useState(false)
+  const [view, setView] = useState('table') // 'table' | 'calendar'
+  const [quickMode, setQuickMode] = useState(true)
 
   const [roster, setRoster] = useState([])
   const [rosterLoading, setRosterLoading] = useState(false)
@@ -168,6 +173,19 @@ export default function AdminGroundSchoolSchedule() {
   function openCreate() {
     setActiveClass(null)
     setForm(BLANK_FORM)
+    setQuickMode(true)
+    setFormError('')
+    setNotice('')
+    setModal('edit')
+  }
+
+  // Clicking a day on the calendar view is the same Quick Add flow as
+  // "+ Schedule Class", just pre-filled with the clicked date.
+  function openCreateOnDate(date) {
+    setActiveClass(null)
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+    setForm({ ...BLANK_FORM, class_date: dateStr })
+    setQuickMode(true)
     setFormError('')
     setNotice('')
     setModal('edit')
@@ -189,6 +207,7 @@ export default function AdminGroundSchoolSchedule() {
       capacity: row.capacity ?? 8,
       status: row.status ?? 'draft',
     })
+    setQuickMode(false)
     setFormError('')
     setNotice('')
     setModal('edit')
@@ -204,12 +223,14 @@ export default function AdminGroundSchoolSchedule() {
     const lesson = getPrivatePilotLesson(form.lesson_id)
     return {
       course_id: PRIVATE_PILOT_COURSE.id,
-      lesson_id: form.lesson_id,
-      lesson_title: lesson?.title ?? form.title,
+      lesson_id: form.lesson_id || '',
+      lesson_title: lesson?.title ?? form.title.trim(),
       module_id: lesson?.moduleId ?? null,
       module_title: lesson?.moduleTitle ?? null,
       title: form.title.trim(),
-      description: form.description.trim(),
+      // Quick Add hides the description field -- default it to the title
+      // rather than leaving the not-null DB column empty.
+      description: form.description.trim() || form.title.trim(),
       class_date: form.class_date,
       start_time: form.start_time,
       end_time: form.end_time,
@@ -306,57 +327,85 @@ export default function AdminGroundSchoolSchedule() {
           <h2 className="page-title">Ground School Schedule</h2>
           <p className="page-sub">Schedule live Private Pilot classes from the approved Apex Advantage curriculum.</p>
         </div>
-        <button className="btn-primary-sm" onClick={openCreate}>+ Schedule Class</button>
+        <button className="btn-primary-sm" onClick={openCreate}>+ Quick Add Class</button>
       </div>
 
       {notice && <div className="form-success" style={{ marginBottom: 18 }}>{notice}</div>}
 
-      <section className="card" style={{ marginBottom: 24 }}>
-        <h3 className="card__title">Upcoming Scheduled Classes</h3>
-        {loading ? (
-          <p className="empty-state">Loading scheduled classes…</p>
-        ) : upcomingClasses.length === 0 ? (
-          <div className="empty-state-block">
-            <h3>No upcoming ground school classes</h3>
-            <p>Create a draft or publish the next Private Pilot class.</p>
-          </div>
-        ) : (
-          <div className="table-scroll">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Class</th>
-                  <th>Lesson</th>
-                  <th>Date / Time</th>
-                  <th>Instructor</th>
-                  <th>Capacity</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {upcomingClasses.map(row => (
-                  <tr key={row.id}>
-                    <td><strong>{row.title}</strong></td>
-                    <td>{row.module_id} · {row.lesson_title}</td>
-                    <td>{formatDateTime(row)}<br /><span style={{ color: 'var(--muted)', fontSize: 12 }}>{row.timezone}</span></td>
-                    <td>{row.instructor_name ?? 'TBD'}</td>
-                    <td>{row.enrolled_count ?? 0}/{row.capacity}</td>
-                    <td><span className={`status-badge status-badge--${row.status === 'published' ? 'success' : 'warning'}`}>{row.status}</span></td>
-                    <td>
-                      <div className="action-row">
-                        <button className="btn-link" onClick={() => openRoster(row)}>Roster{row.enrolled_count ? ` (${row.enrolled_count})` : ''}</button>
-                        <button className="btn-link" onClick={() => openEdit(row)}>Edit</button>
-                        {row.status !== 'canceled' && <button className="btn-link" onClick={() => cancelClass(row)}>Cancel</button>}
-                      </div>
-                    </td>
+      <div className="tab-bar" style={{ marginBottom: 20 }}>
+        <button className={`tab-btn${view === 'table' ? ' tab-btn--active' : ''}`} onClick={() => setView('table')}>Table</button>
+        <button className={`tab-btn${view === 'calendar' ? ' tab-btn--active' : ''}`} onClick={() => setView('calendar')}>Calendar</button>
+      </div>
+
+      {view === 'calendar' ? (
+        <section className="card" style={{ marginBottom: 24 }}>
+          <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 16 }}>Click a day to quick-add a class, or click a class to edit it.</p>
+          <CalendarGrid
+            events={classes.filter(row => row.status !== 'canceled')}
+            getEventDate={row => new Date(`${row.class_date}T${row.start_time}`)}
+            onDayClick={openCreateOnDate}
+            renderEvent={row => (
+              <div
+                key={row.id}
+                className="cal-event"
+                onClick={e => { e.stopPropagation(); openEdit(row) }}
+                style={row.status === 'draft' ? { borderLeftColor: 'var(--muted)' } : undefined}
+              >
+                <span>{new Date(`${row.class_date}T${row.start_time}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                <span>{row.title}</span>
+                {row.status === 'draft' && <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10 }}>Draft</span>}
+              </div>
+            )}
+          />
+        </section>
+      ) : (
+        <section className="card" style={{ marginBottom: 24 }}>
+          <h3 className="card__title">Upcoming Scheduled Classes</h3>
+          {loading ? (
+            <p className="empty-state">Loading scheduled classes…</p>
+          ) : upcomingClasses.length === 0 ? (
+            <div className="empty-state-block">
+              <h3>No upcoming ground school classes</h3>
+              <p>Create a draft or publish the next Private Pilot class.</p>
+            </div>
+          ) : (
+            <div className="table-scroll">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Class</th>
+                    <th>Lesson</th>
+                    <th>Date / Time</th>
+                    <th>Instructor</th>
+                    <th>Capacity</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+                </thead>
+                <tbody>
+                  {upcomingClasses.map(row => (
+                    <tr key={row.id}>
+                      <td><strong>{row.title}</strong></td>
+                      <td>{row.module_id ? `${row.module_id} · ` : ''}{row.lesson_title}</td>
+                      <td>{formatDateTime(row)}<br /><span style={{ color: 'var(--muted)', fontSize: 12 }}>{row.timezone}</span></td>
+                      <td>{row.instructor_name ?? 'TBD'}</td>
+                      <td>{row.enrolled_count ?? 0}/{row.capacity}</td>
+                      <td><span className={`status-badge status-badge--${row.status === 'published' ? 'success' : 'warning'}`}>{row.status}</span></td>
+                      <td>
+                        <div className="action-row">
+                          <button className="btn-link" onClick={() => openRoster(row)}>Roster{row.enrolled_count ? ` (${row.enrolled_count})` : ''}</button>
+                          <button className="btn-link" onClick={() => openEdit(row)}>Edit</button>
+                          {row.status !== 'canceled' && <button className="btn-link" onClick={() => cancelClass(row)}>Cancel</button>}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="card">
         <h3 className="card__title">Private Pilot Curriculum Source</h3>
@@ -365,7 +414,7 @@ export default function AdminGroundSchoolSchedule() {
         </p>
         <div className="curriculum-chip-grid">
           {privatePilotLessons.map(lesson => (
-            <button key={lesson.id} className="curriculum-chip" onClick={() => { openCreate(); selectLesson(lesson.id) }}>
+            <button key={lesson.id} className="curriculum-chip" onClick={() => { openCreate(); setQuickMode(false); selectLesson(lesson.id) }}>
               <span>{lesson.moduleId}</span>
               {lesson.title}
             </button>
@@ -390,25 +439,29 @@ export default function AdminGroundSchoolSchedule() {
               </div>
             </div>
 
-            <div className="form-group">
-              <label>Lesson / Module</label>
-              <select value={form.lesson_id} onChange={e => selectLesson(e.target.value)} required>
-                <option value="">Select a Private Pilot lesson…</option>
-                {privatePilotLessons.map(lesson => (
-                  <option key={lesson.id} value={lesson.id}>{lesson.phase} — {lesson.title}</option>
-                ))}
-              </select>
-            </div>
+            {!quickMode && (
+              <div className="form-group">
+                <label>Lesson / Module</label>
+                <select value={form.lesson_id} onChange={e => selectLesson(e.target.value)}>
+                  <option value="">No curriculum lesson (freeform class)</option>
+                  {privatePilotLessons.map(lesson => (
+                    <option key={lesson.id} value={lesson.id}>{lesson.phase} — {lesson.title}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="form-group">
               <label>Class Title</label>
               <input type="text" value={form.title} onChange={e => field('title', e.target.value)} required />
             </div>
 
-            <div className="form-group">
-              <label>Description / Overview</label>
-              <textarea value={form.description} onChange={e => field('description', e.target.value)} rows={3} required />
-            </div>
+            {!quickMode && (
+              <div className="form-group">
+                <label>Description / Overview</label>
+                <textarea value={form.description} onChange={e => field('description', e.target.value)} rows={3} placeholder="Defaults to the class title if left blank" />
+              </div>
+            )}
 
             <div className="form-row">
               <div className="form-group">
@@ -425,18 +478,20 @@ export default function AdminGroundSchoolSchedule() {
               </div>
             </div>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label>Time Zone</label>
-                <select value={form.timezone} onChange={e => field('timezone', e.target.value)} required>
-                  {TIME_ZONES.map(zone => <option key={zone} value={zone}>{zone}</option>)}
-                </select>
+            {!quickMode && (
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Time Zone</label>
+                  <select value={form.timezone} onChange={e => field('timezone', e.target.value)} required>
+                    {TIME_ZONES.map(zone => <option key={zone} value={zone}>{zone}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Capacity</label>
+                  <input type="number" min="1" value={form.capacity} onChange={e => field('capacity', e.target.value)} required />
+                </div>
               </div>
-              <div className="form-group">
-                <label>Capacity</label>
-                <input type="number" min="1" value={form.capacity} onChange={e => field('capacity', e.target.value)} required />
-              </div>
-            </div>
+            )}
 
             <div className="form-row">
               <div className="form-group">
@@ -446,16 +501,26 @@ export default function AdminGroundSchoolSchedule() {
                   {instructors.map(instructor => <option key={instructor.id} value={instructor.id}>{instructor.full_name}</option>)}
                 </select>
               </div>
-              <div className="form-group">
-                <label>Instructor Name</label>
-                <input type="text" value={form.instructor_name} onChange={e => field('instructor_name', e.target.value)} placeholder="Required before publishing" />
-              </div>
+              {!quickMode && (
+                <div className="form-group">
+                  <label>Instructor Name</label>
+                  <input type="text" value={form.instructor_name} onChange={e => field('instructor_name', e.target.value)} placeholder="Required before publishing" />
+                </div>
+              )}
             </div>
 
-            <div className="form-group">
-              <label>Meeting Link</label>
-              <input type="url" value={form.meeting_url} onChange={e => field('meeting_url', e.target.value)} placeholder="Required before publishing" />
-            </div>
+            {!quickMode && (
+              <div className="form-group">
+                <label>Meeting Link</label>
+                <input type="url" value={form.meeting_url} onChange={e => field('meeting_url', e.target.value)} placeholder="Required before publishing" />
+              </div>
+            )}
+
+            {quickMode && (
+              <button type="button" className="btn-link" style={{ marginBottom: 12 }} onClick={() => setQuickMode(false)}>
+                + Show all fields (lesson, description, capacity, meeting link…)
+              </button>
+            )}
 
             <div className="modal-form__actions">
               <button type="button" className="btn-secondary" onClick={closeModal}>Close</button>
