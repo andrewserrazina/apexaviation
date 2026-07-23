@@ -25,6 +25,7 @@ const Endorsements = lazy(() => import('./pages/Endorsements'))
 const Messages = lazy(() => import('./pages/Messages'))
 const Announcements = lazy(() => import('./pages/Announcements'))
 const Broadcast = lazy(() => import('./pages/Broadcast'))
+const DpeContent = lazy(() => import('./pages/DpeContent'))
 const Reports = lazy(() => import('./pages/Reports'))
 const Payroll = lazy(() => import('./pages/Payroll'))
 const MockOralRequests = lazy(() => import('./pages/MockOralRequests'))
@@ -72,6 +73,7 @@ export default function App() {
               <Route path="/messages"        element={<ProtectedRoute><Messages /></ProtectedRoute>} />
               <Route path="/announcements"   element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
               <Route path="/broadcast"       element={<ProtectedRoute adminOnly><Broadcast /></ProtectedRoute>} />
+              <Route path="/dpe-content"     element={<ProtectedRoute adminOnly><DpeContent /></ProtectedRoute>} />
               <Route path="/reports"         element={<ProtectedRoute adminOnly><Reports /></ProtectedRoute>} />
               <Route path="/payroll"         element={<ProtectedRoute adminOnly><Payroll /></ProtectedRoute>} />
               <Route path="/mock-oral-requests" element={<ProtectedRoute roles={['admin', 'instructor']}><MockOralRequests /></ProtectedRoute>} />
