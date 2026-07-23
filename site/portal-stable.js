@@ -1443,8 +1443,18 @@
             '<span class="portal-qitem__lastviewed">' + (lastViewed[item.id] ? 'Viewed ' + timeAgo(lastViewed[item.id]) : '') + '</span>' +
           '</div>';
 
-        qitem.querySelector('.portal-qitem__q').addEventListener('click', function (e) {
-          if (e.target.closest('[data-star]') || e.target.closest('.portal-ask-andrew')) return;
+        // Whole card opens/closes the answer -- not just the question-text
+        // row -- so the "Mark as studied" footer is also part of the click
+        // target. Excludes the star (favorite-only), the studied checkbox/
+        // label (studied-only), Ask Andrew, and the answer body itself (so
+        // selecting/reading the open answer never accidentally re-closes it).
+        qitem.addEventListener('click', function (e) {
+          if (
+            e.target.closest('[data-star]') ||
+            e.target.closest('.portal-ask-andrew') ||
+            e.target.closest('.portal-studied-label') ||
+            e.target.closest('.portal-qitem__a')
+          ) return;
           var wasOpen = qitem.classList.contains('open');
           qitem.classList.toggle('open');
           if (!wasOpen) {

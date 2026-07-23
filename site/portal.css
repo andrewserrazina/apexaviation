@@ -223,7 +223,8 @@
   padding: 2px 9px; border-radius: 100px; font-weight: 700; letter-spacing: 0;
 }
 .portal-qlist { border-top: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius); overflow: hidden; }
-.portal-qitem { border-bottom: 1px solid rgba(255,255,255,0.08); background: #101f38; }
+.portal-qitem { border-bottom: 1px solid rgba(255,255,255,0.08); background: #101f38; cursor: pointer; transition: background var(--transition); }
+.portal-qitem:hover { background: #142544; }
 .portal-qitem__q {
   width: 100%; display: flex; justify-content: space-between; align-items: center;
   gap: 16px; padding: 16px 20px; background: none; border: none; cursor: pointer;
