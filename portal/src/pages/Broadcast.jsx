@@ -21,6 +21,7 @@ export default function Broadcast() {
 
   const [filter, setFilter] = useState('all')
   const [recipientCount, setRecipientCount] = useState(null)
+  const [countError, setCountError] = useState('')
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
@@ -45,8 +46,15 @@ export default function Broadcast() {
   useEffect(() => {
     let cancelled = false
     setRecipientCount(null)
-    studentQuery(filter).select('*', { count: 'exact', head: true }).then(({ count }) => {
-      if (!cancelled) setRecipientCount(count ?? 0)
+    setCountError('')
+    studentQuery(filter).select('*', { count: 'exact', head: true }).then(({ count, error: countErr }) => {
+      if (cancelled) return
+      if (countErr) {
+        setCountError(countErr.message)
+        setRecipientCount(0)
+      } else {
+        setRecipientCount(count ?? 0)
+      }
     })
     return () => { cancelled = true }
   }, [filter])
@@ -94,8 +102,8 @@ export default function Broadcast() {
           <select value={filter} onChange={e => setFilter(e.target.value)}>
             {FILTER_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
-          <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>
-            {recipientCount === null ? 'Counting recipients…' : `${recipientCount} recipient(s)`}
+          <p style={{ fontSize: 12, color: countError ? '#f87171' : 'var(--muted)', marginTop: 6 }}>
+            {recipientCount === null ? 'Counting recipients…' : countError ? `Couldn't count recipients: ${countError}` : `${recipientCount} recipient(s)`}
           </p>
         </div>
 
