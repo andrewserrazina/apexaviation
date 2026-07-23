@@ -8,7 +8,7 @@ const meta: Meta<typeof StatTile> = {
 export default meta
 type Story = StoryObj<typeof StatTile>
 
-export const Basic: Story = { args: { value: '256', label: 'DPE Questions Available' } }
+export const Basic: Story = { args: { value: '300+', label: 'DPE Questions Available' } }
 export const WithIcon: Story = {
   args: {
     value: '10',

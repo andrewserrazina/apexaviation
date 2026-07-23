@@ -9,7 +9,7 @@ export interface StatTileProps {
   className?: string
 }
 
-/** Dashboard stat block — "256 DPE Questions Available", "10 Training
+/** Dashboard stat block — "300+ DPE Questions Available", "10 Training
  * Scenarios", etc. */
 export function StatTile({ icon, value, label, className }: StatTileProps) {
   return (

@@ -218,7 +218,7 @@ type PricingPreview = { tier: 'founding' | 'launch' | 'standard'; amount_cents: 
 // (see UPSELL_DAYS/launch-window comment below), so it's worth being
 // specific here even though day3/day7/day14 mostly can't be anymore.
 function emailTemplateUpsellDay1(pricing: PricingPreview) {
-  const intro = '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your free portal account already includes the "10 Questions DPEs Love to Ask" guide. The full Checkride Prep System adds a 256-question DPE-style bank covering every ACS area of operation — each with a model answer, the common mistakes examiners watch for, and real-world context — plus scenario training and progress tracking.</p>'
+  const intro = '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your free portal account already includes the "10 Questions DPEs Love to Ask" guide. The full Checkride Prep System adds a 300+ question DPE-style bank covering every ACS area of operation — each with a model answer, the common mistakes examiners watch for, and real-world context — plus scenario training and progress tracking.</p>'
   if (pricing.tier === 'founding' || pricing.tier === 'launch') {
     const price = '$' + Math.round(pricing.amount_cents / 100)
     const urgency = pricing.tier === 'founding'
@@ -234,7 +234,7 @@ function emailTemplateUpsellDay1(pricing: PricingPreview) {
 function emailTemplateUpsellDay3() {
   return '<h2 style="color:#F4B400;margin:0 0 4px;">A question DPEs love to ask</h2>' +
     '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">"You want to split the cost of a cross-country flight with a friend who isn\'t a pilot. Is that legal for a private pilot to do?"</p>' +
-    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Most applicants know the pro rata rule exists — fewer can explain it precisely enough to satisfy a DPE\'s follow-up questions. That\'s exactly the gap the full Checkride Prep System closes: 256 questions like this one, each with a model answer and the specific mistake examiners watch for.</p>' +
+    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Most applicants know the pro rata rule exists — fewer can explain it precisely enough to satisfy a DPE\'s follow-up questions. That\'s exactly the gap the full Checkride Prep System closes: 300+ questions like this one, each with a model answer and the specific mistake examiners watch for.</p>' +
     '<a href="https://advantage.apexaviationtx.com/portal.html#checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Unlock the Full System →</a>'
 }
 
@@ -244,13 +244,13 @@ function emailTemplateUpsellDay7(pricing: PricingPreview) {
   let body: string
   if (pricing.tier === 'founding') {
     heading = `${pricing.founding_seats_remaining} founding spot${pricing.founding_seats_remaining === 1 ? '' : 's'} left at ${price}`
-    body = `Founding pricing (${price}, versus $49 after the first 25 members) won't last much longer. The full system is 256 DPE-style questions, model answers, scenario training, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation.`
+    body = `Founding pricing (${price}, versus $49 after the first 25 members) won't last much longer. The full system is 300+ DPE-style questions, model answers, scenario training, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation.`
   } else if (pricing.tier === 'launch') {
     heading = `Your ${price} new-member price is still active`
-    body = `You're still inside your new-member pricing window — ${price} instead of the usual $49. The full system is 256 DPE-style questions, model answers, scenario training, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation.`
+    body = `You're still inside your new-member pricing window — ${price} instead of the usual $49. The full system is 300+ DPE-style questions, model answers, scenario training, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation.`
   } else {
     heading = 'Still thinking about the Checkride Prep System?'
-    body = `256 DPE-style questions, model answers, scenario training, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation. Unlock it whenever you're ready.`
+    body = `300+ DPE-style questions, model answers, scenario training, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation. Unlock it whenever you're ready.`
   }
   return `<h2 style="color:#F4B400;margin:0 0 4px;">${heading}</h2>` +
     `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">${body}</p>` +
@@ -260,7 +260,7 @@ function emailTemplateUpsellDay7(pricing: PricingPreview) {
 function emailTemplateUpsellDay14(pricing: PricingPreview) {
   const price = '$' + Math.round(pricing.amount_cents / 100)
   return '<h2 style="color:#F4B400;margin:0 0 4px;">One more look before we stop emailing about this</h2>' +
-    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">No pressure — the free guide is yours either way. But if your checkride is getting closer, the full 256-question Checkride Prep System (DPE insight, scenario training, progress tracking) is one click away whenever you want it.</p>' +
+    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">No pressure — the free guide is yours either way. But if your checkride is getting closer, the full 300+ question Checkride Prep System (DPE insight, scenario training, progress tracking) is one click away whenever you want it.</p>' +
     `<a href="https://advantage.apexaviationtx.com/portal.html#checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Unlock for ${price} →</a>`
 }
 
