@@ -19,7 +19,7 @@ export const UnlockCheckridePrep: Story = {
       </svg>
     ),
     children: (
-      <p>256 DPE-style questions, model answers, scenario training, and progress tracking — yours for a one-time $29.</p>
+      <p>300+ DPE-style questions, model answers, scenario training, and progress tracking — yours for a one-time $29.</p>
     ),
   },
 }
