@@ -20,6 +20,7 @@ const navGroups = [
       { to: '/instructors',     label: 'Instructors',     roles: ['admin', 'instructor', 'student'] },
       { to: '/aircraft',        label: 'Fleet',           roles: ['admin', 'instructor', 'student'] },
       { to: '/syllabi',         label: 'Syllabi',         roles: ['admin', 'instructor', 'student'] },
+      { to: '/dpe-content',     label: 'DPE Question Bank', roles: ['admin'] },
       { to: '/schedule',        label: 'Schedule',        roles: ['admin', 'instructor', 'student'] },
       { to: '/logbook',         label: 'Logbook',         roles: ['admin', 'instructor', 'student'] },
       { to: '/endorsements',    label: 'Endorsements',    roles: ['admin', 'instructor', 'student'] },

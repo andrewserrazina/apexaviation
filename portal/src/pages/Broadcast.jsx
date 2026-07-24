@@ -16,6 +16,19 @@ function studentQuery(filter) {
   return query
 }
 
+// A separate query builder, rather than chaining .select('*', {count, head})
+// onto studentQuery()'s already-filtered result, because postgrest-js only
+// honors the {count, head} options on the *first* select() call on a fresh
+// query -- select() called again after .eq() filters silently ignores that
+// second argument and runs a second, uncounted request instead, so count
+// always came back undefined (read as 0) regardless of how many students
+// actually matched.
+function studentCountQuery(filter) {
+  let query = supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'student')
+  if (filter !== 'all') query = query.eq('student_type', filter)
+  return query
+}
+
 export default function Broadcast() {
   const { profile } = useAuth()
 
@@ -47,7 +60,7 @@ export default function Broadcast() {
     let cancelled = false
     setRecipientCount(null)
     setCountError('')
-    studentQuery(filter).select('*', { count: 'exact', head: true }).then(({ count, error: countErr }) => {
+    studentCountQuery(filter).then(({ count, error: countErr }) => {
       if (cancelled) return
       if (countErr) {
         setCountError(countErr.message)
