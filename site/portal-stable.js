@@ -2697,8 +2697,19 @@
   function sendThrottledEmail(emailType, to, subject, contentHtml, minDays) {
     if (!member || daysSinceEmail(emailType) < minDays) return;
     emailedTypes[emailType] = Date.now();
-    sendPortalEmail(to, subject, contentHtml);
-    apexSupabase.from('portal_email_log').insert({ profile_id: member.id, email_type: emailType });
+    // Log-before-send, mirroring send-lifecycle-emails' processWeakArea:
+    // only actually send once the log row is confirmed written, so a
+    // reload that re-hydrates emailedTypes from a not-yet-committed (or
+    // never-committed, e.g. this insert racing the daily cron's own
+    // log-then-send for the same member+category) row can't slip past
+    // the daysSinceEmail() check above and re-send the same email.
+    // Sending first and logging as an unchecked fire-and-forget (the
+    // previous behavior here) meant a failed or merely-slow insert left
+    // no record to block the next page load from sending again.
+    apexSupabase.from('portal_email_log').insert({ profile_id: member.id, email_type: emailType }).then(function (res) {
+      if (res.error) return;
+      sendPortalEmail(to, subject, contentHtml);
+    });
   }
 
   // One-time milestone emails dedupe via portal_events (loggedEventTypes,

@@ -40,6 +40,10 @@ export default function Analytics() {
   const [hours, setHours] = useState([])
   const [students, setStudents] = useState({ total: 0, active: 0 })
   const [instructorStats, setInstructorStats] = useState([])
+  const [dpeOverall, setDpeOverall] = useState({ totalQuestions: 0, activeStudents: 0, totalCompletions: 0, avgPerStudent: 0 })
+  const [dpeCategoryStats, setDpeCategoryStats] = useState([])
+  const [dpeMostStudied, setDpeMostStudied] = useState([])
+  const [dpeLeastStudied, setDpeLeastStudied] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -47,13 +51,64 @@ export default function Analytics() {
       const months = last12Months()
       const firstMonth = `${months[0].year}-${String(months[0].month + 1).padStart(2, '0')}-01`
 
-      const [invoicesRes, logbookRes, studentsRes, activeRes, instrRes] = await Promise.all([
+      const [invoicesRes, logbookRes, studentsRes, activeRes, instrRes, dpeCatRes, dpeQRes, dpeProgressRes] = await Promise.all([
         supabase.from('invoices').select('amount_cents, status, issued_at').gte('issued_at', firstMonth),
         supabase.from('logbook_entries').select('duration_hours, date').gte('date', firstMonth),
         supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'student'),
         supabase.from('lessons').select('student_id').gte('starts_at', new Date(Date.now() - 30 * 86400000).toISOString()),
         supabase.from('profiles').select('id, full_name').eq('role', 'instructor'),
+        supabase.from('dpe_categories').select('id, label, sort_order').order('sort_order'),
+        supabase.from('dpe_questions').select('id, category, question'),
+        supabase.from('portal_question_progress').select('profile_id, question_id, completed'),
       ])
+
+      // ── DPE Question Bank engagement ──
+      const dpeCategories = dpeCatRes.data ?? []
+      const dpeQuestions = dpeQRes.data ?? []
+      const dpeProgress = dpeProgressRes.data ?? []
+
+      const categoryOf = {}
+      dpeQuestions.forEach(q => { categoryOf[q.id] = q.category })
+
+      const activeStudentIds = new Set(dpeProgress.map(p => p.profile_id))
+      const completions = dpeProgress.filter(p => p.completed)
+      const totalCompletions = completions.length
+
+      const completionCountByQuestion = {}
+      completions.forEach(p => {
+        completionCountByQuestion[p.question_id] = (completionCountByQuestion[p.question_id] ?? 0) + 1
+      })
+      const completionCountByCategory = {}
+      completions.forEach(p => {
+        const cat = categoryOf[p.question_id]
+        if (!cat) return
+        completionCountByCategory[cat] = (completionCountByCategory[cat] ?? 0) + 1
+      })
+      const questionCountByCategory = {}
+      dpeQuestions.forEach(q => {
+        questionCountByCategory[q.category] = (questionCountByCategory[q.category] ?? 0) + 1
+      })
+
+      setDpeOverall({
+        totalQuestions: dpeQuestions.length,
+        activeStudents: activeStudentIds.size,
+        totalCompletions,
+        avgPerStudent: activeStudentIds.size > 0 ? Math.round((totalCompletions / activeStudentIds.size) * 10) / 10 : 0,
+      })
+
+      setDpeCategoryStats(dpeCategories.map(cat => {
+        const totalQ = questionCountByCategory[cat.id] ?? 0
+        const catCompletions = completionCountByCategory[cat.id] ?? 0
+        const possible = totalQ * activeStudentIds.size
+        const rate = possible > 0 ? Math.round((catCompletions / possible) * 100) : 0
+        return { label: cat.label, totalQ, completions: catCompletions, rate }
+      }))
+
+      const questionRanking = dpeQuestions
+        .map(q => ({ id: q.id, question: q.question, category: categoryOf[q.id], count: completionCountByQuestion[q.id] ?? 0 }))
+        .sort((a, b) => b.count - a.count)
+      setDpeMostStudied(questionRanking.slice(0, 5))
+      setDpeLeastStudied(questionRanking.slice(-5).reverse())
 
       // Revenue by month
       const revByMonth = months.map(m => {
@@ -173,6 +228,89 @@ export default function Analytics() {
           </div>
         </section>
       )}
+
+      <div className="page-header" style={{ marginTop: 40 }}>
+        <div>
+          <h2 className="page-title" style={{ fontSize: 22 }}>DPE Question Bank Engagement</h2>
+          <p className="page-sub">All time</p>
+        </div>
+      </div>
+
+      <div className="stat-grid">
+        <div className="stat-card">
+          <p className="stat-card__label">Total Questions</p>
+          <p className="stat-card__value">{dpeOverall.totalQuestions}</p>
+        </div>
+        <div className="stat-card">
+          <p className="stat-card__label">Students Who've Started</p>
+          <p className="stat-card__value">{dpeOverall.activeStudents}</p>
+        </div>
+        <div className="stat-card">
+          <p className="stat-card__label">Total Questions Marked Studied</p>
+          <p className="stat-card__value">{dpeOverall.totalCompletions}</p>
+        </div>
+        <div className="stat-card">
+          <p className="stat-card__label">Avg. Studied per Active Student</p>
+          <p className="stat-card__value">{dpeOverall.avgPerStudent}</p>
+        </div>
+      </div>
+
+      {dpeCategoryStats.length > 0 && (
+        <section className="card" style={{ marginTop: 24 }}>
+          <h3 className="card__title">Completion Rate by Category</h3>
+          <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: -4, marginBottom: 4 }}>
+            % of (questions × students who've started) marked studied — normalizes for category size
+          </p>
+          <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {dpeCategoryStats.map(cat => (
+              <div key={cat.label}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: 13, color: 'var(--text)' }}>{cat.label}</span>
+                  <span style={{ fontSize: 12, color: 'var(--muted)' }}>{cat.completions} studied · {cat.totalQ} questions</span>
+                  <span className="badge badge--yellow">{cat.rate}%</span>
+                </div>
+                <div className="progress-bar"><div className="progress-bar__fill" style={{ width: `${cat.rate}%` }} /></div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <div className="analytics-grid" style={{ marginTop: 24 }}>
+        <section className="card">
+          <h3 className="card__title">Most-Studied Questions</h3>
+          {dpeMostStudied.length === 0 ? <p className="empty-state" style={{ padding: '12px 0' }}>No activity yet.</p> : (
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {dpeMostStudied.map(q => (
+                <div key={q.id} className="activity-row">
+                  <div style={{ flex: 1 }}>
+                    <p className="activity-row__primary">{q.question}</p>
+                    <p className="activity-row__sub">{q.id}</p>
+                  </div>
+                  <span className="badge">{q.count}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="card">
+          <h3 className="card__title">Least-Studied Questions</h3>
+          {dpeLeastStudied.length === 0 ? <p className="empty-state" style={{ padding: '12px 0' }}>No activity yet.</p> : (
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {dpeLeastStudied.map(q => (
+                <div key={q.id} className="activity-row">
+                  <div style={{ flex: 1 }}>
+                    <p className="activity-row__primary">{q.question}</p>
+                    <p className="activity-row__sub">{q.id}</p>
+                  </div>
+                  <span className="badge">{q.count}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
     </Layout>
   )
 }
