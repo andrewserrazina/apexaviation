@@ -591,9 +591,11 @@ serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
   const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, checkride_upsell: 0, ground_followup: 0, abandoned_checkout: 0, errors: [] as string[] }
 
+  // exam_type hard-coded to 'private_pilot' — see get-premium-content
+  // for why instrument content must never be reachable this way yet.
   const [{ data: categories }, { data: questions }, { data: profiles }] = await Promise.all([
-    supabase.from('dpe_categories').select('id'),
-    supabase.from('dpe_questions').select('id,category,is_scenario'),
+    supabase.from('dpe_categories').select('id').eq('exam_type', 'private_pilot'),
+    supabase.from('dpe_questions').select('id,category,is_scenario').eq('exam_type', 'private_pilot'),
     supabase.from('profiles').select('id,email,full_name,checkride_prep_unlocked,created_at,portal_last_active_at'),
   ])
 

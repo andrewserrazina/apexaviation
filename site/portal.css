@@ -392,6 +392,31 @@
 .portal-qref-table td:nth-child(3) { color: rgba(255,255,255,0.55); }
 .portal-qref-card[hidden] { display: none; }
 
+/* ─── Weight & Balance Calculator ────────────────────────────────── */
+.wb-calc-table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+.wb-calc-table th {
+  text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.45); padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.12);
+  background: rgba(11,31,58,0.5);
+}
+.wb-calc-table td { padding: 7px 10px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; vertical-align: middle; }
+.wb-calc-table td:first-child { color: rgba(255,255,255,0.75); font-weight: 600; }
+.wb-calc-table tr.wb-subtotal td { background: rgba(244,180,0,0.08); font-weight: 800; color: #fff; }
+.wb-input {
+  width: 100%; max-width: 100px; padding: 6px 8px; border-radius: 6px;
+  border: 1.5px solid rgba(244,180,0,0.4); background: rgba(244,180,0,0.1);
+  color: #fff; font-family: var(--font); font-size: 13px; text-align: right; outline: none;
+}
+.wb-input:focus { border-color: var(--gold); background: rgba(244,180,0,0.16); }
+.wb-computed { color: rgba(255,255,255,0.85); font-variant-numeric: tabular-nums; }
+.wb-status-pass { color: #4ADE80; font-weight: 800; }
+.wb-status-check { color: #F87171; font-weight: 800; }
+.wb-calc-legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 16px; }
+.wb-calc-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.wb-calc-legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.wb-calc-legend i.wb-legend-gold { background: rgba(244,180,0,0.35); border: 1px solid rgba(244,180,0,0.6); }
+.wb-calc-legend i.wb-legend-white { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); }
+
 /* ─── Readiness gauge ────────────────────────────────────────────── */
 .portal-readiness { display: flex; align-items: center; gap: 22px; }
 .portal-readiness__gauge { position: relative; flex-shrink: 0; width: 128px; height: 128px; }

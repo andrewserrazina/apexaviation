@@ -161,9 +161,12 @@ serve(async (req) => {
     const action = body?.action
 
     if (action === 'start') {
+      // exam_type hard-coded to 'private_pilot' — see get-premium-content
+      // for why instrument content must never be reachable this way yet.
       const { data: categories, error: catErr } = await supabase
         .from('dpe_categories')
         .select('label, intro')
+        .eq('exam_type', 'private_pilot')
         .order('sort_order')
       if (catErr) throw catErr
 
@@ -212,9 +215,12 @@ serve(async (req) => {
       if (session.profile_id !== userId) return json({ error: 'Not your session' }, 403)
       if (session.status !== 'in_progress') return json({ error: 'Session already ended' }, 409)
 
+      // exam_type hard-coded to 'private_pilot' — see get-premium-content
+      // for why instrument content must never be reachable this way yet.
       const { data: categories, error: catErr } = await supabase
         .from('dpe_categories')
         .select('label, intro')
+        .eq('exam_type', 'private_pilot')
         .order('sort_order')
       if (catErr) throw catErr
 
