@@ -360,7 +360,7 @@
         <div class="portal-grid portal-grid--4">
           <button class="portal-card portal-quicklink" data-goto="free-resources">
             <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M20 12V7a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2h6M20 12l-3.5 3.5M20 12l-3.5-3.5" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <div><h3>Free Resources</h3><p>3 guides — no unlock needed</p></div>
+            <div><h3>Free Resources</h3><p>4 guides — no unlock needed</p></div>
           </button>
           <button class="portal-card portal-quicklink" data-goto="checkride-prep">
             <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
@@ -390,10 +390,10 @@
         <div class="portal-header">
           <div class="portal-header__eyebrow">Free Resources · Yours the Moment You Signed Up</div>
           <h1>Free Resources</h1>
-          <p>No unlock needed — these three guides are yours as soon as you create an account. Dig in, then see how they connect to the complete Checkride Prep Pack.</p>
+          <p>No unlock needed — these four resources are yours as soon as you create an account. Dig in, then see how they connect to the complete Checkride Prep Pack.</p>
         </div>
 
-        <div class="portal-grid portal-grid--3">
+        <div class="portal-grid portal-grid--4">
           <button class="portal-card portal-quicklink" data-goto="dpe-questions" style="align-items:flex-start">
             <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9.09 9a3 3 0 015.83 1c0 2-3 2-3 4M12 17.5v.01" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="9" stroke="#F4B400" stroke-width="2"/></svg></div>
             <div><h3>10 Questions DPEs Love to Ask</h3><p>Oral exam questions worth mastering, with model answers and DPE insight for each.</p></div>
@@ -405,6 +405,10 @@
           <button class="portal-card portal-quicklink" data-goto="spin-awareness" style="align-items:flex-start">
             <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3a9 9 0 106.36 2.64" stroke="#F4B400" stroke-width="2" stroke-linecap="round"/><path d="M12 3v5l4-2" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
             <div><h3>Spin Awareness</h3><p>How a spin develops, how to recognize it early, and exactly what to do about it.</p></div>
+          </button>
+          <button class="portal-card portal-quicklink" data-goto="weight-balance" style="align-items:flex-start">
+            <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3v18M5 8l-3 6a3 3 0 006 0l-3-6zm14 0l-3 6a3 3 0 006 0l-3-6zM5 8h14M9 21h6" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div><h3>Weight &amp; Balance Calculator</h3><p>Interactive PA-28-181 W&amp;B, CG envelope, density altitude, and Va calculator — plus a downloadable worksheet.</p></div>
           </button>
         </div>
       </section>
@@ -817,6 +821,181 @@
           <div class="portal-header__eyebrow">Want to Actually Understand This in the Airplane?</div>
           <h3 style="color:#fff;font-size:19px;font-weight:800;margin-bottom:6px">Reading about it isn't the same as feeling it.</h3>
           <p style="color:rgba(255,255,255,0.6);font-size:14px;line-height:1.6;margin-bottom:16px">Spin awareness and stall/spin scenarios come up throughout the Checkride Prep System's Emergency Operations module — or book a Mock Oral to walk through the ACS scenario-based questions on this exact topic with an instructor.</p>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <a href="#" class="btn btn--primary" data-goto="checkride-prep">Explore the Prep Pack →</a>
+            <a href="#" class="btn btn--ghost" data-goto="mock-oral">Book a Mock Oral →</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────── WEIGHT & BALANCE CALCULATOR (free lead magnet) ─────────── -->
+      <section class="portal-section" id="section-weight-balance">
+        <div class="portal-header">
+          <button class="portal-back-link" data-goto="free-resources">← Free Resources</button>
+          <div class="portal-header__eyebrow">Free Resource · Yours the Moment You Signed Up</div>
+          <h1>Weight &amp; Balance Calculator</h1>
+          <p>The same six-step method taught in Apex Advantage Module 13 — Weight &amp; Balance — pre-loaded with a PA-28-181 example. Edit any gold cell below to calculate weight, CG, pressure/density altitude, and maneuvering speed for your own loading, or download the full worksheet to adapt to any aircraft.</p>
+        </div>
+
+        <div class="portal-card" style="margin-bottom:32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+          <div>
+            <div class="portal-qitem__field-label">Downloadable Worksheet</div>
+            <p style="color:rgba(255,255,255,0.65);font-size:13px;margin:4px 0 0;max-width:480px">The full Excel version of this calculator, with a User Guide tab explaining every section and how to adapt it to any aircraft.</p>
+          </div>
+          <a href="downloads/apex-weight-balance-worksheet.xlsx" download class="btn btn--primary" style="white-space:nowrap">Download the Worksheet (.xlsx) →</a>
+        </div>
+
+        <div class="wb-calc-legend">
+          <span><i class="wb-legend-gold"></i> Gold — type your own value</span>
+          <span><i class="wb-legend-white"></i> White — calculates automatically</span>
+        </div>
+
+        <h3 style="font-size:16px;font-weight:700;color:#fff;margin-bottom:12px">Weight &amp; Balance</h3>
+        <div class="portal-card" style="margin-bottom:24px;overflow-x:auto">
+          <table class="wb-calc-table">
+            <thead><tr><th>Item</th><th>Weight (lb)</th><th>Arm (in)</th><th>Moment (lb-in)</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Basic Empty Weight</td>
+                <td><input type="number" step="0.1" class="wb-input" id="wb-bew-weight" value="1645.1" /></td>
+                <td class="wb-computed" id="wb-bew-arm">—</td>
+                <td><input type="number" step="1" class="wb-input" id="wb-bew-moment" value="144845.5" /></td>
+              </tr>
+              <tr>
+                <td>Front Pilots</td>
+                <td><input type="number" step="0.1" class="wb-input" id="wb-front-weight" value="160.0" /></td>
+                <td><input type="number" step="0.1" class="wb-input" id="wb-front-arm" value="80.5" /></td>
+                <td class="wb-computed" id="wb-front-moment">—</td>
+              </tr>
+              <tr>
+                <td>Rear Passengers</td>
+                <td><input type="number" step="0.1" class="wb-input" id="wb-rear-weight" value="320.0" /></td>
+                <td><input type="number" step="0.1" class="wb-input" id="wb-rear-arm" value="118.1" /></td>
+                <td class="wb-computed" id="wb-rear-moment">—</td>
+              </tr>
+              <tr>
+                <td>Baggage (120 lb max)</td>
+                <td><input type="number" step="0.1" class="wb-input" id="wb-bag-weight" value="20.0" /></td>
+                <td><input type="number" step="0.1" class="wb-input" id="wb-bag-arm" value="142.8" /></td>
+                <td class="wb-computed" id="wb-bag-moment">—</td>
+              </tr>
+              <tr class="wb-subtotal">
+                <td>ZERO FUEL WEIGHT</td>
+                <td class="wb-computed" id="wb-zfw-weight">—</td>
+                <td class="wb-computed" id="wb-zfw-arm">—</td>
+                <td class="wb-computed" id="wb-zfw-moment">—</td>
+              </tr>
+              <tr>
+                <td>Usable Fuel</td>
+                <td><input type="number" step="0.1" class="wb-input" id="wb-fuel-weight" value="288.0" /></td>
+                <td><input type="number" step="0.1" class="wb-input" id="wb-fuel-arm" value="95.0" /></td>
+                <td class="wb-computed" id="wb-fuel-moment">—</td>
+              </tr>
+              <tr class="wb-subtotal">
+                <td>RAMP WEIGHT</td>
+                <td class="wb-computed" id="wb-ramp-weight">—</td>
+                <td class="wb-computed" id="wb-ramp-arm">—</td>
+                <td class="wb-computed" id="wb-ramp-moment">—</td>
+              </tr>
+              <tr>
+                <td>Taxi Fuel</td>
+                <td><input type="number" step="0.1" class="wb-input" id="wb-taxi-weight" value="8.0" /></td>
+                <td><input type="number" step="0.1" class="wb-input" id="wb-taxi-arm" value="95.0" /></td>
+                <td class="wb-computed" id="wb-taxi-moment">—</td>
+              </tr>
+              <tr class="wb-subtotal">
+                <td>TAKEOFF WEIGHT</td>
+                <td class="wb-computed" id="wb-to-weight">—</td>
+                <td class="wb-computed" id="wb-to-arm">—</td>
+                <td class="wb-computed" id="wb-to-moment">—</td>
+              </tr>
+              <tr>
+                <td>Fuel Burned (enroute)</td>
+                <td><input type="number" step="0.1" class="wb-input" id="wb-burn-weight" value="171.6" /></td>
+                <td><input type="number" step="0.1" class="wb-input" id="wb-burn-arm" value="95.0" /></td>
+                <td class="wb-computed" id="wb-burn-moment">—</td>
+              </tr>
+              <tr class="wb-subtotal">
+                <td>LANDING WEIGHT</td>
+                <td class="wb-computed" id="wb-ldg-weight">—</td>
+                <td class="wb-computed" id="wb-ldg-arm">—</td>
+                <td class="wb-computed" id="wb-ldg-moment">—</td>
+              </tr>
+              <tr>
+                <td>Maximum Gross Weight (lb)</td>
+                <td><input type="number" step="1" class="wb-input" id="wb-mgw" value="2550" /></td>
+                <td></td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="portal-grid portal-grid--2" style="margin-bottom:24px;align-items:start">
+          <div class="portal-card">
+            <h3 style="font-size:15px;font-weight:700;color:#fff;margin-bottom:4px">CG Envelope Check</h3>
+            <p style="color:rgba(255,255,255,0.5);font-size:12.5px;margin-bottom:14px">Enter your POH's forward/aft CG limits at each weight.</p>
+            <table class="wb-calc-table">
+              <thead><tr><th>Condition</th><th>Fwd (in)</th><th>Aft (in)</th><th>Your CG</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td>Takeoff</td>
+                  <td><input type="number" step="0.1" class="wb-input" id="wb-cg-to-fwd" value="87.0" /></td>
+                  <td><input type="number" step="0.1" class="wb-input" id="wb-cg-to-aft" value="93.0" /></td>
+                  <td class="wb-computed" id="wb-cg-to-actual">—</td>
+                  <td id="wb-cg-to-status">—</td>
+                </tr>
+                <tr>
+                  <td>Landing</td>
+                  <td><input type="number" step="0.1" class="wb-input" id="wb-cg-ldg-fwd" value="87.0" /></td>
+                  <td><input type="number" step="0.1" class="wb-input" id="wb-cg-ldg-aft" value="93.0" /></td>
+                  <td class="wb-computed" id="wb-cg-ldg-actual">—</td>
+                  <td id="wb-cg-ldg-status">—</td>
+                </tr>
+              </tbody>
+            </table>
+            <p style="color:rgba(255,255,255,0.4);font-size:11.5px;margin-top:12px">Forward/aft limits above are examples only — replace with your aircraft's published CG envelope limits. Always confirm visually on the actual CG envelope graph too.</p>
+          </div>
+
+          <div class="portal-card">
+            <h3 style="font-size:15px;font-weight:700;color:#fff;margin-bottom:14px">Pressure &amp; Density Altitude</h3>
+            <table class="wb-calc-table">
+              <tbody>
+                <tr><td>Standard Sea Level Pressure (in Hg)</td><td class="wb-computed">29.92</td></tr>
+                <tr><td>Altimeter Setting (in Hg)</td><td><input type="number" step="0.01" class="wb-input" id="wb-altimeter" value="29.85" /></td></tr>
+                <tr><td>Field Elevation (ft)</td><td><input type="number" step="1" class="wb-input" id="wb-field-elev" value="17" /></td></tr>
+                <tr class="wb-subtotal"><td>Pressure Altitude (ft)</td><td class="wb-computed" id="wb-pa">—</td></tr>
+                <tr><td>ISA Standard Temp at Sea Level (°C)</td><td class="wb-computed">15.0</td></tr>
+                <tr><td>Outside Air Temperature (°C)</td><td><input type="number" step="0.1" class="wb-input" id="wb-oat" value="24" /></td></tr>
+                <tr class="wb-subtotal"><td>Density Altitude (ft)</td><td class="wb-computed" id="wb-da">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="portal-card" style="margin-bottom:32px">
+          <h3 style="font-size:15px;font-weight:700;color:#fff;margin-bottom:14px">Maneuvering Speed (Va)</h3>
+          <table class="wb-calc-table">
+            <tbody>
+              <tr><td>Va at Maximum Gross Weight (KIAS)</td><td><input type="number" step="0.1" class="wb-input" id="wb-va-max" value="113" /></td></tr>
+              <tr><td>Takeoff Weight (lb)</td><td class="wb-computed" id="wb-va-to-weight">—</td></tr>
+              <tr><td>Landing Weight (lb)</td><td class="wb-computed" id="wb-va-ldg-weight">—</td></tr>
+              <tr><td>Maximum Gross Weight (lb)</td><td class="wb-computed" id="wb-va-mgw">—</td></tr>
+              <tr class="wb-subtotal"><td>Va at Takeoff Weight (KIAS)</td><td class="wb-computed" id="wb-va-to">—</td></tr>
+              <tr class="wb-subtotal"><td>Va at Landing Weight (KIAS)</td><td class="wb-computed" id="wb-va-ldg">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="portal-card" style="margin-bottom:32px;border-left:3px solid var(--gold)">
+          <div class="portal-qitem__field-label">Important Safety Note</div>
+          <p style="color:rgba(255,255,255,0.65);line-height:1.7;font-size:14px;margin:0">This calculator is a training and planning aid. It is not a replacement for your specific aircraft's current, actual weight and balance record, CG envelope graph, or POH/AFM. Basic empty weight, moments, arms, CG limits, and Va vary by individual aircraft — always verify every figure against your own aircraft's documents before every flight.</p>
+        </div>
+
+        <div class="portal-card" style="background:linear-gradient(120deg, rgba(244,180,0,0.14), rgba(11,31,58,0.4));border-color:rgba(244,180,0,0.25)">
+          <div class="portal-header__eyebrow">Want the Full Six-Step Method?</div>
+          <h3 style="color:#fff;font-size:19px;font-weight:800;margin-bottom:6px">Weight &amp; balance is one of the most heavily tested oral exam topics.</h3>
+          <p style="color:rgba(255,255,255,0.6);font-size:14px;line-height:1.6;margin-bottom:16px">This calculator mirrors Apex Advantage Module 13 — the full Checkride Prep System covers weight and balance scenario questions alongside 300+ other oral exam questions, or book a Mock Oral to walk through a real loading problem with an instructor.</p>
           <div style="display:flex;gap:12px;flex-wrap:wrap">
             <a href="#" class="btn btn--primary" data-goto="checkride-prep">Explore the Prep Pack →</a>
             <a href="#" class="btn btn--ghost" data-goto="mock-oral">Book a Mock Oral →</a>

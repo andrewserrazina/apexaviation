@@ -1306,6 +1306,120 @@
   }
 
   /* ══════════════════════════════════════════════════════════════
+     WEIGHT & BALANCE CALCULATOR — free resource, PA-28-181 example.
+     Mirrors the "Apex Weight & Balance Worksheet" xlsx formula for
+     formula: Moment = Weight x Arm, CG = Total Moment / Total Weight,
+     Pressure Altitude = 1000*(29.92-Altimeter)+FieldElevation,
+     Density Altitude = 120*(OAT-15)+PressureAltitude,
+     Va at Weight = Va at Max Gross x sqrt(Weight/Max Gross Weight).
+     Pure client-side math, no session/data dependency, so it's wired
+     up unconditionally at script load rather than inside initPortalData.
+     ══════════════════════════════════════════════════════════════ */
+  function initWeightBalanceCalculator() {
+    var wbForm = document.getElementById('wb-bew-weight');
+    if (!wbForm) return; // section not present on this page
+
+    function num(id) {
+      var el = document.getElementById(id);
+      var v = parseFloat(el.value);
+      return isNaN(v) ? 0 : v;
+    }
+    function setText(id, val) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = val;
+    }
+    function fmt1(n) { return n.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }); }
+    function fmt0(n) { return Math.round(n).toLocaleString(); }
+
+    function recalc() {
+      var bewW = num('wb-bew-weight'), bewM = num('wb-bew-moment');
+      var bewA = bewW ? bewM / bewW : 0;
+
+      var frontW = num('wb-front-weight'), frontA = num('wb-front-arm'), frontM = frontW * frontA;
+      var rearW = num('wb-rear-weight'), rearA = num('wb-rear-arm'), rearM = rearW * rearA;
+      var bagW = num('wb-bag-weight'), bagA = num('wb-bag-arm'), bagM = bagW * bagA;
+
+      var zfwW = bewW + frontW + rearW + bagW;
+      var zfwM = bewM + frontM + rearM + bagM;
+      var zfwA = zfwW ? zfwM / zfwW : 0;
+
+      var fuelW = num('wb-fuel-weight'), fuelA = num('wb-fuel-arm'), fuelM = fuelW * fuelA;
+
+      var rampW = zfwW + fuelW;
+      var rampM = zfwM + fuelM;
+      var rampA = rampW ? rampM / rampW : 0;
+
+      var taxiW = num('wb-taxi-weight'), taxiA = num('wb-taxi-arm'), taxiM = taxiW * taxiA;
+
+      var toW = rampW - taxiW;
+      var toM = rampM - taxiM;
+      var toA = toW ? toM / toW : 0;
+
+      var burnW = num('wb-burn-weight'), burnA = num('wb-burn-arm'), burnM = burnW * burnA;
+
+      var ldgW = toW - burnW;
+      var ldgM = toM - burnM;
+      var ldgA = ldgW ? ldgM / ldgW : 0;
+
+      var mgw = num('wb-mgw');
+
+      setText('wb-bew-arm', bewW ? fmt1(bewA) : '');
+      setText('wb-front-moment', fmt0(frontM));
+      setText('wb-rear-moment', fmt0(rearM));
+      setText('wb-bag-moment', fmt0(bagM));
+      setText('wb-zfw-weight', fmt1(zfwW));
+      setText('wb-zfw-arm', zfwW ? fmt1(zfwA) : '');
+      setText('wb-zfw-moment', fmt0(zfwM));
+      setText('wb-fuel-moment', fmt0(fuelM));
+      setText('wb-ramp-weight', fmt1(rampW));
+      setText('wb-ramp-arm', rampW ? fmt1(rampA) : '');
+      setText('wb-ramp-moment', fmt0(rampM));
+      setText('wb-taxi-moment', fmt0(taxiM));
+      setText('wb-to-weight', fmt1(toW));
+      setText('wb-to-arm', toW ? fmt1(toA) : '');
+      setText('wb-to-moment', fmt0(toM));
+      setText('wb-burn-moment', fmt0(burnM));
+      setText('wb-ldg-weight', fmt1(ldgW));
+      setText('wb-ldg-arm', ldgW ? fmt1(ldgA) : '');
+      setText('wb-ldg-moment', fmt0(ldgM));
+
+      var toFwd = num('wb-cg-to-fwd'), toAft = num('wb-cg-to-aft');
+      var ldgFwd = num('wb-cg-ldg-fwd'), ldgAft = num('wb-cg-ldg-aft');
+      setText('wb-cg-to-actual', fmt1(toA));
+      setText('wb-cg-ldg-actual', fmt1(ldgA));
+      var toStatusEl = document.getElementById('wb-cg-to-status');
+      var toPass = toA >= toFwd && toA <= toAft;
+      toStatusEl.textContent = toPass ? 'PASS' : 'CHECK';
+      toStatusEl.className = toPass ? 'wb-status-pass' : 'wb-status-check';
+      var ldgStatusEl = document.getElementById('wb-cg-ldg-status');
+      var ldgPass = ldgA >= ldgFwd && ldgA <= ldgAft;
+      ldgStatusEl.textContent = ldgPass ? 'PASS' : 'CHECK';
+      ldgStatusEl.className = ldgPass ? 'wb-status-pass' : 'wb-status-check';
+
+      var altimeter = num('wb-altimeter'), fieldElev = num('wb-field-elev'), oat = num('wb-oat');
+      var pa = 1000 * (29.92 - altimeter) + fieldElev;
+      var da = 120 * (oat - 15) + pa;
+      setText('wb-pa', fmt0(pa));
+      setText('wb-da', fmt0(da));
+
+      var vaMax = num('wb-va-max');
+      setText('wb-va-to-weight', fmt0(toW));
+      setText('wb-va-ldg-weight', fmt0(ldgW));
+      setText('wb-va-mgw', fmt0(mgw));
+      var vaTo = mgw > 0 && toW > 0 ? vaMax * Math.sqrt(toW / mgw) : 0;
+      var vaLdg = mgw > 0 && ldgW > 0 ? vaMax * Math.sqrt(ldgW / mgw) : 0;
+      setText('wb-va-to', fmt1(vaTo));
+      setText('wb-va-ldg', fmt1(vaLdg));
+    }
+
+    document.querySelectorAll('#section-weight-balance .wb-input').forEach(function (input) {
+      input.addEventListener('input', recalc);
+    });
+    recalc();
+  }
+  initWeightBalanceCalculator();
+
+  /* ══════════════════════════════════════════════════════════════
      RENDER — DPE Questions Library (72 real questions)
      ══════════════════════════════════════════════════════════════ */
   var dpeLibraryEl = document.getElementById('dpeLibrary');
