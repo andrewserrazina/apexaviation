@@ -29,11 +29,17 @@ serve(async (req) => {
   try {
     await requirePremiumAccess(supabase, req.headers.get('Authorization'))
 
+    // exam_type is hard-coded to 'private_pilot' here on purpose: the
+    // instrument-rating content added in schema v37/v38 is tagged
+    // exam_type = 'instrument' and must stay unreachable by any member
+    // request until this filter is deliberately changed. Do not make this
+    // dynamic (e.g. from a query param or profile field) without an
+    // explicit decision to launch instrument content publicly.
     const [categories, questions, quickRef, lessons] = await Promise.all([
-      supabase.from('dpe_categories').select('*').order('sort_order'),
-      supabase.from('dpe_questions').select('*').order('sort_order'),
-      supabase.from('quick_reference_sheets').select('*').order('sort_order'),
-      supabase.from('portal_lessons').select('*').order('sort_order'),
+      supabase.from('dpe_categories').select('*').eq('exam_type', 'private_pilot').order('sort_order'),
+      supabase.from('dpe_questions').select('*').eq('exam_type', 'private_pilot').order('sort_order'),
+      supabase.from('quick_reference_sheets').select('*').eq('exam_type', 'private_pilot').order('sort_order'),
+      supabase.from('portal_lessons').select('*').eq('exam_type', 'private_pilot').order('sort_order'),
     ])
 
     if (categories.error) throw categories.error
