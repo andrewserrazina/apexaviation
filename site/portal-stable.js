@@ -1891,17 +1891,89 @@
     });
   }
 
+  /* Maps our 11 topic categories onto the REAL FAA Private Pilot ACS
+     (FAA-S-ACS-6C, Nov 2023) Areas of Operation and Tasks -- verified
+     directly against the ACS document, not the app's own acs_reference
+     text (which mislabels ~7 of these 11 categories with the wrong Area
+     number; e.g. "emergency" cites Area X, which is actually Multiengine
+     Operations, not Emergency Operations -- that's really Area IX).
+     Only areas/tasks this oral-exam question bank actually has content
+     for are listed -- flight-maneuver areas (Takeoffs/Landings, Slow
+     Flight, Instrument Maneuvers, etc.) are demonstrated in the airplane,
+     not asked about here, so they're deliberately left off rather than
+     shown as a permanent, misleading 0%.
+     "crosscountry" and "emergency" each genuinely span multiple real ACS
+     tasks (Cross-Country Planning + all of Navigation; all four
+     Emergency Operations tasks) without per-question tagging to tell
+     which specific task each one belongs to -- rather than guess a false
+     per-task split, those two are shown as a single honest rollup. */
+  var ACS_TRACKER = [
+    { id: 'area-i', label: 'Area I — Preflight Preparation', tasks: [
+      { code: 'I.A', title: 'Pilot Qualifications', categories: ['eligibility', 'privileges'] },
+      { code: 'I.B', title: 'Airworthiness Requirements', categories: ['airworthiness'] },
+      { code: 'I.C', title: 'Weather Information', categories: ['weather'] },
+      { code: 'I.E', title: 'National Airspace System', categories: ['airspace'] },
+      { code: 'I.F', title: 'Performance and Limitations', categories: ['performance'] },
+      { code: 'I.G', title: 'Operation of Systems', categories: ['aircraft-systems'] },
+      { code: 'I.H', title: 'Human Factors', categories: ['aeromedical'] }
+    ] },
+    { id: 'xc-nav', label: 'Area I.D &amp; VI — Cross-Country Planning &amp; Navigation', tasks: [
+      { code: null, title: null, categories: ['crosscountry'] }
+    ] },
+    { id: 'emergency-ops', label: 'Area IX — Emergency Operations', tasks: [
+      { code: null, title: null, categories: ['emergency'] }
+    ] },
+    { id: 'adm', label: 'Special Emphasis — Aeronautical Decision-Making &amp; Risk Management', tasks: [
+      { code: null, title: null, categories: ['adm'] }
+    ] }
+  ];
+
+  function taskCoverage(categories) {
+    var done = 0, total = 0;
+    categories.forEach(function (cat) {
+      var items = DPE_DATA.filter(function (d) { return d.section === cat; });
+      total += items.length;
+      done += items.filter(function (d) { return studied[d.id]; }).length;
+    });
+    return { done: done, total: total, pct: total ? done / total : 0 };
+  }
+
   function renderAcsCoverage() {
     var el = document.getElementById('acsCoverageList');
-    el.innerHTML = Object.keys(CATEGORY_META).map(function (cat) {
-      var pct = Math.round(categoryPct(cat) * 100);
-      return '<div class="portal-acs-row" data-cat="' + cat + '">' +
-        '<div class="portal-acs-row__head"><span class="name">' + CATEGORY_META[cat].label + '</span><span class="pct">' + pct + '%</span></div>' +
-        '<div class="portal-progress-bar"><div class="portal-progress-bar__fill" style="width:' + pct + '%"></div></div>' +
+    el.innerHTML = ACS_TRACKER.map(function (group) {
+      var groupCats = [];
+      group.tasks.forEach(function (t) { groupCats = groupCats.concat(t.categories); });
+      var overallPct = Math.round(taskCoverage(groupCats).pct * 100);
+      var hasSubtasks = group.tasks.length > 1;
+      var subtasksHtml = hasSubtasks ? group.tasks.map(function (t) {
+        var pct = Math.round(taskCoverage(t.categories).pct * 100);
+        return '<div class="portal-acs-subtask" data-cats="' + t.categories.join(',') + '">' +
+          '<div class="portal-acs-subtask__head"><span class="code">' + t.code + '</span><span class="name">' + t.title + '</span><span class="pct">' + pct + '%</span></div>' +
+          '<div class="portal-progress-bar"><div class="portal-progress-bar__fill" style="width:' + pct + '%"></div></div>' +
+        '</div>';
+      }).join('') : '';
+      return '<div class="portal-acs-group" data-group="' + group.id + '">' +
+        '<div class="portal-acs-row" data-cats="' + groupCats.join(',') + '">' +
+          '<div class="portal-acs-row__head"><span class="name">' + group.label + '</span><span class="pct">' + overallPct + '%</span></div>' +
+          '<div class="portal-progress-bar"><div class="portal-progress-bar__fill" style="width:' + overallPct + '%"></div></div>' +
+        '</div>' +
+        (hasSubtasks ? '<div class="portal-acs-subtasks" hidden>' + subtasksHtml + '</div>' : '') +
       '</div>';
     }).join('');
-    el.querySelectorAll('[data-cat]').forEach(function (row) {
-      row.addEventListener('click', function () { goToCategory(row.dataset.cat); });
+
+    el.querySelectorAll('.portal-acs-group').forEach(function (groupEl) {
+      var headRow = groupEl.querySelector('.portal-acs-row');
+      var subtasks = groupEl.querySelector('.portal-acs-subtasks');
+      headRow.addEventListener('click', function () {
+        if (subtasks) subtasks.hidden = !subtasks.hidden;
+        else goToCategory(headRow.dataset.cats.split(',')[0]);
+      });
+    });
+    el.querySelectorAll('.portal-acs-subtask').forEach(function (row) {
+      row.addEventListener('click', function (e) {
+        e.stopPropagation();
+        goToCategory(row.dataset.cats.split(',')[0]);
+      });
     });
   }
 
