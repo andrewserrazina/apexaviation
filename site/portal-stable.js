@@ -99,7 +99,7 @@
       SCENARIO_IDS.forEach(function (id) {
         var q = DPE_DATA.filter(function (d) { return d.id === id; })[0];
         if (!q) return;
-        SCENARIOS.push({ id: 'scenario-' + q.id, sourceId: q.id, tag: q.sectionLabel, title: q.q, brief: q.application, model: q.model, mistakes: q.mistakes, evaluating: q.evaluating, acs: q.acs });
+        SCENARIOS.push({ id: 'scenario-' + q.id, sourceId: q.id, category: q.section, tag: q.sectionLabel, title: q.q, brief: q.application, model: q.model, mistakes: q.mistakes, evaluating: q.evaluating, acs: q.acs });
       });
 
       QUICK_REF.length = 0;
@@ -1198,6 +1198,7 @@
     var el = document.createElement('div');
     el.className = 'portal-card portal-lesson';
     var done = !!lessonComplete[lessonId];
+    el.id = lessonId;
     el.innerHTML =
       '<button class="portal-lesson__head" type="button">' +
         '<div class="portal-lesson__head-left">' +
@@ -1492,7 +1493,34 @@
     });
   }
 
+  function updateDpeTabBadges() {
+    dpeTabs.querySelectorAll('.portal-tab[data-cat]').forEach(function (tab) {
+      var cat = tab.dataset.cat;
+      if (cat === 'all' || cat === 'favorites') return;
+      if (!tab.dataset.label) tab.dataset.label = tab.textContent.trim();
+      var items = DPE_DATA.filter(function (d) { return d.section === cat; });
+      if (!items.length) { tab.textContent = tab.dataset.label; return; }
+      var done = items.filter(function (d) { return studied[d.id]; }).length;
+      tab.innerHTML = tab.dataset.label + ' <span class="portal-tab__badge">(' + done + '/' + items.length + ')</span>';
+    });
+  }
+
+  function renderDpeSuggestedStrip() {
+    var el = document.getElementById('dpeSuggestedStrip');
+    if (!el) return;
+    var weakest = weakestCategory();
+    if (!weakest) { el.hidden = true; return; }
+    el.hidden = false;
+    el.innerHTML =
+      '<span class="portal-suggested-strip__text">Suggested for you: <strong>' + weakest.label + '</strong> is ' + Math.round(weakest.pct * 100) + '% complete — the fastest way to move your readiness score.</span>' +
+      '<span class="portal-suggested-strip__cta">Jump In →</span>';
+    el.onclick = function () { goToCategory(weakest.cat); };
+  }
+
   function renderDpeLibrary() {
+    updateDpeTabBadges();
+    renderDpeSuggestedStrip();
+
     var term = dpeSearch.value.trim().toLowerCase();
     var byCat = {};
     var totalShown = 0;
@@ -1531,6 +1559,7 @@
               '<button class="portal-star-btn' + (isFav ? ' active' : '') + '" type="button" data-star="' + item.id + '" title="Star for review">' +
                 '<svg width="16" height="16" viewBox="0 0 24 24" fill="' + (isFav ? 'currentColor' : 'none') + '"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>' +
               '</button>' +
+              (isStudied ? '<span class="portal-qitem__studied-dot" title="Studied">✓</span>' : '') +
               '<span>' + item.q + '</span>' +
             '</span>' +
             '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
@@ -1602,35 +1631,71 @@
   });
 
   /* ══════════════════════════════════════════════════════════════
-     RENDER — Scenario Training Center (real emergency/XC content)
+     RENDER — Scenario Training Center (real emergency/XC content),
+     presented as dispatch cards: ACS area + estimated review time up
+     top, a "your decision" beat before the reveal, and a direct link
+     to the related ACS lesson.
      ══════════════════════════════════════════════════════════════ */
   var scenarioGrid = document.getElementById('scenarioGrid');
+
+  function goToLesson(lessonId) {
+    showSection('checkride-prep');
+    var lessonsTab = document.querySelector('#prepPrivateSubtabs [data-sub="lessons"]');
+    if (lessonsTab && !lessonsTab.classList.contains('active')) lessonsTab.click();
+    setTimeout(function () {
+      var el = document.getElementById(lessonId);
+      if (!el) return;
+      el.classList.add('open');
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  }
+
+  // Real, derived estimate (word count / 200wpm reading speed) -- not a
+  // fabricated difficulty/time value, just the same math a "3 min read"
+  // label on any article uses.
+  function estimatedReviewMinutes(s) {
+    var words = (s.title + ' ' + s.brief + ' ' + s.model + ' ' + s.mistakes + ' ' + s.evaluating).trim().split(/\s+/).length;
+    return Math.max(2, Math.round(words / 200));
+  }
+
   function renderScenarios() {
     scenarioGrid.innerHTML = '';
     SCENARIOS.forEach(function (s) {
       var isFav = !!favorites[s.id];
       var isStudied = !!studied[s.id];
+      var mins = estimatedReviewMinutes(s);
+      var lessonId = 'lesson-' + s.category;
+      var lessonLabel = CATEGORY_META[s.category] ? CATEGORY_META[s.category].label : s.tag;
       var card = document.createElement('div');
       card.className = 'portal-card portal-scenario-card';
       card.innerHTML =
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">' +
-          '<span class="portal-scenario-card__tag">' + s.tag + '</span>' +
+        '<div class="portal-scenario-card__header">' +
+          '<div class="portal-scenario-card__header-left">' +
+            '<span class="portal-scenario-card__tag">' + s.tag + '</span>' +
+            '<span class="portal-scenario-card__time">⏱ ' + mins + ' min review</span>' +
+            '<span class="portal-scenario-card__status' + (isStudied ? ' portal-scenario-card__status--done' : '') + '">' + (isStudied ? '✓ Reviewed' : 'Not Reviewed') + '</span>' +
+          '</div>' +
           '<button class="portal-star-btn' + (isFav ? ' active' : '') + '" type="button" data-star="' + s.id + '" title="Star for review">' +
             '<svg width="18" height="18" viewBox="0 0 24 24" fill="' + (isFav ? 'currentColor' : 'none') + '"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>' +
           '</button>' +
         '</div>' +
-        '<h3>' + s.title + '</h3>' +
-        '<p>' + s.brief + '</p>' +
-        '<button class="portal-scenario-card__toggle" type="button">Reveal model answer ' +
-          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
-        '</button>' +
-        '<div class="portal-scenario-detail">' +
-          '<h4>Model Answer</h4><p>' + s.model + '</p>' +
-          '<h4>Common Student Mistakes</h4><p>' + s.mistakes + '</p>' +
-          '<h4>What the DPE Is Evaluating</h4><p>' + s.evaluating + '</p>' +
-          '<h4>ACS Connection</h4><p>' + s.acs + '</p>' +
-        '</div>' +
-        '<label class="portal-studied-label"><input type="checkbox" data-studied="' + s.id + '" ' + (isStudied ? 'checked' : '') + ' /> Mark as reviewed</label>';
+        '<div class="portal-scenario-card__body">' +
+          '<p class="portal-scenario-card__label">The Scenario</p>' +
+          '<h3>' + s.title + '</h3>' +
+          '<p>' + s.brief + '</p>' +
+          '<p class="portal-scenario-card__prompt">Think through your decision out loud before revealing the model answer — that\'s what actually builds checkride-ready recall.</p>' +
+          '<button class="portal-scenario-card__toggle" type="button">Reveal model answer ' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+          '</button>' +
+          '<div class="portal-scenario-detail">' +
+            '<h4>Model Answer</h4><p>' + s.model + '</p>' +
+            '<h4>Common Student Mistakes</h4><p>' + s.mistakes + '</p>' +
+            '<h4>What the DPE Is Evaluating</h4><p>' + s.evaluating + '</p>' +
+            '<h4>ACS Connection</h4><p>' + s.acs + '</p>' +
+            '<div class="portal-scenario-detail__related" data-related-lesson>Review the related lesson: ' + lessonLabel + ' →</div>' +
+          '</div>' +
+          '<label class="portal-studied-label"><input type="checkbox" data-studied="' + s.id + '" ' + (isStudied ? 'checked' : '') + ' /> Mark as reviewed</label>' +
+        '</div>';
       card.querySelector('.portal-scenario-card__toggle').addEventListener('click', function (e) {
         var expanded = card.classList.toggle('expanded');
         e.currentTarget.firstChild.textContent = expanded ? 'Hide model answer ' : 'Reveal model answer ';
@@ -1644,6 +1709,10 @@
         toggleStudied(s.id);
         renderProgress();
         renderDashboardStats();
+      });
+      card.querySelector('[data-related-lesson]').addEventListener('click', function (e) {
+        e.stopPropagation();
+        goToLesson(lessonId);
       });
       scenarioGrid.appendChild(card);
     });
@@ -1718,12 +1787,6 @@
   /* ══════════════════════════════════════════════════════════════
      DASHBOARD STATS + CONTINUE WHERE YOU LEFT OFF
      ══════════════════════════════════════════════════════════════ */
-  function renderDashboardStats() {
-    var qStudied = DPE_DATA.filter(function (d) { return studied[d.id]; }).length;
-    var overallItems = DPE_DATA.length + SCENARIOS.length + LESSON_LIST.length;
-    var overallDone = qStudied + SCENARIOS.filter(function (s) { return studied[s.id]; }).length + LESSON_LIST.filter(function (id) { return lessonComplete[id]; }).length;
-    document.getElementById('statOverallPct').textContent = Math.round((overallDone / overallItems) * 100) + '%';
-  }
 
   /* ══════════════════════════════════════════════════════════════
      STUDY STREAKS
@@ -2046,12 +2109,95 @@
     { key: 'checkride_mode_completed', icon: '🎯', label: 'Checkride Mode Completed', test: function () { return checkrideModeDone; } }
   ];
 
+  /* ══════════════════════════════════════════════════════════════
+     STUDY ANALYTICS — heatmap + weekly bar chart, both derived
+     entirely from studyDays (date -> seconds), already loaded via
+     portal_study_activity. No new tables, no new tracking.
+     ══════════════════════════════════════════════════════════════ */
+  function dateStr(d) {
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  function renderStudyHeatmap() {
+    var el = document.getElementById('studyHeatmap');
+    if (!el) return;
+    var WEEKS = 12;
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    // Start on the Sunday on/before (today - 11 weeks) so the grid lines up
+    // into full weekly columns, GitHub-contribution-graph style.
+    var start = new Date(today);
+    start.setDate(start.getDate() - (WEEKS - 1) * 7 - today.getDay());
+
+    var cols = [];
+    for (var w = 0; w < WEEKS; w++) {
+      var col = [];
+      for (var d = 0; d < 7; d++) {
+        var day = new Date(start);
+        day.setDate(day.getDate() + w * 7 + d);
+        var key = dateStr(day);
+        var seconds = studyDays[key] || 0;
+        var level = seconds <= 0 ? 0 : seconds < 600 ? 1 : seconds < 1800 ? 2 : 3;
+        col.push({ date: day, key: key, seconds: seconds, level: level, future: day > today });
+      }
+      cols.push(col);
+    }
+
+    el.innerHTML = '<div class="portal-heatmap">' + cols.map(function (col) {
+      return '<div class="portal-heatmap__col">' + col.map(function (cell) {
+        if (cell.future) return '<div class="portal-heatmap__cell portal-heatmap__cell--future"></div>';
+        var mins = Math.round(cell.seconds / 60);
+        var title = cell.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ': ' + (mins > 0 ? mins + ' min studied' : 'no activity');
+        return '<div class="portal-heatmap__cell portal-heatmap__cell--' + cell.level + '" title="' + title + '"></div>';
+      }).join('') + '</div>';
+    }).join('') + '</div>' +
+    '<div class="portal-heatmap__legend"><span>Less</span>' +
+      '<span class="portal-heatmap__cell portal-heatmap__cell--0"></span>' +
+      '<span class="portal-heatmap__cell portal-heatmap__cell--1"></span>' +
+      '<span class="portal-heatmap__cell portal-heatmap__cell--2"></span>' +
+      '<span class="portal-heatmap__cell portal-heatmap__cell--3"></span>' +
+    '<span>More</span></div>';
+  }
+
+  function renderWeeklyActivityChart() {
+    var el = document.getElementById('weeklyActivityChart');
+    if (!el) return;
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    var days = [];
+    for (var i = 6; i >= 0; i--) {
+      var day = new Date(today);
+      day.setDate(day.getDate() - i);
+      var seconds = studyDays[dateStr(day)] || 0;
+      days.push({ label: day.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 1), minutes: Math.round(seconds / 60) });
+    }
+    var maxMin = Math.max.apply(null, days.map(function (d) { return d.minutes; }).concat([1]));
+    var totalMin = days.reduce(function (sum, d) { return sum + d.minutes; }, 0);
+
+    el.innerHTML = '<div class="portal-weekchart">' + days.map(function (d) {
+      var pct = Math.max(4, Math.round((d.minutes / maxMin) * 100));
+      return '<div class="portal-weekchart__bar-wrap" title="' + d.minutes + ' min">' +
+        '<div class="portal-weekchart__bar" style="height:' + pct + '%"></div>' +
+        '<span class="portal-weekchart__label">' + d.label + '</span>' +
+      '</div>';
+    }).join('') + '</div>' +
+    '<p class="portal-weekchart__total">' + totalMin + ' minutes studied this week</p>';
+  }
+
   function renderAchievements() {
-    var el = document.getElementById('achievementsGrid');
-    el.innerHTML = ACHIEVEMENT_DEFS.map(function (def) {
+    var html = ACHIEVEMENT_DEFS.map(function (def) {
       var earned = !!earnedAchievements[def.key];
       return '<div class="portal-achievement' + (earned ? ' earned' : '') + '"><div class="portal-achievement__icon">' + def.icon + '</div><div class="portal-achievement__label">' + def.label + '</div></div>';
     }).join('');
+    // Rendered in two places: Account Management (original location) and
+    // Readiness & Analytics (Progress page) -- same data, same markup,
+    // just surfaced somewhere students actually look instead of buried
+    // only in account settings.
+    ['achievementsGrid', 'achievementsGridProgress'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.innerHTML = html;
+    });
   }
 
   function checkAchievements() {
@@ -3253,6 +3399,150 @@
     var overallItems = DPE_DATA.length + SCENARIOS.length + LESSON_LIST.length;
     var overallDone = qStudied + SCENARIOS.filter(function (s) { return studied[s.id]; }).length + LESSON_LIST.filter(function (id) { return lessonComplete[id]; }).length;
     document.getElementById('statOverallPct').textContent = Math.round((overallDone / overallItems) * 100) + '%';
+
+    // DPE_DATA/SCENARIOS only populate for unlocked members (get-premium-content
+    // returns nothing otherwise) -- leave the marketing-copy defaults in the
+    // markup alone rather than overwrite them with a misleading "0".
+    if (DPE_DATA.length) document.getElementById('statQuestionsCount').textContent = DPE_DATA.length;
+    if (SCENARIOS.length) document.getElementById('statScenariosCount').textContent = SCENARIOS.length;
+
+    // "Available" means actually downloadable today, not a coming-soon
+    // placeholder card -- computed from the real vault markup so this
+    // number can never drift out of sync with what's actually in the vault.
+    var vaultCards = document.querySelectorAll('.portal-vault-card');
+    var vaultAvailable = Array.prototype.filter.call(vaultCards, function (card) {
+      return !card.querySelector('.portal-badge-locked');
+    }).length;
+    document.getElementById('statVaultCount').textContent = vaultAvailable + ' of ' + vaultCards.length;
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     MY TRAINING — "what should I study today" panel + study plan.
+     Every recommendation here is derived live from real progress data
+     (studied{}, CATEGORY_META coverage, SCENARIOS, myGroundRegistrations)
+     -- nothing here is static placeholder copy.
+     ══════════════════════════════════════════════════════════════ */
+  function weakestCategory() {
+    var cats = Object.keys(CATEGORY_META).map(function (cat) {
+      return { cat: cat, label: CATEGORY_META[cat].label, pct: categoryPct(cat) };
+    }).filter(function (c) { return c.pct < 1; }).sort(function (a, b) { return a.pct - b.pct; });
+    return cats.length ? cats[0] : null;
+  }
+
+  function truncate(text, max) {
+    return text.length > max ? text.slice(0, max - 1).trim() + '…' : text;
+  }
+
+  function renderMyTraining() {
+    var weakest = weakestCategory();
+    var unstudiedScenario = SCENARIOS.filter(function (s) { return !studied[s.id]; })[0];
+
+    var recommendation;
+    if (!member.checkridePrepUnlocked) {
+      // DPE_DATA/SCENARIOS/CATEGORY_META are all empty for a non-unlocked
+      // member (get-premium-content withholds real content server-side),
+      // so none of the below signals are meaningful yet -- recommend the
+      // unlock itself rather than falsely reporting "fully caught up".
+      recommendation = {
+        title: 'Unlock the Checkride Prep System',
+        body: '300+ DPE questions, scenario training, and AI oral exam practice — unlock once to start building real readiness data.',
+        go: function () { openUnlockModal(); }
+      };
+    } else if (qotdQuestion && !studied[qotdQuestion.id]) {
+      recommendation = {
+        title: "Answer today's oral exam question",
+        body: truncate(qotdQuestion.q, 88),
+        go: function () {
+          showSection('dashboard');
+          var el = document.getElementById('qotdRevealBtn');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      };
+    } else if (weakest) {
+      recommendation = {
+        title: 'Review your weakest area: ' + weakest.label,
+        body: Math.round(weakest.pct * 100) + '% complete — this is the fastest way to move your readiness score.',
+        go: function () { goToCategory(weakest.cat); }
+      };
+    } else if (unstudiedScenario) {
+      recommendation = {
+        title: 'Try a new scenario',
+        body: truncate(unstudiedScenario.title, 88),
+        go: function () { showSection('scenarios'); }
+      };
+    } else {
+      recommendation = {
+        title: "You're fully caught up",
+        body: 'Every question and scenario is marked studied. Keep your streak alive with a rapid-fire review.',
+        go: function () { showSection('dpe-library'); }
+      };
+    }
+
+    var actionEl = document.getElementById('studentNextActionCard');
+    actionEl.innerHTML = '<p class="portal-my-training__label">Next Best Action</p><h3>' + recommendation.title + '</h3><p>' + recommendation.body + '</p>';
+    actionEl.onclick = recommendation.go;
+
+    var continueBtn = document.getElementById('continueTrainingBtn');
+    if (continueBtn) continueBtn.onclick = function (e) { e.preventDefault(); recommendation.go(); };
+
+    var classEl = document.getElementById('studentNextClassCard');
+    var upcoming = myGroundRegistrations
+      .filter(function (r) { return r.session && new Date(r.session.scheduled_at) > new Date(); })
+      .sort(function (a, b) { return new Date(a.session.scheduled_at) - new Date(b.session.scheduled_at); })[0];
+    if (upcoming) {
+      var when = new Date(upcoming.session.scheduled_at).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      classEl.innerHTML = '<p class="portal-my-training__label">Next Class</p><h3>' + upcoming.session.title + '</h3><p>' + when + (upcoming.session.location ? ' · ' + upcoming.session.location : '') + '</p>';
+    } else {
+      classEl.innerHTML = '<p class="portal-my-training__label">Next Class</p><h3>No registered class yet</h3><p>Register for an upcoming live ground school class when you’re ready.</p>';
+    }
+    classEl.onclick = function () { showSection('ground-school'); };
+
+    var resumeEl = document.getElementById('studentResumeCard');
+    var nextQuestion = DPE_DATA.filter(function (d) { return !studied[d.id]; })[0];
+    if (!member.checkridePrepUnlocked) {
+      resumeEl.innerHTML = '<p class="portal-my-training__label">Resume Studying</p><h3>Unlock to begin</h3><p>The DPE Question Bank, scenarios, and lessons all start tracking your progress here once unlocked.</p>';
+      resumeEl.onclick = function () { openUnlockModal(); };
+    } else if (nextQuestion) {
+      resumeEl.innerHTML = '<p class="portal-my-training__label">Resume Studying</p><h3>' + nextQuestion.sectionLabel + '</h3><p>' + truncate(nextQuestion.q, 80) + '</p>';
+      resumeEl.onclick = function () { goToCategory(nextQuestion.section); };
+    } else {
+      resumeEl.innerHTML = '<p class="portal-my-training__label">Resume Studying</p><h3>Question bank complete</h3><p>Every DPE question is marked studied — try the Scenario Center or AI Oral Exam Practice next.</p>';
+      resumeEl.onclick = function () { showSection('scenarios'); };
+    }
+
+    var allScenariosDone = SCENARIOS.length > 0 && SCENARIOS.every(function (s) { return studied[s.id]; });
+    var planItems = !member.checkridePrepUnlocked ? [
+      { label: 'Unlock the Checkride Prep System', done: false, go: function () { openUnlockModal(); } },
+      { label: 'Answer your first oral exam question', done: false, go: function () { openUnlockModal(); } },
+      { label: 'Try your first training scenario', done: false, go: function () { openUnlockModal(); } }
+    ] : [
+      {
+        label: "Answer today's oral exam question",
+        done: !!(qotdQuestion && studied[qotdQuestion.id]),
+        go: recommendation.go
+      },
+      weakest
+        ? { label: 'Review ' + weakest.label + ' (' + Math.round(weakest.pct * 100) + '% complete)', done: false, go: function () { goToCategory(weakest.cat); } }
+        : { label: 'All ACS areas complete', done: true, go: function () { showSection('dpe-library'); } },
+      { label: allScenariosDone ? 'Scenario Training complete' : 'Complete Scenario Training', done: allScenariosDone, go: function () { showSection('scenarios'); } }
+    ];
+
+    var planEl = document.getElementById('studentStudyPlanList');
+    var planCompleteEl = document.getElementById('studentStudyPlanComplete');
+    var allPlanItemsDone = member.checkridePrepUnlocked && planItems.every(function (item) { return item.done; });
+
+    planEl.hidden = allPlanItemsDone;
+    planCompleteEl.hidden = !allPlanItemsDone;
+
+    planEl.innerHTML = planItems.map(function (item, i) {
+      return '<div class="portal-plan-item' + (item.done ? ' portal-plan-item--done' : '') + '" data-plan-idx="' + i + '">' +
+        '<span class="portal-plan-item__check">' + (item.done ? '✓' : '') + '</span>' +
+        '<span class="portal-plan-item__label">' + item.label + '</span>' +
+      '</div>';
+    }).join('');
+    planEl.querySelectorAll('[data-plan-idx]').forEach(function (row, i) {
+      row.addEventListener('click', function () { planItems[i].go(); });
+    });
   }
 
   /* ── Init — waits for the real Supabase session + profile ────── */
@@ -3269,7 +3559,10 @@
       renderWeakAreas();
       renderAcsCoverage();
       renderQotd();
+      renderMyTraining();
       renderAchievements();
+      renderStudyHeatmap();
+      renderWeeklyActivityChart();
       checkAchievements();
       renderAdminIfApplicable();
       enforceGuidedNotesAccess();
