@@ -23,17 +23,22 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Must match the check constraint on profiles.checkride_timing
+// (supabase-portal-schema-v39.sql).
+const CHECKRIDE_TIMINGS = ['within_14_days', 'within_30_days', 'within_60_days', 'more_than_60_days', 'not_scheduled']
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    const { name, email, dest } = await req.json()
+    const { name, email, dest, checkride_timing } = await req.json()
     if (!name || !email) {
       return new Response(JSON.stringify({ error: 'Missing required fields: name, email' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
+    const safeCheckrideTiming = CHECKRIDE_TIMINGS.includes(checkride_timing) ? checkride_timing : null
 
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
@@ -57,6 +62,15 @@ serve(async (req) => {
       user_metadata: { full_name: name },
     })
     if (createErr) throw createErr
+
+    // handle_new_user() (supabase-schema.sql) only copies full_name from
+    // auth.users' metadata into the new profiles row -- checkride_timing
+    // isn't part of that trigger, so it's set here as a direct update
+    // rather than touching a trigger every other account-creation path
+    // (admin-created instructors, etc.) also relies on.
+    if (safeCheckrideTiming) {
+      await supabase.from('profiles').update({ checkride_timing: safeCheckrideTiming }).eq('id', created.user.id)
+    }
 
     // Without an explicit redirectTo, generateLink falls back to whatever
     // the project's Auth "Site URL" is set to -- which defaults to

@@ -24,6 +24,13 @@
       });
       if (dedupeKey) localStorage.setItem(dedupeKey, '1');
     }
+    // purchase_completed funnel event -- same dedupe guard as the fbq
+    // call above (a page refresh on ?unlocked=1 must not double-log).
+    var funnelDedupeKey = sessionId ? 'apex_funnel_purchase_' + sessionId : null;
+    if (window.apexTrack && (!funnelDedupeKey || !localStorage.getItem(funnelDedupeKey))) {
+      apexTrack('purchase_completed', { product: 'checkride_prep', price: isNaN(amountCents) ? 29 : amountCents / 100 });
+      if (funnelDedupeKey) localStorage.setItem(funnelDedupeKey, '1');
+    }
   })();
 
   /* ── Auth guard — real Supabase session + profile ────────────── */
@@ -310,12 +317,36 @@
     }).catch(function (e) { console.error('applyUnlockPricing failed', e); });
   }
 
+  function lockedWidgetName(el) {
+    var card = el.closest('[data-locked-widget]');
+    return (card && card.dataset.widget) || 'unknown';
+  }
+
   document.querySelectorAll('[data-unlock-trigger]').forEach(function (el) {
     el.addEventListener('click', function (e) {
       e.stopPropagation();
+      if (window.apexTrack) apexTrack('upgrade_prompt_clicked', { widget: lockedWidgetName(el) });
       openUnlockModal();
     });
   });
+
+  // upgrade_prompt_viewed -- fires once per widget the first time its
+  // overlay actually scrolls into view. An unlocked widget's overlay is
+  // display:none (see applyUnlockState above) and never intersects, so
+  // this naturally only counts free members actually seeing the prompt.
+  if (window.apexTrack && window.IntersectionObserver) {
+    var upgradePromptSeen = {};
+    var upgradePromptObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        var widget = lockedWidgetName(entry.target);
+        if (upgradePromptSeen[widget]) return;
+        upgradePromptSeen[widget] = true;
+        apexTrack('upgrade_prompt_viewed', { widget: widget });
+      });
+    }, { threshold: 0.5 });
+    document.querySelectorAll('[data-unlock-trigger]').forEach(function (el) { upgradePromptObserver.observe(el); });
+  }
 
   /* ── Unlock Checkride Prep modal ────────────────────────────── */
   var unlockModalOverlay = document.getElementById('unlockModalOverlay');
@@ -3058,7 +3089,9 @@
   function checkLifecycleMilestones() {
     if (!member) return;
 
+    var isFirstLogin = !loggedEventTypes['first_login'];
     logEventOnce('first_login');
+    if (isFirstLogin && window.apexTrack) apexTrack('portal_first_login', { profile_id: member.id });
 
     if (DPE_DATA.some(function (d) { return studied[d.id]; })) {
       var wasNew = !loggedEventTypes['first_question_completed'];
@@ -3066,6 +3099,7 @@
       if (wasNew) {
         sendPortalEmail(member.email, 'You completed your first question 🎉', emailTemplate1FirstQuestion());
         logEmailSent('first_question_completed');
+        if (window.apexTrack) apexTrack('first_lesson_completed', { profile_id: member.id });
       }
     }
 

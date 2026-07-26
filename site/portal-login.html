@@ -63,13 +63,14 @@
     .login-card > p.sub { text-align: center; color: rgba(255,255,255,0.55); font-size: 14px; margin-bottom: 28px; line-height: 1.6; }
     .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
     .form-group label { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.6); }
-    .form-group input {
+    .form-group input, .form-group select {
       padding: 13px 14px; border: 1.5px solid rgba(255,255,255,0.1); border-radius: 8px;
       font-family: var(--font); font-size: 15px; color: #fff; background: rgba(11,31,58,0.6);
       outline: none; transition: border-color var(--transition), box-shadow var(--transition);
     }
-    .form-group input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(244,180,0,0.18); }
+    .form-group input:focus, .form-group select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(244,180,0,0.18); }
     .form-group input::placeholder { color: rgba(255,255,255,0.22); }
+    .form-group select option { background: #0B1F3A; color: #fff; }
     .login-error {
       display: none; background: rgba(220,60,60,0.12); border: 1px solid rgba(220,60,60,0.35);
       color: #ff8b8b; font-size: 13px; font-weight: 600; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px;
@@ -157,6 +158,17 @@
             <label for="signupEmail">Email</label>
             <input type="email" id="signupEmail" placeholder="you@email.com" autocomplete="email" required />
           </div>
+          <div class="form-group">
+            <label for="signupCheckrideTiming">When is your checkride?</label>
+            <select id="signupCheckrideTiming" required>
+              <option value="" disabled selected>Select one…</option>
+              <option value="within_14_days">Within 14 days</option>
+              <option value="within_30_days">Within 30 days</option>
+              <option value="within_60_days">Within 60 days</option>
+              <option value="more_than_60_days">More than 60 days away</option>
+              <option value="not_scheduled">Not scheduled yet</option>
+            </select>
+          </div>
           <button type="submit" class="btn btn--primary btn--full" id="signupSubmit">Create Free Account</button>
         </form>
         <p class="login-note" style="margin-top:12px">You'll get an email to set your password right away — no payment required to join.</p>
@@ -215,6 +227,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="portal-supabase.js"></script>
+  <script src="analytics-events.js"></script>
   <script>
     var loginForm = document.getElementById('loginForm');
     var loginError = document.getElementById('loginError');
@@ -228,6 +241,24 @@
     var signupForm = document.getElementById('signupForm');
     var signupError = document.getElementById('signupError');
     var signupSubmit = document.getElementById('signupSubmit');
+
+    // registration_started fires once, on the first field interaction in
+    // either signup path (both the free form and "Get Instant Access"
+    // share these same inputs) -- not on page load, since arriving at
+    // portal-login.html isn't itself starting registration.
+    (function () {
+      if (!window.apexTrack) return;
+      var fired = false;
+      ['signupName', 'signupEmail', 'signupCheckrideTiming'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('focus', function once() {
+          if (fired) return;
+          fired = true;
+          apexTrack('registration_started', { product: 'checkride_prep' });
+        });
+      });
+    })();
 
     function showView(name) {
       document.querySelectorAll('[data-view]').forEach(function (el) {
@@ -394,6 +425,7 @@
       signupError.classList.remove('show');
       var name = document.getElementById('signupName').value.trim();
       var email = document.getElementById('signupEmail').value.trim();
+      var checkrideTiming = document.getElementById('signupCheckrideTiming').value;
       if (!name || !email) return;
 
       signupSubmit.disabled = true;
@@ -409,7 +441,7 @@
       var dest = (new URLSearchParams(window.location.search)).get('dest') || '';
 
       apexSupabase.functions.invoke('create-free-account', {
-        body: { name: name, email: email, dest: dest }
+        body: { name: name, email: email, dest: dest, checkride_timing: checkrideTiming || null }
       }).then(function (res) {
         signupSubmit.disabled = false;
         signupSubmit.textContent = 'Create Free Account';
@@ -420,6 +452,7 @@
           });
         }
         if (window.gtag) gtag('event', 'sign_up', { method: 'email' });
+        if (window.apexTrack) apexTrack('registration_completed', { product: 'checkride_prep', checkride_timing: checkrideTiming || null, profile_id: res.data.id || null });
         // Account creation and the welcome email are two separate steps
         // server-side (create-free-account/index.ts) -- the account can
         // succeed even if Resend fails to send. Point them at "Forgot
@@ -458,6 +491,7 @@
       signupError.classList.remove('show');
       var name = document.getElementById('signupName').value.trim();
       var email = document.getElementById('signupEmail').value.trim();
+      var checkrideTiming = document.getElementById('signupCheckrideTiming').value;
       if (!name || !email) {
         signupError.textContent = 'Enter your name and email above first.';
         signupError.classList.add('show');
@@ -470,7 +504,7 @@
       var dest = (new URLSearchParams(window.location.search)).get('dest') || '';
 
       apexSupabase.functions.invoke('create-checkout-session', {
-        body: { purpose: 'signup-and-unlock-checkride-prep', name: name, email: email, dest: dest, origin: window.location.origin }
+        body: { purpose: 'signup-and-unlock-checkride-prep', name: name, email: email, dest: dest, origin: window.location.origin, checkride_timing: checkrideTiming || null }
       }).then(function (res) {
         if (res.error || !res.data || !res.data.url) {
           return extractInvokeError(res).then(function (msg) {
@@ -481,6 +515,10 @@
           });
         }
         if (window.gtag) gtag('event', 'sign_up', { method: 'email_instant_access' });
+        if (window.apexTrack) {
+          apexTrack('registration_completed', { product: 'checkride_prep', checkride_timing: checkrideTiming || null, checkout_step: 'instant_access' });
+          apexTrack('checkout_started', { product: 'checkride_prep', checkout_step: 'redirect_to_stripe', price: 29 });
+        }
         window.location.href = res.data.url;
       }).catch(function () {
         instantAccessSubmit.disabled = false;
