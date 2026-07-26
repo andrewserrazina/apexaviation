@@ -1718,12 +1718,6 @@
   /* ══════════════════════════════════════════════════════════════
      DASHBOARD STATS + CONTINUE WHERE YOU LEFT OFF
      ══════════════════════════════════════════════════════════════ */
-  function renderDashboardStats() {
-    var qStudied = DPE_DATA.filter(function (d) { return studied[d.id]; }).length;
-    var overallItems = DPE_DATA.length + SCENARIOS.length + LESSON_LIST.length;
-    var overallDone = qStudied + SCENARIOS.filter(function (s) { return studied[s.id]; }).length + LESSON_LIST.filter(function (id) { return lessonComplete[id]; }).length;
-    document.getElementById('statOverallPct').textContent = Math.round((overallDone / overallItems) * 100) + '%';
-  }
 
   /* ══════════════════════════════════════════════════════════════
      STUDY STREAKS
@@ -3253,6 +3247,144 @@
     var overallItems = DPE_DATA.length + SCENARIOS.length + LESSON_LIST.length;
     var overallDone = qStudied + SCENARIOS.filter(function (s) { return studied[s.id]; }).length + LESSON_LIST.filter(function (id) { return lessonComplete[id]; }).length;
     document.getElementById('statOverallPct').textContent = Math.round((overallDone / overallItems) * 100) + '%';
+
+    // DPE_DATA/SCENARIOS only populate for unlocked members (get-premium-content
+    // returns nothing otherwise) -- leave the marketing-copy defaults in the
+    // markup alone rather than overwrite them with a misleading "0".
+    if (DPE_DATA.length) document.getElementById('statQuestionsCount').textContent = DPE_DATA.length;
+    if (SCENARIOS.length) document.getElementById('statScenariosCount').textContent = SCENARIOS.length;
+
+    // "Available" means actually downloadable today, not a coming-soon
+    // placeholder card -- computed from the real vault markup so this
+    // number can never drift out of sync with what's actually in the vault.
+    var vaultCards = document.querySelectorAll('.portal-vault-card');
+    var vaultAvailable = Array.prototype.filter.call(vaultCards, function (card) {
+      return !card.querySelector('.portal-badge-locked');
+    }).length;
+    document.getElementById('statVaultCount').textContent = vaultAvailable + ' of ' + vaultCards.length;
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     MY TRAINING — "what should I study today" panel + study plan.
+     Every recommendation here is derived live from real progress data
+     (studied{}, CATEGORY_META coverage, SCENARIOS, myGroundRegistrations)
+     -- nothing here is static placeholder copy.
+     ══════════════════════════════════════════════════════════════ */
+  function weakestCategory() {
+    var cats = Object.keys(CATEGORY_META).map(function (cat) {
+      return { cat: cat, label: CATEGORY_META[cat].label, pct: categoryPct(cat) };
+    }).filter(function (c) { return c.pct < 1; }).sort(function (a, b) { return a.pct - b.pct; });
+    return cats.length ? cats[0] : null;
+  }
+
+  function truncate(text, max) {
+    return text.length > max ? text.slice(0, max - 1).trim() + '…' : text;
+  }
+
+  function renderMyTraining() {
+    var weakest = weakestCategory();
+    var unstudiedScenario = SCENARIOS.filter(function (s) { return !studied[s.id]; })[0];
+
+    var recommendation;
+    if (!member.checkridePrepUnlocked) {
+      // DPE_DATA/SCENARIOS/CATEGORY_META are all empty for a non-unlocked
+      // member (get-premium-content withholds real content server-side),
+      // so none of the below signals are meaningful yet -- recommend the
+      // unlock itself rather than falsely reporting "fully caught up".
+      recommendation = {
+        title: 'Unlock the Checkride Prep System',
+        body: '300+ DPE questions, scenario training, and AI oral exam practice — unlock once to start building real readiness data.',
+        go: function () { openUnlockModal(); }
+      };
+    } else if (qotdQuestion && !studied[qotdQuestion.id]) {
+      recommendation = {
+        title: "Answer today's oral exam question",
+        body: truncate(qotdQuestion.q, 88),
+        go: function () {
+          showSection('dashboard');
+          var el = document.getElementById('qotdRevealBtn');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      };
+    } else if (weakest) {
+      recommendation = {
+        title: 'Review your weakest area: ' + weakest.label,
+        body: Math.round(weakest.pct * 100) + '% complete — this is the fastest way to move your readiness score.',
+        go: function () { goToCategory(weakest.cat); }
+      };
+    } else if (unstudiedScenario) {
+      recommendation = {
+        title: 'Try a new scenario',
+        body: truncate(unstudiedScenario.title, 88),
+        go: function () { showSection('scenarios'); }
+      };
+    } else {
+      recommendation = {
+        title: "You're fully caught up",
+        body: 'Every question and scenario is marked studied. Keep your streak alive with a rapid-fire review.',
+        go: function () { showSection('dpe-library'); }
+      };
+    }
+
+    var actionEl = document.getElementById('studentNextActionCard');
+    actionEl.innerHTML = '<p class="portal-my-training__label">Next Best Action</p><h3>' + recommendation.title + '</h3><p>' + recommendation.body + '</p>';
+    actionEl.onclick = recommendation.go;
+
+    var continueBtn = document.getElementById('continueTrainingBtn');
+    if (continueBtn) continueBtn.onclick = function (e) { e.preventDefault(); recommendation.go(); };
+
+    var classEl = document.getElementById('studentNextClassCard');
+    var upcoming = myGroundRegistrations
+      .filter(function (r) { return r.session && new Date(r.session.scheduled_at) > new Date(); })
+      .sort(function (a, b) { return new Date(a.session.scheduled_at) - new Date(b.session.scheduled_at); })[0];
+    if (upcoming) {
+      var when = new Date(upcoming.session.scheduled_at).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      classEl.innerHTML = '<p class="portal-my-training__label">Next Class</p><h3>' + upcoming.session.title + '</h3><p>' + when + (upcoming.session.location ? ' · ' + upcoming.session.location : '') + '</p>';
+    } else {
+      classEl.innerHTML = '<p class="portal-my-training__label">Next Class</p><h3>No registered class yet</h3><p>Register for an upcoming live ground school class when you’re ready.</p>';
+    }
+    classEl.onclick = function () { showSection('ground-school'); };
+
+    var resumeEl = document.getElementById('studentResumeCard');
+    var nextQuestion = DPE_DATA.filter(function (d) { return !studied[d.id]; })[0];
+    if (!member.checkridePrepUnlocked) {
+      resumeEl.innerHTML = '<p class="portal-my-training__label">Resume Studying</p><h3>Unlock to begin</h3><p>The DPE Question Bank, scenarios, and lessons all start tracking your progress here once unlocked.</p>';
+      resumeEl.onclick = function () { openUnlockModal(); };
+    } else if (nextQuestion) {
+      resumeEl.innerHTML = '<p class="portal-my-training__label">Resume Studying</p><h3>' + nextQuestion.sectionLabel + '</h3><p>' + truncate(nextQuestion.q, 80) + '</p>';
+      resumeEl.onclick = function () { goToCategory(nextQuestion.section); };
+    } else {
+      resumeEl.innerHTML = '<p class="portal-my-training__label">Resume Studying</p><h3>Question bank complete</h3><p>Every DPE question is marked studied — try the Scenario Center or AI Oral Exam Practice next.</p>';
+      resumeEl.onclick = function () { showSection('scenarios'); };
+    }
+
+    var allScenariosDone = SCENARIOS.length > 0 && SCENARIOS.every(function (s) { return studied[s.id]; });
+    var planItems = !member.checkridePrepUnlocked ? [
+      { label: 'Unlock the Checkride Prep System', done: false, go: function () { openUnlockModal(); } },
+      { label: 'Answer your first oral exam question', done: false, go: function () { openUnlockModal(); } },
+      { label: 'Try your first training scenario', done: false, go: function () { openUnlockModal(); } }
+    ] : [
+      {
+        label: "Answer today's oral exam question",
+        done: !!(qotdQuestion && studied[qotdQuestion.id]),
+        go: recommendation.go
+      },
+      weakest
+        ? { label: 'Review ' + weakest.label + ' (' + Math.round(weakest.pct * 100) + '% complete)', done: false, go: function () { goToCategory(weakest.cat); } }
+        : { label: 'All ACS areas complete', done: true, go: function () { showSection('dpe-library'); } },
+      { label: allScenariosDone ? 'Scenario Training complete' : 'Complete Scenario Training', done: allScenariosDone, go: function () { showSection('scenarios'); } }
+    ];
+
+    var planEl = document.getElementById('studentStudyPlanList');
+    planEl.innerHTML = planItems.map(function (item, i) {
+      return '<div class="portal-plan-item' + (item.done ? ' portal-plan-item--done' : '') + '" data-plan-idx="' + i + '">' +
+        '<span class="portal-plan-item__check">' + (item.done ? '✓' : '') + '</span>' +
+        '<span class="portal-plan-item__label">' + item.label + '</span>' +
+      '</div>';
+    }).join('');
+    planEl.querySelectorAll('[data-plan-idx]').forEach(function (row, i) {
+      row.addEventListener('click', function () { planItems[i].go(); });
+    });
   }
 
   /* ── Init — waits for the real Supabase session + profile ────── */
@@ -3269,6 +3401,7 @@
       renderWeakAreas();
       renderAcsCoverage();
       renderQotd();
+      renderMyTraining();
       renderAchievements();
       checkAchievements();
       renderAdminIfApplicable();

@@ -433,6 +433,34 @@
 .portal-streak__current { font-size: 20px; font-weight: 800; color: #fff; }
 .portal-streak__meta { font-size: 12.5px; color: rgba(255,255,255,0.45); margin-top: 4px; }
 
+/* ─── My Training panel ("Next Best Action" + study plan) ────────── */
+.portal-my-training__head { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 22px; }
+.portal-my-training__head h2 { color: #fff; font-size: 19px; font-weight: 800; margin: 0 0 4px; }
+.portal-my-training__head > div > p { color: rgba(255,255,255,0.5); font-size: 13.5px; margin: 0; }
+.portal-my-training__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+.portal-my-training__panel {
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: var(--radius);
+  padding: 18px 20px; transition: border-color 0.2s ease, background 0.2s ease;
+}
+.portal-my-training__panel--primary { border-color: rgba(244,180,0,0.35); background: rgba(244,180,0,0.06); }
+.portal-my-training__panel:hover { border-color: rgba(244,180,0,0.4); background: rgba(244,180,0,0.05); }
+.portal-my-training__label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gold-light); margin: 0 0 8px; }
+.portal-my-training__panel h3 { color: #fff; font-size: 14.5px; font-weight: 700; margin: 0 0 6px; line-height: 1.4; }
+.portal-my-training__panel p { color: rgba(255,255,255,0.55); font-size: 12.5px; line-height: 1.6; margin: 0; }
+.portal-my-training__plan { display: flex; flex-direction: column; gap: 2px; border-top: 1px solid rgba(255,255,255,0.07); padding-top: 16px; }
+.portal-plan-item {
+  display: flex; align-items: center; gap: 12px; padding: 10px 8px; border-radius: 8px; cursor: pointer;
+  transition: background 0.2s ease;
+}
+.portal-plan-item:hover { background: rgba(255,255,255,0.04); }
+.portal-plan-item__check {
+  width: 20px; height: 20px; flex-shrink: 0; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.2);
+  display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: #0B1F3A;
+}
+.portal-plan-item--done .portal-plan-item__check { background: var(--gold); border-color: var(--gold); }
+.portal-plan-item__label { font-size: 13.5px; color: rgba(255,255,255,0.75); font-weight: 600; }
+.portal-plan-item--done .portal-plan-item__label { color: rgba(255,255,255,0.4); text-decoration: line-through; }
+
 /* ─── Weak areas ─────────────────────────────────────────────────── */
 .portal-weakarea-item {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
@@ -619,6 +647,7 @@
 }
 @media (max-width: 640px) {
   .portal-grid--2, .portal-grid--3, .portal-grid--4 { grid-template-columns: 1fr; }
+  .portal-my-training__grid { grid-template-columns: 1fr; }
   .portal-welcome { flex-direction: column; align-items: flex-start; }
   .portal-main { padding: 24px 16px 56px; }
   .portal-header h1 { font-size: 24px; }

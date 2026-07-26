@@ -77,54 +77,68 @@
       <nav class="portal-nav">
         <button class="portal-nav__item active" data-section="dashboard">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-          Dashboard
+          Home
         </button>
-        <button class="portal-nav__item" data-section="free-resources">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M20 12V7a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2h6M20 12l-3.5 3.5M20 12l-3.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Free Resources
-        </button>
+
+        <div class="portal-nav__section-label">Learn</div>
         <button class="portal-nav__item" data-section="ground-school">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422A12.083 12.083 0 0112 20.055 12.083 12.083 0 015.84 10.578L12 14z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Ground School Scheduling
-        </button>
-        <button class="portal-nav__item" data-section="learning-path">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 5h16M4 12h10M4 19h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M17 10l3 2-3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Learning Path
+          Ground School
         </button>
         <button class="portal-nav__item" data-section="checkride-prep" data-gated="true">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.976-.83 3.42 3.42 0 014.478 0 3.42 3.42 0 001.976.83 3.42 3.42 0 013.166 3.166 3.42 3.42 0 00.83 1.976 3.42 3.42 0 010 4.478 3.42 3.42 0 00-.83 1.976 3.42 3.42 0 01-3.166 3.166 3.42 3.42 0 00-1.976.83 3.42 3.42 0 01-4.478 0 3.42 3.42 0 00-1.976-.83 3.42 3.42 0 01-3.166-3.166 3.42 3.42 0 00-.83-1.976 3.42 3.42 0 010-4.478 3.42 3.42 0 00.83-1.976 3.42 3.42 0 013.166-3.166z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Checkride Prep Pack
+          ACS Lessons
+          <svg class="portal-nav__lock" data-lock-icon width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <!-- Feature preview, admin-only: renderAdminIfApplicable() is the only
+             thing that ever unhides this. Not a student-facing feature yet —
+             see GUIDED_NOTES_PROMPTS in portal-stable.js for the real access boundary. -->
+        <button class="portal-nav__item" data-section="guided-notes" id="guidedNotesNavItem" hidden>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 7h6M9 11h6M9 15h3M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Guided Notes
+          <span style="margin-left:auto;font-size:9px;font-weight:800;letter-spacing:0.06em;color:#0B1F3A;background:var(--gold);padding:2px 6px;border-radius:100px">TEST</span>
+        </button>
+
+        <div class="portal-nav__section-label">Practice</div>
+        <button class="portal-nav__item" data-section="dpe-library" data-gated="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 6.253v13M12 6.253C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          DPE Question Bank
+          <svg class="portal-nav__lock" data-lock-icon width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <button class="portal-nav__item" data-section="ai-dpe-practice" data-gated="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M8 10h8M8 14h5M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4-.83L3 20l1.05-3.16A7.86 7.86 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 11.5l1.5 1.5L15 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          AI Oral Exam Practice
+          <svg class="portal-nav__lock" data-lock-icon width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <button class="portal-nav__item" data-section="scenarios" data-gated="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Scenario Center
           <svg class="portal-nav__lock" data-lock-icon width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
         <button class="portal-nav__item" data-section="mock-oral">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M8 10h8M8 14h5M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4-.83L3 20l1.05-3.16A7.86 7.86 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Book a Mock Oral
         </button>
-        <button class="portal-nav__item" data-section="dpe-library" data-gated="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 6.253v13M12 6.253C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          DPE Questions Library
-          <svg class="portal-nav__lock" data-lock-icon width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        </button>
-        <button class="portal-nav__item" data-section="ai-dpe-practice" data-gated="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M8 10h8M8 14h5M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4-.83L3 20l1.05-3.16A7.86 7.86 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 11.5l1.5 1.5L15 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          AI DPE Practice
-          <svg class="portal-nav__lock" data-lock-icon width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        </button>
-        <button class="portal-nav__item" data-section="scenarios" data-gated="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Scenario Training Center
-          <svg class="portal-nav__lock" data-lock-icon width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        </button>
+
+        <div class="portal-nav__section-label">Progress</div>
         <button class="portal-nav__item" data-section="progress" data-gated="true">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Progress Tracking
+          Readiness &amp; Analytics
           <svg class="portal-nav__lock" data-lock-icon width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+
+        <div class="portal-nav__section-label">Resources</div>
+        <button class="portal-nav__item" data-section="free-resources">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M20 12V7a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2h6M20 12l-3.5 3.5M20 12l-3.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Free Resources
         </button>
         <button class="portal-nav__item" data-section="vault" data-gated="true">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 15a4 4 0 004-4V6a4 4 0 10-8 0v5a4 4 0 004 4zm0 0v5m-6-9a6 6 0 0012 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Download Vault
           <svg class="portal-nav__lock" data-lock-icon width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
+
+        <div class="portal-nav__section-label">Community</div>
         <button class="portal-nav__item" data-section="success-wall">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.6 6.9 7.4.5-5.7 4.8 1.9 7.2-6.2-4-6.2 4 1.9-7.2L2 9.4l7.4-.5L12 2z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Success Wall
@@ -138,14 +152,6 @@
         <button class="portal-nav__item" data-section="admin" id="adminNavItem" hidden>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Admin Analytics
-        </button>
-        <!-- Feature preview, admin-only: renderAdminIfApplicable() is the only
-             thing that ever unhides this. Not a student-facing feature yet —
-             see GUIDED_NOTES_PROMPTS in portal-stable.js for the real access boundary. -->
-        <button class="portal-nav__item" data-section="guided-notes" id="guidedNotesNavItem" hidden>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 7h6M9 11h6M9 15h3M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Guided Notes
-          <span style="margin-left:auto;font-size:9px;font-weight:800;letter-spacing:0.06em;color:#0B1F3A;background:var(--gold);padding:2px 6px;border-radius:100px">TEST</span>
         </button>
         <button class="portal-nav__item" id="signOutBtn">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -167,44 +173,7 @@
             <h2 id="welcomeHeading">Welcome back.</h2>
             <p>Here's where you left off in your Apex Advantage training.</p>
           </div>
-          <a href="#" class="btn btn--primary" data-goto="scenarios">Continue Training</a>
-        </div>
-
-        <!-- Checkride Countdown + Mock Oral Booking -->
-        <div class="portal-grid portal-grid--2" style="margin-bottom:24px">
-          <div class="portal-card portal-countdown" id="checkrideCountdownCard">
-            <div id="checkrideCountdownSet" style="display:none">
-              <div class="portal-header__eyebrow" style="margin-bottom:8px">Checkride Countdown</div>
-              <div class="portal-countdown__value" id="checkrideCountdownValue">—</div>
-              <button class="btn btn--ghost" id="checkrideDateEditBtn" style="margin-top:12px">Change date</button>
-            </div>
-            <div id="checkrideCountdownUnset">
-              <div class="portal-header__eyebrow" style="margin-bottom:8px">Checkride Countdown</div>
-              <p style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:14px">Add your expected checkride date to see a live countdown and get more urgency-aware reminders.</p>
-              <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-                <input type="date" id="checkrideDateInput" style="padding:11px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none" />
-                <button class="btn btn--primary" id="checkrideDateSaveBtn">Save Date</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="portal-card portal-mockoral">
-            <div class="portal-header__eyebrow" style="margin-bottom:8px">Mock Oral Exam</div>
-            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Book a Mock Oral</h3>
-            <p style="color:rgba(255,255,255,0.55);font-size:14px;line-height:1.6;margin-bottom:16px">Sit a full practice oral exam with an Apex instructor before the real thing.</p>
-            <button class="btn btn--primary" id="bookMockOralBtn">Book a Mock Oral</button>
-          </div>
-        </div>
-
-        <!-- Testimonial prompt (shown once readiness > 80%) -->
-        <div class="portal-card" id="testimonialPromptCard" style="display:none;margin-bottom:24px">
-          <div class="portal-header__eyebrow" style="margin-bottom:8px">Quick Question</div>
-          <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:10px">How has Apex Advantage helped you?</h3>
-          <textarea id="testimonialText" rows="3" placeholder="Share a few sentences about your experience…" style="width:100%;padding:12px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none;resize:vertical;margin-bottom:12px"></textarea>
-          <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <button class="btn btn--primary" id="testimonialSubmitBtn">Submit</button>
-            <button class="btn btn--ghost" id="testimonialDismissBtn">Not now</button>
-          </div>
+          <a href="#" class="btn btn--primary" id="continueTrainingBtn" data-goto="scenarios">Continue Training</a>
         </div>
 
         <!-- Readiness + Streak + Weak Areas -->
@@ -291,6 +260,43 @@
           <div class="portal-my-training__plan" id="studentStudyPlanList"></div>
         </div>
 
+        <!-- Checkride Countdown + Mock Oral Booking -->
+        <div class="portal-grid portal-grid--2" style="margin-bottom:24px">
+          <div class="portal-card portal-countdown" id="checkrideCountdownCard">
+            <div id="checkrideCountdownSet" style="display:none">
+              <div class="portal-header__eyebrow" style="margin-bottom:8px">Checkride Countdown</div>
+              <div class="portal-countdown__value" id="checkrideCountdownValue">—</div>
+              <button class="btn btn--ghost" id="checkrideDateEditBtn" style="margin-top:12px">Change date</button>
+            </div>
+            <div id="checkrideCountdownUnset">
+              <div class="portal-header__eyebrow" style="margin-bottom:8px">Checkride Countdown</div>
+              <p style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:14px">Add your expected checkride date to see a live countdown and get more urgency-aware reminders.</p>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                <input type="date" id="checkrideDateInput" style="padding:11px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none" />
+                <button class="btn btn--primary" id="checkrideDateSaveBtn">Save Date</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="portal-card portal-mockoral">
+            <div class="portal-header__eyebrow" style="margin-bottom:8px">Mock Oral Exam</div>
+            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Book a Mock Oral</h3>
+            <p style="color:rgba(255,255,255,0.55);font-size:14px;line-height:1.6;margin-bottom:16px">Sit a full practice oral exam with an Apex instructor before the real thing.</p>
+            <button class="btn btn--primary" id="bookMockOralBtn">Book a Mock Oral</button>
+          </div>
+        </div>
+
+        <!-- Testimonial prompt (shown once readiness > 80%) -->
+        <div class="portal-card" id="testimonialPromptCard" style="display:none;margin-bottom:24px">
+          <div class="portal-header__eyebrow" style="margin-bottom:8px">Quick Question</div>
+          <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:10px">How has Apex Advantage helped you?</h3>
+          <textarea id="testimonialText" rows="3" placeholder="Share a few sentences about your experience…" style="width:100%;padding:12px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none;resize:vertical;margin-bottom:12px"></textarea>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn--primary" id="testimonialSubmitBtn">Submit</button>
+            <button class="btn btn--ghost" id="testimonialDismissBtn">Not now</button>
+          </div>
+        </div>
+
         <!-- Question of the Day -->
         <div class="portal-card portal-qotd portal-locked-widget" data-locked-widget style="margin-bottom:24px">
           <div class="portal-locked-widget__content">
@@ -341,18 +347,18 @@
           </div>
           <div class="portal-card portal-stat">
             <div class="portal-stat__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 6.253v13M12 6.253C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <div class="portal-stat__value">300+</div>
+            <div class="portal-stat__value" id="statQuestionsCount">300+</div>
             <div class="portal-stat__label">DPE Questions Available</div>
           </div>
           <div class="portal-card portal-stat">
             <div class="portal-stat__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7l6-3 5.447 2.724A1 1 0 0121 7.618v10.764a1 1 0 01-1.447.894L15 17l-6 3z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <div class="portal-stat__value">10</div>
+            <div class="portal-stat__value" id="statScenariosCount">10+</div>
             <div class="portal-stat__label">Training Scenarios</div>
           </div>
           <div class="portal-card portal-stat">
             <div class="portal-stat__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zM16 9V7a4 4 0 10-8 0v2" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <div class="portal-stat__value">5</div>
-            <div class="portal-stat__label">Resources in Vault</div>
+            <div class="portal-stat__value" id="statVaultCount">—</div>
+            <div class="portal-stat__label">Resources Available</div>
           </div>
         </div>
 
@@ -1001,17 +1007,6 @@
             <a href="#" class="btn btn--ghost" data-goto="mock-oral">Book a Mock Oral →</a>
           </div>
         </div>
-      </section>
-
-      <!-- ─────────── PRIVATE PILOT LEARNING PATH ─────────── -->
-      <section class="portal-section" id="section-learning-path">
-        <div class="portal-header">
-          <div class="portal-header__eyebrow">Private Pilot Ground School</div>
-          <h1>Your learning path.</h1>
-          <p>Follow the Apex Advantage Private Pilot curriculum module by module, connect each topic to live classes, and track your completion as you prepare beyond the checkride.</p>
-        </div>
-        <div class="portal-learning-summary" id="learningPathSummary"></div>
-        <div id="learningPathModules"><p style="color:rgba(255,255,255,0.4);font-size:14px">Loading curriculum…</p></div>
       </section>
 
       <!-- ─────────── GROUND SCHOOL SCHEDULING ─────────── -->
