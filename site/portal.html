@@ -257,7 +257,18 @@
               <p>Open the daily oral-exam question and answer it out loud.</p>
             </div>
           </div>
+          <div class="portal-my-training__plan-head">
+            <span>✈️</span>
+            <h4>Today's Flight Plan</h4>
+          </div>
           <div class="portal-my-training__plan" id="studentStudyPlanList"></div>
+          <div class="portal-my-training__plan-complete" id="studentStudyPlanComplete" hidden>
+            <span>✓</span>
+            <div>
+              <h4>Flight plan complete — nice work today.</h4>
+              <p>Come back tomorrow to keep your streak alive.</p>
+            </div>
+          </div>
         </div>
 
         <!-- Checkride Countdown + Mock Oral Booking -->
@@ -1101,6 +1112,8 @@
           <p>All 300+ questions from the Private Pilot Checkride Prep Pack — Model Answer, Common Student Mistakes, what the DPE is evaluating, the ACS Connection, and Real-World Application for each. Tap a question to reveal it, mark it studied, or star it for review.</p>
         </div>
 
+        <div class="portal-suggested-strip" id="dpeSuggestedStrip" hidden></div>
+
         <div class="portal-practice-launch">
           <button class="portal-practice-card" id="launchCheckrideMode">
             <div class="portal-practice-card__icon">🎯</div>
@@ -1177,13 +1190,30 @@
         <div class="portal-grid portal-grid--2" id="scenarioGrid"><!-- populated by JS --></div>
       </section>
 
-      <!-- ─────────── PROGRESS TRACKING ─────────── -->
+      <!-- ─────────── READINESS & ANALYTICS ─────────── -->
       <section class="portal-section" id="section-progress">
         <div class="portal-header">
-          <div class="portal-header__eyebrow">Progress Tracking</div>
+          <div class="portal-header__eyebrow">Readiness &amp; Analytics</div>
           <h1>Your training checklist.</h1>
-          <p>Check off each item as you complete it. Your progress is saved automatically in this browser.</p>
+          <p>Check off each item as you complete it. Your study activity, streaks, and achievements are tracked here automatically.</p>
         </div>
+
+        <div class="portal-grid portal-grid--2" style="margin-bottom:24px;align-items:start">
+          <div class="portal-card">
+            <div class="portal-header__eyebrow" style="margin-bottom:14px">Study Activity — Last 12 Weeks</div>
+            <div id="studyHeatmap"><!-- populated by JS --></div>
+          </div>
+          <div class="portal-card">
+            <div class="portal-header__eyebrow" style="margin-bottom:14px">This Week</div>
+            <div id="weeklyActivityChart"><!-- populated by JS --></div>
+          </div>
+        </div>
+
+        <div class="portal-card" style="margin-bottom:24px">
+          <div class="portal-header__eyebrow" style="margin-bottom:14px">Achievements</div>
+          <div class="portal-achievements" id="achievementsGridProgress"><!-- populated by JS --></div>
+        </div>
+
         <div id="progressTracks"><!-- populated by JS --></div>
       </section>
 
