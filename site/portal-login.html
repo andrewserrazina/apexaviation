@@ -329,6 +329,21 @@
       document.getElementById('signupSub').textContent = FREE_GUIDE_COPY[signupDest].sub;
     }
 
+    // Prefills from the free Readiness Assessment (site/readiness-assessment.html)
+    // -- ?email=... and ?timing=... carry forward what the visitor already
+    // gave the quiz, so they don't have to re-enter their email or re-pick
+    // their checkride timing a second time right after providing it.
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var prefillEmail = params.get('email');
+      var prefillTiming = params.get('timing');
+      if (prefillEmail) document.getElementById('signupEmail').value = prefillEmail;
+      var timingSelect = document.getElementById('signupCheckrideTiming');
+      if (prefillTiming && timingSelect && Array.prototype.some.call(timingSelect.options, function (o) { return o.value === prefillTiming; })) {
+        timingSelect.value = prefillTiming;
+      }
+    })();
+
     // Landing here as ?view=signup-success&paid=1 means the visitor came
     // back from a completed "Get Instant Access" Stripe Checkout (see
     // instantAccessSubmit below) -- the account + unlock both already
