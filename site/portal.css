@@ -186,6 +186,17 @@
 }
 .portal-quicklink h3 { font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 4px; }
 .portal-quicklink p { font-size: 13px; color: rgba(255,255,255,0.5); line-height: 1.5; }
+/* Floated (not absolutely positioned) so a long title only wraps around
+   it on the first line it shares, instead of every line losing width to
+   reserved padding for a badge that only ever occupies one corner. */
+.portal-quicklink__badge {
+  float: right; margin: 1px 0 4px 8px;
+  font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--gold); border: 1px solid rgba(244,180,0,0.3); border-radius: 4px; padding: 3px 7px;
+}
+.portal-quicklink__action {
+  display: inline-block; margin-top: 12px; font-size: 12.5px; font-weight: 700; color: var(--gold);
+}
 
 /* ─── Section tabs (sub-filters within a section) ───────────────── */
 .portal-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }

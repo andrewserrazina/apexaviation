@@ -46,6 +46,7 @@ const navGroups = [
       { to: '/messages',      label: 'Messages',      roles: ['admin', 'instructor', 'student'] },
       { to: '/announcements', label: 'Announcements', roles: ['admin', 'instructor', 'student'] },
       { to: '/broadcast',     label: 'Broadcast',     roles: ['admin'] },
+      { to: '/nonbuyers',     label: 'Nonbuyers',     roles: ['admin'] },
     ],
   },
   {
