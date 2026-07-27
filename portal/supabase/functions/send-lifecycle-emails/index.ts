@@ -532,6 +532,87 @@ function emailTemplateAbandonedMockOral(firstName: string) {
     `<a href="${PORTAL_LOGIN_URL}?dest=mock-oral" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Finish Booking →</a>`
 }
 
+// ── Readiness Assessment lead follow-up (site/readiness-assessment.html) ──
+// Matches the assessment's own 8 category ids (see QUESTIONS in that
+// file) -- deliberately a separate map from CATEGORY_LABELS above, since
+// the assessment's categories (e.g. 'aircraft-systems') don't line up
+// 1:1 with the paid product's own weak-area category set.
+const RA_CATEGORY_LABELS: Record<string, string> = {
+  eligibility: 'Eligibility & Requirements', airworthiness: 'Airworthiness', weather: 'Weather',
+  airspace: 'Airspace', performance: 'Performance', 'aircraft-systems': 'Aircraft Systems',
+  aeromedical: 'Aeromedical & Human Factors', emergency: 'Emergency Operations',
+}
+const RA_TIMING_LABELS: Record<string, string> = {
+  within_14_days: 'within 14 days', within_30_days: 'within 30 days', within_60_days: 'within 60 days',
+  more_than_60_days: 'more than 60 days away', not_scheduled: 'not scheduled yet',
+}
+
+function raWeakCategories(categoryResults: Record<string, boolean> | null): string[] {
+  return Object.entries(categoryResults || {}).filter(([, ok]) => !ok).map(([cat]) => RA_CATEGORY_LABELS[cat] ?? cat)
+}
+
+function emailTemplateAssessmentDay1(firstName: string, score: number, level: string, weakCats: string[]) {
+  const weakLine = weakCats.length
+    ? `Your weakest area${weakCats.length > 1 ? 's were' : ' was'} ${weakCats.join(', ')}.`
+    : 'You answered every question correctly — nice work.'
+  return `<h2 style="color:#F4B400;margin:0 0 4px;">Your Readiness Assessment result: ${score}%</h2>` +
+    `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Hi ${firstName}, here's a recap of your free Checkride Readiness Assessment: <strong style="color:#fff;">${level}</strong>. ${weakLine}</p>` +
+    `<a href="${PORTAL_LOGIN_URL}?view=signup&dest=checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Build My Complete Study Plan →</a>`
+}
+
+function emailTemplateAssessmentDay3(firstName: string, weakCats: string[]) {
+  const focus = weakCats.length ? weakCats[0] : 'the areas you missed'
+  return `<h2 style="color:#F4B400;margin:0 0 4px;">Quick gut check, ${firstName}</h2>` +
+    `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">If you had to sit your oral exam tomorrow, could you confidently explain ${focus} to a DPE — not just recall the fact, but explain why it matters and apply it to a real scenario? That gap between "I know it" and "I can explain it under pressure" is exactly what the full Checkride Prep System closes.</p>` +
+    `<a href="${PORTAL_LOGIN_URL}?view=signup&dest=checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">See What's Included →</a>`
+}
+
+function emailTemplateAssessmentDay6(firstName: string, timingLabel: string) {
+  return `<h2 style="color:#F4B400;margin:0 0 4px;">Last look, ${firstName}</h2>` +
+    `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">You told us your checkride is ${timingLabel}. Whenever that is, the difference between scattered studying and a real plan is what actually shows up in the oral exam room. The Checkride Prep System gives you 300+ ACS-mapped questions, DPE-style scenarios, and an AI mock oral — built to close exactly the gaps your assessment turned up.</p>` +
+    `<a href="${PORTAL_LOGIN_URL}?view=signup&dest=checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Build My Complete Study Plan →</a>`
+}
+
+// One row per lead (not a log), so each of the three stages is checked
+// and marked directly on readiness_assessment_leads (v42) -- same
+// dedupe-on-the-row pattern as checkout_session_attempts. Stops the
+// instant the lead's email belongs to any real profile (free or
+// unlocked): at that point processCheckrideUpsell/processMilestones
+// above already nurture them, and sending both would double-email the
+// same person from two different sequences.
+async function processReadinessAssessmentFollowup(supabase: any, results: any) {
+  const { data: leads } = await supabase
+    .from('readiness_assessment_leads')
+    .select('id, email, full_name, checkride_timing, score, readiness_level, category_results, created_at, email_day1_sent_at, email_day3_sent_at, email_day6_sent_at')
+
+  for (const lead of leads ?? []) {
+    try {
+      const { data: existingProfile } = await supabase.from('profiles').select('id').eq('email', lead.email).maybeSingle()
+      if (existingProfile) continue
+
+      const daysOld = (Date.now() - new Date(lead.created_at).getTime()) / 86400000
+      const firstName = (lead.full_name || 'there').split(' ')[0]
+      const weakCats = raWeakCategories(lead.category_results)
+
+      if (daysOld >= 1 && !lead.email_day1_sent_at) {
+        await sendEmail(supabase, lead.email, `Your Readiness Assessment result: ${lead.score}%`, emailTemplateAssessmentDay1(firstName, lead.score, lead.readiness_level, weakCats))
+        await supabase.from('readiness_assessment_leads').update({ email_day1_sent_at: new Date().toISOString() }).eq('id', lead.id)
+        results.readiness_assessment_followup++
+      } else if (daysOld >= 3 && !lead.email_day3_sent_at) {
+        await sendEmail(supabase, lead.email, 'Quick gut check before your checkride', emailTemplateAssessmentDay3(firstName, weakCats))
+        await supabase.from('readiness_assessment_leads').update({ email_day3_sent_at: new Date().toISOString() }).eq('id', lead.id)
+        results.readiness_assessment_followup++
+      } else if (daysOld >= 6 && !lead.email_day6_sent_at) {
+        await sendEmail(supabase, lead.email, 'Last look at your Checkride Prep options', emailTemplateAssessmentDay6(firstName, RA_TIMING_LABELS[lead.checkride_timing] ?? 'coming up'))
+        await supabase.from('readiness_assessment_leads').update({ email_day6_sent_at: new Date().toISOString() }).eq('id', lead.id)
+        results.readiness_assessment_followup++
+      }
+    } catch (err) {
+      results.errors.push(`readiness_assessment_followup ${lead.id}: ${err}`)
+    }
+  }
+}
+
 // Abandoned-checkout recovery: a one-time nudge per checkout_session_
 // attempts row still uncompleted between ABANDONED_CHECKOUT_MIN_HOURS
 // and ABANDONED_CHECKOUT_MAX_DAYS after it was created. Deliberately
@@ -620,7 +701,7 @@ serve(async (req) => {
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
-  const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, checkride_upsell: 0, ground_followup: 0, abandoned_checkout: 0, seven_day_active: 0, errors: [] as string[] }
+  const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, checkride_upsell: 0, ground_followup: 0, abandoned_checkout: 0, seven_day_active: 0, readiness_assessment_followup: 0, errors: [] as string[] }
 
   // exam_type hard-coded to 'private_pilot' — see get-premium-content
   // for why instrument content must never be reachable this way yet.
@@ -652,6 +733,7 @@ serve(async (req) => {
 
   await processGroundSchoolFollowUps(supabase, results)
   await processAbandonedCheckouts(supabase, results)
+  await processReadinessAssessmentFollowup(supabase, results)
 
   return new Response(JSON.stringify(results), { headers: { 'Content-Type': 'application/json' } })
 })
