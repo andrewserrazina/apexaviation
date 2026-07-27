@@ -348,6 +348,27 @@ async function processInactivity(supabase: any, profile: any, results: any) {
   results.inactivity++
 }
 
+// seven_day_active_user -- the funnel's retention signal: a profile that
+// reached day 7+ and is still showing up, as opposed to processInactivity
+// above which flags the opposite case (gone quiet). Fires once ever, via
+// the same portal_events dedupe pattern as hasMilestoneFired/
+// markMilestoneSent, but this isn't an email -- just an analytics_events
+// row (see supabase-portal-schema-v39.sql) -- so it doesn't touch
+// portal_email_log.
+async function processSevenDayActive(supabase: any, profile: any, results: any) {
+  const daysSinceCreated = (Date.now() - new Date(profile.created_at).getTime()) / 86400000
+  if (daysSinceCreated < 7) return
+  if (await hasMilestoneFired(supabase, profile.id, 'seven_day_active_user')) return
+
+  const lastActive = profile.portal_last_active_at || profile.created_at
+  const daysInactive = (Date.now() - new Date(lastActive).getTime()) / 86400000
+  if (daysInactive > 3) return
+
+  await supabase.from('portal_events').insert({ profile_id: profile.id, event_type: 'seven_day_active_user' })
+  await supabase.from('analytics_events').insert({ event_name: 'seven_day_active_user', profile_id: profile.id, properties: {} })
+  results.seven_day_active++
+}
+
 async function processMilestones(supabase: any, profile: any, questions: Question[], categoryIds: string[], results: any) {
   const { data: qProgress } = await supabase.from('portal_question_progress').select('id').eq('profile_id', profile.id).eq('completed', true).limit(1)
   if (qProgress && qProgress.length) {
@@ -574,6 +595,16 @@ async function processAbandonedCheckouts(supabase: any, results: any) {
 
       await sendEmail(supabase, attempt.email, subject, html)
       results.abandoned_checkout++
+
+      // checkout_abandoned funnel event -- logged here (not client-side)
+      // since abandonment is only detectable server-side, once this same
+      // "still uncompleted after a while" check above has already run.
+      // See supabase-portal-schema-v39.sql for analytics_events.
+      await supabase.from('analytics_events').insert({
+        event_name: 'checkout_abandoned',
+        profile_id: attempt.profile_id || null,
+        properties: { purpose: attempt.purpose, checkout_step: 'abandoned' },
+      })
     } catch (err) {
       results.errors.push(`abandoned_checkout:${attempt.id}: ${err}`)
     }
@@ -589,7 +620,7 @@ serve(async (req) => {
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
-  const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, checkride_upsell: 0, ground_followup: 0, abandoned_checkout: 0, errors: [] as string[] }
+  const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, checkride_upsell: 0, ground_followup: 0, abandoned_checkout: 0, seven_day_active: 0, errors: [] as string[] }
 
   // exam_type hard-coded to 'private_pilot' — see get-premium-content
   // for why instrument content must never be reachable this way yet.
@@ -606,6 +637,7 @@ serve(async (req) => {
     if (!profile.email) continue
     try {
       await processInactivity(supabase, profile, results)
+      await processSevenDayActive(supabase, profile, results)
       if (profile.checkride_prep_unlocked) {
         await processMilestones(supabase, profile, allQuestions, categoryIds, results)
         await processWeakArea(supabase, profile, allQuestions, categoryIds, results)

@@ -935,6 +935,7 @@
     <div class="container">
       <div class="cp-section__eyebrow">The Real Difference</div>
       <h2 class="cp-section__title">MEMORIZING ANSWERS ISN&rsquo;T THE SAME AS BEING READY</h2>
+      <p class="cp-section__desc">Most applicants don&rsquo;t fail the oral because they lack information &mdash; they&rsquo;ve watched the YouTube videos, built the Quizlet deck, read the FAR/AIM. What&rsquo;s usually missing is knowing which ACS areas actually matter, a way to see real gaps instead of guessing, and enough structured repetition that studying doesn&rsquo;t feel like starting over every time you sit back down.</p>
 
       <div class="cp-contrast-grid">
         <div class="cp-contrast-col">
@@ -1009,7 +1010,7 @@
        at site/images/QuestionsLibrary.png, ModelAnswer.png,
        ScenarioTraining.png, ProgressTracking.png.
   ════════════════════════════════════════════════════════════════ -->
-  <section class="cp-section cp-section--deep cp-reveal">
+  <section class="cp-section cp-section--deep cp-reveal" id="product-preview">
     <div class="container">
       <div class="cp-section__eyebrow">Inside the Portal</div>
       <h2 class="cp-section__title">SEE WHAT YOU ARE GETTING</h2>
@@ -1119,6 +1120,30 @@
       </ul>
 
       <div class="cp-scope-note">This is a study companion, not a replacement for your instructor, the FAR/AIM, POH, or ACS — it is built to help you organize and apply what you've already learned.</div>
+
+      <h3 style="text-align:center;color:#fff;font-size:15px;font-weight:700;margin:44px 0 22px">Wherever You Are In Your Timeline</h3>
+      <div class="cp-system-grid">
+        <div class="cp-system-card">
+          <h3>CHECKRIDE WITHIN 14 DAYS</h3>
+          <p>Go straight to your weakest ACS areas and run a full simulated oral with AI DPE Practice — built for focused, final review, not starting from scratch.</p>
+        </div>
+        <div class="cp-system-card">
+          <h3>CHECKRIDE WITHIN 30 DAYS</h3>
+          <p>Work through the 300+ question library by ACS area, run a few practice orals, and walk in knowing exactly where you stand before test day.</p>
+        </div>
+        <div class="cp-system-card">
+          <h3>CHECKRIDE WITHIN 60 DAYS</h3>
+          <p>Enough runway to work systematically through every ACS area more than once and build real understanding, not a last-minute cram.</p>
+        </div>
+        <div class="cp-system-card">
+          <h3>MORE THAN 60 DAYS AWAY</h3>
+          <p>Study consistently from day one with a system that tracks your progress and surfaces weak areas early, instead of scrambling in the final week.</p>
+        </div>
+        <div class="cp-system-card cp-system-card--wide">
+          <h3>CHECKRIDE NOT SCHEDULED YET</h3>
+          <p>Use the question bank and ACS coverage tracking as a real gap-check before you set a date — so you schedule once you actually know where you stand.</p>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -1366,9 +1391,40 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="portal-supabase.js"></script>
+  <script src="analytics-events.js"></script>
   <script>
     // ── Analytics: page view ─────────────────────────────────────
+    // checkride_prep_page_view is this page's original, page-specific
+    // event name (kept for continuity with existing GA4 history/reports);
+    // landing_page_viewed is the generic funnel event apexTrack expects,
+    // logged to analytics_events too so the funnel report can count it.
     if (window.gtag) gtag('event', 'checkride_prep_page_view');
+    if (window.apexTrack) apexTrack('landing_page_viewed', { product: 'checkride_prep', price: 29 });
+
+    // ── Scroll-triggered funnel events: pricing section + product
+    // screenshots section, each fired once per page view ──────────
+    (function () {
+      if (!window.apexTrack || !window.IntersectionObserver) return;
+      var seen = {};
+      var targets = [
+        { id: 'checkout', event: 'pricing_viewed' },
+        { id: 'product-preview', event: 'product_preview_viewed' },
+      ];
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          var match = targets.find(function (t) { return document.getElementById(t.id) === entry.target; });
+          if (!match || seen[match.event]) return;
+          seen[match.event] = true;
+          apexTrack(match.event, { product: 'checkride_prep' });
+          observer.unobserve(entry.target);
+        });
+      }, { threshold: 0.4 });
+      targets.forEach(function (t) {
+        var el = document.getElementById(t.id);
+        if (el) observer.observe(el);
+      });
+    })();
 
     // ── CTA click tracking + checkout-start (this page only ever
     // links out to portal-login.html, which performs the actual
@@ -1376,9 +1432,11 @@
     // this page's perspective) ───────────────────────────────────
     document.querySelectorAll('[data-cp-cta]').forEach(function (el) {
       el.addEventListener('click', function () {
-        if (!window.gtag) return;
-        gtag('event', 'checkride_prep_cta_click', { location: el.dataset.cpLocation || 'unknown' });
-        gtag('event', 'checkride_prep_checkout_start', { location: el.dataset.cpLocation || 'unknown' });
+        if (window.gtag) {
+          gtag('event', 'checkride_prep_cta_click', { location: el.dataset.cpLocation || 'unknown' });
+          gtag('event', 'checkride_prep_checkout_start', { location: el.dataset.cpLocation || 'unknown' });
+        }
+        if (window.apexTrack) apexTrack('checkout_started', { product: 'checkride_prep', checkout_step: 'cta_click', location: el.dataset.cpLocation || 'unknown' });
       });
     });
 

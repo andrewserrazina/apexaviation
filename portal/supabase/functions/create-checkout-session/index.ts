@@ -70,6 +70,10 @@ const stripe = new Stripe(STRIPE_SECRET_KEY, {
 const GROUND_SCHOOL_PRICE_CENTS = 2500 // $25 per session
 const MOCK_ORAL_PRICE_CENTS = 9900 // $99 per 60-minute mock oral
 
+// Must match the check constraint on profiles.checkride_timing
+// (supabase-portal-schema-v39.sql).
+const CHECKRIDE_TIMINGS = ['within_14_days', 'within_30_days', 'within_60_days', 'more_than_60_days', 'not_scheduled']
+
 type PricingRow = { tier: string; amount_cents: number; founding_seats_remaining: number; launch_expires_at: string | null }
 
 function tierDescription(tier: string): string {
@@ -169,8 +173,9 @@ serve(async (req) => {
     }
 
     if (purpose === 'signup-and-unlock-checkride-prep') {
-      const { name, email, dest } = body
+      const { name, email, dest, checkride_timing } = body
       if (!name || !email) return jsonError('Missing required fields: name, email', 400)
+      const safeCheckrideTiming = CHECKRIDE_TIMINGS.includes(checkride_timing) ? checkride_timing : null
 
       const { data: existingProfile } = await supabase
         .from('profiles')
@@ -189,6 +194,9 @@ serve(async (req) => {
       })
       if (createErr) return jsonError(String(createErr), 500)
       const newProfileId = created.user.id
+      if (safeCheckrideTiming) {
+        await supabase.from('profiles').update({ checkride_timing: safeCheckrideTiming }).eq('id', newProfileId)
+      }
 
       // Brand new profile, so this is always founding-or-launch ($29),
       // never standard -- get_checkride_prep_pricing()'s launch window

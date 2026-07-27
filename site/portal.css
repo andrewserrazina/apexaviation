@@ -511,11 +511,18 @@
 .portal-qotd__actions .btn.active { background: rgba(244,180,0,0.15); border-color: var(--gold); color: var(--gold-light); }
 
 /* ─── ACS Coverage Map ───────────────────────────────────────────── */
-.portal-acs-row { margin-bottom: 14px; cursor: pointer; }
-.portal-acs-row:last-child { margin-bottom: 0; }
+.portal-acs-group { margin-bottom: 18px; }
+.portal-acs-group:last-child { margin-bottom: 0; }
+.portal-acs-row { cursor: pointer; }
 .portal-acs-row__head { display: flex; justify-content: space-between; margin-bottom: 6px; }
 .portal-acs-row__head span.name { font-size: 13.5px; font-weight: 600; color: rgba(255,255,255,0.8); }
 .portal-acs-row__head span.pct { font-size: 13px; font-weight: 700; color: var(--gold); }
+.portal-acs-subtasks { margin: 12px 0 4px 16px; padding-left: 14px; border-left: 2px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 12px; }
+.portal-acs-subtask { cursor: pointer; }
+.portal-acs-subtask__head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 5px; }
+.portal-acs-subtask__head .code { font-size: 11px; font-weight: 800; color: var(--gold); }
+.portal-acs-subtask__head .name { font-size: 12.5px; font-weight: 600; color: rgba(255,255,255,0.65); flex: 1; }
+.portal-acs-subtask__head .pct { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.5); }
 
 /* ─── Checkride Mode / Rapid Fire launch cards ───────────────────── */
 /* ─── Suggested-for-you strip (DPE Question Bank) ────────────────── */

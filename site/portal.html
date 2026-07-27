@@ -178,7 +178,7 @@
 
         <!-- Readiness + Streak + Weak Areas -->
         <div class="portal-grid portal-grid--3" style="margin-bottom:24px">
-          <div class="portal-card portal-readiness portal-locked-widget" data-locked-widget>
+          <div class="portal-card portal-readiness portal-locked-widget" data-locked-widget data-widget="readiness">
             <div class="portal-locked-widget__content">
               <div class="portal-readiness__gauge">
                 <svg width="128" height="128" viewBox="0 0 128 128">
@@ -200,7 +200,7 @@
             </div>
           </div>
 
-          <div class="portal-card portal-locked-widget" data-locked-widget>
+          <div class="portal-card portal-locked-widget" data-locked-widget data-widget="streak">
             <div class="portal-locked-widget__content">
               <div class="portal-header__eyebrow" style="margin-bottom:14px">Study Streak</div>
               <div class="portal-streak">
@@ -218,7 +218,7 @@
             </div>
           </div>
 
-          <div class="portal-card portal-locked-widget" data-locked-widget>
+          <div class="portal-card portal-locked-widget" data-locked-widget data-widget="weak-areas">
             <div class="portal-locked-widget__content">
               <div class="portal-header__eyebrow" style="margin-bottom:14px">Areas to Focus On</div>
               <div id="weakAreasList"><p style="color:rgba(255,255,255,0.4);font-size:13px">Keep studying — we'll surface your weakest ACS areas here.</p></div>
@@ -309,7 +309,7 @@
         </div>
 
         <!-- Question of the Day -->
-        <div class="portal-card portal-qotd portal-locked-widget" data-locked-widget style="margin-bottom:24px">
+        <div class="portal-card portal-qotd portal-locked-widget" data-locked-widget data-widget="qotd" style="margin-bottom:24px">
           <div class="portal-locked-widget__content">
             <div class="portal-qotd__head">
               <div class="portal-header__eyebrow" style="margin-bottom:0">📅 Today's Oral Exam Question</div>
@@ -338,9 +338,10 @@
         </div>
 
         <!-- ACS Coverage Map -->
-        <div class="portal-card portal-locked-widget" data-locked-widget style="margin-bottom:24px">
+        <div class="portal-card portal-locked-widget" data-locked-widget data-widget="acs-coverage" style="margin-bottom:24px">
           <div class="portal-locked-widget__content">
-            <div class="portal-header__eyebrow" style="margin-bottom:16px">ACS Coverage Map</div>
+            <div class="portal-header__eyebrow" style="margin-bottom:4px">ACS Coverage Map</div>
+            <p style="color:rgba(255,255,255,0.4);font-size:12px;margin-bottom:16px">Areas of Operation and Tasks this question bank covers, mapped to the current FAA Private Pilot ACS (FAA-S-ACS-6C). Flight-maneuver areas are demonstrated with your instructor, not tested here.</p>
             <div id="acsCoverageList"></div>
           </div>
           <div class="portal-locked-widget__overlay" data-unlock-trigger style="display:none">
@@ -1492,6 +1493,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="portal-supabase.js?v=restore-8eca623"></script>
+  <script src="analytics-events.js"></script>
   <script src="portal-stable.js?v=20260709"></script>
 </body>
 </html>
