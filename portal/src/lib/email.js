@@ -141,11 +141,26 @@ async function mapWithConcurrency(items, limit, fn) {
 // send-email function as everything else in this file, then logs the
 // broadcast + its recipients so admins can see who's already been
 // contacted and avoid duplicate outreach.
-export async function sendAdminEmail({ recipients, subject, message, senderId }) {
+//
+// isHtml controls how `message` drops into the template: plain-text mode
+// (default) wraps it in a <p style="white-space:pre-wrap"> so literal
+// newlines the admin typed still show up as line breaks. HTML mode skips
+// that wrapper entirely and inserts `message` as-is -- wrapping arbitrary
+// admin-authored markup (which may contain its own <p>/<div>/<table>
+// tags) in another <p> would be invalid nesting, and pre-wrap would turn
+// every bit of the admin's own source indentation into visible gaps in
+// the sent email. Nothing here escapes or sanitizes `message` in either
+// mode -- this has always been true of this function (see send-email's
+// own handling), so HTML mode doesn't change the trust boundary, only
+// which wrapper is used.
+export async function sendAdminEmail({ recipients, subject, message, senderId, isHtml = false }) {
+  const body = isHtml
+    ? message
+    : `<p style="font-size:15px;line-height:1.75;margin:0;white-space:pre-wrap;color:#e0e0e0;">${message}</p>`
   const html = template(`
     <h2 style="color:#F4B400;margin:0 0 4px;">${subject}</h2>
     <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:20px;margin:20px 0;">
-      <p style="font-size:15px;line-height:1.75;margin:0;white-space:pre-wrap;color:#e0e0e0;">${message}</p>
+      ${body}
     </div>
   `)
 

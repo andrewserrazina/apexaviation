@@ -37,6 +37,7 @@ export default function Broadcast() {
   const [countError, setCountError] = useState('')
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
+  const [isHtml, setIsHtml] = useState(false)
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState('')
   const [error, setError] = useState('')
@@ -85,10 +86,11 @@ export default function Broadcast() {
       if (fetchError) throw fetchError
       if (!recipients || recipients.length === 0) throw new Error('No matching students to email.')
 
-      const { sent } = await sendAdminEmail({ recipients, subject, message, senderId: profile.id })
+      const { sent } = await sendAdminEmail({ recipients, subject, message, senderId: profile.id, isHtml })
       setResult(`Sent to ${sent} student(s).`)
       setSubject('')
       setMessage('')
+      setIsHtml(false)
       loadHistory()
     } catch (err) {
       setError(err.message)
@@ -127,8 +129,34 @@ export default function Broadcast() {
 
         <div className="form-group">
           <label>Message</label>
-          <textarea value={message} onChange={e => setMessage(e.target.value)} rows={8} required placeholder="Write your message…" />
+          <textarea
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+            rows={8}
+            required
+            placeholder={isHtml ? '<p>Write your HTML…</p>' : 'Write your message…'}
+            style={isHtml ? { fontFamily: 'monospace', fontSize: 13 } : undefined}
+          />
         </div>
+
+        <div className="form-group">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+            <input type="checkbox" checked={isHtml} onChange={e => setIsHtml(e.target.checked)} />
+            This message is HTML
+          </label>
+        </div>
+
+        {isHtml && message && (
+          <div className="form-group">
+            <label>Preview</label>
+            <iframe
+              title="Email HTML preview"
+              srcDoc={message}
+              sandbox=""
+              style={{ width: '100%', height: 220, border: '1px solid var(--border, #333)', borderRadius: 6, background: '#fff' }}
+            />
+          </div>
+        )}
 
         <div className="modal-form__actions">
           <div style={{ marginLeft: 'auto' }}>

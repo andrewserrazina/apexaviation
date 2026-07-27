@@ -33,7 +33,7 @@ export default function Students() {
 
   // Email modal
   const [emailModal, setEmailModal] = useState(null) // { student }
-  const [emailForm, setEmailForm] = useState({ subject: '', message: '' })
+  const [emailForm, setEmailForm] = useState({ subject: '', message: '', isHtml: false })
   const [emailSending, setEmailSending] = useState(false)
   const [emailError, setEmailError] = useState('')
   const [emailSent, setEmailSent] = useState(false)
@@ -90,7 +90,7 @@ export default function Students() {
   }
 
   function openEmail(student) {
-    setEmailForm({ subject: '', message: '' })
+    setEmailForm({ subject: '', message: '', isHtml: false })
     setEmailError('')
     setEmailSent(false)
     setEmailModal({ student })
@@ -106,6 +106,7 @@ export default function Students() {
         subject: emailForm.subject,
         message: emailForm.message,
         senderId: profile.id,
+        isHtml: emailForm.isHtml,
       })
       setEmailSent(true)
     } catch (err) {
@@ -390,8 +391,32 @@ export default function Students() {
               </div>
               <div className="form-group">
                 <label>Message</label>
-                <textarea value={emailForm.message} onChange={e => setEmailForm(f => ({ ...f, message: e.target.value }))} rows={6} required placeholder="Write your message…" />
+                <textarea
+                  value={emailForm.message}
+                  onChange={e => setEmailForm(f => ({ ...f, message: e.target.value }))}
+                  rows={6}
+                  required
+                  placeholder={emailForm.isHtml ? '<p>Write your HTML…</p>' : 'Write your message…'}
+                  style={emailForm.isHtml ? { fontFamily: 'monospace', fontSize: 13 } : undefined}
+                />
               </div>
+              <div className="form-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={emailForm.isHtml} onChange={e => setEmailForm(f => ({ ...f, isHtml: e.target.checked }))} />
+                  This message is HTML
+                </label>
+              </div>
+              {emailForm.isHtml && emailForm.message && (
+                <div className="form-group">
+                  <label>Preview</label>
+                  <iframe
+                    title="Email HTML preview"
+                    srcDoc={emailForm.message}
+                    sandbox=""
+                    style={{ width: '100%', height: 200, border: '1px solid var(--border, #333)', borderRadius: 6, background: '#fff' }}
+                  />
+                </div>
+              )}
               <div className="modal-form__actions">
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
                   <button type="button" className="btn-secondary" onClick={() => setEmailModal(null)}>Cancel</button>
