@@ -71,12 +71,19 @@ export default function Nonbuyers() {
 
     const ids = (profiles ?? []).map(p => p.id)
     if (ids.length === 0) { setRows([]); setLoading(false); return }
+    const emails = (profiles ?? []).map(p => p.email).filter(Boolean)
 
-    const [{ data: qProgress }, { data: attempts }, { data: emailLog }, { data: feedback }] = await Promise.all([
+    // readiness_assessment_leads (site/readiness-assessment.html) has no
+    // profile_id -- it's filled out before any account exists -- so this
+    // is matched by email instead. A visitor could retake the assessment,
+    // so this is ordered newest-first and only the first match per email
+    // (below) is kept, same pattern as latestAttempt/latestEmail.
+    const [{ data: qProgress }, { data: attempts }, { data: emailLog }, { data: feedback }, { data: assessments }] = await Promise.all([
       supabase.from('portal_question_progress').select('profile_id, completed').in('profile_id', ids),
       supabase.from('checkout_session_attempts').select('profile_id, purpose, created_at, completed_at').in('profile_id', ids).order('created_at', { ascending: false }),
       supabase.from('portal_email_log').select('profile_id, email_type, sent_at').in('profile_id', ids).order('sent_at', { ascending: false }),
       supabase.from('member_feedback').select('*').in('profile_id', ids),
+      emails.length ? supabase.from('readiness_assessment_leads').select('email, score, readiness_level, category_results, created_at').in('email', emails).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
     ])
 
     const lessonsCompleted = {}
@@ -95,12 +102,16 @@ export default function Nonbuyers() {
     const feedbackByProfile = {}
     for (const f of feedback ?? []) feedbackByProfile[f.profile_id] = f
 
+    const assessmentByEmail = {}
+    for (const a of assessments ?? []) if (!assessmentByEmail[a.email]) assessmentByEmail[a.email] = a
+
     setRows(profiles.map(p => ({
       ...p,
       lessonsCompleted: lessonsCompleted[p.id] ?? 0,
       lastAttempt: latestAttempt[p.id] ?? null,
       lastEmail: latestEmail[p.id] ?? null,
       feedback: feedbackByProfile[p.id] ?? null,
+      assessment: p.email ? (assessmentByEmail[p.email] ?? null) : null,
     })))
     setLoading(false)
   }
@@ -180,13 +191,14 @@ export default function Nonbuyers() {
                 <th>Last Active</th>
                 <th>Lessons</th>
                 <th>Checkout</th>
+                <th>Assessment</th>
                 <th>Feedback</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
-                <tr><td colSpan={9} className="empty-state">No nonbuyers found — everyone registered has unlocked Checkride Prep.</td></tr>
+                <tr><td colSpan={10} className="empty-state">No nonbuyers found — everyone registered has unlocked Checkride Prep.</td></tr>
               ) : rows.map(r => {
                 const active = daysAgo(r.portal_last_active_at)
                 return (
@@ -207,6 +219,7 @@ export default function Nonbuyers() {
                             : <span className="badge badge--yellow">Abandoned</span>)
                         : '—'}
                     </td>
+                    <td>{r.assessment ? `${r.assessment.score}% — ${r.assessment.readiness_level}` : '—'}</td>
                     <td>{r.feedback?.feedback_category ? (FEEDBACK_OPTIONS.find(o => o.value === r.feedback.feedback_category)?.label ?? r.feedback.feedback_category) : '—'}</td>
                     <td>
                       <div style={{ display: 'flex', gap: 10 }}>
@@ -255,6 +268,14 @@ export default function Nonbuyers() {
               <label>Most Recent Email</label>
               <p style={{ fontSize: 14 }}>
                 {detailRow.lastEmail ? `${detailRow.lastEmail.email_type} — ${fmtDate(detailRow.lastEmail.sent_at)}` : 'None sent yet'}
+              </p>
+            </div>
+            <div className="form-group">
+              <label>Readiness Assessment</label>
+              <p style={{ fontSize: 14 }}>
+                {detailRow.assessment
+                  ? `${detailRow.assessment.score}% — ${detailRow.assessment.readiness_level} (taken ${fmtDate(detailRow.assessment.created_at)})`
+                  : 'Hasn’t taken the free assessment'}
               </p>
             </div>
 
