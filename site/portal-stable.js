@@ -305,15 +305,15 @@
           modalNote.textContent = 'Founding pricing has ended — $49 for full access';
         }
       }
-      // The DPE guide's final CTA card (site/portal.html
-      // #section-dpe-questions) mirrors the same live price/urgency
-      // rather than the static "$29" it used to hardcode.
-      var guideCtaPrice = document.getElementById('dpeGuideCtaPrice');
-      if (guideCtaPrice) {
-        guideCtaPrice.textContent = row.tier === 'launch'
+      // Every "Unlock the Complete Prep Pack" CTA across the free guide
+      // pages and the Free Resources hub (site/portal.html) mirrors the
+      // same live price/urgency rather than a static "$29" hardcoded per
+      // copy of the button.
+      document.querySelectorAll('.portal-live-price').forEach(function (el) {
+        el.textContent = row.tier === 'launch'
           ? priceLabel + ' — ' + launchCountdownLabel(row.launch_expires_at)
           : priceLabel;
-      }
+      });
     }).catch(function (e) { console.error('applyUnlockPricing failed', e); });
   }
 
