@@ -38,6 +38,7 @@ const OperationsSettings = lazy(() => import('./pages/operations/OperationsSetti
 const PortalSelector = lazy(() => import('./pages/PortalSelector'))
 const FlightStudentDashboard = lazy(() => import('./pages/FlightStudentDashboard'))
 const AdminGroundSchoolSchedule = lazy(() => import('./pages/AdminGroundSchoolSchedule'))
+const XpLedger = lazy(() => import('./pages/XpLedger'))
 
 export default function App() {
   return (
@@ -80,6 +81,7 @@ export default function App() {
               <Route path="/payroll"         element={<ProtectedRoute adminOnly><Payroll /></ProtectedRoute>} />
               <Route path="/mock-oral-requests" element={<ProtectedRoute roles={['admin', 'instructor']}><MockOralRequests /></ProtectedRoute>} />
               <Route path="/instructor-hub"  element={<ProtectedRoute><InstructorHub /></ProtectedRoute>} />
+              <Route path="/xp-ledger"       element={<ProtectedRoute adminOnly><XpLedger /></ProtectedRoute>} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </Suspense>
