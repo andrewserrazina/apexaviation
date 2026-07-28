@@ -894,6 +894,18 @@
   align-self: flex-end; background: rgba(244,180,0,0.14); color: #fff;
   border-bottom-right-radius: 4px;
 }
+.portal-chat__bubble--assistant {
+  align-self: flex-start; background: #16294a; color: rgba(255,255,255,0.88);
+  border-bottom-left-radius: 4px;
+}
+.portal-chat__bubble--assistant::before {
+  content: "ASK ANDREW"; display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  color: var(--gold); margin-bottom: 5px; text-transform: uppercase;
+}
+.portal-chat__bubble--user {
+  align-self: flex-end; background: rgba(244,180,0,0.14); color: #fff;
+  border-bottom-right-radius: 4px;
+}
 .portal-chat__typing {
   display: flex; align-items: center; gap: 4px; padding: 0 22px 14px;
 }

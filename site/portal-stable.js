@@ -78,7 +78,8 @@
         checkridePrepUnlocked: !!(profile && profile.checkride_prep_unlocked),
         totalXp: (profile && profile.total_xp) || 0,
         currentRank: (profile && profile.current_rank) || 'student_pilot',
-        streakFreezesBanked: (profile && profile.streak_freezes_banked) || 0
+        streakFreezesBanked: (profile && profile.streak_freezes_banked) || 0,
+        hasMembership: false
       };
       populateMember();
       applyUnlockState();
@@ -94,11 +95,25 @@
       apexSupabase.rpc('log_daily_dispatch_open').then(function (res) {
         if (res && res.error) console.warn('log_daily_dispatch_open failed:', res.error);
       });
-      return loadPremiumContent().then(function () {
+      return Promise.all([loadPremiumContent(), loadMembershipCapability()]).then(function () {
         return initPortalData();
       });
     });
   }).catch(function (e) { if (e !== 'no-session') console.error(e); });
+
+  /* ── Membership capability check — for gating Membership-exclusive
+     sections (Ask Andrew) client-side. Same "UI convenience, not the
+     security boundary" caveat as loadPremiumContent below: the real
+     enforcement is ai-cfi-chat's requireCapability() check against
+     get_member_capabilities() server-side (supabase-portal-schema-v51/
+     v53.sql). Admins always pass client-side too, matching every other
+     gated section in this file. */
+  function loadMembershipCapability() {
+    if (member.role === 'admin') { member.hasMembership = true; return Promise.resolve(); }
+    return apexSupabase.rpc('member_has_active_membership', { p_profile_id: member.id }).then(function (res) {
+      member.hasMembership = !!(res && res.data);
+    }).catch(function () { member.hasMembership = false; });
+  }
 
   /* ── Premium content — fetched server-side, never bundled here ──
      DPE_DATA/CATEGORY_META/QUICK_REF/FRAMEWORK_LESSON/CHECKRIDE_DAY_LESSON
@@ -208,6 +223,7 @@
   var overlay = document.getElementById('sidebarOverlay');
 
   var GATED_SECTIONS = ['checkride-prep', 'dpe-library', 'ai-dpe-practice', 'scenarios', 'progress', 'vault', 'missions', 'pilot-journey'];
+  var MEMBERSHIP_GATED_SECTIONS = ['ask-andrew'];
 
   function showSection(id) {
     if (!document.getElementById('section-' + id)) id = 'dashboard';
@@ -215,6 +231,11 @@
       closeSidebar();
       openUnlockModal();
       return;
+    }
+    if (member && !member.hasMembership && MEMBERSHIP_GATED_SECTIONS.indexOf(id) !== -1) {
+      closeSidebar();
+      toast('Ask Andrew is included with Apex Advantage Membership — join below.');
+      id = 'account';
     }
     // Guided Notes is an admin-only feature preview -- not just hidden from
     // the nav. A non-admin who already has member.role loaded (e.g. clicked
@@ -233,6 +254,7 @@
     if (id === 'guided-notes' && member.role === 'admin') loadGuidedNotes();
     if (id === 'success-wall') renderSuccessWall();
     if (id === 'ground-school') loadGroundSchool();
+    if (id === 'ask-andrew') loadAskAndrewHistory();
   }
   window.apexShowSection = showSection;
 
@@ -292,8 +314,12 @@
   /* ── Unlock state: nav lock badges + blurred dashboard widgets ─ */
   function applyUnlockState() {
     var unlocked = !!(member && member.checkridePrepUnlocked);
-    document.querySelectorAll('.portal-nav__item[data-gated] [data-lock-icon]').forEach(function (el) {
+    document.querySelectorAll('.portal-nav__item[data-gated="true"] [data-lock-icon]').forEach(function (el) {
       el.style.display = unlocked ? 'none' : '';
+    });
+    var memberUnlocked = !!(member && member.hasMembership);
+    document.querySelectorAll('.portal-nav__item[data-gated="membership"] [data-lock-icon]').forEach(function (el) {
+      el.style.display = memberUnlocked ? 'none' : '';
     });
     document.querySelectorAll('[data-locked-widget]').forEach(function (card) {
       var overlay = card.querySelector('.portal-locked-widget__overlay');
@@ -628,6 +654,89 @@
       });
     });
   })();
+
+  /* ── Ask Andrew (AI Flight Instructor) ─────────────────────────
+     One continuous thread per member (unlike AI DPE Practice's bounded,
+     restartable sessions above) -- ai-cfi-chat/index.ts owns all writes
+     to ai_cfi_messages; this code only reads history directly (RLS
+     select-own) and calls the function to send/receive a turn.
+     Gated by member.hasMembership client-side (loadMembershipCapability
+     above); the real enforcement is ai-cfi-chat's requireCapability()
+     check server-side. */
+  var askAndrewLoaded = false;
+  var askAndrewBusy = false;
+
+  function addAskAndrewBubble(role, text) {
+    var messagesEl = document.getElementById('askAndrewMessages');
+    if (!messagesEl) return;
+    var bubble = document.createElement('div');
+    bubble.className = 'portal-chat__bubble portal-chat__bubble--' + role;
+    bubble.textContent = text;
+    messagesEl.appendChild(bubble);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function setAskAndrewBusy(isBusy) {
+    askAndrewBusy = isBusy;
+    var typingEl = document.getElementById('askAndrewTyping');
+    var inputEl = document.getElementById('askAndrewInput');
+    var sendBtn = document.getElementById('askAndrewSendBtn');
+    if (typingEl) typingEl.hidden = !isBusy;
+    if (inputEl) inputEl.disabled = isBusy;
+    if (sendBtn) sendBtn.disabled = isBusy;
+    var messagesEl = document.getElementById('askAndrewMessages');
+    if (isBusy && messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function loadAskAndrewHistory() {
+    if (askAndrewLoaded || !member || !member.hasMembership) return;
+    askAndrewLoaded = true;
+    apexSupabase.from('ai_cfi_messages').select('role, content').eq('profile_id', member.id)
+      .order('created_at', { ascending: true }).limit(200).then(function (res) {
+        var messagesEl = document.getElementById('askAndrewMessages');
+        if (!messagesEl) return;
+        if (!res.data || !res.data.length) {
+          messagesEl.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:13px">Ask anything — regulations, procedures, checkride prep, career questions. Nothing to see yet, so ask your first question below.</p>';
+          return;
+        }
+        messagesEl.innerHTML = '';
+        res.data.forEach(function (m) { addAskAndrewBubble(m.role, m.content); });
+      });
+  }
+
+  var askAndrewForm = document.getElementById('askAndrewForm');
+  if (askAndrewForm) {
+    askAndrewForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (askAndrewBusy) return;
+      var inputEl = document.getElementById('askAndrewInput');
+      var errorEl = document.getElementById('askAndrewError');
+      var text = inputEl.value.trim();
+      if (!text) return;
+      if (errorEl) errorEl.classList.remove('show');
+      var messagesEl = document.getElementById('askAndrewMessages');
+      if (messagesEl && messagesEl.querySelector('p')) messagesEl.innerHTML = '';
+      addAskAndrewBubble('user', text);
+      inputEl.value = '';
+      setAskAndrewBusy(true);
+
+      apexSupabase.functions.invoke('ai-cfi-chat', {
+        body: { message: text },
+        headers: { Authorization: 'Bearer ' + accessToken }
+      }).then(function (res) {
+        setAskAndrewBusy(false);
+        if (res.error || !res.data || res.data.error) {
+          return extractInvokeError(res).then(function (msg) {
+            if (errorEl) { errorEl.textContent = msg; errorEl.classList.add('show'); }
+          });
+        }
+        addAskAndrewBubble('assistant', res.data.message);
+      }).catch(function () {
+        setAskAndrewBusy(false);
+        if (errorEl) { errorEl.textContent = 'Could not send that. Please try again.'; errorEl.classList.add('show'); }
+      });
+    });
+  }
 
   /* ── Ground School Scheduling ───────────────────────────────── */
   var groundSchoolLoaded = false;
@@ -4089,6 +4198,7 @@
 
   /* ── Init — waits for the real Supabase session + profile ────── */
   function initPortalData() {
+    applyUnlockState();
     return loadProgress().then(function () {
       renderLessons();
       renderQuickRef();
