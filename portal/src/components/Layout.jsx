@@ -49,6 +49,7 @@ const navGroups = [
       { to: '/nonbuyers',     label: 'Nonbuyers',     roles: ['admin'] },
       { to: '/xp-ledger',     label: 'XP Ledger',     roles: ['admin'] },
       { to: '/missions',      label: 'Missions',      roles: ['admin'] },
+      { to: '/pilot-journey', label: 'Pilot Journey', roles: ['admin', 'instructor'] },
     ],
   },
   {
