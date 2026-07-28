@@ -214,7 +214,7 @@ export default function Aircraft() {
   }
 
   function openSquawkCount(ac) {
-    return (ac.squawks ?? []).filter(s => s.status === 'open').length
+    return (ac.squawks ?? []).filter(s => s.status !== 'resolved').length
   }
 
   function daysUntil(dateStr) {

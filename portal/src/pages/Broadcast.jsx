@@ -86,8 +86,12 @@ export default function Broadcast() {
       if (fetchError) throw fetchError
       if (!recipients || recipients.length === 0) throw new Error('No matching students to email.')
 
-      const { sent } = await sendAdminEmail({ recipients, subject, message, senderId: profile.id, isHtml })
-      setResult(`Sent to ${sent} student(s).`)
+      const { sent, failed } = await sendAdminEmail({ recipients, subject, message, senderId: profile.id, isHtml })
+      if (sent === 0 && failed > 0) {
+        setError(`All ${failed} send(s) failed. Nothing was delivered.`)
+      } else {
+        setResult(failed > 0 ? `Sent to ${sent} student(s) — ${failed} failed to send.` : `Sent to ${sent} student(s).`)
+      }
       setSubject('')
       setMessage('')
       setIsHtml(false)

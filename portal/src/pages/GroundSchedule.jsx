@@ -90,6 +90,7 @@ export default function GroundSchedule() {
   const [registrants, setRegistrants] = useState([])
   const [activeSession, setActiveSession] = useState(null)
   const [copiedLink, setCopiedLink] = useState(null)
+  const [actioningId, setActioningId] = useState(null)
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [bulkSubject, setBulkSubject] = useState('')
   const [bulkMessage, setBulkMessage] = useState('')
@@ -321,24 +322,29 @@ export default function GroundSchedule() {
     e.preventDefault()
     setManualAddSaving(true)
     setManualAddError('')
-    const { error } = await supabase.from('ground_registrations').insert({
-      session_id: activeSession.id,
-      full_name: manualAddForm.full_name,
-      email: manualAddForm.email,
-      is_waitlisted: false,
-    })
+    // Same atomic, capacity-checked RPC as the self-service registration
+    // flow above (register_for_ground_school) -- this used to be a raw
+    // insert with is_waitlisted hardcoded to false, so an admin manually
+    // adding a walk-in to a full session would silently overbook it.
+    const { data: newReg, error } = await supabase
+      .rpc('register_for_ground_school', {
+        p_session_id: activeSession.id,
+        p_full_name: manualAddForm.full_name,
+        p_email: manualAddForm.email,
+      })
+      .single()
     if (error) {
       setManualAddSaving(false)
       setManualAddError(error.message.includes('unique') ? 'Already registered.' : error.message)
       return
     }
-    const { data: newReg } = await supabase
-      .from('ground_registrations')
-      .select('*')
-      .eq('session_id', activeSession.id)
-      .eq('email', manualAddForm.email)
-      .single()
-    if (newReg) sendRegistrationConfirmation(newReg, activeSession)
+    if (newReg) {
+      if (newReg.is_waitlisted) {
+        sendWaitlistConfirmation(newReg, activeSession)
+      } else {
+        sendRegistrationConfirmation(newReg, activeSession)
+      }
+    }
     setManualAddSaving(false)
     setManualAddForm(BLANK_REG)
     await refreshRegistrants()
@@ -346,19 +352,27 @@ export default function GroundSchedule() {
   }
 
   async function handlePromoteWaitlist(reg) {
+    if (actioningId === reg.id) return
+    setActioningId(reg.id)
     await supabase.from('ground_registrations').update({ is_waitlisted: false }).eq('id', reg.id)
     sendWaitlistPromotion(reg, activeSession)
     await refreshRegistrants()
+    setActioningId(null)
     load()
   }
 
   async function markNoShow(regId) {
+    if (actioningId === regId) return
+    setActioningId(regId)
     await supabase.from('ground_registrations').update({ attendance_status: 'no_show' }).eq('id', regId)
     await refreshRegistrants()
+    setActioningId(null)
   }
 
   async function handleCancelRegistration(reg) {
+    if (actioningId === reg.id) return
     if (!window.confirm(`Cancel ${reg.full_name}'s registration for this session?`)) return
+    setActioningId(reg.id)
     await supabase.from('ground_registrations').delete().eq('id', reg.id)
     const updated = await refreshRegistrantsFor(reg.session_id)
     // The freed confirmed spot goes to whoever has been on the waitlist
@@ -370,6 +384,7 @@ export default function GroundSchedule() {
       sendWaitlistPromotion(nextWaitlisted, activeSession)
       await refreshRegistrantsFor(reg.session_id)
     }
+    setActioningId(null)
     load()
   }
 
@@ -861,9 +876,9 @@ export default function GroundSchedule() {
                           {copiedLink === `out-${r.id}` ? '✓ Copied' : '↑ Check-Out'}
                         </button>
                         {(r.attendance_status === 'registered' || !r.attendance_status) && (
-                          <button className="btn-link" style={{ fontSize: 12, color: '#f87171' }} onClick={() => markNoShow(r.id)}>No-Show</button>
+                          <button className="btn-link" style={{ fontSize: 12, color: '#f87171' }} onClick={() => markNoShow(r.id)} disabled={actioningId === r.id}>No-Show</button>
                         )}
-                        <button className="btn-link" style={{ fontSize: 12, color: '#f87171' }} onClick={() => handleCancelRegistration(r)}>Cancel</button>
+                        <button className="btn-link" style={{ fontSize: 12, color: '#f87171' }} onClick={() => handleCancelRegistration(r)} disabled={actioningId === r.id}>Cancel</button>
                       </div>
                     </div>
                   )
@@ -893,7 +908,7 @@ export default function GroundSchedule() {
                         className="btn-primary-sm"
                         style={{ fontSize: 12, padding: '4px 10px' }}
                         onClick={() => handlePromoteWaitlist(r)}
-                        disabled={spotsLeft(activeSession) <= 0}
+                        disabled={spotsLeft(activeSession) <= 0 || actioningId === r.id}
                       >
                         Promote
                       </button>

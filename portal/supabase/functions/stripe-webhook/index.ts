@@ -75,12 +75,29 @@ async function handleUnlockCheckridePrep(supabase: any, session: Stripe.Checkout
     .select('id, checkride_prep_unlocked')
     .maybeSingle()
 
-  if (unlockError) throw unlockError
-  if (!unlockedProfile?.checkride_prep_unlocked) {
-    throw new Error(`Checkride Prep unlock flag was not set for profile ${profileId}`)
+  if (unlockError || !unlockedProfile?.checkride_prep_unlocked) {
+    // Stripe has already captured this payment (checkout.session.completed
+    // only fires after a successful charge). Unlike a normal 500, this
+    // won't self-heal on Stripe's automatic retry -- the profile row is
+    // presumably gone or malformed, not transiently unavailable -- so
+    // refund it and alert an admin immediately rather than leaving a
+    // paid-but-unfulfilled order to be found by chance in function logs.
+    if (session.payment_intent) {
+      try {
+        await stripe.refunds.create({ payment_intent: session.payment_intent as string })
+      } catch (refundErr) {
+        console.error('stripe-webhook: refund failed after unlock failure', refundErr)
+      }
+    }
+    await sendEmail(supabase, ADMIN_NOTIFICATION_EMAIL, 'ACTION NEEDED: Checkride Prep unlock failed after payment',
+      template(`
+        <h2 style="color:#F4B400;margin:0 0 4px;">A paid unlock failed to apply</h2>
+        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">profile_id ${profileId} (${email ?? 'no email on session'}) paid for Checkride Prep, but the unlock could not be applied${unlockError ? ': ' + unlockError.message : ' (profile not found)'}. A refund has been attempted automatically. Check Stripe and the profiles table to confirm and follow up with the customer.</p>
+      `))
+    throw unlockError || new Error(`Checkride Prep unlock flag was not set for profile ${profileId}`)
   }
 
-  await supabase.from('portal_access_purchases').insert({
+  const { error: purchaseError } = await supabase.from('portal_access_purchases').insert({
     profile_id: profileId,
     email,
     full_name: fullName,
@@ -88,6 +105,14 @@ async function handleUnlockCheckridePrep(supabase: any, session: Stripe.Checkout
     amount_cents: amountCents,
     tier,
   })
+  if (purchaseError) {
+    // Don't throw here -- the member is already unlocked and the
+    // confirmation email below still needs to send. But a failed insert
+    // (e.g. an unrecognized tier value hitting the tier CHECK constraint)
+    // must be loud, not silent, since this table is the source of truth
+    // for revenue and for the founding-seat counter.
+    console.error(`stripe-webhook: portal_access_purchases insert failed for profile ${profileId}, tier ${tier}`, purchaseError)
+  }
 
   const tierSuffix = tier === 'founding' ? ' (Founding Pilot Pricing)' : tier === 'launch' ? ' (New-Member Fast-Action Pricing)' : ''
   await supabase.from('invoices').insert({
@@ -202,24 +227,21 @@ async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Che
     .eq('id', sessionId)
     .maybeSingle()
 
-  const { count: confirmedCount } = await supabase
-    .from('ground_registrations')
-    .select('id', { count: 'exact', head: true })
-    .eq('session_id', sessionId)
-    .eq('is_waitlisted', false)
-
-  const isWaitlisted = !!groundSession && (confirmedCount ?? 0) >= groundSession.max_students
-
-  await supabase.from('ground_registrations').insert({
-    session_id: sessionId,
-    full_name: fullName,
-    email,
-    is_waitlisted: isWaitlisted,
-    profile_id: matchingProfile?.id ?? null,
-    stripe_session_id: session.id,
-    amount_cents: amountCents,
-    payment_status: 'paid',
+  // Row-locked RPC (see confirm_legacy_ground_registration, v46) so
+  // concurrent payments near the last seat can't both read a stale
+  // count and both get confirmed -- mirrors the newer scheduled-class
+  // path's confirm_scheduled_ground_class_enrollment locking pattern.
+  const { data: newRegistration, error: registrationError } = await supabase.rpc('confirm_legacy_ground_registration', {
+    p_session_id: sessionId,
+    p_full_name: fullName,
+    p_email: email,
+    p_profile_id: matchingProfile?.id ?? null,
+    p_stripe_session_id: session.id,
+    p_amount_cents: amountCents,
   })
+  if (registrationError) throw registrationError
+
+  const isWaitlisted = !!newRegistration?.is_waitlisted
 
   // Conversion event for the Phase 5 admin analytics dashboard -- see
   // the matching comment in handleUnlockCheckridePrep(). profile_id can

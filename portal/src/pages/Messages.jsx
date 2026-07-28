@@ -18,6 +18,17 @@ export default function Messages() {
   const [composeText, setComposeText] = useState('')
   const bottomRef = useRef()
   const channelRef = useRef()
+  // Mirrors activeThread for the realtime callback below, which is set up
+  // once per profile (not re-subscribed on every thread switch) -- without
+  // this ref, the callback's closed-over `activeThread` would be frozen at
+  // whatever it was (null) when the subscription was created, so a new
+  // message arriving while a thread is open would never trigger
+  // loadMessages() for it.
+  const activeThreadRef = useRef(null)
+
+  useEffect(() => {
+    activeThreadRef.current = activeThread
+  }, [activeThread])
 
   useEffect(() => {
     if (!profile) return
@@ -29,7 +40,7 @@ export default function Messages() {
       .channel('messages')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `recipient_id=eq.${profile.id}` }, () => {
         loadThreads()
-        if (activeThread) loadMessages(activeThread)
+        if (activeThreadRef.current) loadMessages(activeThreadRef.current)
       })
       .subscribe()
 

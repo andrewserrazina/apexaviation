@@ -111,12 +111,18 @@ export async function sendWaitlistPromotion(registration, session) {
   return invoke({ to: registration.email, subject: `Spot confirmed: ${session.title}`, html })
 }
 
+// Returns true/false so callers (sendAdminEmail's concurrency-capped
+// batch, in particular) can tell a real delivery failure apart from
+// success, rather than every send being reported as sent regardless of
+// what actually happened.
 async function invoke(payload) {
   try {
     const { error } = await supabase.functions.invoke('send-email', { body: payload })
-    if (error) console.warn('Email send failed:', error)
+    if (error) { console.warn('Email send failed:', error); return false }
+    return true
   } catch (e) {
     console.warn('Email invoke error:', e)
+    return false
   }
 }
 
@@ -164,7 +170,9 @@ export async function sendAdminEmail({ recipients, subject, message, senderId, i
     </div>
   `)
 
-  await mapWithConcurrency(recipients, 5, (r) => invoke({ to: r.email, subject, html }))
+  const outcomes = await mapWithConcurrency(recipients, 5, (r) => invoke({ to: r.email, subject, html }))
+  const sentCount = outcomes.filter(Boolean).length
+  const failedCount = outcomes.length - sentCount
 
   const { data: broadcast, error: broadcastError } = await supabase
     .from('admin_broadcasts')
@@ -178,5 +186,5 @@ export async function sendAdminEmail({ recipients, subject, message, senderId, i
     .insert(recipients.map((r) => ({ broadcast_id: broadcast.id, profile_id: r.id, email: r.email })))
   if (recipientsError) throw recipientsError
 
-  return { sent: recipients.length, broadcastId: broadcast.id }
+  return { sent: sentCount, failed: failedCount, broadcastId: broadcast.id }
 }

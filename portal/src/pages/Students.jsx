@@ -101,13 +101,14 @@ export default function Students() {
     setEmailSending(true)
     setEmailError('')
     try {
-      await sendAdminEmail({
+      const { failed } = await sendAdminEmail({
         recipients: [{ id: emailModal.student.id, email: emailModal.student.email }],
         subject: emailForm.subject,
         message: emailForm.message,
         senderId: profile.id,
         isHtml: emailForm.isHtml,
       })
+      if (failed > 0) throw new Error('The email failed to send. Please try again.')
       setEmailSent(true)
     } catch (err) {
       setEmailError(err.message)
