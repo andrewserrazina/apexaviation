@@ -5,22 +5,6 @@ import { supabase } from '../lib/supabase'
 import ApexLogo from './ApexLogo'
 import NotificationBell from './NotificationBell'
 
-// Keep in sync with the pilot_ranks seed data in
-// supabase-portal-schema-v47.sql -- duplicated here so the sidebar can
-// render rank progress without a round trip; ranks change rarely enough
-// that this is a reasonable trade-off.
-const PILOT_RANKS = [
-  { key: 'student_pilot',       label: 'Student Pilot',       minXp: 0 },
-  { key: 'pre_solo',             label: 'Pre-Solo',             minXp: 250 },
-  { key: 'cross_country_pilot',  label: 'Cross-Country Pilot',  minXp: 750 },
-  { key: 'night_rated',          label: 'Night Rated',          minXp: 1500 },
-  { key: 'instrument_ready',     label: 'Instrument Ready',     minXp: 2750 },
-  { key: 'commercial_candidate', label: 'Commercial Candidate', minXp: 4500 },
-  { key: 'checkride_ace',        label: 'Checkride Ace',        minXp: 7000 },
-  { key: 'apex_captain',         label: 'Apex Captain',         minXp: 10000 },
-  { key: 'legend',               label: 'Legend',               minXp: 15000 },
-]
-
 const navGroups = [
   {
     label: 'Overview',
@@ -105,14 +89,6 @@ export default function Layout({ children }) {
     }))
     .filter(group => group.items.length > 0)
 
-  function rankProgress(totalXp) {
-    const xp = totalXp ?? 0
-    const idx = PILOT_RANKS.reduce((best, r, i) => (xp >= r.minXp ? i : best), 0)
-    const current = PILOT_RANKS[idx]
-    const next = PILOT_RANKS[idx + 1]
-    return { current, next, xp }
-  }
-
   async function handleSignOut() {
     await signOut()
     navigate('/login')
@@ -145,22 +121,6 @@ export default function Layout({ children }) {
       setSearchOpen(true)
     }, 300)
   }, [query])
-
-  // Daily Dispatch XP: one server-authoritative award per member-local
-  // day, requested once per portal session, students only -- staff
-  // accounts (admin/instructor) aren't pilots working through the
-  // rating ladder, so they shouldn't silently accumulate pilot XP.
-  // log_daily_dispatch_open() is idempotent itself (see v47), so
-  // calling it again this same session/day is harmless -- the guard
-  // here just avoids a redundant network call on every route change.
-  const dispatchLogged = useRef(false)
-  useEffect(() => {
-    if (!profile?.id || profile.role !== 'student' || dispatchLogged.current) return
-    dispatchLogged.current = true
-    supabase.rpc('log_daily_dispatch_open').then(({ error }) => {
-      if (error) console.warn('log_daily_dispatch_open failed:', error)
-    })
-  }, [profile?.id])
 
   useEffect(() => {
     function handle(e) { if (searchRef.current && !searchRef.current.contains(e.target)) setSearchOpen(false) }
@@ -255,25 +215,6 @@ export default function Layout({ children }) {
               <p className="sidebar__user-role">{role}</p>
             </div>
           </div>
-          {role === 'student' && (() => {
-            const { current, next, xp } = rankProgress(profile?.total_xp)
-            return (
-              <div className="sidebar__rank" title={next ? `${next.minXp - xp} XP to ${next.label}` : 'Top rank reached'}>
-                <div className="sidebar__rank-row">
-                  <span className="sidebar__rank-label">{current.label}</span>
-                  <span className="sidebar__rank-xp">{xp} XP</span>
-                </div>
-                {next && (
-                  <div className="sidebar__rank-bar">
-                    <div
-                      className="sidebar__rank-bar-fill"
-                      style={{ width: `${Math.min(100, Math.round(((xp - current.minXp) / (next.minXp - current.minXp)) * 100))}%` }}
-                    />
-                  </div>
-                )}
-              </div>
-            )
-          })()}
           <NavLink to="/profile" onClick={closeSidebar} className="sidebar__profile-link">My Profile</NavLink>
           <button className="sidebar__signout" onClick={handleSignOut}>Sign out</button>
         </div>

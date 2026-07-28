@@ -190,41 +190,6 @@ em { font-family: 'Playfair Display', serif; font-style: italic; }
   color: var(--muted);
   text-transform: capitalize;
 }
-.sidebar__rank {
-  margin-bottom: 12px;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--navy-3);
-}
-.sidebar__rank-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-.sidebar__rank-label {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--gold);
-}
-.sidebar__rank-xp {
-  font-size: 11px;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-.sidebar__rank-bar {
-  height: 4px;
-  border-radius: 100px;
-  background: var(--border);
-  overflow: hidden;
-}
-.sidebar__rank-bar-fill {
-  height: 100%;
-  background: var(--gold);
-  border-radius: 100px;
-}
 .sidebar__signout {
   width: 100%;
   background: transparent;
