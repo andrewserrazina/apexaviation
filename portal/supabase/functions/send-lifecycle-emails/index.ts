@@ -379,14 +379,21 @@ async function processMilestones(supabase: any, profile: any, questions: Questio
     }
   }
 
+  // Sends at most one readiness milestone per run -- the highest
+  // threshold the score has reached that hasn't already been sent --
+  // same reasoning and shape as processCheckrideUpsell below: a score
+  // that jumps from 0% to 95% between runs (a study weekend, or a
+  // missed cron run) should get one congratulatory email, not all four
+  // back-to-back in the same execution.
   const score = await computeReadinessScore(supabase, profile.id, questions, categoryIds)
-  for (const threshold of READINESS_THRESHOLDS) {
+  for (const threshold of [...READINESS_THRESHOLDS].reverse()) {
+    if (score < threshold) continue
     const key = 'readiness_' + threshold
-    if (score >= threshold && !(await hasMilestoneFired(supabase, profile.id, key))) {
-      await sendEmail(supabase, profile.email, `${score}% Checkride Ready`, emailTemplateMilestone(threshold))
-      await markMilestoneSent(supabase, profile.id, key)
-      results.readiness++
-    }
+    if (await hasMilestoneFired(supabase, profile.id, key)) continue
+    await sendEmail(supabase, profile.email, `${score}% Checkride Ready`, emailTemplateMilestone(threshold))
+    await markMilestoneSent(supabase, profile.id, key)
+    results.readiness++
+    break
   }
 
   const { data: checkrideAttempts } = await supabase
@@ -420,6 +427,13 @@ async function processWeakArea(supabase: any, profile: any, questions: Question[
   results.weak_area++
 }
 
+// Sends at most one countdown stage per run -- the nearest threshold
+// the checkride is at or inside of that hasn't already been sent -- same
+// catch-up reasoning as processCheckrideUpsell/processMilestones. The
+// original exact daysUntil === threshold match had no tolerance for a
+// missed cron run: if the job didn't run on the exact day a checkride
+// was 7 days out, that email was gone for good, since daysUntil moves
+// past 7 by the next run and never matches again.
 async function processCountdown(supabase: any, profile: any, results: any) {
   const { data } = await supabase.from('portal_checkride_date').select('checkride_date').eq('profile_id', profile.id).maybeSingle()
   if (!data) return
@@ -427,14 +441,18 @@ async function processCountdown(supabase: any, profile: any, results: any) {
   today.setUTCHours(0, 0, 0, 0)
   const checkride = new Date(data.checkride_date + 'T00:00:00Z')
   const daysUntil = Math.round((checkride.getTime() - today.getTime()) / 86400000)
-  if (!COUNTDOWN_DAYS.includes(daysUntil)) return
+  if (daysUntil < 0) return
 
-  const emailType = 'checkride_countdown_' + daysUntil
-  if (await hasMilestoneFired(supabase, profile.id, emailType)) return
+  for (const threshold of COUNTDOWN_DAYS) {
+    if (daysUntil > threshold) continue
+    const emailType = 'checkride_countdown_' + threshold
+    if (await hasMilestoneFired(supabase, profile.id, emailType)) continue
 
-  await sendEmail(supabase, profile.email, `${daysUntil} days until your checkride`, emailTemplateCountdown(daysUntil))
-  await supabase.from('portal_email_log').insert({ profile_id: profile.id, email_type: emailType })
-  results.countdown++
+    await sendEmail(supabase, profile.email, `${threshold} days until your checkride`, emailTemplateCountdown(threshold))
+    await markMilestoneSent(supabase, profile.id, emailType)
+    results.countdown++
+    return
+  }
 }
 
 // Sends at most one upsell stage per run, picking the latest stage the
