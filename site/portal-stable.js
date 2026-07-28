@@ -33,6 +33,32 @@
     }
   })();
 
+  /* ── Meta Pixel Purchase event — Apex Advantage Membership ───────
+     Same dedupe-by-session_id pattern as the Checkride Prep block
+     above, for the separate ?membership=1 success_url (join-membership
+     purpose, create-checkout-session). */
+  (function () {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('membership') !== '1') return;
+    var sessionId = params.get('session_id');
+    var tier = params.get('tier') || 'monthly';
+    var amountCents = parseInt(params.get('amount_cents'), 10);
+    var dedupeKey = sessionId ? 'apex_fbq_membership_' + sessionId : null;
+    if (window.fbq && (!dedupeKey || !localStorage.getItem(dedupeKey))) {
+      fbq('track', 'Purchase', {
+        value: isNaN(amountCents) ? 19 : amountCents / 100,
+        currency: 'USD',
+        content_name: 'Apex Advantage Membership (' + tier + ')',
+      });
+      if (dedupeKey) localStorage.setItem(dedupeKey, '1');
+    }
+    var funnelDedupeKey = sessionId ? 'apex_funnel_membership_' + sessionId : null;
+    if (window.apexTrack && (!funnelDedupeKey || !localStorage.getItem(funnelDedupeKey))) {
+      apexTrack('purchase_completed', { product: 'membership', tier: tier, price: isNaN(amountCents) ? 19 : amountCents / 100 });
+      if (funnelDedupeKey) localStorage.setItem(funnelDedupeKey, '1');
+    }
+  })();
+
   /* ── Auth guard — real Supabase session + profile ────────────── */
   var member = null;
   var accessToken = null;
@@ -2464,6 +2490,10 @@
 
         el.innerHTML = missions.map(function (m) {
           var p = progressByMission[m.id];
+          // Premium-only missions are skipped entirely by refresh_mission_
+          // progress() (v51) for a profile with no active Membership --
+          // no progress row means "not eligible", not "0% done".
+          var membershipLocked = m.is_premium_only && !p;
           var progress = p ? p.progress : 0;
           var target = p ? p.target : 1;
           var pct = Math.min(100, Math.round((progress / Math.max(target, 1)) * 100));
@@ -2471,14 +2501,16 @@
           return '<div class="portal-card portal-mission' + (done ? ' portal-mission--done' : '') + '" style="margin-bottom:16px">' +
             '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px">' +
               '<div>' +
-                '<span class="portal-header__eyebrow">' + (CADENCE_LABELS[m.cadence] || m.cadence) + '</span>' +
+                '<span class="portal-header__eyebrow">' + (CADENCE_LABELS[m.cadence] || m.cadence) + (m.is_premium_only ? ' · Membership' : '') + '</span>' +
                 '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-top:6px">' + m.title + '</h3>' +
               '</div>' +
               '<span style="color:#F4B400;font-size:13px;font-weight:700;white-space:nowrap">' + (done ? '✓ Complete' : '+' + m.xp_reward + ' XP') + '</span>' +
             '</div>' +
             (m.description ? '<p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:12px">' + m.description + '</p>' : '') +
-            '<div class="portal-progress-bar"><div class="portal-progress-bar__fill" style="width:' + pct + '%"></div></div>' +
-            '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-top:6px">' + Math.min(progress, target) + ' / ' + target + '</p>' +
+            (membershipLocked
+              ? '<p style="color:rgba(244,180,0,0.7);font-size:12.5px">🔒 Requires Apex Advantage Membership — <a href="#account" style="color:#F4B400">join in Account Management</a></p>'
+              : '<div class="portal-progress-bar"><div class="portal-progress-bar__fill" style="width:' + pct + '%"></div></div>' +
+                '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-top:6px">' + Math.min(progress, target) + ' / ' + target + '</p>') +
             (m.premium_reward ? '<p style="color:rgba(244,180,0,0.7);font-size:12px;margin-top:6px">🏆 ' + m.premium_reward + '</p>' : '') +
           '</div>';
         }).join('');
@@ -3447,6 +3479,81 @@
     }
   }
 
+  // Apex Advantage Membership -- a separate, recurring product from the
+  // Checkride Prep Pack above (member_subscriptions, v51). Deliberately
+  // never reuses the word "unlock"/"upgrade" in this block's copy --
+  // the spec calling for this was explicit that a member must always
+  // know which product a button is about to charge them for.
+  function fmtDate(iso) {
+    return iso ? new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—';
+  }
+
+  function joinMembership(tier) {
+    var block = document.getElementById('membershipStatusBlock');
+    var btn = document.getElementById('joinMembershipBtn_' + tier);
+    if (btn) { btn.disabled = true; btn.textContent = 'Redirecting to secure checkout…'; }
+    apexSupabase.functions.invoke('create-checkout-session', {
+      body: { purpose: 'join-membership', tier: tier, origin: window.location.origin },
+      headers: { Authorization: 'Bearer ' + accessToken }
+    }).then(function (res) {
+      if (res.error || !res.data || !res.data.url) {
+        return extractInvokeError(res).then(function (msg) {
+          block.insertAdjacentHTML('beforeend', '<p style="color:#f87171;font-size:13px;margin-top:10px">' + msg + '</p>');
+          if (btn) { btn.disabled = false; btn.textContent = tier === 'annual' ? 'Join Annual — $190/yr' : 'Join Monthly — $19/mo'; }
+        });
+      }
+      window.location.href = res.data.url;
+    });
+  }
+
+  function manageMembershipBilling() {
+    var btn = document.getElementById('manageMembershipBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Opening billing portal…'; }
+    apexSupabase.functions.invoke('create-billing-portal-session', {
+      body: { returnUrl: window.location.origin + '/portal.html#account' },
+      headers: { Authorization: 'Bearer ' + accessToken }
+    }).then(function (res) {
+      if (res.error || !res.data || !res.data.url) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Manage Billing'; }
+        toast('Could not open the billing portal. Please try again.');
+        return;
+      }
+      window.location.href = res.data.url;
+    });
+  }
+
+  function renderMembershipSubscription() {
+    var block = document.getElementById('membershipStatusBlock');
+    if (!block || !member) return;
+    apexSupabase.from('member_subscriptions').select('tier, status, current_period_end, cancel_at_period_end')
+      .eq('profile_id', member.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
+      .then(function (res) {
+        var sub = res.data;
+        if (!sub || sub.status === 'canceled') {
+          block.innerHTML =
+            '<div class="portal-grid portal-grid--2">' +
+              '<button class="btn btn--primary" id="joinMembershipBtn_monthly">Join Monthly — $19/mo</button>' +
+              '<button class="btn btn--ghost" id="joinMembershipBtn_annual">Join Annual — $190/yr</button>' +
+            '</div>' +
+            (sub ? '<p style="color:rgba(255,255,255,0.35);font-size:12px;margin-top:10px">Your previous membership ended ' + fmtDate(sub.current_period_end) + '.</p>' : '');
+          document.getElementById('joinMembershipBtn_monthly').addEventListener('click', function () { joinMembership('monthly'); });
+          document.getElementById('joinMembershipBtn_annual').addEventListener('click', function () { joinMembership('annual'); });
+          return;
+        }
+
+        var statusLine;
+        if (sub.status === 'past_due') {
+          statusLine = '<p style="color:#f87171;font-size:14px;font-weight:700;margin-bottom:6px">Payment failed</p><p style="color:rgba(255,255,255,0.5);font-size:13px">Update your payment method to keep your membership active.</p>';
+        } else if (sub.cancel_at_period_end) {
+          statusLine = '<p style="color:#F4B400;font-size:14px;font-weight:700;margin-bottom:6px">Canceling</p><p style="color:rgba(255,255,255,0.5);font-size:13px">Your access continues through ' + fmtDate(sub.current_period_end) + '.</p>';
+        } else {
+          statusLine = '<p style="color:#4ade80;font-size:14px;font-weight:700;margin-bottom:6px">Active — ' + sub.tier + '</p><p style="color:rgba(255,255,255,0.5);font-size:13px">Renews ' + fmtDate(sub.current_period_end) + '.</p>';
+        }
+        block.innerHTML = statusLine + '<button class="btn btn--ghost" id="manageMembershipBtn" style="margin-top:14px">Manage Billing</button>';
+        document.getElementById('manageMembershipBtn').addEventListener('click', manageMembershipBilling);
+      });
+  }
+
   function renderBillingHistory() {
     var listEl = document.getElementById('billingHistoryList');
     var emptyEl = document.getElementById('billingHistoryEmpty');
@@ -3867,6 +3974,7 @@
       enforceGuidedNotesAccess();
       renderCheckrideCountdown();
       renderMembership();
+      renderMembershipSubscription();
       renderBillingHistory();
       renderMySessions();
       ensureReferralCode();
