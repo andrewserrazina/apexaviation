@@ -12,6 +12,15 @@
 //     the caller's Supabase access token so we know *which* profile to
 //     unlock; never trust a client-supplied id.
 //
+//   purpose: 'join-membership'
+//     An already-signed-in member starting the Apex Advantage Membership
+//     subscription ($19/mo or $190/yr, body.tier: 'monthly' | 'annual',
+//     no trial). mode: 'subscription', unlike every other purpose here --
+//     see stripe-webhook for how the resulting subscription lifecycle
+//     (renewals, cancellation, failed payments) is tracked in
+//     member_subscriptions. Rejects if the caller already has a
+//     non-canceled subscription rather than silently creating a second one.
+//
 //   purpose: 'signup-and-unlock-checkride-prep'
 //     One-step "Get Instant Access" signup: creates the free account
 //     (same logic as create-free-account) AND starts a Checkride Prep
@@ -69,6 +78,15 @@ const stripe = new Stripe(STRIPE_SECRET_KEY, {
 
 const GROUND_SCHOOL_PRICE_CENTS = 2500 // $25 per session
 const MOCK_ORAL_PRICE_CENTS = 9900 // $99 per 60-minute mock oral
+
+// Apex Advantage Membership pricing -- $19/mo or $190/yr (roughly two
+// months free annually), no trial. Built as inline recurring price_data
+// rather than pre-created Stripe Price objects, same reasoning as the
+// Checkride Prep pricing above: nothing here depends on the Stripe
+// dashboard having specific Price IDs configured, which matters since
+// this repo has no Stripe account access to create them.
+const MEMBERSHIP_PRICE_CENTS: Record<'monthly' | 'annual', number> = { monthly: 1900, annual: 19000 }
+const MEMBERSHIP_INTERVAL: Record<'monthly' | 'annual', 'month' | 'year'> = { monthly: 'month', annual: 'year' }
 
 // Must match the check constraint on profiles.checkride_timing
 // (supabase-portal-schema-v39.sql).
@@ -168,6 +186,53 @@ serve(async (req) => {
       await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'unlock-checkride-prep', email, profileId, amountCents: pricing.amount_cents })
 
       return new Response(JSON.stringify({ url: session.url, tier: pricing.tier, amount: pricing.amount_cents }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (purpose === 'join-membership') {
+      const authHeader = req.headers.get('Authorization') || ''
+      const token = authHeader.replace('Bearer ', '').trim()
+      if (!token) return jsonError('Missing Authorization header', 401)
+
+      const { data: userData, error: userErr } = await supabase.auth.getUser(token)
+      if (userErr || !userData?.user) return jsonError('Invalid or expired session', 401)
+
+      const profileId = userData.user.id
+      const email = userData.user.email
+      const tier = body.tier === 'annual' ? 'annual' : 'monthly'
+
+      const { data: existingSub } = await supabase
+        .from('member_subscriptions')
+        .select('status')
+        .eq('profile_id', profileId)
+        .in('status', ['active', 'trialing', 'past_due'])
+        .maybeSingle()
+      if (existingSub) return jsonError('You already have an active Apex Advantage Membership', 400)
+
+      const amountCents = MEMBERSHIP_PRICE_CENTS[tier]
+      const session = await stripe.checkout.sessions.create({
+        mode: 'subscription',
+        customer_email: email,
+        line_items: [{
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: 'Apex Advantage Membership',
+              description: tier === 'annual' ? 'Annual membership — billed once a year' : 'Monthly membership — billed every month',
+            },
+            unit_amount: amountCents,
+            recurring: { interval: MEMBERSHIP_INTERVAL[tier] },
+          },
+          quantity: 1,
+        }],
+        metadata: { purpose: 'join-membership', profile_id: profileId, tier },
+        success_url: `${siteOrigin}/portal.html?membership=1&tier=${tier}&amount_cents=${amountCents}&session_id={CHECKOUT_SESSION_ID}#account`,
+        cancel_url: `${siteOrigin}/portal.html#account`,
+      })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'join-membership', email, profileId, amountCents })
+
+      return new Response(JSON.stringify({ url: session.url, tier, amount: amountCents }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }

@@ -18,6 +18,24 @@
 //     coordinated -- there's no calendar/slot system for this, just a
 //     paid request queue.
 //
+//   'join-membership' — the one purpose that's mode:'subscription', not
+//     mode:'payment'. Writes member_subscriptions from the real Stripe
+//     subscription object (retrieved directly, not inferred from the
+//     checkout session) so the first row is correct without waiting on
+//     a second webhook event.
+//
+// Beyond checkout.session.completed, this also handles the Apex
+// Advantage Membership subscription lifecycle:
+//   'customer.subscription.updated' — renewals, plan changes, and the
+//     member scheduling a cancellation (cancel_at_period_end).
+//   'customer.subscription.deleted' — the subscription actually ends
+//     (only ever fires once the paid-for period is over, or on an
+//     immediate cancellation) -- marks status 'canceled' but never
+//     touches current_period_end, so "access continues through what
+//     was already paid for" falls naturally out of get_member_
+//     capabilities() checking status, not a separate access cutoff.
+//   'invoice.payment_failed' — marks the subscription 'past_due'.
+//
 // Idempotency: every event is recorded in stripe_webhook_events first;
 // a unique-constraint failure there means Stripe is retrying an event
 // we already processed, so we skip straight to returning 200.
@@ -26,8 +44,9 @@
 //   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 // Then in Stripe Dashboard → Developers → Webhooks, add an endpoint at
 //   https://<project-ref>.supabase.co/functions/v1/stripe-webhook
-// listening for `checkout.session.completed`, and copy its signing
-// secret into STRIPE_WEBHOOK_SECRET above.
+// listening for `checkout.session.completed`, `customer.subscription.
+// updated`, `customer.subscription.deleted`, and `invoice.payment_failed`
+// -- then copy its signing secret into STRIPE_WEBHOOK_SECRET above.
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -306,6 +325,96 @@ async function handleMockOralBooking(supabase: any, session: Stripe.Checkout.Ses
     `))
 }
 
+// Stripe's real subscription statuses don't map 1:1 onto
+// member_subscriptions.status's CHECK constraint (active, trialing,
+// past_due, canceled, incomplete) -- every value Stripe can actually
+// send is mapped here so an unrecognized status can never silently
+// fail the constraint the way an unmapped 'launch' tier once did on
+// portal_access_purchases (see v43's fix for that bug).
+function mapStripeStatus(status: Stripe.Subscription.Status): string {
+  if (status === 'incomplete_expired') return 'canceled'
+  if (status === 'unpaid' || status === 'paused') return 'past_due'
+  return status // active | trialing | past_due | canceled | incomplete
+}
+
+async function handleJoinMembership(supabase: any, session: Stripe.Checkout.Session) {
+  const profileId = session.metadata?.profile_id as string
+  const tier = (session.metadata?.tier as string) === 'annual' ? 'annual' : 'monthly'
+  if (!profileId) throw new Error('No profile_id on checkout session metadata')
+  if (!session.subscription) throw new Error('No subscription id on checkout session')
+
+  const subscription = await stripe.subscriptions.retrieve(session.subscription as string)
+  const price = subscription.items.data[0]?.price
+
+  const { error: subError } = await supabase.from('member_subscriptions').upsert({
+    profile_id: profileId,
+    tier,
+    status: mapStripeStatus(subscription.status),
+    stripe_customer_id: subscription.customer as string,
+    stripe_subscription_id: subscription.id,
+    stripe_price_id: price?.id ?? null,
+    current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+    current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+    cancel_at_period_end: subscription.cancel_at_period_end,
+    last_webhook_event: 'checkout.session.completed',
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'stripe_subscription_id' })
+  if (subError) console.error('stripe-webhook: member_subscriptions upsert failed', subError)
+
+  const email = session.customer_details?.email || session.customer_email
+  if (email) {
+    await sendEmail(supabase, email, "You're in — Apex Advantage Membership",
+      template(`
+        <h2 style="color:#F4B400;margin:0 0 4px;">Welcome to Apex Advantage Membership!</h2>
+        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your ${tier} membership is active. You can manage or cancel it anytime from Account Management in your portal.</p>
+        <a href="https://advantage.apexaviationtx.com/portal.html#account" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">View Your Account →</a>
+      `))
+  }
+}
+
+async function handleSubscriptionUpdated(supabase: any, subscription: Stripe.Subscription, eventType: string) {
+  const { error } = await supabase.from('member_subscriptions').update({
+    status: mapStripeStatus(subscription.status),
+    current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+    current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+    cancel_at_period_end: subscription.cancel_at_period_end,
+    canceled_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null,
+    last_webhook_event: eventType,
+    updated_at: new Date().toISOString(),
+  }).eq('stripe_subscription_id', subscription.id)
+  // A row not existing yet (event arrived before checkout.session.completed
+  // was processed) isn't an error -- customer.subscription.updated also
+  // fires for the subscription's own creation, which can race the
+  // checkout session webhook. Nothing to update in that case; the
+  // checkout.session.completed handler's upsert will create the row.
+  if (error) console.error('stripe-webhook: subscription update failed', error)
+}
+
+async function handleSubscriptionDeleted(supabase: any, subscription: Stripe.Subscription, eventType: string) {
+  // Access must continue through the period already paid for -- this
+  // only marks the row canceled; it does not touch any entitlement flag
+  // directly, since get_member_capabilities() checks status in
+  // ('active','trialing','past_due') and current_period_end is left
+  // intact for display ("Membership ended on <date>").
+  const { error } = await supabase.from('member_subscriptions').update({
+    status: 'canceled',
+    canceled_at: new Date().toISOString(),
+    last_webhook_event: eventType,
+    updated_at: new Date().toISOString(),
+  }).eq('stripe_subscription_id', subscription.id)
+  if (error) console.error('stripe-webhook: subscription delete failed', error)
+}
+
+async function handleInvoicePaymentFailed(supabase: any, invoice: Stripe.Invoice, eventType: string) {
+  if (!invoice.subscription) return // one-time-payment invoices aren't ours to track here
+  const { error } = await supabase.from('member_subscriptions').update({
+    status: 'past_due',
+    last_webhook_event: eventType,
+    updated_at: new Date().toISOString(),
+  }).eq('stripe_subscription_id', invoice.subscription as string)
+  if (error) console.error('stripe-webhook: invoice payment failed update failed', error)
+}
+
 serve(async (req) => {
   const signature = req.headers.get('Stripe-Signature')
   const body = await req.text()
@@ -328,11 +437,25 @@ serve(async (req) => {
     return new Response(JSON.stringify({ received: true, duplicate: true }), { status: 200 })
   }
 
-  if (event.type !== 'checkout.session.completed') {
+  const SUBSCRIPTION_EVENTS = ['customer.subscription.updated', 'customer.subscription.deleted', 'invoice.payment_failed']
+  if (event.type !== 'checkout.session.completed' && !SUBSCRIPTION_EVENTS.includes(event.type)) {
     return new Response(JSON.stringify({ received: true, ignored: event.type }), { status: 200 })
   }
 
   try {
+    if (event.type === 'customer.subscription.updated') {
+      await handleSubscriptionUpdated(supabase, event.data.object as Stripe.Subscription, event.type)
+      return new Response(JSON.stringify({ received: true }), { status: 200 })
+    }
+    if (event.type === 'customer.subscription.deleted') {
+      await handleSubscriptionDeleted(supabase, event.data.object as Stripe.Subscription, event.type)
+      return new Response(JSON.stringify({ received: true }), { status: 200 })
+    }
+    if (event.type === 'invoice.payment_failed') {
+      await handleInvoicePaymentFailed(supabase, event.data.object as Stripe.Invoice, event.type)
+      return new Response(JSON.stringify({ received: true }), { status: 200 })
+    }
+
     const session = event.data.object as Stripe.Checkout.Session
     const purpose = session.metadata?.purpose
 
@@ -354,6 +477,8 @@ serve(async (req) => {
       await handleGroundSchoolRegistration(supabase, session)
     } else if (purpose === 'book-mock-oral') {
       await handleMockOralBooking(supabase, session)
+    } else if (purpose === 'join-membership') {
+      await handleJoinMembership(supabase, session)
     } else {
       throw new Error(`Unknown checkout purpose: ${purpose}`)
     }
