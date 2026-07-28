@@ -589,16 +589,26 @@
 .portal-practice-summary p { color: rgba(255,255,255,0.55); font-size: 14px; margin-bottom: 24px; }
 .portal-practice-summary__actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 
+/* ─── Missions ───────────────────────────────────────────────────── */
+.portal-mission--done { background: rgba(244,180,0,0.06); border-color: rgba(244,180,0,0.25); }
+
 /* ─── Achievements ───────────────────────────────────────────────── */
+.portal-achievements-category { margin-bottom: 22px; }
+.portal-achievements-category__head {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.45); margin-bottom: 10px;
+}
+.portal-achievements-category__head span { color: #F4B400; font-variant-numeric: tabular-nums; }
 .portal-achievements { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .portal-achievement {
-  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px;
   padding: 18px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03);
   opacity: 0.4; filter: grayscale(1);
 }
 .portal-achievement.earned { opacity: 1; filter: none; background: rgba(244,180,0,0.08); border-color: rgba(244,180,0,0.3); }
 .portal-achievement__icon { font-size: 28px; }
 .portal-achievement__label { font-size: 12.5px; font-weight: 700; color: #fff; line-height: 1.4; }
+.portal-achievement__rarity { font-size: 10.5px; color: rgba(255,255,255,0.4); }
 
 /* ─── Study Analytics: heatmap + weekly bar chart ────────────────── */
 .portal-heatmap { display: flex; gap: 3px; overflow-x: auto; padding-bottom: 4px; }

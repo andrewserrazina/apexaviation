@@ -181,7 +181,7 @@
   var sidebar = document.getElementById('portalSidebar');
   var overlay = document.getElementById('sidebarOverlay');
 
-  var GATED_SECTIONS = ['checkride-prep', 'dpe-library', 'ai-dpe-practice', 'scenarios', 'progress', 'vault'];
+  var GATED_SECTIONS = ['checkride-prep', 'dpe-library', 'ai-dpe-practice', 'scenarios', 'progress', 'vault', 'missions'];
 
   function showSection(id) {
     if (!document.getElementById('section-' + id)) id = 'dashboard';
@@ -2288,14 +2288,44 @@
   /* ══════════════════════════════════════════════════════════════
      ACHIEVEMENTS
      ══════════════════════════════════════════════════════════════ */
+  // Base achievements, tagged with a category for the grouped Logbook
+  // view (renderAchievements below). Categories loosely follow the
+  // product's "Collections" taxonomy (milestone / consistency / acs /
+  // scenarios) -- only what's derivable from real, already-loaded data;
+  // no fabricated per-topic badges (a "METAR Decoder" badge, say) that
+  // don't map to an actual verified piece of content.
   var ACHIEVEMENT_DEFS = [
-    { key: 'first_question', icon: '🥇', label: 'First Question Completed', test: function () { return DPE_DATA.some(function (d) { return studied[d.id]; }); } },
-    { key: 'fifty_questions', icon: '5️⃣0️⃣', label: '50 Questions Completed', test: function () { return DPE_DATA.filter(function (d) { return studied[d.id]; }).length >= 50; } },
-    { key: 'hundred_questions', icon: '💯', label: '100 Questions Completed', test: function () { return DPE_DATA.filter(function (d) { return studied[d.id]; }).length >= 100; } },
-    { key: 'seven_day_streak', icon: '🔥', label: '7 Day Streak', test: function () { return computeStreaks().longest >= 7; } },
-    { key: 'all_weather_complete', icon: '⛈️', label: 'All Weather Questions Complete', test: function () { return DPE_DATA.filter(function (d) { return d.section === 'weather'; }).every(function (d) { return studied[d.id]; }); } },
-    { key: 'checkride_mode_completed', icon: '🎯', label: 'Checkride Mode Completed', test: function () { return checkrideModeDone; } }
+    { key: 'first_question', icon: '🥇', label: 'First Question Completed', category: 'milestone', test: function () { return DPE_DATA.some(function (d) { return studied[d.id]; }); } },
+    { key: 'fifty_questions', icon: '5️⃣0️⃣', label: '50 Questions Completed', category: 'milestone', test: function () { return DPE_DATA.filter(function (d) { return studied[d.id]; }).length >= 50; } },
+    { key: 'hundred_questions', icon: '💯', label: '100 Questions Completed', category: 'milestone', test: function () { return DPE_DATA.filter(function (d) { return studied[d.id]; }).length >= 100; } },
+    { key: 'seven_day_streak', icon: '🔥', label: '7 Day Streak', category: 'consistency', test: function () { return computeStreaks().longest >= 7; } },
+    { key: 'checkride_mode_completed', icon: '🎯', label: 'Checkride Mode Completed', category: 'milestone', test: function () { return checkrideModeDone; } },
+    { key: 'all_scenarios_complete', icon: '🧭', label: 'All Scenarios Complete', category: 'scenarios', test: function () { return SCENARIOS.length > 0 && SCENARIOS.every(function (s) { return studied[s.id]; }); } }
   ];
+
+  var ACHIEVEMENT_CATEGORY_LABELS = { milestone: 'Milestones', consistency: 'Consistency', acs: 'ACS Areas', scenarios: 'Scenarios' };
+
+  // One achievement per real ACS category (CATEGORY_META, loaded from
+  // dpe_categories server-side) rather than hand-picking a subset --
+  // this is a direct generalization of the achievement this replaced
+  // (all_weather_complete, which only ever covered one category) to
+  // every category the question bank actually has, so every real Area
+  // of Operation gets its own "collection" to complete.
+  function acsAchievementDefs() {
+    return Object.keys(CATEGORY_META).map(function (cat) {
+      return {
+        key: 'acs_complete_' + cat,
+        icon: '📘',
+        label: 'All ' + CATEGORY_META[cat].label + ' Questions Complete',
+        category: 'acs',
+        test: function () { return categoryPct(cat) >= 1; }
+      };
+    });
+  }
+
+  function allAchievementDefs() {
+    return ACHIEVEMENT_DEFS.concat(acsAchievementDefs());
+  }
 
   /* ══════════════════════════════════════════════════════════════
      STUDY ANALYTICS — heatmap + weekly bar chart, both derived
@@ -2373,11 +2403,34 @@
     '<p class="portal-weekchart__total">' + totalMin + ' minutes studied this week</p>';
   }
 
+  var achievementRarity = {}; // achievement_key -> pct_earned (0-1), fetched once
+
   function renderAchievements() {
-    var html = ACHIEVEMENT_DEFS.map(function (def) {
-      var earned = !!earnedAchievements[def.key];
-      return '<div class="portal-achievement' + (earned ? ' earned' : '') + '"><div class="portal-achievement__icon">' + def.icon + '</div><div class="portal-achievement__label">' + def.label + '</div></div>';
+    var defs = allAchievementDefs();
+    var byCategory = {};
+    defs.forEach(function (def) {
+      (byCategory[def.category] = byCategory[def.category] || []).push(def);
+    });
+
+    var html = Object.keys(byCategory).map(function (cat) {
+      var defsInCat = byCategory[cat];
+      var earnedCount = defsInCat.filter(function (d) { return !!earnedAchievements[d.key]; }).length;
+      var cards = defsInCat.map(function (def) {
+        var earned = !!earnedAchievements[def.key];
+        var rarity = achievementRarity[def.key];
+        var rarityLabel = (typeof rarity === 'number') ? Math.round(rarity * 100) + '% of pilots' : '';
+        return '<div class="portal-achievement' + (earned ? ' earned' : '') + '" title="' + (rarityLabel || def.label) + '">' +
+          '<div class="portal-achievement__icon">' + def.icon + '</div>' +
+          '<div class="portal-achievement__label">' + def.label + '</div>' +
+          (rarityLabel ? '<div class="portal-achievement__rarity">' + rarityLabel + '</div>' : '') +
+        '</div>';
+      }).join('');
+      return '<div class="portal-achievements-category">' +
+        '<div class="portal-achievements-category__head">' + (ACHIEVEMENT_CATEGORY_LABELS[cat] || cat) + ' <span>' + earnedCount + '/' + defsInCat.length + '</span></div>' +
+        '<div class="portal-achievements">' + cards + '</div>' +
+      '</div>';
     }).join('');
+
     // Rendered in two places: Account Management (original location) and
     // Readiness & Analytics (Progress page) -- same data, same markup,
     // just surfaced somewhere students actually look instead of buried
@@ -2388,10 +2441,62 @@
     });
   }
 
+  var CADENCE_LABELS = { weekly: 'This Week', monthly: 'This Month', seasonal: 'Seasonal Event' };
+
+  // Missions and progress are both server-computed (missions/
+  // member_mission_progress, refreshed by refresh_mission_progress() on
+  // the lifecycle cron -- supabase-portal-schema-v50.sql) -- this just
+  // reads and renders, same trust boundary as everything else fetched
+  // from these RLS-protected tables.
+  function renderMissions() {
+    var el = document.getElementById('missionsList');
+    if (!el || !member) return;
+    var today = getTodayStr();
+    apexSupabase.from('missions').select('*').lte('starts_on', today).gte('ends_on', today).order('cadence').then(function (missionsRes) {
+      var missions = missionsRes.data || [];
+      if (!missions.length) {
+        el.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:13px">No missions are active right now — check back soon.</p>';
+        return;
+      }
+      apexSupabase.from('member_mission_progress').select('mission_id, progress, target, completed_at').eq('profile_id', member.id).then(function (progressRes) {
+        var progressByMission = {};
+        (progressRes.data || []).forEach(function (p) { progressByMission[p.mission_id] = p; });
+
+        el.innerHTML = missions.map(function (m) {
+          var p = progressByMission[m.id];
+          var progress = p ? p.progress : 0;
+          var target = p ? p.target : 1;
+          var pct = Math.min(100, Math.round((progress / Math.max(target, 1)) * 100));
+          var done = !!(p && p.completed_at);
+          return '<div class="portal-card portal-mission' + (done ? ' portal-mission--done' : '') + '" style="margin-bottom:16px">' +
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px">' +
+              '<div>' +
+                '<span class="portal-header__eyebrow">' + (CADENCE_LABELS[m.cadence] || m.cadence) + '</span>' +
+                '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-top:6px">' + m.title + '</h3>' +
+              '</div>' +
+              '<span style="color:#F4B400;font-size:13px;font-weight:700;white-space:nowrap">' + (done ? '✓ Complete' : '+' + m.xp_reward + ' XP') + '</span>' +
+            '</div>' +
+            (m.description ? '<p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:12px">' + m.description + '</p>' : '') +
+            '<div class="portal-progress-bar"><div class="portal-progress-bar__fill" style="width:' + pct + '%"></div></div>' +
+            '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-top:6px">' + Math.min(progress, target) + ' / ' + target + '</p>' +
+            (m.premium_reward ? '<p style="color:rgba(244,180,0,0.7);font-size:12px;margin-top:6px">🏆 ' + m.premium_reward + '</p>' : '') +
+          '</div>';
+        }).join('');
+      });
+    });
+  }
+
+  function loadAchievementRarity() {
+    apexSupabase.rpc('get_achievement_rarity').then(function (res) {
+      (res.data || []).forEach(function (r) { achievementRarity[r.achievement_key] = r.pct_earned; });
+      renderAchievements();
+    });
+  }
+
   function checkAchievements() {
     if (!DPE_DATA.length) return; // not unlocked yet — nothing meaningful to check (avoids vacuous-true achievement tests like .every() on an empty array)
     var newlyEarned = [];
-    ACHIEVEMENT_DEFS.forEach(function (def) {
+    allAchievementDefs().forEach(function (def) {
       if (earnedAchievements[def.key] || !def.test()) return;
       earnedAchievements[def.key] = true;
       newlyEarned.push(def);
@@ -3753,8 +3858,10 @@
       renderQotd();
       renderMyTraining();
       renderAchievements();
+      loadAchievementRarity();
       renderStudyHeatmap();
       renderWeeklyActivityChart();
+      renderMissions();
       checkAchievements();
       renderAdminIfApplicable();
       enforceGuidedNotesAccess();
