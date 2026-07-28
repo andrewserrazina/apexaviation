@@ -49,7 +49,10 @@
         role: profile && profile.role,
         certificateStatus: (profile && profile.certificate_status) || 'None',
         memberSince: profile && profile.created_at,
-        checkridePrepUnlocked: !!(profile && profile.checkride_prep_unlocked)
+        checkridePrepUnlocked: !!(profile && profile.checkride_prep_unlocked),
+        totalXp: (profile && profile.total_xp) || 0,
+        currentRank: (profile && profile.current_rank) || 'student_pilot',
+        streakFreezesBanked: (profile && profile.streak_freezes_banked) || 0
       };
       populateMember();
       applyUnlockState();
@@ -58,6 +61,13 @@
       // (send-lifecycle-emails, Phase 3) a real "last seen" signal.
       // Once per page load is enough — this isn't a click-tracking beacon.
       apexSupabase.from('profiles').update({ portal_last_active_at: new Date().toISOString() }).eq('id', member.id);
+      // Server-authoritative XP for opening today's Dispatch (+5, once
+      // per member-local day -- see log_daily_dispatch_open() in
+      // supabase-portal-schema-v47.sql). Fire-and-forget, same as above;
+      // a failure here should never block the portal from loading.
+      apexSupabase.rpc('log_daily_dispatch_open').then(function (res) {
+        if (res && res.error) console.warn('log_daily_dispatch_open failed:', res.error);
+      });
       return loadPremiumContent().then(function () {
         return initPortalData();
       });
@@ -1858,6 +1868,81 @@
     document.getElementById('streakLongest').textContent = s.longest;
     document.getElementById('streakDaysStudied').textContent = s.daysStudied;
     document.getElementById('streakFlame').classList.toggle('active', s.current > 0);
+
+    var freezeMeta = document.getElementById('streakFreezeMeta');
+    var freezeCount = member ? (member.streakFreezesBanked || 0) : 0;
+    if (freezeMeta) {
+      document.getElementById('streakFreezeCount').textContent = freezeCount;
+      freezeMeta.hidden = freezeCount === 0;
+    }
+    renderRecoverySortieBanner();
+  }
+
+  // A pending Recovery Sortie is offered server-side (run_streak_maintenance(),
+  // supabase-portal-schema-v48.sql) when a streak breaks with no freeze
+  // banked. This just surfaces it -- completing 3 questions today closes
+  // it out automatically via a DB trigger, no client action needed here
+  // beyond studying normally.
+  function renderRecoverySortieBanner() {
+    var banner = document.getElementById('recoverySortieBanner');
+    if (!banner || !member) return;
+    apexSupabase
+      .from('recovery_sorties')
+      .select('id')
+      .eq('profile_id', member.id)
+      .is('used_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .limit(1)
+      .then(function (res) {
+        banner.style.display = (res.data && res.data.length) ? 'block' : 'none';
+      });
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     PILOT RANK + XP
+     Keep PILOT_RANKS in sync with the pilot_ranks seed data in
+     supabase-portal-schema-v47.sql -- duplicated here so rank progress
+     renders without an extra round trip, same reasoning as the
+     ACHIEVEMENT_DEFS/CATEGORY_META constants elsewhere in this file.
+     Ranks are display-only and never imply a real FAA certificate or
+     rating -- see the disclaimer text below, shown for any rank that
+     could otherwise be misread that way.
+     ══════════════════════════════════════════════════════════════ */
+  var PILOT_RANKS = [
+    { key: 'student_pilot', label: 'Student Pilot', minXp: 0 },
+    { key: 'pre_solo', label: 'Pre-Solo', minXp: 250 },
+    { key: 'cross_country_pilot', label: 'Cross-Country Pilot', minXp: 750 },
+    { key: 'night_rated', label: 'Night Rated', minXp: 1500, disclaimer: 'Portal rank only — not FAA night currency or an endorsement.' },
+    { key: 'instrument_ready', label: 'Instrument Ready', minXp: 2750, disclaimer: 'Portal rank only — not an FAA Instrument Rating.' },
+    { key: 'commercial_candidate', label: 'Commercial Candidate', minXp: 4500, disclaimer: 'Portal rank only — not a Commercial Pilot Certificate.' },
+    { key: 'checkride_ace', label: 'Checkride Ace', minXp: 7000 },
+    { key: 'apex_captain', label: 'Apex Captain', minXp: 10000, disclaimer: 'Portal rank only — not a Private Pilot Certificate.' },
+    { key: 'legend', label: 'Legend', minXp: 15000, disclaimer: 'Portal rank only — not any FAA certificate or rating.' }
+  ];
+
+  function renderXpRank() {
+    var xpEl = document.getElementById('xpTotal');
+    if (!xpEl || !member) return;
+    var xp = member.totalXp || 0;
+    var idx = 0;
+    for (var i = 0; i < PILOT_RANKS.length; i++) { if (xp >= PILOT_RANKS[i].minXp) idx = i; }
+    var current = PILOT_RANKS[idx];
+    var next = PILOT_RANKS[idx + 1];
+
+    xpEl.textContent = xp;
+    document.getElementById('xpRankLabel').textContent = current.label;
+    var disclaimerEl = document.getElementById('xpRankDisclaimer');
+    if (disclaimerEl) disclaimerEl.textContent = current.disclaimer || '';
+    var barEl = document.getElementById('xpRankBar');
+    var nextEl = document.getElementById('xpRankNext');
+    if (next) {
+      var pct = Math.min(100, Math.round(((xp - current.minXp) / (next.minXp - current.minXp)) * 100));
+      if (barEl) barEl.style.width = pct + '%';
+      if (nextEl) nextEl.textContent = (next.minXp - xp) + ' XP to ' + next.label;
+    } else {
+      if (barEl) barEl.style.width = '100%';
+      if (nextEl) nextEl.textContent = 'Top rank reached';
+    }
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -3662,6 +3747,7 @@
       renderDashboardStats();
       renderReadiness();
       renderStreak();
+      renderXpRank();
       renderWeakAreas();
       renderAcsCoverage();
       renderQotd();

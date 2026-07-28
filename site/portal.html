@@ -176,8 +176,8 @@
           <a href="#" class="btn btn--primary" id="continueTrainingBtn" data-goto="scenarios">Continue Training</a>
         </div>
 
-        <!-- Readiness + Streak + Weak Areas -->
-        <div class="portal-grid portal-grid--3" style="margin-bottom:24px">
+        <!-- Readiness + Streak + Weak Areas + Pilot Rank -->
+        <div class="portal-grid portal-grid--4" style="margin-bottom:24px">
           <div class="portal-card portal-readiness portal-locked-widget" data-locked-widget data-widget="readiness">
             <div class="portal-locked-widget__content">
               <div class="portal-readiness__gauge">
@@ -208,7 +208,12 @@
                 <div>
                   <div class="portal-streak__current"><span id="streakCurrent">0</span> Day Streak</div>
                   <div class="portal-streak__meta">Longest: <span id="streakLongest">0</span> days · <span id="streakDaysStudied">0</span> days studied total</div>
+                  <div class="portal-streak__meta" id="streakFreezeMeta" hidden><span id="streakFreezeCount">0</span> freeze(s) banked — one covers a missed day automatically</div>
                 </div>
+              </div>
+              <div id="recoverySortieBanner" style="display:none;margin-top:14px;padding:12px 14px;background:rgba(244,180,0,0.08);border:1px solid rgba(244,180,0,0.25);border-radius:8px">
+                <p style="color:#F4B400;font-size:13px;font-weight:700;margin-bottom:4px">Recovery Sortie available</p>
+                <p style="color:rgba(255,255,255,0.55);font-size:12.5px;line-height:1.5">You missed a day with no freeze banked. Answer 3 questions today to restore your streak.</p>
               </div>
             </div>
             <div class="portal-locked-widget__overlay" data-unlock-trigger style="display:none">
@@ -226,6 +231,24 @@
             <div class="portal-locked-widget__overlay" data-unlock-trigger style="display:none">
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="#F4B400" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round"/></svg>
               <span>Unlock Weak-Area Tracking</span>
+              <small>$29 · Tap to unlock</small>
+            </div>
+          </div>
+
+          <div class="portal-card portal-locked-widget" data-locked-widget data-widget="pilot-rank">
+            <div class="portal-locked-widget__content">
+              <div class="portal-header__eyebrow" style="margin-bottom:14px">Pilot Rank</div>
+              <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">
+                <span id="xpRankLabel" style="color:#fff;font-size:16px;font-weight:700">Student Pilot</span>
+                <span style="color:rgba(255,255,255,0.5);font-size:13px"><span id="xpTotal">0</span> XP</span>
+              </div>
+              <div class="portal-progress-bar"><div class="portal-progress-bar__fill" id="xpRankBar" style="width:0%"></div></div>
+              <p id="xpRankNext" style="color:rgba(255,255,255,0.4);font-size:12px;margin-top:8px">— XP to next rank</p>
+              <p id="xpRankDisclaimer" style="color:rgba(255,255,255,0.3);font-size:11px;margin-top:6px"></p>
+            </div>
+            <div class="portal-locked-widget__overlay" data-unlock-trigger style="display:none">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="#F4B400" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round"/></svg>
+              <span>Unlock Pilot Rank</span>
               <small>$29 · Tap to unlock</small>
             </div>
           </div>
