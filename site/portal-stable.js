@@ -207,7 +207,7 @@
   var sidebar = document.getElementById('portalSidebar');
   var overlay = document.getElementById('sidebarOverlay');
 
-  var GATED_SECTIONS = ['checkride-prep', 'dpe-library', 'ai-dpe-practice', 'scenarios', 'progress', 'vault', 'missions'];
+  var GATED_SECTIONS = ['checkride-prep', 'dpe-library', 'ai-dpe-practice', 'scenarios', 'progress', 'vault', 'missions', 'pilot-journey'];
 
   function showSection(id) {
     if (!document.getElementById('section-' + id)) id = 'dashboard';
@@ -2518,6 +2518,105 @@
     });
   }
 
+  /* ══════════════════════════════════════════════════════════════
+     PILOT JOURNEY — real aviation progress, separate from XP.
+     journey_milestone_types is a reference table (v52), not a
+     hardcoded list here, so a future certificate/rating just needs a
+     new row server-side, never a client code change. Verification
+     (self-reported vs instructor/Apex verified) is decided entirely
+     server-side (trg_protect_milestone_verification) -- this code
+     never has a path to mark its own entry verified.
+     ══════════════════════════════════════════════════════════════ */
+  var VERIFICATION_BADGES = {
+    self_reported: '<span style="color:rgba(255,255,255,0.4);font-size:11px">Self-reported</span>',
+    instructor_verified: '<span style="color:#4ade80;font-size:11px">✓ Instructor Verified</span>',
+    apex_verified: '<span style="color:#F4B400;font-size:11px">✓ Apex Verified</span>',
+  };
+
+  function openMilestoneForm(milestoneType, existing) {
+    var overlay = document.getElementById('passedOverlay');
+    overlay.hidden = false;
+    overlay.innerHTML =
+      '<div class="portal-practice-panel">' +
+        '<button class="portal-practice-panel__close" id="journeyFormCloseBtn" type="button">' +
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
+        '</button>' +
+        '<h3 style="color:#fff;font-size:18px;font-weight:700;margin-bottom:18px">' + milestoneType.label + '</h3>' +
+        '<div class="form-group" style="margin-bottom:14px"><label style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px">Date</label>' +
+          '<input type="date" id="journeyFormDate" value="' + (existing ? existing.achieved_on : getTodayStr()) + '" style="width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none" /></div>' +
+        '<div class="form-group" style="margin-bottom:14px"><label style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px">Notes (optional)</label>' +
+          '<textarea id="journeyFormNotes" rows="2" style="width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none;resize:vertical">' + (existing && existing.notes ? existing.notes : '') + '</textarea></div>' +
+        '<div class="form-group" style="margin-bottom:20px"><label style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px">Reflection (optional) — how did it feel?</label>' +
+          '<textarea id="journeyFormReflection" rows="3" style="width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none;resize:vertical">' + (existing && existing.reflection ? existing.reflection : '') + '</textarea></div>' +
+        '<button class="btn btn--primary btn--full" id="journeyFormSaveBtn">Save Milestone</button>' +
+      '</div>';
+    document.getElementById('journeyFormCloseBtn').addEventListener('click', function () { overlay.hidden = true; });
+    document.getElementById('journeyFormSaveBtn').addEventListener('click', function () {
+      var achievedOn = document.getElementById('journeyFormDate').value || getTodayStr();
+      var notes = document.getElementById('journeyFormNotes').value.trim();
+      var reflection = document.getElementById('journeyFormReflection').value.trim();
+      apexSupabase.from('member_milestones').upsert({
+        profile_id: member.id,
+        milestone_key: milestoneType.milestone_key,
+        achieved_on: achievedOn,
+        notes: notes || null,
+        reflection: reflection || null,
+      }, { onConflict: 'profile_id,milestone_key' }).then(function (res) {
+        if (res.error) { toast('Could not save: ' + res.error.message); return; }
+        overlay.hidden = true;
+        toast('🎉 Milestone logged: ' + milestoneType.label);
+        renderPilotJourney();
+      });
+    });
+  }
+
+  function renderPilotJourney() {
+    var el = document.getElementById('pilotJourneyList');
+    if (!el || !member) return;
+    Promise.all([
+      apexSupabase.from('journey_milestone_types').select('*').order('sort_order'),
+      apexSupabase.from('member_milestones').select('*').eq('profile_id', member.id),
+    ]).then(function (results) {
+      var types = results[0].data || [];
+      var logged = {};
+      (results[1].data || []).forEach(function (m) { logged[m.milestone_key] = m; });
+
+      el.innerHTML = types.map(function (t) {
+        var m = logged[t.milestone_key];
+        if (m) {
+          var dateLabel = new Date(m.achieved_on + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          return '<div class="portal-card" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px">' +
+            '<div>' +
+              '<h3 style="color:#fff;font-size:14.5px;font-weight:700;margin-bottom:3px">✓ ' + t.label + '</h3>' +
+              '<p style="color:rgba(255,255,255,0.45);font-size:12.5px;margin-bottom:4px">' + dateLabel + '</p>' +
+              (m.notes ? '<p style="color:rgba(255,255,255,0.5);font-size:12.5px;margin-bottom:4px">' + m.notes + '</p>' : '') +
+              (VERIFICATION_BADGES[m.verification_status] || '') +
+            '</div>' +
+            '<button class="btn-link-journey" data-edit-milestone="' + t.milestone_key + '" style="background:none;border:none;color:#F4B400;font-size:12.5px;cursor:pointer;white-space:nowrap">Edit</button>' +
+          '</div>';
+        }
+        return '<div class="portal-card" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:12px;opacity:0.55">' +
+          '<h3 style="color:#fff;font-size:14.5px;font-weight:600">' + t.label + '</h3>' +
+          '<button class="btn btn--ghost" data-log-milestone="' + t.milestone_key + '" style="white-space:nowrap;padding:8px 14px;font-size:12.5px">Log This Milestone</button>' +
+        '</div>';
+      }).join('');
+
+      el.querySelectorAll('[data-log-milestone]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var t = types.find(function (x) { return x.milestone_key === btn.dataset.logMilestone; });
+          if (t) openMilestoneForm(t, null);
+        });
+      });
+      el.querySelectorAll('[data-edit-milestone]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var key = btn.dataset.editMilestone;
+          var t = types.find(function (x) { return x.milestone_key === key; });
+          if (t) openMilestoneForm(t, logged[key]);
+        });
+      });
+    });
+  }
+
   function loadAchievementRarity() {
     apexSupabase.rpc('get_achievement_rarity').then(function (res) {
       (res.data || []).forEach(function (r) { achievementRarity[r.achievement_key] = r.pct_earned; });
@@ -3749,6 +3848,15 @@
       '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Every question, every scenario, every study streak led here. Welcome to the ranks of certificated pilots — fly safe out there.</p>';
   }
 
+  var NEXT_RATING_OPTIONS = [
+    { value: 'build_confidence', label: 'Build confidence as a new Private Pilot' },
+    { value: 'instrument', label: 'Begin Instrument training' },
+    { value: 'cross_country_experience', label: 'Build cross-country experience' },
+    { value: 'commercial', label: 'Prepare for Commercial' },
+    { value: 'stay_current', label: 'Stay current with live workshops' },
+    { value: 'not_sure', label: "Not sure yet" },
+  ];
+
   function showCelebration() {
     var overlay = document.getElementById('passedOverlay');
     overlay.hidden = false;
@@ -3759,7 +3867,38 @@
         '<p>Congratulations from everyone at Apex Aviation. You\'ll now show up on the Success Wall for other students to see.</p>' +
         '<button class="btn btn--primary" id="celebrationCloseBtn">Close</button>' +
       '</div></div>';
-    document.getElementById('celebrationCloseBtn').addEventListener('click', function () { overlay.hidden = true; });
+    document.getElementById('celebrationCloseBtn').addEventListener('click', function () {
+      overlay.hidden = true;
+      showNextRatingPrompt();
+    });
+  }
+
+  // Per the product spec: don't let the experience end at "you passed."
+  // The answer is stored (profiles.next_rating_interest, v52) for future
+  // Dispatch personalization -- not yet wired to any actual personalized
+  // content, so this is a real, honest data-capture step, not a
+  // finished personalization feature.
+  function showNextRatingPrompt() {
+    var overlay = document.getElementById('passedOverlay');
+    overlay.hidden = false;
+    overlay.innerHTML =
+      '<div class="portal-practice-panel">' +
+        '<h3 style="color:#fff;font-size:18px;font-weight:700;margin-bottom:8px">What\'s next in your Pilot Journey?</h3>' +
+        '<p style="color:rgba(255,255,255,0.5);font-size:13.5px;margin-bottom:18px">This just helps us point you toward what\'s actually useful next — no wrong answer.</p>' +
+        '<div style="display:flex;flex-direction:column;gap:8px">' +
+          NEXT_RATING_OPTIONS.map(function (o) {
+            return '<button class="btn btn--ghost" data-next-rating="' + o.value + '" style="text-align:left">' + o.label + '</button>';
+          }).join('') +
+        '</div>' +
+      '</div>';
+    overlay.querySelectorAll('[data-next-rating]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        apexSupabase.from('profiles').update({ next_rating_interest: btn.dataset.nextRating }).eq('id', member.id).then(function () {
+          overlay.hidden = true;
+          toast("Got it — we'll tailor what we show you next.");
+        });
+      });
+    });
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -3969,6 +4108,7 @@
       renderStudyHeatmap();
       renderWeeklyActivityChart();
       renderMissions();
+      renderPilotJourney();
       checkAchievements();
       renderAdminIfApplicable();
       enforceGuidedNotesAccess();
