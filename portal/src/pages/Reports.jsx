@@ -153,7 +153,7 @@ export default function Reports() {
       ['', '', '', '', ''],
       ['LOGBOOK SUMMARY', '', '', '', ''],
       ['Total Entries', logbook.length, '', '', ''],
-      ['Total Hours', logbook.reduce((s, l) => s + (l.total_time ?? 0), 0).toFixed(1), '', '', ''],
+      ['Total Hours', logbook.reduce((s, l) => s + (l.duration_hours ?? 0), 0).toFixed(1), '', '', ''],
     ]
     const csv = rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n')
     downloadCSV(`${p?.full_name?.replace(/\s+/g, '_') ?? 'student'}_training_record.csv`, csv)
@@ -227,7 +227,7 @@ export default function Reports() {
                 <div className="stat-card"><p className="stat-card__label">Endorsements</p><p className="stat-card__value">{studentData.endorsements.length}</p></div>
                 <div className="stat-card"><p className="stat-card__label">Stage Checks Passed</p><p className="stat-card__value">{studentData.stageChecks.filter(s => s.result === 'pass').length}</p></div>
                 <div className="stat-card"><p className="stat-card__label">Written Tests</p><p className="stat-card__value">{studentData.writtenTests.length}</p></div>
-                <div className="stat-card"><p className="stat-card__label">Logbook Hours</p><p className="stat-card__value">{studentData.logbook.reduce((s, l) => s + (l.total_time ?? 0), 0).toFixed(1)}</p></div>
+                <div className="stat-card"><p className="stat-card__label">Logbook Hours</p><p className="stat-card__value">{studentData.logbook.reduce((s, l) => s + (l.duration_hours ?? 0), 0).toFixed(1)}</p></div>
               </div>
 
               {studentData.endorsements.length > 0 && (

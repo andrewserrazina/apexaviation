@@ -429,11 +429,6 @@ export default function Syllabi() {
                             {studentDone ? '✓' : ''}
                           </button>
                         )}
-                        {(isAdmin || isInstructor) && canEdit && (
-                          <button className="btn-link" style={{ fontSize: 11 }} onClick={() => {
-                            // inline admin mark for... first enrolled student? For now open lessons modal
-                          }}>—</button>
-                        )}
                       </div>
                     </div>
                   )

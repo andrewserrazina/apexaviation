@@ -192,7 +192,7 @@ export default function Dashboard() {
       const { data: regs } = await supabase.from('ground_registrations').select('session_id').eq('email', profile.email)
       if (regs?.length) {
         const ids = regs.map(r => r.session_id)
-        const { data: sessions } = await supabase.from('ground_sessions').select('*').in('id', ids).gte('session_date', new Date().toISOString().slice(0, 10)).order('session_date').limit(3)
+        const { data: sessions } = await supabase.from('ground_sessions').select('*').in('id', ids).gte('scheduled_at', new Date().toISOString().slice(0, 10)).order('scheduled_at').limit(3)
         setUpcomingGroundSessions(sessions ?? [])
       }
     }
@@ -350,7 +350,7 @@ export default function Dashboard() {
                     <p className="activity-row__sub">{s.location ?? 'Location TBD'}</p>
                   </div>
                   <div className="activity-row__meta">
-                    <span>{new Date(s.session_date).toLocaleDateString()}</span>
+                    <span>{new Date(s.scheduled_at).toLocaleDateString()}</span>
                   </div>
                 </div>
               ))}
