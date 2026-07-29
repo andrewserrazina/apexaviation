@@ -100,6 +100,16 @@
         </button>
 
         <div class="portal-nav__section-label">Practice</div>
+        <!-- Apex Advantage Membership isn't public yet -- feature preview,
+             admin-only: renderAdminIfApplicable() is the only thing that
+             ever unhides this. enforceAskAndrewAccess() in portal-stable.js
+             is the real client-side access boundary; ai-cfi-chat's
+             requireCapability() check server-side is what actually matters. -->
+        <button class="portal-nav__item" data-section="ask-andrew" id="askAndrewNavItem" hidden>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 4.5c-4.5 0-8 2.5-8 6.5 0 2 1 3.7 2.6 4.9-.2 1-.7 2.1-1.6 3.1 1.6 0 3.1-.6 4.3-1.5.8.2 1.7.3 2.7.3 4.5 0 8-2.5 8-6.8s-3.5-6.5-8-6.5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Ask Andrew
+          <span style="margin-left:auto;font-size:9px;font-weight:800;letter-spacing:0.06em;color:#0B1F3A;background:var(--gold);padding:2px 6px;border-radius:100px">TEST</span>
+        </button>
         <button class="portal-nav__item" data-section="dpe-library" data-gated="true">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 6.253v13M12 6.253C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           DPE Question Bank
@@ -124,6 +134,16 @@
         <button class="portal-nav__item" data-section="progress" data-gated="true">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Readiness &amp; Analytics
+          <svg class="portal-nav__lock" data-lock-icon width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <button class="portal-nav__item" data-section="missions" data-gated="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Missions
+          <svg class="portal-nav__lock" data-lock-icon width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <button class="portal-nav__item" data-section="pilot-journey" data-gated="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2l1.8 5.5H20l-4.6 3.4 1.8 5.6-5.2-3.5-5.2 3.5 1.8-5.6L4 7.5h6.2z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Pilot Journey
           <svg class="portal-nav__lock" data-lock-icon width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
 
@@ -176,8 +196,8 @@
           <a href="#" class="btn btn--primary" id="continueTrainingBtn" data-goto="scenarios">Continue Training</a>
         </div>
 
-        <!-- Readiness + Streak + Weak Areas -->
-        <div class="portal-grid portal-grid--3" style="margin-bottom:24px">
+        <!-- Readiness + Streak + Weak Areas + Pilot Rank -->
+        <div class="portal-grid portal-grid--4" style="margin-bottom:24px">
           <div class="portal-card portal-readiness portal-locked-widget" data-locked-widget data-widget="readiness">
             <div class="portal-locked-widget__content">
               <div class="portal-readiness__gauge">
@@ -208,7 +228,12 @@
                 <div>
                   <div class="portal-streak__current"><span id="streakCurrent">0</span> Day Streak</div>
                   <div class="portal-streak__meta">Longest: <span id="streakLongest">0</span> days · <span id="streakDaysStudied">0</span> days studied total</div>
+                  <div class="portal-streak__meta" id="streakFreezeMeta" hidden><span id="streakFreezeCount">0</span> freeze(s) banked — one covers a missed day automatically</div>
                 </div>
+              </div>
+              <div id="recoverySortieBanner" style="display:none;margin-top:14px;padding:12px 14px;background:rgba(244,180,0,0.08);border:1px solid rgba(244,180,0,0.25);border-radius:8px">
+                <p style="color:#F4B400;font-size:13px;font-weight:700;margin-bottom:4px">Recovery Sortie available</p>
+                <p style="color:rgba(255,255,255,0.55);font-size:12.5px;line-height:1.5">You missed a day with no freeze banked. Answer 3 questions today to restore your streak.</p>
               </div>
             </div>
             <div class="portal-locked-widget__overlay" data-unlock-trigger style="display:none">
@@ -226,6 +251,24 @@
             <div class="portal-locked-widget__overlay" data-unlock-trigger style="display:none">
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="#F4B400" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round"/></svg>
               <span>Unlock Weak-Area Tracking</span>
+              <small>$29 · Tap to unlock</small>
+            </div>
+          </div>
+
+          <div class="portal-card portal-locked-widget" data-locked-widget data-widget="pilot-rank">
+            <div class="portal-locked-widget__content">
+              <div class="portal-header__eyebrow" style="margin-bottom:14px">Pilot Rank</div>
+              <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">
+                <span id="xpRankLabel" style="color:#fff;font-size:16px;font-weight:700">Student Pilot</span>
+                <span style="color:rgba(255,255,255,0.5);font-size:13px"><span id="xpTotal">0</span> XP</span>
+              </div>
+              <div class="portal-progress-bar"><div class="portal-progress-bar__fill" id="xpRankBar" style="width:0%"></div></div>
+              <p id="xpRankNext" style="color:rgba(255,255,255,0.4);font-size:12px;margin-top:8px">— XP to next rank</p>
+              <p id="xpRankDisclaimer" style="color:rgba(255,255,255,0.3);font-size:11px;margin-top:6px"></p>
+            </div>
+            <div class="portal-locked-widget__overlay" data-unlock-trigger style="display:none">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="#F4B400" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round"/></svg>
+              <span>Unlock Pilot Rank</span>
               <small>$29 · Tap to unlock</small>
             </div>
           </div>
@@ -1180,6 +1223,25 @@
         <p id="dpeEmpty" style="display:none;color:rgba(255,255,255,0.4);font-size:14px;padding:20px 0">No questions match your search.</p>
       </section>
 
+      <!-- ─────────── ASK ANDREW (AI Flight Instructor) ─────────── -->
+      <section class="portal-section" id="section-ask-andrew">
+        <div class="portal-header">
+          <div class="portal-header__eyebrow">Included with Apex Advantage Membership</div>
+          <h1>Ask Andrew</h1>
+          <p>An AI flight instructor, built on Andrew's teaching approach, available any time for aviation questions — regulations, procedures, aerodynamics, checkride prep, career questions, whatever you're working through. It's AI, not a live conversation with Andrew himself, and it won't make real go/no-go calls or replace your real instructor's judgment on your actual training.</p>
+        </div>
+
+        <div class="portal-chat" id="askAndrewChat">
+          <div class="portal-chat__messages" id="askAndrewMessages"></div>
+          <div class="portal-chat__typing" id="askAndrewTyping" hidden><span></span><span></span><span></span></div>
+          <form class="portal-chat__input-row" id="askAndrewForm">
+            <input type="text" id="askAndrewInput" placeholder="Ask anything aviation…" autocomplete="off" />
+            <button type="submit" class="btn btn--primary" id="askAndrewSendBtn">Send</button>
+          </form>
+        </div>
+        <p id="askAndrewError" class="portal-modal__error"></p>
+      </section>
+
       <!-- ─────────── AI DPE PRACTICE (simulated oral exam) ─────────── -->
       <section class="portal-section" id="section-ai-dpe-practice">
         <div class="portal-header">
@@ -1239,10 +1301,30 @@
 
         <div class="portal-card" style="margin-bottom:24px">
           <div class="portal-header__eyebrow" style="margin-bottom:14px">Achievements</div>
-          <div class="portal-achievements" id="achievementsGridProgress"><!-- populated by JS --></div>
+          <div id="achievementsGridProgress"><!-- populated by JS --></div>
         </div>
 
         <div id="progressTracks"><!-- populated by JS --></div>
+      </section>
+
+      <!-- ─────────── MISSIONS ─────────── -->
+      <section class="portal-section" id="section-missions">
+        <div class="portal-header">
+          <div class="portal-header__eyebrow">Missions</div>
+          <h1>This week's objectives.</h1>
+          <p>Weekly and monthly goals that reward XP on completion — refreshed automatically as you study.</p>
+        </div>
+        <div id="missionsList"><p style="color:rgba(255,255,255,0.4);font-size:13px">Loading missions…</p></div>
+      </section>
+
+      <!-- ─────────── PILOT JOURNEY ─────────── -->
+      <section class="portal-section" id="section-pilot-journey">
+        <div class="portal-header">
+          <div class="portal-header__eyebrow">Pilot Journey</div>
+          <h1>Your real training timeline.</h1>
+          <p>Separate from XP — this is your actual aviation progress, from your first discovery flight through your next rating. Log what applies to you; nothing here is required.</p>
+        </div>
+        <div id="pilotJourneyList"><p style="color:rgba(255,255,255,0.4);font-size:13px">Loading your journey…</p></div>
       </section>
 
       <!-- ─────────── DOWNLOAD VAULT ─────────── -->
@@ -1346,7 +1428,8 @@
           </div>
 
           <div class="portal-card">
-            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:18px">Membership</h3>
+            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:18px">Checkride Prep Pack</h3>
+            <p style="color:rgba(255,255,255,0.4);font-size:12px;margin:-12px 0 16px">One-time purchase — lifetime access. Separate from Apex Advantage Membership below.</p>
             <div class="portal-membership-row">
               <strong>Checkride Prep</strong>
               <span id="membershipPlan">—</span>
@@ -1381,11 +1464,22 @@
           </div>
         </div>
 
+        <!-- Apex Advantage Membership isn't public yet -- feature preview,
+             admin-only: renderAdminIfApplicable() is the only thing that
+             ever unhides this. -->
+        <div class="portal-card" style="margin-top:20px" id="membershipCard" hidden>
+          <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:4px">Apex Advantage Membership <span style="font-size:9px;font-weight:800;letter-spacing:0.06em;color:#0B1F3A;background:var(--gold);padding:2px 6px;border-radius:100px;vertical-align:middle">TEST</span></h3>
+          <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:18px">Recurring access to live training, continuing education, and advanced tools — separate from the one-time Checkride Prep Pack above.</p>
+          <div id="membershipStatusBlock">
+            <p style="color:rgba(255,255,255,0.4);font-size:13px">Loading membership status…</p>
+          </div>
+        </div>
+
         <div class="portal-grid portal-grid--2" style="margin-top:20px">
           <div class="portal-card">
             <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">Achievements</h3>
             <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:18px">Badges you've earned working through Apex Advantage.</p>
-            <div class="portal-achievements" id="achievementsGrid"><!-- populated by JS --></div>
+            <div id="achievementsGrid"><!-- populated by JS --></div>
           </div>
 
           <div class="portal-card">
@@ -1472,7 +1566,7 @@
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="#F4B400" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round"/></svg>
       </div>
       <h2>Unlock the Checkride Prep System</h2>
-      <p>300+ DPE-style questions, 10 real-world scenarios, Checkride Mode, progress tracking, Ask Andrew, and everything else in the sidebar — unlocked instantly.</p>
+      <p>300+ DPE-style questions, 10 real-world scenarios, Checkride Mode, AI Oral Exam Practice, progress tracking, and everything else in the sidebar — unlocked instantly.</p>
       <div class="portal-modal__price-row">
         <span class="portal-modal__price" id="unlockModalPrice">$29</span>
       </div>

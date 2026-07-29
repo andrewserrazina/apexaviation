@@ -33,6 +33,32 @@
     }
   })();
 
+  /* ── Meta Pixel Purchase event — Apex Advantage Membership ───────
+     Same dedupe-by-session_id pattern as the Checkride Prep block
+     above, for the separate ?membership=1 success_url (join-membership
+     purpose, create-checkout-session). */
+  (function () {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('membership') !== '1') return;
+    var sessionId = params.get('session_id');
+    var tier = params.get('tier') || 'monthly';
+    var amountCents = parseInt(params.get('amount_cents'), 10);
+    var dedupeKey = sessionId ? 'apex_fbq_membership_' + sessionId : null;
+    if (window.fbq && (!dedupeKey || !localStorage.getItem(dedupeKey))) {
+      fbq('track', 'Purchase', {
+        value: isNaN(amountCents) ? 19 : amountCents / 100,
+        currency: 'USD',
+        content_name: 'Apex Advantage Membership (' + tier + ')',
+      });
+      if (dedupeKey) localStorage.setItem(dedupeKey, '1');
+    }
+    var funnelDedupeKey = sessionId ? 'apex_funnel_membership_' + sessionId : null;
+    if (window.apexTrack && (!funnelDedupeKey || !localStorage.getItem(funnelDedupeKey))) {
+      apexTrack('purchase_completed', { product: 'membership', tier: tier, price: isNaN(amountCents) ? 19 : amountCents / 100 });
+      if (funnelDedupeKey) localStorage.setItem(funnelDedupeKey, '1');
+    }
+  })();
+
   /* ── Auth guard — real Supabase session + profile ────────────── */
   var member = null;
   var accessToken = null;
@@ -49,7 +75,11 @@
         role: profile && profile.role,
         certificateStatus: (profile && profile.certificate_status) || 'None',
         memberSince: profile && profile.created_at,
-        checkridePrepUnlocked: !!(profile && profile.checkride_prep_unlocked)
+        checkridePrepUnlocked: !!(profile && profile.checkride_prep_unlocked),
+        totalXp: (profile && profile.total_xp) || 0,
+        currentRank: (profile && profile.current_rank) || 'student_pilot',
+        streakFreezesBanked: (profile && profile.streak_freezes_banked) || 0,
+        hasMembership: false
       };
       populateMember();
       applyUnlockState();
@@ -58,11 +88,32 @@
       // (send-lifecycle-emails, Phase 3) a real "last seen" signal.
       // Once per page load is enough — this isn't a click-tracking beacon.
       apexSupabase.from('profiles').update({ portal_last_active_at: new Date().toISOString() }).eq('id', member.id);
-      return loadPremiumContent().then(function () {
+      // Server-authoritative XP for opening today's Dispatch (+5, once
+      // per member-local day -- see log_daily_dispatch_open() in
+      // supabase-portal-schema-v47.sql). Fire-and-forget, same as above;
+      // a failure here should never block the portal from loading.
+      apexSupabase.rpc('log_daily_dispatch_open').then(function (res) {
+        if (res && res.error) console.warn('log_daily_dispatch_open failed:', res.error);
+      });
+      return Promise.all([loadPremiumContent(), loadMembershipCapability()]).then(function () {
         return initPortalData();
       });
     });
   }).catch(function (e) { if (e !== 'no-session') console.error(e); });
+
+  /* ── Membership capability check — for gating Membership-exclusive
+     sections (Ask Andrew) client-side. Same "UI convenience, not the
+     security boundary" caveat as loadPremiumContent below: the real
+     enforcement is ai-cfi-chat's requireCapability() check against
+     get_member_capabilities() server-side (supabase-portal-schema-v51/
+     v53.sql). Admins always pass client-side too, matching every other
+     gated section in this file. */
+  function loadMembershipCapability() {
+    if (member.role === 'admin') { member.hasMembership = true; return Promise.resolve(); }
+    return apexSupabase.rpc('member_has_active_membership', { p_profile_id: member.id }).then(function (res) {
+      member.hasMembership = !!(res && res.data);
+    }).catch(function () { member.hasMembership = false; });
+  }
 
   /* ── Premium content — fetched server-side, never bundled here ──
      DPE_DATA/CATEGORY_META/QUICK_REF/FRAMEWORK_LESSON/CHECKRIDE_DAY_LESSON
@@ -171,7 +222,7 @@
   var sidebar = document.getElementById('portalSidebar');
   var overlay = document.getElementById('sidebarOverlay');
 
-  var GATED_SECTIONS = ['checkride-prep', 'dpe-library', 'ai-dpe-practice', 'scenarios', 'progress', 'vault'];
+  var GATED_SECTIONS = ['checkride-prep', 'dpe-library', 'ai-dpe-practice', 'scenarios', 'progress', 'vault', 'missions', 'pilot-journey'];
 
   function showSection(id) {
     if (!document.getElementById('section-' + id)) id = 'dashboard';
@@ -187,6 +238,8 @@
     // half of this guard is enforceGuidedNotesAccess(), which catches the
     // same case on first page load, before member.role is known yet.
     if (id === 'guided-notes' && member && member.role !== 'admin') id = 'dashboard';
+    // Apex Advantage Membership isn't public yet -- admin-only preview.
+    if (id === 'ask-andrew' && member && member.role !== 'admin') id = 'dashboard';
     sections.forEach(function (s) { s.classList.toggle('active', s.id === 'section-' + id); });
     navItems.forEach(function (b) { b.classList.toggle('active', b.dataset.section === id); });
     window.scrollTo(0, 0);
@@ -197,6 +250,7 @@
     if (id === 'guided-notes' && member.role === 'admin') loadGuidedNotes();
     if (id === 'success-wall') renderSuccessWall();
     if (id === 'ground-school') loadGroundSchool();
+    if (id === 'ask-andrew') loadAskAndrewHistory();
   }
   window.apexShowSection = showSection;
 
@@ -256,7 +310,7 @@
   /* ── Unlock state: nav lock badges + blurred dashboard widgets ─ */
   function applyUnlockState() {
     var unlocked = !!(member && member.checkridePrepUnlocked);
-    document.querySelectorAll('.portal-nav__item[data-gated] [data-lock-icon]').forEach(function (el) {
+    document.querySelectorAll('.portal-nav__item[data-gated="true"] [data-lock-icon]').forEach(function (el) {
       el.style.display = unlocked ? 'none' : '';
     });
     document.querySelectorAll('[data-locked-widget]').forEach(function (card) {
@@ -592,6 +646,89 @@
       });
     });
   })();
+
+  /* ── Ask Andrew (AI Flight Instructor) ─────────────────────────
+     One continuous thread per member (unlike AI DPE Practice's bounded,
+     restartable sessions above) -- ai-cfi-chat/index.ts owns all writes
+     to ai_cfi_messages; this code only reads history directly (RLS
+     select-own) and calls the function to send/receive a turn.
+     Gated by member.hasMembership client-side (loadMembershipCapability
+     above); the real enforcement is ai-cfi-chat's requireCapability()
+     check server-side. */
+  var askAndrewLoaded = false;
+  var askAndrewBusy = false;
+
+  function addAskAndrewBubble(role, text) {
+    var messagesEl = document.getElementById('askAndrewMessages');
+    if (!messagesEl) return;
+    var bubble = document.createElement('div');
+    bubble.className = 'portal-chat__bubble portal-chat__bubble--' + role;
+    bubble.textContent = text;
+    messagesEl.appendChild(bubble);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function setAskAndrewBusy(isBusy) {
+    askAndrewBusy = isBusy;
+    var typingEl = document.getElementById('askAndrewTyping');
+    var inputEl = document.getElementById('askAndrewInput');
+    var sendBtn = document.getElementById('askAndrewSendBtn');
+    if (typingEl) typingEl.hidden = !isBusy;
+    if (inputEl) inputEl.disabled = isBusy;
+    if (sendBtn) sendBtn.disabled = isBusy;
+    var messagesEl = document.getElementById('askAndrewMessages');
+    if (isBusy && messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function loadAskAndrewHistory() {
+    if (askAndrewLoaded || !member || !member.hasMembership) return;
+    askAndrewLoaded = true;
+    apexSupabase.from('ai_cfi_messages').select('role, content').eq('profile_id', member.id)
+      .order('created_at', { ascending: true }).limit(200).then(function (res) {
+        var messagesEl = document.getElementById('askAndrewMessages');
+        if (!messagesEl) return;
+        if (!res.data || !res.data.length) {
+          messagesEl.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:13px">Ask anything — regulations, procedures, checkride prep, career questions. Nothing to see yet, so ask your first question below.</p>';
+          return;
+        }
+        messagesEl.innerHTML = '';
+        res.data.forEach(function (m) { addAskAndrewBubble(m.role, m.content); });
+      });
+  }
+
+  var askAndrewForm = document.getElementById('askAndrewForm');
+  if (askAndrewForm) {
+    askAndrewForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (askAndrewBusy) return;
+      var inputEl = document.getElementById('askAndrewInput');
+      var errorEl = document.getElementById('askAndrewError');
+      var text = inputEl.value.trim();
+      if (!text) return;
+      if (errorEl) errorEl.classList.remove('show');
+      var messagesEl = document.getElementById('askAndrewMessages');
+      if (messagesEl && messagesEl.querySelector('p')) messagesEl.innerHTML = '';
+      addAskAndrewBubble('user', text);
+      inputEl.value = '';
+      setAskAndrewBusy(true);
+
+      apexSupabase.functions.invoke('ai-cfi-chat', {
+        body: { message: text },
+        headers: { Authorization: 'Bearer ' + accessToken }
+      }).then(function (res) {
+        setAskAndrewBusy(false);
+        if (res.error || !res.data || res.data.error) {
+          return extractInvokeError(res).then(function (msg) {
+            if (errorEl) { errorEl.textContent = msg; errorEl.classList.add('show'); }
+          });
+        }
+        addAskAndrewBubble('assistant', res.data.message);
+      }).catch(function () {
+        setAskAndrewBusy(false);
+        if (errorEl) { errorEl.textContent = 'Could not send that. Please try again.'; errorEl.classList.add('show'); }
+      });
+    });
+  }
 
   /* ── Ground School Scheduling ───────────────────────────────── */
   var groundSchoolLoaded = false;
@@ -1858,6 +1995,81 @@
     document.getElementById('streakLongest').textContent = s.longest;
     document.getElementById('streakDaysStudied').textContent = s.daysStudied;
     document.getElementById('streakFlame').classList.toggle('active', s.current > 0);
+
+    var freezeMeta = document.getElementById('streakFreezeMeta');
+    var freezeCount = member ? (member.streakFreezesBanked || 0) : 0;
+    if (freezeMeta) {
+      document.getElementById('streakFreezeCount').textContent = freezeCount;
+      freezeMeta.hidden = freezeCount === 0;
+    }
+    renderRecoverySortieBanner();
+  }
+
+  // A pending Recovery Sortie is offered server-side (run_streak_maintenance(),
+  // supabase-portal-schema-v48.sql) when a streak breaks with no freeze
+  // banked. This just surfaces it -- completing 3 questions today closes
+  // it out automatically via a DB trigger, no client action needed here
+  // beyond studying normally.
+  function renderRecoverySortieBanner() {
+    var banner = document.getElementById('recoverySortieBanner');
+    if (!banner || !member) return;
+    apexSupabase
+      .from('recovery_sorties')
+      .select('id')
+      .eq('profile_id', member.id)
+      .is('used_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .limit(1)
+      .then(function (res) {
+        banner.style.display = (res.data && res.data.length) ? 'block' : 'none';
+      });
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     PILOT RANK + XP
+     Keep PILOT_RANKS in sync with the pilot_ranks seed data in
+     supabase-portal-schema-v47.sql -- duplicated here so rank progress
+     renders without an extra round trip, same reasoning as the
+     ACHIEVEMENT_DEFS/CATEGORY_META constants elsewhere in this file.
+     Ranks are display-only and never imply a real FAA certificate or
+     rating -- see the disclaimer text below, shown for any rank that
+     could otherwise be misread that way.
+     ══════════════════════════════════════════════════════════════ */
+  var PILOT_RANKS = [
+    { key: 'student_pilot', label: 'Student Pilot', minXp: 0 },
+    { key: 'pre_solo', label: 'Pre-Solo', minXp: 250 },
+    { key: 'cross_country_pilot', label: 'Cross-Country Pilot', minXp: 750 },
+    { key: 'night_rated', label: 'Night Rated', minXp: 1500, disclaimer: 'Portal rank only — not FAA night currency or an endorsement.' },
+    { key: 'instrument_ready', label: 'Instrument Ready', minXp: 2750, disclaimer: 'Portal rank only — not an FAA Instrument Rating.' },
+    { key: 'commercial_candidate', label: 'Commercial Candidate', minXp: 4500, disclaimer: 'Portal rank only — not a Commercial Pilot Certificate.' },
+    { key: 'checkride_ace', label: 'Checkride Ace', minXp: 7000 },
+    { key: 'apex_captain', label: 'Apex Captain', minXp: 10000, disclaimer: 'Portal rank only — not a Private Pilot Certificate.' },
+    { key: 'legend', label: 'Legend', minXp: 15000, disclaimer: 'Portal rank only — not any FAA certificate or rating.' }
+  ];
+
+  function renderXpRank() {
+    var xpEl = document.getElementById('xpTotal');
+    if (!xpEl || !member) return;
+    var xp = member.totalXp || 0;
+    var idx = 0;
+    for (var i = 0; i < PILOT_RANKS.length; i++) { if (xp >= PILOT_RANKS[i].minXp) idx = i; }
+    var current = PILOT_RANKS[idx];
+    var next = PILOT_RANKS[idx + 1];
+
+    xpEl.textContent = xp;
+    document.getElementById('xpRankLabel').textContent = current.label;
+    var disclaimerEl = document.getElementById('xpRankDisclaimer');
+    if (disclaimerEl) disclaimerEl.textContent = current.disclaimer || '';
+    var barEl = document.getElementById('xpRankBar');
+    var nextEl = document.getElementById('xpRankNext');
+    if (next) {
+      var pct = Math.min(100, Math.round(((xp - current.minXp) / (next.minXp - current.minXp)) * 100));
+      if (barEl) barEl.style.width = pct + '%';
+      if (nextEl) nextEl.textContent = (next.minXp - xp) + ' XP to ' + next.label;
+    } else {
+      if (barEl) barEl.style.width = '100%';
+      if (nextEl) nextEl.textContent = 'Top rank reached';
+    }
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -2203,14 +2415,44 @@
   /* ══════════════════════════════════════════════════════════════
      ACHIEVEMENTS
      ══════════════════════════════════════════════════════════════ */
+  // Base achievements, tagged with a category for the grouped Logbook
+  // view (renderAchievements below). Categories loosely follow the
+  // product's "Collections" taxonomy (milestone / consistency / acs /
+  // scenarios) -- only what's derivable from real, already-loaded data;
+  // no fabricated per-topic badges (a "METAR Decoder" badge, say) that
+  // don't map to an actual verified piece of content.
   var ACHIEVEMENT_DEFS = [
-    { key: 'first_question', icon: '🥇', label: 'First Question Completed', test: function () { return DPE_DATA.some(function (d) { return studied[d.id]; }); } },
-    { key: 'fifty_questions', icon: '5️⃣0️⃣', label: '50 Questions Completed', test: function () { return DPE_DATA.filter(function (d) { return studied[d.id]; }).length >= 50; } },
-    { key: 'hundred_questions', icon: '💯', label: '100 Questions Completed', test: function () { return DPE_DATA.filter(function (d) { return studied[d.id]; }).length >= 100; } },
-    { key: 'seven_day_streak', icon: '🔥', label: '7 Day Streak', test: function () { return computeStreaks().longest >= 7; } },
-    { key: 'all_weather_complete', icon: '⛈️', label: 'All Weather Questions Complete', test: function () { return DPE_DATA.filter(function (d) { return d.section === 'weather'; }).every(function (d) { return studied[d.id]; }); } },
-    { key: 'checkride_mode_completed', icon: '🎯', label: 'Checkride Mode Completed', test: function () { return checkrideModeDone; } }
+    { key: 'first_question', icon: '🥇', label: 'First Question Completed', category: 'milestone', test: function () { return DPE_DATA.some(function (d) { return studied[d.id]; }); } },
+    { key: 'fifty_questions', icon: '5️⃣0️⃣', label: '50 Questions Completed', category: 'milestone', test: function () { return DPE_DATA.filter(function (d) { return studied[d.id]; }).length >= 50; } },
+    { key: 'hundred_questions', icon: '💯', label: '100 Questions Completed', category: 'milestone', test: function () { return DPE_DATA.filter(function (d) { return studied[d.id]; }).length >= 100; } },
+    { key: 'seven_day_streak', icon: '🔥', label: '7 Day Streak', category: 'consistency', test: function () { return computeStreaks().longest >= 7; } },
+    { key: 'checkride_mode_completed', icon: '🎯', label: 'Checkride Mode Completed', category: 'milestone', test: function () { return checkrideModeDone; } },
+    { key: 'all_scenarios_complete', icon: '🧭', label: 'All Scenarios Complete', category: 'scenarios', test: function () { return SCENARIOS.length > 0 && SCENARIOS.every(function (s) { return studied[s.id]; }); } }
   ];
+
+  var ACHIEVEMENT_CATEGORY_LABELS = { milestone: 'Milestones', consistency: 'Consistency', acs: 'ACS Areas', scenarios: 'Scenarios' };
+
+  // One achievement per real ACS category (CATEGORY_META, loaded from
+  // dpe_categories server-side) rather than hand-picking a subset --
+  // this is a direct generalization of the achievement this replaced
+  // (all_weather_complete, which only ever covered one category) to
+  // every category the question bank actually has, so every real Area
+  // of Operation gets its own "collection" to complete.
+  function acsAchievementDefs() {
+    return Object.keys(CATEGORY_META).map(function (cat) {
+      return {
+        key: 'acs_complete_' + cat,
+        icon: '📘',
+        label: 'All ' + CATEGORY_META[cat].label + ' Questions Complete',
+        category: 'acs',
+        test: function () { return categoryPct(cat) >= 1; }
+      };
+    });
+  }
+
+  function allAchievementDefs() {
+    return ACHIEVEMENT_DEFS.concat(acsAchievementDefs());
+  }
 
   /* ══════════════════════════════════════════════════════════════
      STUDY ANALYTICS — heatmap + weekly bar chart, both derived
@@ -2288,11 +2530,34 @@
     '<p class="portal-weekchart__total">' + totalMin + ' minutes studied this week</p>';
   }
 
+  var achievementRarity = {}; // achievement_key -> pct_earned (0-1), fetched once
+
   function renderAchievements() {
-    var html = ACHIEVEMENT_DEFS.map(function (def) {
-      var earned = !!earnedAchievements[def.key];
-      return '<div class="portal-achievement' + (earned ? ' earned' : '') + '"><div class="portal-achievement__icon">' + def.icon + '</div><div class="portal-achievement__label">' + def.label + '</div></div>';
+    var defs = allAchievementDefs();
+    var byCategory = {};
+    defs.forEach(function (def) {
+      (byCategory[def.category] = byCategory[def.category] || []).push(def);
+    });
+
+    var html = Object.keys(byCategory).map(function (cat) {
+      var defsInCat = byCategory[cat];
+      var earnedCount = defsInCat.filter(function (d) { return !!earnedAchievements[d.key]; }).length;
+      var cards = defsInCat.map(function (def) {
+        var earned = !!earnedAchievements[def.key];
+        var rarity = achievementRarity[def.key];
+        var rarityLabel = (typeof rarity === 'number') ? Math.round(rarity * 100) + '% of pilots' : '';
+        return '<div class="portal-achievement' + (earned ? ' earned' : '') + '" title="' + (rarityLabel || def.label) + '">' +
+          '<div class="portal-achievement__icon">' + def.icon + '</div>' +
+          '<div class="portal-achievement__label">' + def.label + '</div>' +
+          (rarityLabel ? '<div class="portal-achievement__rarity">' + rarityLabel + '</div>' : '') +
+        '</div>';
+      }).join('');
+      return '<div class="portal-achievements-category">' +
+        '<div class="portal-achievements-category__head">' + (ACHIEVEMENT_CATEGORY_LABELS[cat] || cat) + ' <span>' + earnedCount + '/' + defsInCat.length + '</span></div>' +
+        '<div class="portal-achievements">' + cards + '</div>' +
+      '</div>';
     }).join('');
+
     // Rendered in two places: Account Management (original location) and
     // Readiness & Analytics (Progress page) -- same data, same markup,
     // just surfaced somewhere students actually look instead of buried
@@ -2303,10 +2568,174 @@
     });
   }
 
+  var CADENCE_LABELS = { weekly: 'This Week', monthly: 'This Month', seasonal: 'Seasonal Event' };
+
+  // Missions and progress are both server-computed (missions/
+  // member_mission_progress, refreshed by refresh_mission_progress() on
+  // the lifecycle cron -- supabase-portal-schema-v50.sql) -- this just
+  // reads and renders, same trust boundary as everything else fetched
+  // from these RLS-protected tables.
+  function renderMissions() {
+    var el = document.getElementById('missionsList');
+    if (!el || !member) return;
+    var today = getTodayStr();
+    apexSupabase.from('missions').select('*').lte('starts_on', today).gte('ends_on', today).order('cadence').then(function (missionsRes) {
+      // Apex Advantage Membership isn't public yet (admin-only preview,
+      // see renderAdminIfApplicable/enforceAskAndrewAccess) -- showing a
+      // "Requires Membership" mission to a regular member would advertise
+      // an unreleased product before it's ready. Admin still sees these
+      // so Andrew can test the mission before launch.
+      var missions = (missionsRes.data || []).filter(function (m) {
+        return !m.is_premium_only || (member && member.role === 'admin');
+      });
+      if (!missions.length) {
+        el.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:13px">No missions are active right now — check back soon.</p>';
+        return;
+      }
+      apexSupabase.from('member_mission_progress').select('mission_id, progress, target, completed_at').eq('profile_id', member.id).then(function (progressRes) {
+        var progressByMission = {};
+        (progressRes.data || []).forEach(function (p) { progressByMission[p.mission_id] = p; });
+
+        el.innerHTML = missions.map(function (m) {
+          var p = progressByMission[m.id];
+          // Premium-only missions are skipped entirely by refresh_mission_
+          // progress() (v51) for a profile with no active Membership --
+          // no progress row means "not eligible", not "0% done".
+          var membershipLocked = m.is_premium_only && !p;
+          var progress = p ? p.progress : 0;
+          var target = p ? p.target : 1;
+          var pct = Math.min(100, Math.round((progress / Math.max(target, 1)) * 100));
+          var done = !!(p && p.completed_at);
+          return '<div class="portal-card portal-mission' + (done ? ' portal-mission--done' : '') + '" style="margin-bottom:16px">' +
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px">' +
+              '<div>' +
+                '<span class="portal-header__eyebrow">' + (CADENCE_LABELS[m.cadence] || m.cadence) + (m.is_premium_only ? ' · Membership' : '') + '</span>' +
+                '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-top:6px">' + m.title + '</h3>' +
+              '</div>' +
+              '<span style="color:#F4B400;font-size:13px;font-weight:700;white-space:nowrap">' + (done ? '✓ Complete' : '+' + m.xp_reward + ' XP') + '</span>' +
+            '</div>' +
+            (m.description ? '<p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:12px">' + m.description + '</p>' : '') +
+            (membershipLocked
+              ? '<p style="color:rgba(244,180,0,0.7);font-size:12.5px">🔒 Requires Apex Advantage Membership — <a href="#account" style="color:#F4B400">join in Account Management</a></p>'
+              : '<div class="portal-progress-bar"><div class="portal-progress-bar__fill" style="width:' + pct + '%"></div></div>' +
+                '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-top:6px">' + Math.min(progress, target) + ' / ' + target + '</p>') +
+            (m.premium_reward ? '<p style="color:rgba(244,180,0,0.7);font-size:12px;margin-top:6px">🏆 ' + m.premium_reward + '</p>' : '') +
+          '</div>';
+        }).join('');
+      });
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     PILOT JOURNEY — real aviation progress, separate from XP.
+     journey_milestone_types is a reference table (v52), not a
+     hardcoded list here, so a future certificate/rating just needs a
+     new row server-side, never a client code change. Verification
+     (self-reported vs instructor/Apex verified) is decided entirely
+     server-side (trg_protect_milestone_verification) -- this code
+     never has a path to mark its own entry verified.
+     ══════════════════════════════════════════════════════════════ */
+  var VERIFICATION_BADGES = {
+    self_reported: '<span style="color:rgba(255,255,255,0.4);font-size:11px">Self-reported</span>',
+    instructor_verified: '<span style="color:#4ade80;font-size:11px">✓ Instructor Verified</span>',
+    apex_verified: '<span style="color:#F4B400;font-size:11px">✓ Apex Verified</span>',
+  };
+
+  function openMilestoneForm(milestoneType, existing) {
+    var overlay = document.getElementById('passedOverlay');
+    overlay.hidden = false;
+    overlay.innerHTML =
+      '<div class="portal-practice-panel">' +
+        '<button class="portal-practice-panel__close" id="journeyFormCloseBtn" type="button">' +
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
+        '</button>' +
+        '<h3 style="color:#fff;font-size:18px;font-weight:700;margin-bottom:18px">' + milestoneType.label + '</h3>' +
+        '<div class="form-group" style="margin-bottom:14px"><label style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px">Date</label>' +
+          '<input type="date" id="journeyFormDate" value="' + (existing ? existing.achieved_on : getTodayStr()) + '" style="width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none" /></div>' +
+        '<div class="form-group" style="margin-bottom:14px"><label style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px">Notes (optional)</label>' +
+          '<textarea id="journeyFormNotes" rows="2" style="width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none;resize:vertical">' + (existing && existing.notes ? existing.notes : '') + '</textarea></div>' +
+        '<div class="form-group" style="margin-bottom:20px"><label style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px">Reflection (optional) — how did it feel?</label>' +
+          '<textarea id="journeyFormReflection" rows="3" style="width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none;resize:vertical">' + (existing && existing.reflection ? existing.reflection : '') + '</textarea></div>' +
+        '<button class="btn btn--primary btn--full" id="journeyFormSaveBtn">Save Milestone</button>' +
+      '</div>';
+    document.getElementById('journeyFormCloseBtn').addEventListener('click', function () { overlay.hidden = true; });
+    document.getElementById('journeyFormSaveBtn').addEventListener('click', function () {
+      var achievedOn = document.getElementById('journeyFormDate').value || getTodayStr();
+      var notes = document.getElementById('journeyFormNotes').value.trim();
+      var reflection = document.getElementById('journeyFormReflection').value.trim();
+      apexSupabase.from('member_milestones').upsert({
+        profile_id: member.id,
+        milestone_key: milestoneType.milestone_key,
+        achieved_on: achievedOn,
+        notes: notes || null,
+        reflection: reflection || null,
+      }, { onConflict: 'profile_id,milestone_key' }).then(function (res) {
+        if (res.error) { toast('Could not save: ' + res.error.message); return; }
+        overlay.hidden = true;
+        toast('🎉 Milestone logged: ' + milestoneType.label);
+        renderPilotJourney();
+      });
+    });
+  }
+
+  function renderPilotJourney() {
+    var el = document.getElementById('pilotJourneyList');
+    if (!el || !member) return;
+    Promise.all([
+      apexSupabase.from('journey_milestone_types').select('*').order('sort_order'),
+      apexSupabase.from('member_milestones').select('*').eq('profile_id', member.id),
+    ]).then(function (results) {
+      var types = results[0].data || [];
+      var logged = {};
+      (results[1].data || []).forEach(function (m) { logged[m.milestone_key] = m; });
+
+      el.innerHTML = types.map(function (t) {
+        var m = logged[t.milestone_key];
+        if (m) {
+          var dateLabel = new Date(m.achieved_on + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          return '<div class="portal-card" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px">' +
+            '<div>' +
+              '<h3 style="color:#fff;font-size:14.5px;font-weight:700;margin-bottom:3px">✓ ' + t.label + '</h3>' +
+              '<p style="color:rgba(255,255,255,0.45);font-size:12.5px;margin-bottom:4px">' + dateLabel + '</p>' +
+              (m.notes ? '<p style="color:rgba(255,255,255,0.5);font-size:12.5px;margin-bottom:4px">' + m.notes + '</p>' : '') +
+              (VERIFICATION_BADGES[m.verification_status] || '') +
+            '</div>' +
+            '<button class="btn-link-journey" data-edit-milestone="' + t.milestone_key + '" style="background:none;border:none;color:#F4B400;font-size:12.5px;cursor:pointer;white-space:nowrap">Edit</button>' +
+          '</div>';
+        }
+        return '<div class="portal-card" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:12px;opacity:0.55">' +
+          '<h3 style="color:#fff;font-size:14.5px;font-weight:600">' + t.label + '</h3>' +
+          '<button class="btn btn--ghost" data-log-milestone="' + t.milestone_key + '" style="white-space:nowrap;padding:8px 14px;font-size:12.5px">Log This Milestone</button>' +
+        '</div>';
+      }).join('');
+
+      el.querySelectorAll('[data-log-milestone]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var t = types.find(function (x) { return x.milestone_key === btn.dataset.logMilestone; });
+          if (t) openMilestoneForm(t, null);
+        });
+      });
+      el.querySelectorAll('[data-edit-milestone]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var key = btn.dataset.editMilestone;
+          var t = types.find(function (x) { return x.milestone_key === key; });
+          if (t) openMilestoneForm(t, logged[key]);
+        });
+      });
+    });
+  }
+
+  function loadAchievementRarity() {
+    apexSupabase.rpc('get_achievement_rarity').then(function (res) {
+      (res.data || []).forEach(function (r) { achievementRarity[r.achievement_key] = r.pct_earned; });
+      renderAchievements();
+    });
+  }
+
   function checkAchievements() {
     if (!DPE_DATA.length) return; // not unlocked yet — nothing meaningful to check (avoids vacuous-true achievement tests like .every() on an empty array)
     var newlyEarned = [];
-    ACHIEVEMENT_DEFS.forEach(function (def) {
+    allAchievementDefs().forEach(function (def) {
       if (earnedAchievements[def.key] || !def.test()) return;
       earnedAchievements[def.key] = true;
       newlyEarned.push(def);
@@ -2814,6 +3243,11 @@
     // the rendered list. Found via testing the new CMS, not by inspection.
     document.getElementById('adminNavItem').hidden = false;
     document.getElementById('guidedNotesNavItem').hidden = false;
+    // Apex Advantage Membership isn't public yet -- same admin-only
+    // feature-preview treatment as Guided Notes above, until it's ready
+    // to launch to real members.
+    document.getElementById('askAndrewNavItem').hidden = false;
+    document.getElementById('membershipCard').hidden = false;
   }
 
   // Catches a non-admin who bookmarked or typed #guided-notes directly.
@@ -2824,6 +3258,15 @@
   function enforceGuidedNotesAccess() {
     var activeId = (window.location.hash || '#dashboard').replace('#', '');
     if (activeId === 'guided-notes' && (!member || member.role !== 'admin')) showSection('dashboard');
+  }
+
+  // Same admin-only-preview boundary as enforceGuidedNotesAccess() above,
+  // for Ask Andrew -- Apex Advantage Membership isn't public yet. Real
+  // enforcement is still server-side: ai-cfi-chat's requireCapability()
+  // check rejects any non-Member/non-admin regardless of what the UI shows.
+  function enforceAskAndrewAccess() {
+    var activeId = (window.location.hash || '#dashboard').replace('#', '');
+    if (activeId === 'ask-andrew' && (!member || member.role !== 'admin')) showSection('dashboard');
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -3257,6 +3700,84 @@
     }
   }
 
+  // Apex Advantage Membership -- a separate, recurring product from the
+  // Checkride Prep Pack above (member_subscriptions, v51). Deliberately
+  // never reuses the word "unlock"/"upgrade" in this block's copy --
+  // the spec calling for this was explicit that a member must always
+  // know which product a button is about to charge them for.
+  function fmtDate(iso) {
+    return iso ? new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—';
+  }
+
+  function joinMembership(tier) {
+    var block = document.getElementById('membershipStatusBlock');
+    var btn = document.getElementById('joinMembershipBtn_' + tier);
+    if (btn) { btn.disabled = true; btn.textContent = 'Redirecting to secure checkout…'; }
+    apexSupabase.functions.invoke('create-checkout-session', {
+      body: { purpose: 'join-membership', tier: tier, origin: window.location.origin },
+      headers: { Authorization: 'Bearer ' + accessToken }
+    }).then(function (res) {
+      if (res.error || !res.data || !res.data.url) {
+        return extractInvokeError(res).then(function (msg) {
+          block.insertAdjacentHTML('beforeend', '<p style="color:#f87171;font-size:13px;margin-top:10px">' + msg + '</p>');
+          if (btn) { btn.disabled = false; btn.textContent = tier === 'annual' ? 'Join Annual — $190/yr' : 'Join Monthly — $19/mo'; }
+        });
+      }
+      window.location.href = res.data.url;
+    });
+  }
+
+  function manageMembershipBilling() {
+    var btn = document.getElementById('manageMembershipBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Opening billing portal…'; }
+    apexSupabase.functions.invoke('create-billing-portal-session', {
+      body: { returnUrl: window.location.origin + '/portal.html#account' },
+      headers: { Authorization: 'Bearer ' + accessToken }
+    }).then(function (res) {
+      if (res.error || !res.data || !res.data.url) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Manage Billing'; }
+        toast('Could not open the billing portal. Please try again.');
+        return;
+      }
+      window.location.href = res.data.url;
+    });
+  }
+
+  function renderMembershipSubscription() {
+    var block = document.getElementById('membershipStatusBlock');
+    // Apex Advantage Membership isn't public yet -- admin-only preview
+    // (membershipCard itself stays `hidden` for everyone else; this guard
+    // just avoids the wasted query for the common case).
+    if (!block || !member || member.role !== 'admin') return;
+    apexSupabase.from('member_subscriptions').select('tier, status, current_period_end, cancel_at_period_end')
+      .eq('profile_id', member.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
+      .then(function (res) {
+        var sub = res.data;
+        if (!sub || sub.status === 'canceled') {
+          block.innerHTML =
+            '<div class="portal-grid portal-grid--2">' +
+              '<button class="btn btn--primary" id="joinMembershipBtn_monthly">Join Monthly — $19/mo</button>' +
+              '<button class="btn btn--ghost" id="joinMembershipBtn_annual">Join Annual — $190/yr</button>' +
+            '</div>' +
+            (sub ? '<p style="color:rgba(255,255,255,0.35);font-size:12px;margin-top:10px">Your previous membership ended ' + fmtDate(sub.current_period_end) + '.</p>' : '');
+          document.getElementById('joinMembershipBtn_monthly').addEventListener('click', function () { joinMembership('monthly'); });
+          document.getElementById('joinMembershipBtn_annual').addEventListener('click', function () { joinMembership('annual'); });
+          return;
+        }
+
+        var statusLine;
+        if (sub.status === 'past_due') {
+          statusLine = '<p style="color:#f87171;font-size:14px;font-weight:700;margin-bottom:6px">Payment failed</p><p style="color:rgba(255,255,255,0.5);font-size:13px">Update your payment method to keep your membership active.</p>';
+        } else if (sub.cancel_at_period_end) {
+          statusLine = '<p style="color:#F4B400;font-size:14px;font-weight:700;margin-bottom:6px">Canceling</p><p style="color:rgba(255,255,255,0.5);font-size:13px">Your access continues through ' + fmtDate(sub.current_period_end) + '.</p>';
+        } else {
+          statusLine = '<p style="color:#4ade80;font-size:14px;font-weight:700;margin-bottom:6px">Active — ' + sub.tier + '</p><p style="color:rgba(255,255,255,0.5);font-size:13px">Renews ' + fmtDate(sub.current_period_end) + '.</p>';
+        }
+        block.innerHTML = statusLine + '<button class="btn btn--ghost" id="manageMembershipBtn" style="margin-top:14px">Manage Billing</button>';
+        document.getElementById('manageMembershipBtn').addEventListener('click', manageMembershipBilling);
+      });
+  }
+
   function renderBillingHistory() {
     var listEl = document.getElementById('billingHistoryList');
     var emptyEl = document.getElementById('billingHistoryEmpty');
@@ -3452,6 +3973,15 @@
       '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Every question, every scenario, every study streak led here. Welcome to the ranks of certificated pilots — fly safe out there.</p>';
   }
 
+  var NEXT_RATING_OPTIONS = [
+    { value: 'build_confidence', label: 'Build confidence as a new Private Pilot' },
+    { value: 'instrument', label: 'Begin Instrument training' },
+    { value: 'cross_country_experience', label: 'Build cross-country experience' },
+    { value: 'commercial', label: 'Prepare for Commercial' },
+    { value: 'stay_current', label: 'Stay current with live workshops' },
+    { value: 'not_sure', label: "Not sure yet" },
+  ];
+
   function showCelebration() {
     var overlay = document.getElementById('passedOverlay');
     overlay.hidden = false;
@@ -3462,7 +3992,38 @@
         '<p>Congratulations from everyone at Apex Aviation. You\'ll now show up on the Success Wall for other students to see.</p>' +
         '<button class="btn btn--primary" id="celebrationCloseBtn">Close</button>' +
       '</div></div>';
-    document.getElementById('celebrationCloseBtn').addEventListener('click', function () { overlay.hidden = true; });
+    document.getElementById('celebrationCloseBtn').addEventListener('click', function () {
+      overlay.hidden = true;
+      showNextRatingPrompt();
+    });
+  }
+
+  // Per the product spec: don't let the experience end at "you passed."
+  // The answer is stored (profiles.next_rating_interest, v52) for future
+  // Dispatch personalization -- not yet wired to any actual personalized
+  // content, so this is a real, honest data-capture step, not a
+  // finished personalization feature.
+  function showNextRatingPrompt() {
+    var overlay = document.getElementById('passedOverlay');
+    overlay.hidden = false;
+    overlay.innerHTML =
+      '<div class="portal-practice-panel">' +
+        '<h3 style="color:#fff;font-size:18px;font-weight:700;margin-bottom:8px">What\'s next in your Pilot Journey?</h3>' +
+        '<p style="color:rgba(255,255,255,0.5);font-size:13.5px;margin-bottom:18px">This just helps us point you toward what\'s actually useful next — no wrong answer.</p>' +
+        '<div style="display:flex;flex-direction:column;gap:8px">' +
+          NEXT_RATING_OPTIONS.map(function (o) {
+            return '<button class="btn btn--ghost" data-next-rating="' + o.value + '" style="text-align:left">' + o.label + '</button>';
+          }).join('') +
+        '</div>' +
+      '</div>';
+    overlay.querySelectorAll('[data-next-rating]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        apexSupabase.from('profiles').update({ next_rating_interest: btn.dataset.nextRating }).eq('id', member.id).then(function () {
+          overlay.hidden = true;
+          toast("Got it — we'll tailor what we show you next.");
+        });
+      });
+    });
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -3653,6 +4214,7 @@
 
   /* ── Init — waits for the real Supabase session + profile ────── */
   function initPortalData() {
+    applyUnlockState();
     return loadProgress().then(function () {
       renderLessons();
       renderQuickRef();
@@ -3662,18 +4224,24 @@
       renderDashboardStats();
       renderReadiness();
       renderStreak();
+      renderXpRank();
       renderWeakAreas();
       renderAcsCoverage();
       renderQotd();
       renderMyTraining();
       renderAchievements();
+      loadAchievementRarity();
       renderStudyHeatmap();
       renderWeeklyActivityChart();
+      renderMissions();
+      renderPilotJourney();
       checkAchievements();
       renderAdminIfApplicable();
       enforceGuidedNotesAccess();
+      enforceAskAndrewAccess();
       renderCheckrideCountdown();
       renderMembership();
+      renderMembershipSubscription();
       renderBillingHistory();
       renderMySessions();
       ensureReferralCode();

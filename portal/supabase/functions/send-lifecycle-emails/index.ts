@@ -753,5 +753,19 @@ serve(async (req) => {
   await processAbandonedCheckouts(supabase, results)
   await processReadinessAssessmentFollowup(supabase, results)
 
+  // Streak-protection maintenance (freeze earning/consumption, Recovery
+  // Sortie offers) -- see run_streak_maintenance() in
+  // supabase-portal-schema-v48.sql. A single RPC call rather than a
+  // per-profile loop here, since the function already iterates every
+  // profile with study history server-side.
+  const { error: streakError } = await supabase.rpc('run_streak_maintenance')
+  if (streakError) results.errors.push(`run_streak_maintenance: ${streakError.message}`)
+
+  // Mission progress (v50) -- recomputed from real activity every cron
+  // run rather than incrementally, so a mission's progress is always
+  // consistent even if a run is missed.
+  const { error: missionError } = await supabase.rpc('refresh_mission_progress')
+  if (missionError) results.errors.push(`refresh_mission_progress: ${missionError.message}`)
+
   return new Response(JSON.stringify(results), { headers: { 'Content-Type': 'application/json' } })
 })

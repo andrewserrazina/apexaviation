@@ -71,3 +71,37 @@ export async function requirePremiumAccess(
   if (!result.unlocked) throw new PremiumAccessError('Checkride Prep is not unlocked on this account', 403)
   return result
 }
+
+export interface CapabilityResult {
+  userId: string
+  email: string | null
+}
+
+// For features gated by the broader capability model (get_member_capabilities(),
+// supabase-portal-schema-v51.sql) rather than the single checkride_prep_unlocked
+// flag above -- e.g. Membership-exclusive features like Ask Andrew. Verifies the
+// bearer token identifies a real session, then checks that session's own
+// capability set server-side; never trusts a client-supplied profile id or a
+// client-supplied claim of entitlement.
+export async function requireCapability(
+  supabase: ReturnType<typeof createClient>,
+  authHeader: string | null,
+  capability: string,
+  deniedMessage: string
+): Promise<CapabilityResult> {
+  const token = (authHeader || '').replace('Bearer ', '').trim()
+  if (!token) throw new PremiumAccessError('Missing Authorization header', 401)
+
+  const { data: userData, error: userErr } = await supabase.auth.getUser(token)
+  if (userErr || !userData?.user) throw new PremiumAccessError('Invalid or expired session', 401)
+
+  const { data: capRows, error: capErr } = await supabase.rpc('get_member_capabilities', {
+    p_profile_id: userData.user.id,
+  })
+  if (capErr) throw capErr
+
+  const has = (capRows || []).some((r: { capability: string }) => r.capability === capability)
+  if (!has) throw new PremiumAccessError(deniedMessage, 403)
+
+  return { userId: userData.user.id, email: userData.user.email ?? null }
+}

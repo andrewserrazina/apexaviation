@@ -47,6 +47,9 @@ const navGroups = [
       { to: '/announcements', label: 'Announcements', roles: ['admin', 'instructor', 'student'] },
       { to: '/broadcast',     label: 'Broadcast',     roles: ['admin'] },
       { to: '/nonbuyers',     label: 'Nonbuyers',     roles: ['admin'] },
+      { to: '/xp-ledger',     label: 'XP Ledger',     roles: ['admin'] },
+      { to: '/missions',      label: 'Missions',      roles: ['admin'] },
+      { to: '/pilot-journey', label: 'Pilot Journey', roles: ['admin', 'instructor'] },
     ],
   },
   {
