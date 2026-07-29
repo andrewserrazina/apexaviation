@@ -202,6 +202,20 @@ serve(async (req) => {
       const email = userData.user.email
       const tier = body.tier === 'annual' ? 'annual' : 'monthly'
 
+      // Apex Advantage Membership isn't public yet -- admin-only preview
+      // while the product is being finished, matching the portal.html/
+      // portal-stable.js client-side gating (askAndrewNavItem, membershipCard,
+      // enforceAskAndrewAccess()). This is the real enforcement; the client
+      // hiding the Join buttons is just UX, not the security boundary.
+      const { data: callerProfile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', profileId)
+        .maybeSingle()
+      if (callerProfile?.role !== 'admin') {
+        return jsonError('Apex Advantage Membership is not available yet.', 403)
+      }
+
       const { data: existingSub } = await supabase
         .from('member_subscriptions')
         .select('status')

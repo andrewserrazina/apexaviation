@@ -223,7 +223,6 @@
   var overlay = document.getElementById('sidebarOverlay');
 
   var GATED_SECTIONS = ['checkride-prep', 'dpe-library', 'ai-dpe-practice', 'scenarios', 'progress', 'vault', 'missions', 'pilot-journey'];
-  var MEMBERSHIP_GATED_SECTIONS = ['ask-andrew'];
 
   function showSection(id) {
     if (!document.getElementById('section-' + id)) id = 'dashboard';
@@ -232,11 +231,6 @@
       openUnlockModal();
       return;
     }
-    if (member && !member.hasMembership && MEMBERSHIP_GATED_SECTIONS.indexOf(id) !== -1) {
-      closeSidebar();
-      toast('Ask Andrew is included with Apex Advantage Membership — join below.');
-      id = 'account';
-    }
     // Guided Notes is an admin-only feature preview -- not just hidden from
     // the nav. A non-admin who already has member.role loaded (e.g. clicked
     // a stale link, or called this from the console) gets bounced to the
@@ -244,6 +238,8 @@
     // half of this guard is enforceGuidedNotesAccess(), which catches the
     // same case on first page load, before member.role is known yet.
     if (id === 'guided-notes' && member && member.role !== 'admin') id = 'dashboard';
+    // Apex Advantage Membership isn't public yet -- admin-only preview.
+    if (id === 'ask-andrew' && member && member.role !== 'admin') id = 'dashboard';
     sections.forEach(function (s) { s.classList.toggle('active', s.id === 'section-' + id); });
     navItems.forEach(function (b) { b.classList.toggle('active', b.dataset.section === id); });
     window.scrollTo(0, 0);
@@ -316,10 +312,6 @@
     var unlocked = !!(member && member.checkridePrepUnlocked);
     document.querySelectorAll('.portal-nav__item[data-gated="true"] [data-lock-icon]').forEach(function (el) {
       el.style.display = unlocked ? 'none' : '';
-    });
-    var memberUnlocked = !!(member && member.hasMembership);
-    document.querySelectorAll('.portal-nav__item[data-gated="membership"] [data-lock-icon]').forEach(function (el) {
-      el.style.display = memberUnlocked ? 'none' : '';
     });
     document.querySelectorAll('[data-locked-widget]').forEach(function (card) {
       var overlay = card.querySelector('.portal-locked-widget__overlay');
@@ -2588,7 +2580,14 @@
     if (!el || !member) return;
     var today = getTodayStr();
     apexSupabase.from('missions').select('*').lte('starts_on', today).gte('ends_on', today).order('cadence').then(function (missionsRes) {
-      var missions = missionsRes.data || [];
+      // Apex Advantage Membership isn't public yet (admin-only preview,
+      // see renderAdminIfApplicable/enforceAskAndrewAccess) -- showing a
+      // "Requires Membership" mission to a regular member would advertise
+      // an unreleased product before it's ready. Admin still sees these
+      // so Andrew can test the mission before launch.
+      var missions = (missionsRes.data || []).filter(function (m) {
+        return !m.is_premium_only || (member && member.role === 'admin');
+      });
       if (!missions.length) {
         el.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:13px">No missions are active right now — check back soon.</p>';
         return;
@@ -3244,6 +3243,11 @@
     // the rendered list. Found via testing the new CMS, not by inspection.
     document.getElementById('adminNavItem').hidden = false;
     document.getElementById('guidedNotesNavItem').hidden = false;
+    // Apex Advantage Membership isn't public yet -- same admin-only
+    // feature-preview treatment as Guided Notes above, until it's ready
+    // to launch to real members.
+    document.getElementById('askAndrewNavItem').hidden = false;
+    document.getElementById('membershipCard').hidden = false;
   }
 
   // Catches a non-admin who bookmarked or typed #guided-notes directly.
@@ -3254,6 +3258,15 @@
   function enforceGuidedNotesAccess() {
     var activeId = (window.location.hash || '#dashboard').replace('#', '');
     if (activeId === 'guided-notes' && (!member || member.role !== 'admin')) showSection('dashboard');
+  }
+
+  // Same admin-only-preview boundary as enforceGuidedNotesAccess() above,
+  // for Ask Andrew -- Apex Advantage Membership isn't public yet. Real
+  // enforcement is still server-side: ai-cfi-chat's requireCapability()
+  // check rejects any non-Member/non-admin regardless of what the UI shows.
+  function enforceAskAndrewAccess() {
+    var activeId = (window.location.hash || '#dashboard').replace('#', '');
+    if (activeId === 'ask-andrew' && (!member || member.role !== 'admin')) showSection('dashboard');
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -3732,7 +3745,10 @@
 
   function renderMembershipSubscription() {
     var block = document.getElementById('membershipStatusBlock');
-    if (!block || !member) return;
+    // Apex Advantage Membership isn't public yet -- admin-only preview
+    // (membershipCard itself stays `hidden` for everyone else; this guard
+    // just avoids the wasted query for the common case).
+    if (!block || !member || member.role !== 'admin') return;
     apexSupabase.from('member_subscriptions').select('tier, status, current_period_end, cancel_at_period_end')
       .eq('profile_id', member.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
       .then(function (res) {
@@ -4222,6 +4238,7 @@
       checkAchievements();
       renderAdminIfApplicable();
       enforceGuidedNotesAccess();
+      enforceAskAndrewAccess();
       renderCheckrideCountdown();
       renderMembership();
       renderMembershipSubscription();

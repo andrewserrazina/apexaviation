@@ -51,6 +51,17 @@ serve(async (req) => {
     const { data: userData, error: userErr } = await supabase.auth.getUser(token)
     if (userErr || !userData?.user) return jsonError('Invalid or expired session', 401)
 
+    // Apex Advantage Membership isn't public yet -- admin-only preview,
+    // same gate as create-checkout-session's join-membership purpose.
+    const { data: callerProfile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userData.user.id)
+      .maybeSingle()
+    if (callerProfile?.role !== 'admin') {
+      return jsonError('Apex Advantage Membership is not available yet.', 403)
+    }
+
     const { data: subscription } = await supabase
       .from('member_subscriptions')
       .select('stripe_customer_id')
