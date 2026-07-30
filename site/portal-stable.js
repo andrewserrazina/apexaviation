@@ -5,31 +5,48 @@
      Fires when an already-registered member completes the dashboard
      "Unlock Now" checkout (create-checkout-session's success_url for
      purpose 'unlock-checkride-prep' redirects here as ?unlocked=1).
-     amount_cents/session_id come from that same success_url -- the
-     real charged price, never guessed -- and the session_id-keyed
-     localStorage guard stops a page refresh from double-counting the
-     same sale. Independent of the auth guard below since it only
-     needs the URL, not the signed-in member. */
+     session_id comes from that same success_url; the localStorage guard
+     keyed on it stops a page refresh from double-counting the same sale.
+     Independent of the auth guard below since it only needs the URL, not
+     the signed-in member.
+
+     amount_cents (also on that URL) is the price *quoted* when checkout
+     started -- since Stripe Promotion Codes were added, that's no longer
+     guaranteed to be what was actually charged, so it's only used as a
+     last-resort fallback if the real amount can't be fetched. The real,
+     post-discount amount lives in portal_access_purchases (written by
+     stripe-webhook from session.amount_total), fetched here via
+     get_checkout_session_amount() -- a public RPC (see
+     supabase-portal-schema-v55.sql) rather than a direct table select,
+     since this IIFE intentionally doesn't wait for a signed-in session. */
   (function () {
     var params = new URLSearchParams(window.location.search);
     if (params.get('unlocked') !== '1') return;
     var sessionId = params.get('session_id');
-    var amountCents = parseInt(params.get('amount_cents'), 10);
-    var dedupeKey = sessionId ? 'apex_fbq_purchase_' + sessionId : null;
-    if (window.fbq && (!dedupeKey || !localStorage.getItem(dedupeKey))) {
-      fbq('track', 'Purchase', {
-        value: isNaN(amountCents) ? 29 : amountCents / 100,
-        currency: 'USD',
-        content_name: 'Checkride Prep Pack',
-      });
-      if (dedupeKey) localStorage.setItem(dedupeKey, '1');
+    var quotedAmountCents = parseInt(params.get('amount_cents'), 10);
+
+    function fireTracking(amountCents) {
+      var value = isNaN(amountCents) ? 29 : amountCents / 100;
+      var dedupeKey = sessionId ? 'apex_fbq_purchase_' + sessionId : null;
+      if (window.fbq && (!dedupeKey || !localStorage.getItem(dedupeKey))) {
+        fbq('track', 'Purchase', { value: value, currency: 'USD', content_name: 'Checkride Prep Pack' });
+        if (dedupeKey) localStorage.setItem(dedupeKey, '1');
+      }
+      // purchase_completed funnel event -- same dedupe guard as the fbq
+      // call above (a page refresh on ?unlocked=1 must not double-log).
+      var funnelDedupeKey = sessionId ? 'apex_funnel_purchase_' + sessionId : null;
+      if (window.apexTrack && (!funnelDedupeKey || !localStorage.getItem(funnelDedupeKey))) {
+        apexTrack('purchase_completed', { product: 'checkride_prep', price: value });
+        if (funnelDedupeKey) localStorage.setItem(funnelDedupeKey, '1');
+      }
     }
-    // purchase_completed funnel event -- same dedupe guard as the fbq
-    // call above (a page refresh on ?unlocked=1 must not double-log).
-    var funnelDedupeKey = sessionId ? 'apex_funnel_purchase_' + sessionId : null;
-    if (window.apexTrack && (!funnelDedupeKey || !localStorage.getItem(funnelDedupeKey))) {
-      apexTrack('purchase_completed', { product: 'checkride_prep', price: isNaN(amountCents) ? 29 : amountCents / 100 });
-      if (funnelDedupeKey) localStorage.setItem(funnelDedupeKey, '1');
+
+    if (sessionId) {
+      apexSupabase.rpc('get_checkout_session_amount', { p_stripe_session_id: sessionId }).then(function (res) {
+        fireTracking(res && !res.error && typeof res.data === 'number' ? res.data : quotedAmountCents);
+      }).catch(function () { fireTracking(quotedAmountCents); });
+    } else {
+      fireTracking(quotedAmountCents);
     }
   })();
 

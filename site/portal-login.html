@@ -358,20 +358,42 @@
         document.getElementById('signupSuccessSub').textContent = 'Your payment went through and the full Checkride Prep System is already unlocked on your account. Check your email for a link to set your password, then sign in to start studying.';
 
         // Meta Pixel Purchase event -- fires once per completed checkout.
-        // amount_cents/session_id come from create-checkout-session's
-        // success_url (the real charged price, never guessed), and the
-        // session_id-keyed localStorage guard stops a page refresh or
+        // session_id comes from create-checkout-session's success_url;
+        // the localStorage guard keyed on it stops a page refresh or
         // back-button visit from double-counting the same sale.
+        //
+        // amount_cents (also on that URL) is the price *quoted* when
+        // checkout started -- since Stripe Promotion Codes were added,
+        // that's no longer guaranteed to be what was actually charged, so
+        // it's only a last-resort fallback here. The real, post-discount
+        // amount is fetched via get_checkout_session_amount() (see
+        // supabase-portal-schema-v55.sql) -- a public RPC rather than a
+        // direct table select, since this brand-new account has never
+        // signed in client-side yet at this point (it was created
+        // server-side by create-checkout-session), so there's no
+        // authenticated session to query portal_access_purchases under
+        // its normal "members view their own" RLS policy.
         var sessionId = successParams.get('session_id');
-        var amountCents = parseInt(successParams.get('amount_cents'), 10);
-        var dedupeKey = sessionId ? 'apex_fbq_purchase_' + sessionId : null;
-        if (window.fbq && (!dedupeKey || !localStorage.getItem(dedupeKey))) {
-          fbq('track', 'Purchase', {
-            value: isNaN(amountCents) ? 29 : amountCents / 100,
-            currency: 'USD',
-            content_name: 'Checkride Prep Pack',
-          });
-          if (dedupeKey) localStorage.setItem(dedupeKey, '1');
+        var quotedAmountCents = parseInt(successParams.get('amount_cents'), 10);
+
+        var fireSignupPurchasePixel = function (amountCents) {
+          var dedupeKey = sessionId ? 'apex_fbq_purchase_' + sessionId : null;
+          if (window.fbq && (!dedupeKey || !localStorage.getItem(dedupeKey))) {
+            fbq('track', 'Purchase', {
+              value: isNaN(amountCents) ? 29 : amountCents / 100,
+              currency: 'USD',
+              content_name: 'Checkride Prep Pack',
+            });
+            if (dedupeKey) localStorage.setItem(dedupeKey, '1');
+          }
+        };
+
+        if (sessionId) {
+          apexSupabase.rpc('get_checkout_session_amount', { p_stripe_session_id: sessionId }).then(function (res) {
+            fireSignupPurchasePixel(res && !res.error && typeof res.data === 'number' ? res.data : quotedAmountCents);
+          }).catch(function () { fireSignupPurchasePixel(quotedAmountCents); });
+        } else {
+          fireSignupPurchasePixel(quotedAmountCents);
         }
       }
     }
