@@ -1,0 +1,10 @@
+{
+  "appId": "com.apexaviationtx.advantage",
+  "appName": "Apex Advantage",
+  "webDir": "www",
+  "server": {
+    "url": "https://advantage.apexaviationtx.com/portal-login.html",
+    "cleartext": false,
+    "allowNavigation": ["*.stripe.com"]
+  }
+}

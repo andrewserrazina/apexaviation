@@ -162,7 +162,14 @@ serve(async (req) => {
         return jsonError('Checkride Prep is already unlocked on this account', 400)
       }
 
-      const { data: pricingRows } = await supabase.rpc('get_checkride_prep_pricing', { p_profile_id: profileId })
+      const { data: pricingRows, error: pricingError } = await supabase.rpc('get_checkride_prep_pricing', { p_profile_id: profileId })
+      if (pricingError) {
+        // Never let a broken pricing RPC silently overcharge a member --
+        // this used to fall back to standard ($49) with no trace of why,
+        // masking real founding/launch-tier bugs as "the promo ended."
+        console.error(`create-checkout-session: get_checkride_prep_pricing failed for profile ${profileId}`, pricingError)
+        return jsonError('Could not determine pricing. Please try again in a moment.', 500)
+      }
       const pricing: PricingRow = (pricingRows && pricingRows[0]) || { tier: 'standard', amount_cents: 4900, founding_seats_remaining: 0, launch_expires_at: null }
 
       const session = await stripe.checkout.sessions.create({
@@ -281,7 +288,16 @@ serve(async (req) => {
       // never standard -- get_checkride_prep_pricing()'s launch window
       // is measured from profiles.created_at, which is effectively "now"
       // for a profile created a few lines above.
-      const { data: pricingRows } = await supabase.rpc('get_checkride_prep_pricing', { p_profile_id: newProfileId })
+      // Unlike the unlock-checkride-prep branch above, this doesn't abort
+      // on a pricing error -- the free account was just created a few
+      // lines up, so bailing out here would strand a real member with an
+      // account but no way to check out. Falls back to the customer-
+      // favorable $29 (never silently overcharges), but still logs the
+      // error so a real RPC bug doesn't go unnoticed.
+      const { data: pricingRows, error: pricingError } = await supabase.rpc('get_checkride_prep_pricing', { p_profile_id: newProfileId })
+      if (pricingError) {
+        console.error(`create-checkout-session: get_checkride_prep_pricing failed for new profile ${newProfileId}`, pricingError)
+      }
       const pricing: PricingRow = (pricingRows && pricingRows[0]) || { tier: 'launch', amount_cents: 2900, founding_seats_remaining: 0, launch_expires_at: null }
 
       // Same "set your password" email as create-free-account, sent

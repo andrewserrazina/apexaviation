@@ -1,0 +1,20 @@
+{
+  "name": "apex-advantage-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Native iOS/Android wrapper for the Apex Advantage member portal (site/portal-login.html). Loads the live production site remotely via Capacitor's server.url -- there is no separate web build to maintain here, so every change to site/portal.html or portal-stable.js appears in the app immediately, no app-store resubmission required.",
+  "scripts": {
+    "sync": "cap sync",
+    "open:android": "cap open android",
+    "open:ios": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/ios": "^6.1.2"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^6.1.2"
+  }
+}
