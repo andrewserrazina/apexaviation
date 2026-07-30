@@ -175,6 +175,14 @@ serve(async (req) => {
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
         customer_email: email,
+        // Lets a customer enter any active Stripe Promotion Code on
+        // Stripe's own hosted Checkout page -- no code is hardcoded or
+        // validated here, Stripe handles that entirely, and
+        // session.amount_total (read by stripe-webhook) already reflects
+        // whatever discount was applied. See supabase-portal-schema-v55.sql
+        // for why analytics/success-page code can no longer trust the
+        // pre-discount amount_cents this function computes below.
+        allow_promotion_codes: true,
         line_items: [{
           price_data: {
             currency: 'usd',
@@ -331,6 +339,10 @@ serve(async (req) => {
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
         customer_email: email,
+        // Same promo code support as the unlock-checkride-prep branch
+        // above -- this is the same product (Checkride Prep Unlock),
+        // just from the one-step signup entry point.
+        allow_promotion_codes: true,
         line_items: [{
           price_data: {
             currency: 'usd',
