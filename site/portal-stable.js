@@ -76,6 +76,33 @@
     }
   })();
 
+  /* ── Meta Pixel Purchase event — Private Pilot Ground School pack ─
+     Same dedupe-by-session_id pattern as the blocks above, for the
+     separate ?groundschoolpack=1 success_url (unlock-ground-school-pack
+     purpose, create-checkout-session). Flat $400 with no discount path
+     (no allow_promotion_codes on this product), so unlike Checkride
+     Prep's tracking the quoted amount_cents on the URL is always the
+     real charged amount -- no need for get_checkout_session_amount()'s
+     lookup, which only covers portal_access_purchases (Checkride Prep)
+     anyway and would never resolve this product's session id. */
+  (function () {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('groundschoolpack') !== '1') return;
+    var sessionId = params.get('session_id');
+    var amountCents = parseInt(params.get('amount_cents'), 10);
+    var value = isNaN(amountCents) ? 400 : amountCents / 100;
+    var dedupeKey = sessionId ? 'apex_fbq_groundschoolpack_' + sessionId : null;
+    if (window.fbq && (!dedupeKey || !localStorage.getItem(dedupeKey))) {
+      fbq('track', 'Purchase', { value: value, currency: 'USD', content_name: 'Private Pilot Ground School — Full Course' });
+      if (dedupeKey) localStorage.setItem(dedupeKey, '1');
+    }
+    var funnelDedupeKey = sessionId ? 'apex_funnel_groundschoolpack_' + sessionId : null;
+    if (window.apexTrack && (!funnelDedupeKey || !localStorage.getItem(funnelDedupeKey))) {
+      apexTrack('purchase_completed', { product: 'ground_school_pack', price: value });
+      if (funnelDedupeKey) localStorage.setItem(funnelDedupeKey, '1');
+    }
+  })();
+
   /* ── Auth guard — real Supabase session + profile ────────────── */
   var member = null;
   var accessToken = null;
@@ -93,6 +120,7 @@
         certificateStatus: (profile && profile.certificate_status) || 'None',
         memberSince: profile && profile.created_at,
         checkridePrepUnlocked: !!(profile && profile.checkride_prep_unlocked),
+        groundSchoolPackUnlocked: !!(profile && profile.private_pilot_ground_school_pack_unlocked),
         totalXp: (profile && profile.total_xp) || 0,
         currentRank: (profile && profile.current_rank) || 'student_pilot',
         streakFreezesBanked: (profile && profile.streak_freezes_banked) || 0,
@@ -805,6 +833,7 @@
         return {
           kind: 'scheduled_class',
           id: s.id,
+          courseId: s.course_id,
           title: s.title,
           category: s.module_title || 'Private Pilot',
           scheduled_at: new Date(s.class_date + 'T' + s.start_time).toISOString(),
@@ -853,14 +882,16 @@
     listEl.className = 'portal-grid portal-grid--2';
     groundSchoolSessions.forEach(function (s) {
       var full = s.spotsLeft <= 0;
+      var packCovers = s.courseId === 'PPL' && member && member.groundSchoolPackUnlocked;
+      var registerLabel = packCovers ? 'Register — Included in Your Pack' : (full ? 'Join Waitlist — $25' : 'Register — $25');
       var card = document.createElement('div');
       card.className = 'portal-card';
       card.innerHTML =
         '<div class="portal-header__eyebrow" style="margin-bottom:8px">' + s.category.toUpperCase() + '</div>' +
         '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">' + s.title + '</h3>' +
         '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:4px">' + fmtSessionDate(s.scheduled_at) + '</p>' +
-        '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-bottom:16px">' + (full ? 'Full — join the waitlist' : s.spotsLeft + ' spot' + (s.spotsLeft === 1 ? '' : 's') + ' left') + '</p>' +
-        '<button class="btn btn--primary" data-register style="width:100%">' + (full ? 'Join Waitlist — $25' : 'Register — $25') + '</button>';
+        '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-bottom:16px">' + (full && !packCovers ? 'Full — join the waitlist' : s.spotsLeft + ' spot' + (s.spotsLeft === 1 ? '' : 's') + ' left') + '</p>' +
+        '<button class="btn btn--primary" data-register style="width:100%">' + registerLabel + '</button>';
       card.querySelector('[data-register]').addEventListener('click', function () { openGroundSchoolModal(s); });
       listEl.appendChild(card);
     });
@@ -975,6 +1006,7 @@
   var groundSchoolModalWhen = document.getElementById('groundSchoolModalWhen');
   var groundSchoolModalCta = document.getElementById('groundSchoolModalCta');
   var groundSchoolModalRedeemBtn = document.getElementById('groundSchoolModalRedeemBtn');
+  var groundSchoolModalPackBtn = document.getElementById('groundSchoolModalPackBtn');
   var groundSchoolModalError = document.getElementById('groundSchoolModalError');
 
   function openGroundSchoolModal(s) {
@@ -986,6 +1018,12 @@
     // ground_sessions/ground_registrations path -- not wired to
     // scheduled_ground_classes, so the option isn't offered there.
     groundSchoolModalRedeemBtn.style.display = (s.kind === 'legacy' && availableReferralRewards > 0) ? 'block' : 'none';
+    // A member with the $400 full-course pack never needs the $25 CTA
+    // for a Private Pilot class -- swap it for the pack-covered button
+    // instead of offering both.
+    var packCovers = s.courseId === 'PPL' && member && member.groundSchoolPackUnlocked;
+    groundSchoolModalPackBtn.style.display = packCovers ? 'block' : 'none';
+    groundSchoolModalCta.style.display = packCovers ? 'none' : 'block';
     groundSchoolModalOverlay.classList.add('show');
   }
   function closeGroundSchoolModal() { groundSchoolModalOverlay.classList.remove('show'); }
@@ -1064,6 +1102,75 @@
     });
   });
 
+  // Registers via the $400 full-course pack -- enroll_in_ground_school_via_pack()
+  // (v57) is the real boundary here: it re-checks
+  // private_pilot_ground_school_pack_unlocked and the class's course_id
+  // server-side rather than trusting this button having been shown.
+  // Returns a single row (scheduled_ground_class_enrollments), not a
+  // set, so res.data is the row itself -- not res.data[0].
+  groundSchoolModalPackBtn.addEventListener('click', function () {
+    if (!activeGroundSession || !member) return;
+    groundSchoolModalError.classList.remove('show');
+    groundSchoolModalPackBtn.disabled = true;
+    groundSchoolModalPackBtn.textContent = 'Registering…';
+
+    apexSupabase.rpc('enroll_in_ground_school_via_pack', { p_scheduled_ground_class_id: activeGroundSession.id }).then(function (res) {
+      groundSchoolModalPackBtn.disabled = false;
+      groundSchoolModalPackBtn.textContent = 'Register — Included in Your Pack';
+      if (res.error) {
+        groundSchoolModalError.textContent = res.error.message || 'Could not register. Please try again.';
+        groundSchoolModalError.classList.add('show');
+        return;
+      }
+      closeGroundSchoolModal();
+      toast(res.data && res.data.is_waitlisted ? 'Added to the waitlist for this class.' : 'Registered! No charge — included in your Ground School pack.');
+      groundSchoolLoaded = false;
+      loadGroundSchool();
+      renderMySessions();
+    });
+  });
+
+  // Hides the $400 unlock card once purchased -- mirrors the other
+  // unlock-status renders (renderMembership(), renderMembershipSubscription())
+  // in that it's purely a display concern; the real gate is server-side
+  // in enroll_in_ground_school_via_pack() and create-checkout-session's
+  // duplicate-purchase check.
+  function renderGroundSchoolPackCard() {
+    var card = document.getElementById('groundSchoolPackCard');
+    if (!card || !member) return;
+    card.style.display = member.groundSchoolPackUnlocked ? 'none' : 'flex';
+  }
+
+  var groundSchoolPackUnlockBtn = document.getElementById('groundSchoolPackUnlockBtn');
+  if (groundSchoolPackUnlockBtn) {
+    groundSchoolPackUnlockBtn.addEventListener('click', function () {
+      var errorEl = document.getElementById('groundSchoolPackError');
+      errorEl.classList.remove('show');
+      groundSchoolPackUnlockBtn.disabled = true;
+      groundSchoolPackUnlockBtn.textContent = 'Redirecting to secure checkout…';
+
+      apexSupabase.functions.invoke('create-checkout-session', {
+        body: { purpose: 'unlock-ground-school-pack', origin: window.location.origin },
+        headers: { Authorization: 'Bearer ' + accessToken }
+      }).then(function (res) {
+        if (res.error || !res.data || !res.data.url) {
+          return extractInvokeError(res).then(function (msg) {
+            groundSchoolPackUnlockBtn.disabled = false;
+            groundSchoolPackUnlockBtn.textContent = 'Unlock for $400';
+            errorEl.textContent = msg;
+            errorEl.classList.add('show');
+          });
+        }
+        window.location.href = res.data.url;
+      }).catch(function () {
+        groundSchoolPackUnlockBtn.disabled = false;
+        groundSchoolPackUnlockBtn.textContent = 'Unlock for $400';
+        errorEl.textContent = 'Could not start checkout. Please try again.';
+        errorEl.classList.add('show');
+      });
+    });
+  }
+
   /* ── Post-Stripe-redirect toasts ────────────────────────────── */
   var urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('unlocked') === '1') {
@@ -1103,6 +1210,22 @@
     if (window.gtag) gtag('event', 'purchase', {
       currency: 'USD', value: 99,
       items: [{ item_name: '60-Minute Mock Oral', price: 99, quantity: 1 }]
+    });
+  }
+  if (urlParams.get('groundschoolpack') === '1') {
+    authReady.then(function () {
+      apexSupabase.from('profiles').select('private_pilot_ground_school_pack_unlocked').eq('id', member.id).single().then(function (res) {
+        if (res.data && res.data.private_pilot_ground_school_pack_unlocked) {
+          member.groundSchoolPackUnlocked = true;
+          toast('Unlocked! Every Private Pilot ground school class is now included.');
+          groundSchoolLoaded = false;
+          loadGroundSchool();
+          if (window.gtag) gtag('event', 'purchase', {
+            currency: 'USD', value: 400,
+            items: [{ item_name: 'Private Pilot Ground School — Full Course', price: 400, quantity: 1 }]
+          });
+        }
+      });
     });
   }
 
@@ -4259,6 +4382,7 @@
       renderCheckrideCountdown();
       renderMembership();
       renderMembershipSubscription();
+      renderGroundSchoolPackCard();
       renderBillingHistory();
       renderMySessions();
       ensureReferralCode();
