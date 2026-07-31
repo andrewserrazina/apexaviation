@@ -1099,6 +1099,20 @@
           <p>Live instructor-led ground school, taught by Andrew. Pick any upcoming session below — pay online and you're confirmed instantly.</p>
         </div>
 
+        <!-- Full-course pack -- an alternative to $25/session, not a
+             replacement for it. Hidden once unlocked (see
+             renderGroundSchoolPackCard() in portal-stable.js); the
+             per-session $25 registration flow below is completely
+             unaffected either way. -->
+        <div class="portal-card" id="groundSchoolPackCard" style="margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;background:rgba(244,180,0,0.06);border:1px solid rgba(244,180,0,0.2)">
+          <div>
+            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:4px">Unlock the Full Private Pilot Ground School</h3>
+            <p style="color:rgba(255,255,255,0.55);font-size:13px;margin:0">One payment of $400 covers every class in the series — no $25 charge per session.</p>
+          </div>
+          <button class="btn btn--primary" id="groundSchoolPackUnlockBtn" style="white-space:nowrap">Unlock for $400</button>
+        </div>
+        <p class="portal-modal__error" id="groundSchoolPackError" style="margin:-10px 0 20px"></p>
+
         <div class="portal-tabs" id="groundSchoolViewTabs">
           <button class="portal-tab active" data-gs-view="cards">Cards</button>
           <button class="portal-tab" data-gs-view="calendar">Calendar</button>
@@ -1607,6 +1621,7 @@
       </div>
       <div class="portal-modal__price-note">Per session</div>
       <button class="btn btn--ghost btn--full" id="groundSchoolModalRedeemBtn" style="display:none;margin-bottom:10px">🎁 Use a Free Referral Reward</button>
+      <button class="btn btn--primary btn--full" id="groundSchoolModalPackBtn" style="display:none;margin-bottom:10px">Register — Included in Your Pack</button>
       <button class="btn btn--primary btn--full" id="groundSchoolModalCta">Pay &amp; Register</button>
       <p class="portal-modal__error" id="groundSchoolModalError"></p>
     </div>

@@ -478,7 +478,15 @@ async function processCheckrideUpsell(supabase: any, profile: any, results: any)
     const emailType = 'checkride_upsell_day' + day
     if (await hasMilestoneFired(supabase, profile.id, emailType)) continue
 
-    const { data: pricingRows } = await supabase.rpc('get_checkride_prep_pricing', { p_profile_id: profile.id })
+    // Never silently fall back to standard/$49 on an RPC error -- that's
+    // exactly how this pricing bug went unnoticed in every upsell email
+    // for as long as get_checkride_prep_pricing() had its ambiguous-
+    // column bug (see supabase-portal-schema-v54.sql). Throwing here is
+    // safe: the caller already wraps each profile in try/catch and moves
+    // on to the next one, so this profile's email is just skipped and
+    // retried next run instead of going out with the wrong price.
+    const { data: pricingRows, error: pricingError } = await supabase.rpc('get_checkride_prep_pricing', { p_profile_id: profile.id })
+    if (pricingError) throw new Error(`get_checkride_prep_pricing failed for profile ${profile.id}: ${pricingError.message}`)
     const pricing: PricingPreview = (pricingRows && pricingRows[0]) || { tier: 'standard', amount_cents: 4900, founding_seats_remaining: 0, launch_expires_at: null }
 
     const subjectsAndTemplates: Record<number, [string, string]> = {

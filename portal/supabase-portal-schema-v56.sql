@@ -1,0 +1,21 @@
+-- Cleanup (v56): drop the original zero-argument get_checkride_prep_pricing()
+-- overload from v7. Postgres resolves functions by name + parameter
+-- signature, so v30's get_checkride_prep_pricing(p_profile_id uuid default
+-- null) never replaced this one -- both have coexisted in the live
+-- database this whole time as separate overloads. Nothing in the
+-- codebase calls the zero-arg form (every real call site passes
+-- p_profile_id), so it's dead, but it's a real trap left in place: it
+-- predates the founding/launch/standard three-tier model added in v30
+-- (only knows founding/standard, no launch tier at all) and would
+-- silently hand back stale pricing logic to anything that ever called it
+-- by accident -- e.g. a future PostgREST RPC call made without the
+-- p_profile_id argument would resolve to *this* function instead of
+-- erroring, with no indication anything was wrong.
+--
+-- Found during a general bug sweep, unrelated to the v54 ambiguous-
+-- column bug in the other overload (this one never had that particular
+-- bug -- it's just stale and unused).
+--
+-- Run this in the Supabase SQL editor, after supabase-portal-schema-v55.
+
+drop function if exists public.get_checkride_prep_pricing();

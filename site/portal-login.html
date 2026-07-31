@@ -181,6 +181,17 @@
           <button type="button" class="btn btn--primary btn--instant" id="instantAccessSubmit">Get Instant Access — $29</button>
         </div>
 
+        <!-- Shown only when linked from a Ground School pack CTA
+             (?offer=ground-school-pack), e.g. apex-advantage-private-pilot.html
+             -- a second, independent one-step signup+checkout, not a
+             replacement for the Checkride Prep box above. Both could
+             theoretically show at once; hidden by default either way. -->
+        <div class="instant-access-box" id="groundSchoolPackOfferBox" hidden>
+          <div class="instant-access-box__title">⚡ Get the Full Ground School — $400</div>
+          <div class="instant-access-box__sub">Create your account and unlock every Private Pilot ground school class in one step — no $25-per-session charge.</div>
+          <button type="button" class="btn btn--primary btn--instant" id="groundSchoolPackInstantAccessSubmit">Get Instant Access — $400</button>
+        </div>
+
         <div class="login-forgot">
           <button type="button" id="backToSignInFromSignup">← Back to Sign In</button>
         </div>
@@ -342,6 +353,13 @@
       if (prefillTiming && timingSelect && Array.prototype.some.call(timingSelect.options, function (o) { return o.value === prefillTiming; })) {
         timingSelect.value = prefillTiming;
       }
+      // Linked from the Ground School pack CTA on the public marketing
+      // pages (?view=signup&offer=ground-school-pack) -- shows the
+      // second, independent instant-access box; the Checkride Prep one
+      // above stays exactly as it was for every other entry point.
+      if (params.get('offer') === 'ground-school-pack') {
+        document.getElementById('groundSchoolPackOfferBox').hidden = false;
+      }
     })();
 
     // Landing here as ?view=signup-success&paid=1 means the visitor came
@@ -353,9 +371,15 @@
     if (requestedView === 'signup-success') {
       showView('signup-success');
       var successParams = new URLSearchParams(window.location.search);
+      var successProduct = successParams.get('product') === 'ground_school_pack' ? 'ground_school_pack' : 'checkride_prep';
       if (successParams.get('paid') === '1') {
-        document.getElementById('signupSuccessHeading').textContent = "You're in — Checkride Prep unlocked!";
-        document.getElementById('signupSuccessSub').textContent = 'Your payment went through and the full Checkride Prep System is already unlocked on your account. Check your email for a link to set your password, then sign in to start studying.';
+        if (successProduct === 'ground_school_pack') {
+          document.getElementById('signupSuccessHeading').textContent = "You're in — Ground School unlocked!";
+          document.getElementById('signupSuccessSub').textContent = 'Your payment went through — every Private Pilot ground school class is already unlocked on your account, no per-session charge. Check your email for a link to set your password, then sign in to register for a class.';
+        } else {
+          document.getElementById('signupSuccessHeading').textContent = "You're in — Checkride Prep unlocked!";
+          document.getElementById('signupSuccessSub').textContent = 'Your payment went through and the full Checkride Prep System is already unlocked on your account. Check your email for a link to set your password, then sign in to start studying.';
+        }
 
         // Meta Pixel Purchase event -- fires once per completed checkout.
         // session_id comes from create-checkout-session's success_url;
@@ -363,32 +387,41 @@
         // back-button visit from double-counting the same sale.
         //
         // amount_cents (also on that URL) is the price *quoted* when
-        // checkout started -- since Stripe Promotion Codes were added,
-        // that's no longer guaranteed to be what was actually charged, so
-        // it's only a last-resort fallback here. The real, post-discount
-        // amount is fetched via get_checkout_session_amount() (see
-        // supabase-portal-schema-v55.sql) -- a public RPC rather than a
+        // checkout started. For Checkride Prep that's no longer
+        // guaranteed to be what was actually charged since Stripe
+        // Promotion Codes were added, so it's only a last-resort
+        // fallback there -- the real, post-discount amount is fetched
+        // via get_checkout_session_amount() (see
+        // supabase-portal-schema-v55.sql), a public RPC rather than a
         // direct table select, since this brand-new account has never
         // signed in client-side yet at this point (it was created
         // server-side by create-checkout-session), so there's no
         // authenticated session to query portal_access_purchases under
-        // its normal "members view their own" RLS policy.
+        // its normal "members view their own" RLS policy. The Ground
+        // School pack has no discount path (no allow_promotion_codes)
+        // and get_checkout_session_amount() only covers
+        // portal_access_purchases anyway, so it skips that lookup and
+        // uses the quoted amount directly.
         var sessionId = successParams.get('session_id');
         var quotedAmountCents = parseInt(successParams.get('amount_cents'), 10);
+        var contentName = successProduct === 'ground_school_pack' ? 'Private Pilot Ground School — Full Course' : 'Checkride Prep Pack';
+        var fallbackAmount = successProduct === 'ground_school_pack' ? 400 : 29;
 
         var fireSignupPurchasePixel = function (amountCents) {
           var dedupeKey = sessionId ? 'apex_fbq_purchase_' + sessionId : null;
           if (window.fbq && (!dedupeKey || !localStorage.getItem(dedupeKey))) {
             fbq('track', 'Purchase', {
-              value: isNaN(amountCents) ? 29 : amountCents / 100,
+              value: isNaN(amountCents) ? fallbackAmount : amountCents / 100,
               currency: 'USD',
-              content_name: 'Checkride Prep Pack',
+              content_name: contentName,
             });
             if (dedupeKey) localStorage.setItem(dedupeKey, '1');
           }
         };
 
-        if (sessionId) {
+        if (successProduct === 'ground_school_pack') {
+          fireSignupPurchasePixel(quotedAmountCents);
+        } else if (sessionId) {
           apexSupabase.rpc('get_checkout_session_amount', { p_stripe_session_id: sessionId }).then(function (res) {
             fireSignupPurchasePixel(res && !res.error && typeof res.data === 'number' ? res.data : quotedAmountCents);
           }).catch(function () { fireSignupPurchasePixel(quotedAmountCents); });
@@ -560,6 +593,51 @@
       }).catch(function () {
         instantAccessSubmit.disabled = false;
         instantAccessSubmit.textContent = 'Get Instant Access — $29';
+        signupError.textContent = 'Could not start checkout. Please try again.';
+        signupError.classList.add('show');
+      });
+    });
+
+    // "Get Instant Access" -- one-step signup + Ground School pack
+    // unlock. Same shared name/email fields, independent product from
+    // the Checkride Prep instant-access flow above (no checkride_timing
+    // involved -- signup-and-unlock-ground-school-pack doesn't take one).
+    var groundSchoolPackInstantAccessSubmit = document.getElementById('groundSchoolPackInstantAccessSubmit');
+    groundSchoolPackInstantAccessSubmit.addEventListener('click', function () {
+      signupError.classList.remove('show');
+      var gsName = document.getElementById('signupName').value.trim();
+      var gsEmail = document.getElementById('signupEmail').value.trim();
+      if (!gsName || !gsEmail) {
+        signupError.textContent = 'Enter your name and email above first.';
+        signupError.classList.add('show');
+        return;
+      }
+
+      groundSchoolPackInstantAccessSubmit.disabled = true;
+      groundSchoolPackInstantAccessSubmit.textContent = 'Redirecting to secure checkout…';
+
+      var gsDest = (new URLSearchParams(window.location.search)).get('dest') || '';
+
+      apexSupabase.functions.invoke('create-checkout-session', {
+        body: { purpose: 'signup-and-unlock-ground-school-pack', name: gsName, email: gsEmail, dest: gsDest, origin: window.location.origin }
+      }).then(function (res) {
+        if (res.error || !res.data || !res.data.url) {
+          return extractInvokeError(res).then(function (msg) {
+            groundSchoolPackInstantAccessSubmit.disabled = false;
+            groundSchoolPackInstantAccessSubmit.textContent = 'Get Instant Access — $400';
+            signupError.textContent = msg;
+            signupError.classList.add('show');
+          });
+        }
+        if (window.gtag) gtag('event', 'sign_up', { method: 'email_instant_access' });
+        if (window.apexTrack) {
+          apexTrack('registration_completed', { product: 'ground_school_pack', checkout_step: 'instant_access' });
+          apexTrack('checkout_started', { product: 'ground_school_pack', checkout_step: 'redirect_to_stripe', price: 400 });
+        }
+        window.location.href = res.data.url;
+      }).catch(function () {
+        groundSchoolPackInstantAccessSubmit.disabled = false;
+        groundSchoolPackInstantAccessSubmit.textContent = 'Get Instant Access — $400';
         signupError.textContent = 'Could not start checkout. Please try again.';
         signupError.classList.add('show');
       });
