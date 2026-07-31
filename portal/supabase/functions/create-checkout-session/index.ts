@@ -46,6 +46,16 @@
 //     creates a request row (handled in stripe-webhook) for admin to
 //     actually schedule a time with the student.
 //
+//   purpose: 'unlock-ground-school-pack' / 'signup-and-unlock-ground-school-pack'
+//     $400 flat one-time purchase granting unlimited free registration to
+//     every Private Pilot ground school class (scheduled_ground_classes
+//     where course_id = 'PPL'), instead of paying $25/session via
+//     'ground-school-registration' above -- an alternative, not a
+//     replacement; a member can still pay per-class if they don't want
+//     the full pack. Same already-signed-in vs. one-step-signup split as
+//     the Checkride Prep purposes above. No pricing tiers (flat $400), so
+//     no pricing RPC involved.
+//
 // Env vars required (set as Supabase Edge Function secrets):
 //   STRIPE_SECRET_KEY
 //   SUPABASE_URL              (auto-provided by Supabase)
@@ -77,6 +87,7 @@ const stripe = new Stripe(STRIPE_SECRET_KEY, {
 })
 
 const GROUND_SCHOOL_PRICE_CENTS = 2500 // $25 per session
+const GROUND_SCHOOL_PACK_PRICE_CENTS = 40000 // $400 flat, unlimited Private Pilot classes
 const MOCK_ORAL_PRICE_CENTS = 9900 // $99 per 60-minute mock oral
 
 // Apex Advantage Membership pricing -- $19/mo or $190/yr (roughly two
@@ -361,6 +372,126 @@ serve(async (req) => {
       await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'signup-and-unlock-checkride-prep', email, profileId: newProfileId, amountCents: pricing.amount_cents })
 
       return new Response(JSON.stringify({ url: session.url, tier: pricing.tier, amount: pricing.amount_cents }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (purpose === 'unlock-ground-school-pack') {
+      const authHeader = req.headers.get('Authorization') || ''
+      const token = authHeader.replace('Bearer ', '').trim()
+      if (!token) return jsonError('Missing Authorization header', 401)
+
+      const { data: userData, error: userErr } = await supabase.auth.getUser(token)
+      if (userErr || !userData?.user) return jsonError('Invalid or expired session', 401)
+
+      const profileId = userData.user.id
+      const email = userData.user.email
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('private_pilot_ground_school_pack_unlocked')
+        .eq('id', profileId)
+        .maybeSingle()
+
+      if (profile?.private_pilot_ground_school_pack_unlocked) {
+        return jsonError('The Private Pilot Ground School pack is already unlocked on this account', 400)
+      }
+
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        customer_email: email,
+        line_items: [{
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: 'Apex Advantage Private Pilot Ground School — Full Course',
+              description: 'Unlimited registration for every Private Pilot ground school class — no per-session charge.',
+            },
+            unit_amount: GROUND_SCHOOL_PACK_PRICE_CENTS,
+          },
+          quantity: 1,
+        }],
+        metadata: { purpose: 'unlock-ground-school-pack', profile_id: profileId },
+        success_url: `${siteOrigin}/portal.html?groundschoolpack=1&amount_cents=${GROUND_SCHOOL_PACK_PRICE_CENTS}&session_id={CHECKOUT_SESSION_ID}#ground-school`,
+        cancel_url: `${siteOrigin}/portal.html#ground-school`,
+      })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'unlock-ground-school-pack', email, profileId, amountCents: GROUND_SCHOOL_PACK_PRICE_CENTS })
+
+      return new Response(JSON.stringify({ url: session.url, amount: GROUND_SCHOOL_PACK_PRICE_CENTS }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (purpose === 'signup-and-unlock-ground-school-pack') {
+      const { name, email, dest } = body
+      if (!name || !email) return jsonError('Missing required fields: name, email', 400)
+
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle()
+      if (existingProfile) {
+        return jsonError('An account with this email already exists. Sign in and unlock from your dashboard instead.', 409)
+      }
+
+      const { data: created, error: createErr } = await supabase.auth.admin.createUser({
+        email,
+        email_confirm: true,
+        password: crypto.randomUUID(),
+        user_metadata: { full_name: name },
+      })
+      if (createErr) return jsonError(String(createErr), 500)
+      const newProfileId = created.user.id
+
+      // Same "set your password" email pattern as
+      // signup-and-unlock-checkride-prep -- the account is real and
+      // usable the moment it's created, independent of whether this
+      // checkout is ever completed.
+      const safeDest = typeof dest === 'string' && /^[a-z0-9-]{1,60}$/.test(dest) ? dest : ''
+      const redirectTo = `${SITE_ORIGIN}/portal-reset-password.html${safeDest ? `?dest=${safeDest}` : ''}`
+      const { data: linkData } = await supabase.auth.admin.generateLink({
+        type: 'recovery',
+        email,
+        options: { redirectTo },
+      })
+      const actionLink = linkData?.properties?.action_link
+      if (actionLink) {
+        await supabase.functions.invoke('send-email', {
+          body: {
+            to: email,
+            subject: 'Welcome to Apex Advantage — set your password',
+            html: emailTemplate(`
+              <h2 style="color:#F4B400;margin:0 0 4px;">Welcome to Apex Advantage, ${name.split(' ')[0]}!</h2>
+              <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your account is ready and your Private Pilot Ground School purchase is being processed. Set your password to get in:</p>
+              <a href="${actionLink}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Set Your Password →</a>
+              <p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">Once that's done, sign in any time at advantage.apexaviationtx.com/portal-login.html — every Private Pilot ground school class will already be unlocked, no per-session charge.</p>
+            `),
+          },
+        })
+      }
+
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        customer_email: email,
+        line_items: [{
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: 'Apex Advantage Private Pilot Ground School — Full Course',
+              description: 'Unlimited registration for every Private Pilot ground school class — no per-session charge.',
+            },
+            unit_amount: GROUND_SCHOOL_PACK_PRICE_CENTS,
+          },
+          quantity: 1,
+        }],
+        metadata: { purpose: 'unlock-ground-school-pack', profile_id: newProfileId },
+        success_url: `${siteOrigin}/portal-login.html?view=signup-success&paid=1&product=ground_school_pack&amount_cents=${GROUND_SCHOOL_PACK_PRICE_CENTS}&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${siteOrigin}/portal-login.html?view=signup-success&product=ground_school_pack`,
+      })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'signup-and-unlock-ground-school-pack', email, profileId: newProfileId, amountCents: GROUND_SCHOOL_PACK_PRICE_CENTS })
+
+      return new Response(JSON.stringify({ url: session.url, amount: GROUND_SCHOOL_PACK_PRICE_CENTS }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
