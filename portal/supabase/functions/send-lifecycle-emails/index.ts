@@ -8,9 +8,11 @@
 // server-side so nothing depends on the client being open, plus adds
 // email types nothing client-side can do at all: the 7-day inactivity
 // nudge, the checkride countdown (30/14/7/3/1 days out), a pre-purchase
-// Checkride Prep upsell drip (1/3/7/14 days after signup, for members
-// who haven't unlocked it yet), and (Phase 6) a post-attendance ground
-// school follow-up.
+// Checkride Prep upsell drip (days after signup, for members who
+// haven't unlocked it yet -- the exact schedule and urgency depend on
+// how close the member said their checkride is, see
+// CHECKRIDE_TIMING_SCHEDULES below), and (Phase 6) a post-attendance
+// ground school follow-up.
 //
 // Meant to run on a schedule (daily), not per-request. See
 // RETENTION_SYSTEM.md for the exact Supabase cron/pg_net setup this
@@ -39,21 +41,24 @@
 //   - checkride_countdown_<N>: brand new, no client-side equivalent, no
 //     compatibility concern -- one-time per day-mark, dedup via
 //     portal_email_log alone.
-//   - checkride_upsell_day<1|3|7|14>: brand new, no client-side
-//     equivalent. One-time per stage via portal_events (reusing
+//   - checkride_upsell_day<N>: brand new, no client-side equivalent.
+//     One-time per stage via portal_events (reusing
 //     hasMilestoneFired/markMilestoneSent), keyed off days since
 //     profile.created_at rather than study progress. Only sent to
 //     members with checkride_prep_unlocked = false; stops entirely the
 //     moment they unlock it. Only the latest reached-but-unsent stage
 //     fires per run (see processCheckrideUpsell) so a profile that
-//     predates this feature doesn't get all four stages back-to-back
-//     in one run. Pricing (get_checkride_prep_pricing) is fetched fresh
-//     per-profile inside processCheckrideUpsell, not once globally, since
-//     the launch tier depends on that profile's own created_at -- day1
-//     is the stage most likely to still land inside the 48-hour launch
-//     window given this job's daily cron cadence, so it's the one with
-//     real urgency copy; day3/7/14 fall back to whatever live tier the
-//     RPC actually returns by the time they fire.
+//     predates this feature doesn't get every passed stage back-to-back
+//     in one run. Which day numbers exist depends on the member's
+//     checkride_timing bucket (CHECKRIDE_TIMING_SCHEDULES) -- members
+//     closer to their checkride get a shorter, more urgent schedule;
+//     the day-number dedup keys are deliberately reused across buckets
+//     (not namespaced) rather than introducing new keys, so an existing
+//     subscriber already mid-sequence under the old flat schedule is
+//     never double-emailed. Pricing (get_checkride_prep_pricing) is
+//     fetched fresh per-profile inside processCheckrideUpsell, not once
+//     globally, since the launch tier depends on that profile's own
+//     created_at.
 //   - ground_followup_<registration_id>: brand new (Phase 6), no
 //     client-side equivalent. One-time per registration (not per
 //     profile/day), so a member who attends multiple sessions gets one
@@ -95,7 +100,31 @@ const WEAK_AREA_THROTTLE_DAYS = 14
 const INACTIVITY_THROTTLE_DAYS = 30
 const INACTIVITY_TRIGGER_DAYS = 7
 const STUDY_SECONDS_TARGET = 5 * 3600
-const UPSELL_DAYS = [1, 3, 7, 14]
+// Checkride-timing-aware upsell cadence -- schedule (days since signup)
+// gets more compressed the closer profiles.checkride_timing says the
+// member's checkride actually is, per the product ask: increasing
+// urgency for tighter timelines. within_60_days is the historical
+// default (identical to the flat schedule this replaced) and is also
+// the fallback for null/unrecognized checkride_timing, so any profile
+// that predates this feature (or never set a timing) behaves exactly as
+// it did before.
+//
+// Deliberately reuses day numbers 1/3/7/14 wherever a bucket's schedule
+// happens to land on one, rather than namespacing milestone keys by
+// bucket -- a member only ever has one checkride_timing value at a time
+// (so only ever walks one schedule), and this way every profile that
+// already received a "day7"/"day14" email under the old flat schedule
+// keeps that exact same dedup state instead of getting a duplicate,
+// differently-keyed touchpoint the day this shipped. Only day numbers
+// that never existed before (2, 6, 12, 21, 30) are genuinely new keys.
+const CHECKRIDE_TIMING_SCHEDULES: Record<string, number[]> = {
+  within_14_days: [1, 3, 6],
+  within_30_days: [1, 3, 7, 12],
+  within_60_days: [1, 3, 7, 14],
+  more_than_60_days: [1, 7, 21],
+  not_scheduled: [1, 14, 30],
+}
+const DEFAULT_UPSELL_TIMING_BUCKET = 'within_60_days'
 const ABANDONED_CHECKOUT_MIN_HOURS = 1
 const ABANDONED_CHECKOUT_MAX_DAYS = 7
 
@@ -211,57 +240,110 @@ type PricingPreview = { tier: 'founding' | 'launch' | 'standard'; amount_cents: 
 // the exact same dedup/one-time-per-stage machinery as the milestone
 // emails (hasMilestoneFired/markMilestoneSent), keyed off days since
 // profile.created_at instead of a study-progress trigger.
+// One sentence of extra framing based on how close profiles.checkride_
+// timing says the member's actual checkride is -- layered on top of the
+// day-specific base message below, independent of it. within_60_days is
+// the historical default and gets no extra line (today's tone,
+// unchanged); the other buckets add a line that either raises urgency
+// (tight timelines) or explicitly removes it (no date set yet, more
+// than 60 days out) rather than guessing.
+const CHECKRIDE_TIMING_URGENCY: Record<string, string> = {
+  within_14_days: 'Your checkride is coming up fast — this is exactly the window where the full system pays off most.',
+  within_30_days: "With your checkride about a month out, now's a great time to lock in the full system.",
+  within_60_days: '',
+  more_than_60_days: 'Plenty of runway before your checkride — starting now means walking in over-prepared, not cramming later.',
+  not_scheduled: "Haven't scheduled your checkride yet? No problem — plenty of students start the full system early to build confidence before picking a date.",
+}
+
+function checkrideUpsellSubject(day: number, pricing: PricingPreview): string {
+  const price = '$' + Math.round(pricing.amount_cents / 100)
+  if (day === 1) return "Here's what's waiting in your Checkride Prep System"
+  if (day === 3) return 'A question DPEs love to ask'
+  if (day === 6) return 'Checkride oral prep, minus the guesswork'
+  if (day === 7) return pricing.tier === 'founding' ? `${pricing.founding_seats_remaining} founding spots left at ${price}` : 'Still thinking about the Checkride Prep System?'
+  if (day === 12) return 'What actually happens in the oral'
+  if (day === 14) return 'Last look: the Checkride Prep System'
+  if (day === 21) return 'Start before you have to cram'
+  return 'One more look before we stop emailing about this' // day 30
+}
+
 // If the member is still inside their founding/launch discount window
 // when this fires, day1 pushes real urgency (exact price, exact hours
 // left) instead of a generic "here's what's waiting" pitch -- day1 is
-// the most likely email to still land inside the 48-hour launch window
-// (see UPSELL_DAYS/launch-window comment below), so it's worth being
-// specific here even though day3/day7/day14 mostly can't be anymore.
-function emailTemplateUpsellDay1(pricing: PricingPreview) {
-  const intro = '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your free portal account already includes the "10 Questions DPEs Love to Ask" guide. The full Checkride Prep System adds a 300+ question DPE-style bank covering every ACS area of operation — each with a model answer, the common mistakes examiners watch for, and real-world context — plus scenario training and progress tracking.</p>'
-  if (pricing.tier === 'founding' || pricing.tier === 'launch') {
-    const price = '$' + Math.round(pricing.amount_cents / 100)
-    const urgency = pricing.tier === 'founding'
-      ? `${pricing.founding_seats_remaining} founding spot${pricing.founding_seats_remaining === 1 ? '' : 's'} left at ${price}, then $49`
-      : `${price} new-member pricing is still active on your account for a limited time, then $49`
-    return `<h2 style="color:#F4B400;margin:0 0 4px;">${urgency}</h2>` + intro +
-      `<a href="https://advantage.apexaviationtx.com/portal.html#checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Unlock for ${price} →</a>`
-  }
-  return '<h2 style="color:#F4B400;margin:0 0 4px;">Here\'s what\'s waiting for you</h2>' + intro +
-    '<a href="https://advantage.apexaviationtx.com/portal.html#checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">See What\'s Inside →</a>'
-}
-
-function emailTemplateUpsellDay3() {
-  return '<h2 style="color:#F4B400;margin:0 0 4px;">A question DPEs love to ask</h2>' +
-    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">"You want to split the cost of a cross-country flight with a friend who isn\'t a pilot. Is that legal for a private pilot to do?"</p>' +
-    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Most applicants know the pro rata rule exists — fewer can explain it precisely enough to satisfy a DPE\'s follow-up questions. That\'s exactly the gap the full Checkride Prep System closes: 300+ questions like this one, each with a model answer and the specific mistake examiners watch for.</p>' +
-    '<a href="https://advantage.apexaviationtx.com/portal.html#checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Unlock the Full System →</a>'
-}
-
-function emailTemplateUpsellDay7(pricing: PricingPreview) {
+// the most likely email to still land inside the 48-hour launch window,
+// so it's worth being specific here even though later days mostly can't
+// be anymore.
+function emailTemplateCheckrideUpsell(day: number, pricing: PricingPreview, timingBucket: string): string {
   const price = '$' + Math.round(pricing.amount_cents / 100)
-  let heading: string
-  let body: string
-  if (pricing.tier === 'founding') {
-    heading = `${pricing.founding_seats_remaining} founding spot${pricing.founding_seats_remaining === 1 ? '' : 's'} left at ${price}`
-    body = `Founding pricing (${price}, versus $49 after the first 25 members) won't last much longer. The full system is 300+ DPE-style questions, model answers, scenario training, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation.`
-  } else if (pricing.tier === 'launch') {
-    heading = `Your ${price} new-member price is still active`
-    body = `You're still inside your new-member pricing window — ${price} instead of the usual $49. The full system is 300+ DPE-style questions, model answers, scenario training, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation.`
-  } else {
-    heading = 'Still thinking about the Checkride Prep System?'
-    body = `300+ DPE-style questions, model answers, scenario training, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation. Unlock it whenever you're ready.`
-  }
-  return `<h2 style="color:#F4B400;margin:0 0 4px;">${heading}</h2>` +
-    `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">${body}</p>` +
-    `<a href="https://advantage.apexaviationtx.com/portal.html#checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Unlock for ${price} →</a>`
-}
+  const urgencyLine = CHECKRIDE_TIMING_URGENCY[timingBucket] || ''
+  const urgencyParagraph = urgencyLine ? `<p style="color:rgba(255,255,255,0.55);font-size:14px;line-height:1.7;font-style:italic;">${urgencyLine}</p>` : ''
+  const cta = (label: string) => `<a href="https://advantage.apexaviationtx.com/portal.html#checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">${label}</a>`
 
-function emailTemplateUpsellDay14(pricing: PricingPreview) {
-  const price = '$' + Math.round(pricing.amount_cents / 100)
+  if (day === 1) {
+    const intro = '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your free portal account already includes the "10 Questions DPEs Love to Ask" guide. The full Checkride Prep System adds a 300+ question DPE-style bank covering every ACS area of operation — each with a model answer, the common mistakes examiners watch for, and real-world context — plus scenario training and progress tracking.</p>'
+    if (pricing.tier === 'founding' || pricing.tier === 'launch') {
+      const tierUrgency = pricing.tier === 'founding'
+        ? `${pricing.founding_seats_remaining} founding spot${pricing.founding_seats_remaining === 1 ? '' : 's'} left at ${price}, then $49`
+        : `${price} new-member pricing is still active on your account for a limited time, then $49`
+      return `<h2 style="color:#F4B400;margin:0 0 4px;">${tierUrgency}</h2>` + intro + urgencyParagraph + cta(`Unlock for ${price} →`)
+    }
+    return '<h2 style="color:#F4B400;margin:0 0 4px;">Here\'s what\'s waiting for you</h2>' + intro + urgencyParagraph + cta('See What\'s Inside →')
+  }
+
+  if (day === 3) {
+    return '<h2 style="color:#F4B400;margin:0 0 4px;">A question DPEs love to ask</h2>' +
+      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">"You want to split the cost of a cross-country flight with a friend who isn\'t a pilot. Is that legal for a private pilot to do?"</p>' +
+      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Most applicants know the pro rata rule exists — fewer can explain it precisely enough to satisfy a DPE\'s follow-up questions. That\'s exactly the gap the full Checkride Prep System closes: 300+ questions like this one, each with a model answer and the specific mistake examiners watch for.</p>' +
+      urgencyParagraph + cta('Unlock the Full System →')
+  }
+
+  if (day === 6) {
+    return '<h2 style="color:#F4B400;margin:0 0 4px;">Checkride oral prep, minus the guesswork</h2>' +
+      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Most applicants prep by re-reading the same materials until it feels familiar — but a DPE isn\'t testing familiarity, they\'re testing whether you can explain it under pressure. The full Checkride Prep System is built around that gap: 300+ DPE-style questions, model answers, and the exact mistakes examiners watch for.</p>' +
+      urgencyParagraph + cta(`Unlock for ${price} →`)
+  }
+
+  if (day === 7) {
+    let heading: string
+    let body: string
+    if (pricing.tier === 'founding') {
+      heading = `${pricing.founding_seats_remaining} founding spot${pricing.founding_seats_remaining === 1 ? '' : 's'} left at ${price}`
+      body = `Founding pricing (${price}, versus $49 after the first 25 members) won't last much longer. The full system is 300+ DPE-style questions, model answers, scenario training, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation.`
+    } else if (pricing.tier === 'launch') {
+      heading = `Your ${price} new-member price is still active`
+      body = `You're still inside your new-member pricing window — ${price} instead of the usual $49. The full system is 300+ DPE-style questions, model answers, scenario training, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation.`
+    } else {
+      heading = 'Still thinking about the Checkride Prep System?'
+      body = `300+ DPE-style questions, model answers, scenario training, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation. Unlock it whenever you're ready.`
+    }
+    return `<h2 style="color:#F4B400;margin:0 0 4px;">${heading}</h2>` +
+      `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">${body}</p>` +
+      urgencyParagraph + cta(`Unlock for ${price} →`)
+  }
+
+  if (day === 12) {
+    return '<h2 style="color:#F4B400;margin:0 0 4px;">What actually happens in the oral</h2>' +
+      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">A DPE rarely asks a question exactly the way a textbook phrases it — they adapt it to a scenario and follow up on whatever you say. The full Checkride Prep System trains for that directly: real DPE-style questions, model answers, and the follow-ups examiners actually ask.</p>' +
+      urgencyParagraph + cta(`Unlock for ${price} →`)
+  }
+
+  if (day === 14) {
+    return '<h2 style="color:#F4B400;margin:0 0 4px;">Last look: the Checkride Prep System</h2>' +
+      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">No pressure — the free guide is yours either way. But if your checkride is getting closer, the full 300+ question Checkride Prep System (DPE insight, scenario training, progress tracking) is one click away whenever you want it.</p>' +
+      urgencyParagraph + cta(`Unlock for ${price} →`)
+  }
+
+  if (day === 21) {
+    return '<h2 style="color:#F4B400;margin:0 0 4px;">Start before you have to cram</h2>' +
+      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">The students who feel calmest on checkride day usually started their oral prep well before it felt urgent. The full Checkride Prep System is there whenever you\'re ready — 300+ questions, model answers, and scenario training, at your own pace.</p>' +
+      urgencyParagraph + cta(`Unlock for ${price} →`)
+  }
+
+  // day === 30 -- longest-running touchpoint, reached only by the
+  // not_scheduled bucket.
   return '<h2 style="color:#F4B400;margin:0 0 4px;">One more look before we stop emailing about this</h2>' +
-    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">No pressure — the free guide is yours either way. But if your checkride is getting closer, the full 300+ question Checkride Prep System (DPE insight, scenario training, progress tracking) is one click away whenever you want it.</p>' +
-    `<a href="https://advantage.apexaviationtx.com/portal.html#checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Unlock for ${price} →</a>`
+    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">No pressure — the free guide is yours either way. Whenever you do lock in a checkride date, the full Checkride Prep System (300+ DPE-style questions, model answers, scenario training, progress tracking) will be right where you left it.</p>' +
+    urgencyParagraph + cta(`Unlock for ${price} →`)
 }
 
 type Question = { id: string; category: string; is_scenario: boolean }
@@ -457,14 +539,16 @@ async function processCountdown(supabase: any, profile: any, results: any) {
 
 // Sends at most one upsell stage per run, picking the latest stage the
 // member has reached that they haven't already received (checked
-// highest-day-first). This deliberately does NOT send every stage the
-// member has passed in a single run: a profile that's 20 days old and
-// has never gotten one of these (e.g. signed up before this feature
-// shipped) gets only the day14 email, not day1+day3+day7+day14 all at
-// once. Each stage is still a one-time send via hasMilestoneFired/
-// markMilestoneSent -- once day14 fires, the sequence is exhausted and
-// this is a no-op for that profile going forward, same terminal
-// behavior as the other one-time milestone types above.
+// highest-day-first, within whichever CHECKRIDE_TIMING_SCHEDULES bucket
+// this profile's checkride_timing puts them in). This deliberately does
+// NOT send every stage the member has passed in a single run: a profile
+// old enough to have reached their bucket's last day, having never
+// gotten one of these (e.g. signed up before this feature shipped), gets
+// only that final email, not every earlier stage at once. Each stage is
+// still a one-time send via hasMilestoneFired/markMilestoneSent -- once
+// a bucket's last day fires, the sequence is exhausted and this is a
+// no-op for that profile going forward, same terminal behavior as the
+// other one-time milestone types above.
 // Pricing is fetched per-profile (not once globally) because the
 // launch tier depends on *this* profile's created_at -- two members at
 // different signup ages can legitimately see different tiers/prices on
@@ -473,7 +557,20 @@ async function processCheckrideUpsell(supabase: any, profile: any, results: any)
   if (profile.checkride_prep_unlocked) return
   const daysSinceSignup = (Date.now() - new Date(profile.created_at).getTime()) / 86400000
 
-  for (const day of [...UPSELL_DAYS].reverse()) {
+  // profiles.checkride_timing (collected at signup, supabase-portal-
+  // schema-v39.sql) drives which schedule this profile walks -- a tight
+  // timeline gets a compressed, more urgent cadence; a distant or unset
+  // one gets a slower, lower-key cadence. Falls back to the historical
+  // default schedule for null/unrecognized values (accounts that
+  // predate this column, or any value that isn't one of the five real
+  // options), so nothing changes for profiles this can't confidently
+  // bucket.
+  const timingBucket = profile.checkride_timing && CHECKRIDE_TIMING_SCHEDULES[profile.checkride_timing]
+    ? profile.checkride_timing
+    : DEFAULT_UPSELL_TIMING_BUCKET
+  const schedule = CHECKRIDE_TIMING_SCHEDULES[timingBucket]
+
+  for (const day of [...schedule].reverse()) {
     if (daysSinceSignup < day) continue
     const emailType = 'checkride_upsell_day' + day
     if (await hasMilestoneFired(supabase, profile.id, emailType)) continue
@@ -489,14 +586,7 @@ async function processCheckrideUpsell(supabase: any, profile: any, results: any)
     if (pricingError) throw new Error(`get_checkride_prep_pricing failed for profile ${profile.id}: ${pricingError.message}`)
     const pricing: PricingPreview = (pricingRows && pricingRows[0]) || { tier: 'standard', amount_cents: 4900, founding_seats_remaining: 0, launch_expires_at: null }
 
-    const subjectsAndTemplates: Record<number, [string, string]> = {
-      1: ['Here\'s what\'s waiting in your Checkride Prep System', emailTemplateUpsellDay1(pricing)],
-      3: ['A question DPEs love to ask', emailTemplateUpsellDay3()],
-      7: [pricing.tier === 'founding' ? `${pricing.founding_seats_remaining} founding spots left at $${Math.round(pricing.amount_cents / 100)}` : 'Still thinking about the Checkride Prep System?', emailTemplateUpsellDay7(pricing)],
-      14: ['Last look: the Checkride Prep System', emailTemplateUpsellDay14(pricing)],
-    }
-    const [subject, html] = subjectsAndTemplates[day]
-    await sendEmail(supabase, profile.email, subject, html)
+    await sendEmail(supabase, profile.email, checkrideUpsellSubject(day, pricing), emailTemplateCheckrideUpsell(day, pricing, timingBucket))
     await markMilestoneSent(supabase, profile.id, emailType)
     results.checkride_upsell++
     return
@@ -734,7 +824,7 @@ serve(async (req) => {
   const [{ data: categories }, { data: questions }, { data: profiles }] = await Promise.all([
     supabase.from('dpe_categories').select('id').eq('exam_type', 'private_pilot'),
     supabase.from('dpe_questions').select('id,category,is_scenario').eq('exam_type', 'private_pilot'),
-    supabase.from('profiles').select('id,email,full_name,checkride_prep_unlocked,created_at,portal_last_active_at'),
+    supabase.from('profiles').select('id,email,full_name,checkride_prep_unlocked,created_at,portal_last_active_at,checkride_timing'),
   ])
 
   const categoryIds: string[] = (categories ?? []).map((c: any) => c.id)
