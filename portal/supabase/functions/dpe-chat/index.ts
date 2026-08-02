@@ -64,6 +64,8 @@ function buildSystemPrompt(categories: { label: string; intro: string }[]): stri
 Your goal is a realistic, rigorous practice oral exam, not a quiz:
 - Ask one question at a time. Cover a mix of the ACS areas below across the session, weighted toward whichever areas the candidate seems weaker in based on their answers so far.
 - After each answer, decide whether to ask a natural DPE-style follow-up (phase="followup") that probes further on the same topic, or move to a new question in a different area (phase="question"). Real DPEs follow up on vague, incomplete, or shaky answers — don't let a weak answer pass unchallenged.
+- A follow-up must reference something specific the candidate actually said (a number, a term, a condition they named) — never a generic continuation like "tell me more about that" or "let's continue." If you don't have a specific, genuine follow-up question, that means the answer was complete: move on with phase="question" instead.
+- If the candidate's answer was complete and correct (e.g. they stated a certificate/rating, a limitation, and its expiration or condition), do not manufacture a follow-up just to fill time — proceed to a new topic.
 - Keep each message focused — one question or one follow-up, not a list. Write the way a real examiner talks: direct, plain, no bullet points, no headers, 1-4 sentences.
 - Never reveal a score, grade, or "correct answer" mid-exam. Save all evaluation for the debrief.
 - Ask no more than ${MAX_QUESTIONS} primary questions total (follow-ups don't count against this limit). Once you've asked ${MAX_QUESTIONS} primary questions and given the candidate a chance to answer the last one, conclude the exam and produce the debrief on your next turn.
@@ -83,7 +85,16 @@ Rules for the JSON:
 - Never wrap the JSON in backticks or add any text outside the JSON object.`
 }
 
-function parseDpeTurn(raw: string): DpeTurn {
+// Returns null (rather than a canned filler turn) when the model's
+// response genuinely can't be read as a DPE turn -- a silent fallback
+// here previously showed the literal placeholder text "Let's continue —
+// tell me more about that." to students whenever the model's raw
+// response came back empty/unparseable, and because that fake turn got
+// persisted into the transcript and replayed to the model as its own
+// prior turn on the next call, the model had no real content to follow
+// up on -- which is exactly the "stuck in a loop, asks bad follow-ups"
+// bug this was reported as. Callers must retry or fail loudly instead.
+function parseDpeTurn(raw: string): DpeTurn | null {
   try {
     const parsed = JSON.parse(raw)
     if (parsed && typeof parsed.message === 'string') {
@@ -108,18 +119,16 @@ function parseDpeTurn(raw: string): DpeTurn {
         }
       }
     } catch (_e2) {
-      // fall through to raw-text fallback below
+      // fall through to null below
     }
   }
-  // Last resort: never let a malformed model response break the UI —
-  // show the raw text as if it were an in-character question.
-  return { phase: 'question', message: raw.trim() || "Let's continue — tell me more about that.", debrief: null }
+  return null
 }
 
-async function callClaude(
+async function callClaudeOnce(
   systemPrompt: string,
   messages: { role: 'user' | 'assistant'; content: string }[]
-): Promise<DpeTurn> {
+): Promise<DpeTurn | null> {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -128,8 +137,11 @@ async function callClaude(
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
+      // 700 was tight enough that a full debrief payload (summary +
+      // strengths/weaknesses + a note per ACS domain covered) could get
+      // truncated mid-JSON, which read as a parse failure below.
       model: ANTHROPIC_MODEL,
-      max_tokens: 700,
+      max_tokens: 1536,
       system: systemPrompt,
       messages,
     }),
@@ -141,6 +153,24 @@ async function callClaude(
   const data = await res.json()
   const text = (data.content || []).map((block: { text?: string }) => block.text || '').join('')
   return parseDpeTurn(text)
+}
+
+// One retry on a genuinely malformed/empty response (a transient model
+// hiccup, not something worth failing the whole turn over) before
+// giving up and throwing -- the caller's catch block turns that into a
+// real error response the frontend already displays gracefully, instead
+// of a fake DPE turn getting written into the transcript and confusing
+// every turn after it.
+async function callClaude(
+  systemPrompt: string,
+  messages: { role: 'user' | 'assistant'; content: string }[]
+): Promise<DpeTurn> {
+  const first = await callClaudeOnce(systemPrompt, messages)
+  if (first) return first
+  console.error('dpe-chat: malformed response from Claude, retrying once')
+  const retry = await callClaudeOnce(systemPrompt, messages)
+  if (retry) return retry
+  throw new Error('The examiner had trouble responding. Please try again.')
 }
 
 function toClaudeMessages(transcript: TranscriptTurn[]): { role: 'user' | 'assistant'; content: string }[] {
@@ -272,6 +302,13 @@ serve(async (req) => {
       return json({ error: err.message }, err.status)
     }
     console.error('dpe-chat error', err)
+    // A retried-and-still-malformed Claude response (callClaude above) is
+    // a real, if uncommon, upstream hiccup -- worth a clearer message and
+    // a 502 (bad upstream response) instead of the generic 500, since the
+    // frontend surfaces this message directly to the student.
+    if (err instanceof Error && err.message === 'The examiner had trouble responding. Please try again.') {
+      return json({ error: err.message }, 502)
+    }
     return json({ error: 'Internal error' }, 500)
   }
 })
