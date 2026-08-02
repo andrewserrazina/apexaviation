@@ -123,20 +123,41 @@ function jsonError(message: string, status: number) {
   })
 }
 
+// Latest-touch UTM as of this specific checkout attempt
+// (supabase-portal-schema-v58.sql) -- untrusted client input (the
+// browser's own localStorage, forwarded in the request body), so it's
+// capped and character-restricted rather than trusted outright. Dropped
+// silently if malformed; UTM data is attribution, never something a
+// checkout should fail over.
+function sanitizeUtm(utm: any): Record<string, string | null> {
+  const out: Record<string, string | null> = {}
+  for (const key of ['source', 'medium', 'campaign', 'content', 'term']) {
+    const val = utm && typeof utm === 'object' ? utm[key] : null
+    out[key] = typeof val === 'string' && /^[\x20-\x7e]{1,200}$/.test(val) ? val : null
+  }
+  return out
+}
+
 // Logs every Checkout Session this function creates, regardless of
 // purpose -- the source of truth send-lifecycle-emails' abandoned-
 // checkout recovery job reads from. stripe-webhook stamps completed_at
 // when (if) the session actually completes; a row with no completed_at
 // after a while is what "abandoned" means. Best-effort: a logging
 // failure here must never block the checkout itself.
-async function logCheckoutAttempt(supabase: any, args: { stripeSessionId: string; purpose: string; email?: string | null; profileId?: string | null; amountCents: number }) {
+async function logCheckoutAttempt(supabase: any, args: { stripeSessionId: string; purpose: string; email?: string | null; profileId?: string | null; amountCents: number; utm?: any }) {
   try {
+    const safeUtm = sanitizeUtm(args.utm)
     await supabase.from('checkout_session_attempts').insert({
       stripe_session_id: args.stripeSessionId,
       purpose: args.purpose,
       email: args.email ?? null,
       profile_id: args.profileId ?? null,
       amount_cents: args.amountCents,
+      utm_source: safeUtm.source,
+      utm_medium: safeUtm.medium,
+      utm_campaign: safeUtm.campaign,
+      utm_content: safeUtm.content,
+      utm_term: safeUtm.term,
     })
   } catch (err) {
     console.error('logCheckoutAttempt failed', err)
@@ -209,7 +230,7 @@ serve(async (req) => {
         success_url: `${siteOrigin}/portal.html?unlocked=1&amount_cents=${pricing.amount_cents}&session_id={CHECKOUT_SESSION_ID}#checkride-prep`,
         cancel_url: `${siteOrigin}/portal.html#dashboard`,
       })
-      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'unlock-checkride-prep', email, profileId, amountCents: pricing.amount_cents })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'unlock-checkride-prep', email, profileId, amountCents: pricing.amount_cents, utm: body.utm })
 
       return new Response(JSON.stringify({ url: session.url, tier: pricing.tier, amount: pricing.amount_cents }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -270,7 +291,7 @@ serve(async (req) => {
         success_url: `${siteOrigin}/portal.html?membership=1&tier=${tier}&amount_cents=${amountCents}&session_id={CHECKOUT_SESSION_ID}#account`,
         cancel_url: `${siteOrigin}/portal.html#account`,
       })
-      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'join-membership', email, profileId, amountCents })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'join-membership', email, profileId, amountCents, utm: body.utm })
 
       return new Response(JSON.stringify({ url: session.url, tier, amount: amountCents }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -369,7 +390,7 @@ serve(async (req) => {
         success_url: `${siteOrigin}/portal-login.html?view=signup-success&paid=1&amount_cents=${pricing.amount_cents}&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${siteOrigin}/portal-login.html?view=signup-success`,
       })
-      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'signup-and-unlock-checkride-prep', email, profileId: newProfileId, amountCents: pricing.amount_cents })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'signup-and-unlock-checkride-prep', email, profileId: newProfileId, amountCents: pricing.amount_cents, utm: body.utm })
 
       return new Response(JSON.stringify({ url: session.url, tier: pricing.tier, amount: pricing.amount_cents }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -415,7 +436,7 @@ serve(async (req) => {
         success_url: `${siteOrigin}/portal.html?groundschoolpack=1&amount_cents=${GROUND_SCHOOL_PACK_PRICE_CENTS}&session_id={CHECKOUT_SESSION_ID}#ground-school`,
         cancel_url: `${siteOrigin}/portal.html#ground-school`,
       })
-      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'unlock-ground-school-pack', email, profileId, amountCents: GROUND_SCHOOL_PACK_PRICE_CENTS })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'unlock-ground-school-pack', email, profileId, amountCents: GROUND_SCHOOL_PACK_PRICE_CENTS, utm: body.utm })
 
       return new Response(JSON.stringify({ url: session.url, amount: GROUND_SCHOOL_PACK_PRICE_CENTS }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -489,7 +510,7 @@ serve(async (req) => {
         success_url: `${siteOrigin}/portal-login.html?view=signup-success&paid=1&product=ground_school_pack&amount_cents=${GROUND_SCHOOL_PACK_PRICE_CENTS}&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${siteOrigin}/portal-login.html?view=signup-success&product=ground_school_pack`,
       })
-      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'signup-and-unlock-ground-school-pack', email, profileId: newProfileId, amountCents: GROUND_SCHOOL_PACK_PRICE_CENTS })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'signup-and-unlock-ground-school-pack', email, profileId: newProfileId, amountCents: GROUND_SCHOOL_PACK_PRICE_CENTS, utm: body.utm })
 
       return new Response(JSON.stringify({ url: session.url, amount: GROUND_SCHOOL_PACK_PRICE_CENTS }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -535,7 +556,7 @@ serve(async (req) => {
         success_url: `${siteOrigin}/portal.html?mockoral=1#mock-oral`,
         cancel_url: `${siteOrigin}/portal.html#mock-oral`,
       })
-      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'book-mock-oral', email, profileId, amountCents: MOCK_ORAL_PRICE_CENTS })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'book-mock-oral', email, profileId, amountCents: MOCK_ORAL_PRICE_CENTS, utm: body.utm })
 
       return new Response(JSON.stringify({ url: session.url, amount: MOCK_ORAL_PRICE_CENTS }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -589,10 +610,10 @@ serve(async (req) => {
             quantity: 1,
           }],
           metadata: { purpose: 'ground-school-registration', scheduled_class_id: scheduledClassId, full_name: name, email },
-          success_url: `${siteOrigin}/portal.html?registered=1#ground-school`,
+          success_url: `${siteOrigin}/portal.html?registered=1&amount_cents=${GROUND_SCHOOL_PRICE_CENTS}&session_id={CHECKOUT_SESSION_ID}#ground-school`,
           cancel_url: `${siteOrigin}/portal.html#ground-school`,
         })
-        await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'ground-school-registration', email, amountCents: GROUND_SCHOOL_PRICE_CENTS })
+        await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'ground-school-registration', email, amountCents: GROUND_SCHOOL_PRICE_CENTS, utm: body.utm })
 
         return new Response(JSON.stringify({ url: session.url, amount: GROUND_SCHOOL_PRICE_CENTS }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -625,10 +646,10 @@ serve(async (req) => {
           quantity: 1,
         }],
         metadata: { purpose: 'ground-school-registration', session_id: sessionId, full_name: name, email },
-        success_url: `${siteOrigin}/portal.html?registered=1#ground-school`,
+        success_url: `${siteOrigin}/portal.html?registered=1&amount_cents=${GROUND_SCHOOL_PRICE_CENTS}&session_id={CHECKOUT_SESSION_ID}#ground-school`,
         cancel_url: `${siteOrigin}/portal.html#ground-school`,
       })
-      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'ground-school-registration', email, amountCents: GROUND_SCHOOL_PRICE_CENTS })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'ground-school-registration', email, amountCents: GROUND_SCHOOL_PRICE_CENTS, utm: body.utm })
 
       return new Response(JSON.stringify({ url: session.url, amount: GROUND_SCHOOL_PRICE_CENTS }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

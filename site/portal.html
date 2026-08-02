@@ -196,6 +196,34 @@
           <a href="#" class="btn btn--primary" id="continueTrainingBtn" data-goto="scenarios">Continue Training</a>
         </div>
 
+        <!-- First-session welcome -- shown once, dismissible, no purchase CTA -->
+        <div class="portal-card" id="welcomeOnboardingCard" hidden style="margin-bottom:24px;border-color:rgba(244,180,0,0.25)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px">
+            <div>
+              <h3 style="color:#fff;font-size:18px;font-weight:800;margin-bottom:4px">Welcome to Apex Advantage, <span id="welcomeOnboardingName">Pilot</span>.</h3>
+              <p style="color:rgba(255,255,255,0.55);font-size:14px">Three easy ways to get started — no purchase required for any of them.</p>
+            </div>
+            <button type="button" id="welcomeOnboardingDismiss" aria-label="Dismiss" style="background:none;border:none;color:rgba(255,255,255,0.4);font-size:20px;line-height:1;cursor:pointer;padding:4px">&times;</button>
+          </div>
+          <div class="portal-grid portal-grid--3">
+            <button type="button" class="portal-card" id="welcomeOnboardingPractice" style="text-align:left;cursor:pointer">
+              <div class="portal-header__eyebrow" style="margin-bottom:8px">Practice</div>
+              <h4 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">Start AI DPE Practice</h4>
+              <p style="color:rgba(255,255,255,0.5);font-size:13px">Answer realistic oral-exam questions and build confidence answering out loud.</p>
+            </button>
+            <button type="button" class="portal-card" id="welcomeOnboardingStudy" style="text-align:left;cursor:pointer">
+              <div class="portal-header__eyebrow" style="margin-bottom:8px">Study</div>
+              <h4 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">Explore Free Resources</h4>
+              <p style="color:rgba(255,255,255,0.5);font-size:13px">Radio calls, spin awareness, and checkride guides — free, no unlock needed.</p>
+            </button>
+            <button type="button" class="portal-card" id="welcomeOnboardingTrainLive" style="text-align:left;cursor:pointer">
+              <div class="portal-header__eyebrow" style="margin-bottom:8px">Train Live</div>
+              <h4 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">View Ground School</h4>
+              <p style="color:rgba(255,255,255,0.5);font-size:13px">See upcoming live, instructor-led classes — $25 per session, or $400 for the full course.</p>
+            </button>
+          </div>
+        </div>
+
         <!-- Readiness + Streak + Weak Areas + Pilot Rank -->
         <div class="portal-grid portal-grid--4" style="margin-bottom:24px">
           <div class="portal-card portal-readiness portal-locked-widget" data-locked-widget data-widget="readiness">
@@ -273,6 +301,13 @@
             </div>
           </div>
         </div>
+
+        <!-- Recommended Next Step -- contextual by conversion state
+             (getMemberConversionState() in portal-stable.js), separate
+             from "My Training"/"Next Best Action" below (that one is
+             about what to study; this one is about what stage of the
+             program the member is at). Never a direct-to-checkout link. -->
+        <div class="portal-card" id="recommendedNextStepCard" hidden style="margin-bottom:24px;background:linear-gradient(120deg, rgba(244,180,0,0.10), rgba(11,31,58,0.4));border-color:rgba(244,180,0,0.2)"></div>
 
         <div class="portal-card portal-my-training" style="margin-bottom:24px">
           <div class="portal-my-training__head">
@@ -1098,6 +1133,18 @@
           <h1>Register for a session.</h1>
           <p>Live instructor-led ground school, taught by Andrew. Pick any upcoming session below — pay online and you're confirmed instantly.</p>
         </div>
+
+        <!-- $25-class registration confirmation -- shown once, right
+             after a successful ?registered=1 redirect. Confirmation is
+             the dominant purpose of this card; the Full Ground School
+             mention below it is a single secondary line, not a second
+             sales pitch. -->
+        <div class="portal-card" id="groundSchoolRegistrationSuccessCard" hidden style="margin-bottom:20px;border-color:rgba(244,180,0,0.3)"></div>
+
+        <!-- Full Ground School students: a progress card replaces the
+             sales pitch entirely (see renderGroundSchoolProgress() in
+             portal-stable.js) -- real enrollment/attendance data only. -->
+        <div class="portal-card" id="groundSchoolProgressCard" hidden style="margin-bottom:20px"></div>
 
         <!-- Full-course pack -- an alternative to $25/session, not a
              replacement for it. Hidden once unlocked (see

@@ -936,6 +936,7 @@
       <div class="cp-section__eyebrow">The Real Difference</div>
       <h2 class="cp-section__title">MEMORIZING ANSWERS ISN&rsquo;T THE SAME AS BEING READY</h2>
       <p class="cp-section__desc">Most applicants don&rsquo;t fail the oral because they lack information &mdash; they&rsquo;ve watched the YouTube videos, built the Quizlet deck, read the FAR/AIM. What&rsquo;s usually missing is knowing which ACS areas actually matter, a way to see real gaps instead of guessing, and enough structured repetition that studying doesn&rsquo;t feel like starting over every time you sit back down.</p>
+      <p style="color:var(--gold);font-size:17px;font-weight:700;font-style:italic;margin:0 0 32px;max-width:720px">Your DPE isn&rsquo;t giving you a multiple-choice test. Why are you studying like they are?</p>
 
       <div class="cp-contrast-grid">
         <div class="cp-contrast-col">
@@ -1400,6 +1401,7 @@
     // logged to analytics_events too so the funnel report can count it.
     if (window.gtag) gtag('event', 'checkride_prep_page_view');
     if (window.apexTrack) apexTrack('landing_page_viewed', { product: 'checkride_prep', price: 29 });
+    if (window.apexTrackStandard) apexTrackStandard('ViewContent', { content_name: 'Checkride Prep Pack', value: 29, currency: 'USD' });
 
     // ── Scroll-triggered funnel events: pricing section + product
     // screenshots section, each fired once per page view ──────────

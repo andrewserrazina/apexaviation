@@ -23,7 +23,12 @@
     'walkthrough_video_started', 'walkthrough_video_completed', 'checkout_started', 'checkout_abandoned',
     'purchase_completed', 'portal_first_login', 'onboarding_completed', 'first_lesson_started',
     'first_lesson_completed', 'quiz_completed', 'seven_day_active_user', 'upgrade_prompt_viewed',
-    'upgrade_prompt_clicked', 'refund_requested'
+    'upgrade_prompt_clicked', 'refund_requested',
+    // Acquisition/conversion-system additions (see the Recommended Next
+    // Step dashboard card + conversion-state work) -- real triggers only,
+    // wired up alongside this allowlist addition, not speculative.
+    'ai_dpe_started', 'ground_school_calendar_viewed', 'ground_school_class_viewed',
+    'ground_school_class_purchased', 'ground_school_full_pack_viewed', 'checkride_prep_viewed'
   ];
 
   function anonId() {
@@ -44,22 +49,67 @@
     return 'desktop';
   }
 
-  // Captures utm_source/medium/campaign on first landing and remembers
-  // them in localStorage so later events in the same funnel (registration,
-  // checkout, purchase -- often on a different page/visit) still carry the
-  // original traffic source instead of losing it after the first hop.
+  var UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+
+  // Captures utm_source/medium/campaign/content/term on every landing and
+  // remembers them in localStorage under two separate sets of keys:
+  //   apex_<utm_key>        -- latest touch, overwritten every time a new
+  //                             UTM param shows up in the URL. Used for
+  //                             "which campaign generated this purchase"
+  //                             (attached to checkout attempts).
+  //   apex_<utm_key>_first  -- first touch, written once and never
+  //                             overwritten again. Used for "which ad
+  //                             generated this member" (attached to
+  //                             profiles at signup).
+  // Both survive across pages/visits on the same origin via localStorage,
+  // which is how a registration or checkout on a later page/visit still
+  // carries the original traffic source instead of losing it after the
+  // first hop.
   function utmProps() {
     var out = {};
     try {
       var params = new URLSearchParams(window.location.search);
-      ['utm_source', 'utm_medium', 'utm_campaign'].forEach(function (k) {
+      UTM_KEYS.forEach(function (k) {
         if (params.has(k)) {
-          localStorage.setItem('apex_' + k, params.get(k));
+          var val = params.get(k);
+          localStorage.setItem('apex_' + k, val);
+          if (!localStorage.getItem('apex_' + k + '_first')) {
+            localStorage.setItem('apex_' + k + '_first', val);
+          }
         }
       });
       out.traffic_source = localStorage.getItem('apex_utm_source') || null;
       out.campaign = localStorage.getItem('apex_utm_campaign') || null;
     } catch (e) { /* localStorage unavailable (private mode, etc.) -- fine, just omit */ }
+    return out;
+  }
+
+  // Latest-touch UTM snapshot, for passing along to create-checkout-session
+  // (persisted per-purchase on checkout_session_attempts -- see
+  // supabase-portal-schema-v58.sql).
+  function getUtm() {
+    var out = {};
+    try {
+      UTM_KEYS.forEach(function (k) {
+        out[k.replace('utm_', '')] = localStorage.getItem('apex_' + k) || null;
+      });
+    } catch (e) { /* localStorage unavailable -- omit */ }
+    return out;
+  }
+
+  // First-touch UTM snapshot, for passing along to create-free-account /
+  // signup-and-unlock-* (persisted once on profiles.signup_utm_* -- see
+  // supabase-portal-schema-v58.sql). Falls back to latest-touch if this
+  // visitor's first-touch keys were never set (e.g. localStorage was
+  // cleared between their first visit and signing up) -- a slightly
+  // stale attribution is still more useful than none.
+  function getFirstTouchUtm() {
+    var out = {};
+    try {
+      UTM_KEYS.forEach(function (k) {
+        out[k.replace('utm_', '')] = localStorage.getItem('apex_' + k + '_first') || localStorage.getItem('apex_' + k) || null;
+      });
+    } catch (e) { /* localStorage unavailable -- omit */ }
     return out;
   }
 
@@ -100,5 +150,30 @@
     }
   }
 
+  // Fires a standard Meta Pixel event (ViewContent, Lead,
+  // CompleteRegistration, InitiateCheckout) via fbq('track', ...) --
+  // deliberately separate from apexTrack/trackCustom above. Meta's own
+  // ad-optimization and reporting treat "standard" events specially
+  // (they're what Ads Manager's built-in conversion picker expects), so
+  // these fire under their real Meta name rather than being folded into
+  // the custom funnel-event system. No analytics_events DB write here on
+  // purpose -- apexTrack already logs the equivalent funnel-shaped event
+  // (registration_started/registration_completed/checkout_started etc.)
+  // for first-party reporting; this is purely the Meta-side signal.
+  // Purchase itself is NOT included here -- it already has its own
+  // dedup-by-session_id handling inline in portal-stable.js/
+  // portal-login.html and must stay that way to avoid double-counting
+  // revenue.
+  function trackStandard(eventName, properties) {
+    try {
+      if (window.fbq) fbq('track', eventName, properties || {});
+    } catch (e) {
+      console.error('apexTrackStandard: tracking "' + eventName + '" failed, continuing anyway', e);
+    }
+  }
+
   window.apexTrack = track;
+  window.apexTrackStandard = trackStandard;
+  window.apexGetUtm = getUtm;
+  window.apexGetFirstTouchUtm = getFirstTouchUtm;
 })();
