@@ -511,7 +511,7 @@
       var dest = (new URLSearchParams(window.location.search)).get('dest') || '';
 
       apexSupabase.functions.invoke('create-free-account', {
-        body: { name: name, email: email, dest: dest, checkride_timing: checkrideTiming || null }
+        body: { name: name, email: email, dest: dest, checkride_timing: checkrideTiming || null, utm_first: window.apexGetFirstTouchUtm ? apexGetFirstTouchUtm() : undefined }
       }).then(function (res) {
         signupSubmit.disabled = false;
         signupSubmit.textContent = 'Create Free Account';
@@ -523,6 +523,11 @@
         }
         if (window.gtag) gtag('event', 'sign_up', { method: 'email' });
         if (window.apexTrack) apexTrack('registration_completed', { product: 'checkride_prep', checkride_timing: checkrideTiming || null, profile_id: res.data.id || null });
+        // Lead -- a free account was just created (no payment yet). See
+        // ANALYTICS_EVENT_MAP in the acquisition-system report for why
+        // this fires here and CompleteRegistration fires later at first
+        // portal login instead of here.
+        if (window.apexTrackStandard) apexTrackStandard('Lead', { content_name: 'Apex Advantage Free Account' });
         // Account creation and the welcome email are two separate steps
         // server-side (create-free-account/index.ts) -- the account can
         // succeed even if Resend fails to send. Point them at "Forgot
@@ -574,7 +579,7 @@
       var dest = (new URLSearchParams(window.location.search)).get('dest') || '';
 
       apexSupabase.functions.invoke('create-checkout-session', {
-        body: { purpose: 'signup-and-unlock-checkride-prep', name: name, email: email, dest: dest, origin: window.location.origin, checkride_timing: checkrideTiming || null }
+        body: { purpose: 'signup-and-unlock-checkride-prep', name: name, email: email, dest: dest, origin: window.location.origin, checkride_timing: checkrideTiming || null, utm: window.apexGetUtm ? apexGetUtm() : undefined }
       }).then(function (res) {
         if (res.error || !res.data || !res.data.url) {
           return extractInvokeError(res).then(function (msg) {
@@ -589,6 +594,7 @@
           apexTrack('registration_completed', { product: 'checkride_prep', checkride_timing: checkrideTiming || null, checkout_step: 'instant_access' });
           apexTrack('checkout_started', { product: 'checkride_prep', checkout_step: 'redirect_to_stripe', price: 29 });
         }
+        if (window.apexTrackStandard) apexTrackStandard('InitiateCheckout', { content_name: 'Checkride Prep Pack', value: 29, currency: 'USD' });
         window.location.href = res.data.url;
       }).catch(function () {
         instantAccessSubmit.disabled = false;
@@ -619,7 +625,7 @@
       var gsDest = (new URLSearchParams(window.location.search)).get('dest') || '';
 
       apexSupabase.functions.invoke('create-checkout-session', {
-        body: { purpose: 'signup-and-unlock-ground-school-pack', name: gsName, email: gsEmail, dest: gsDest, origin: window.location.origin }
+        body: { purpose: 'signup-and-unlock-ground-school-pack', name: gsName, email: gsEmail, dest: gsDest, origin: window.location.origin, utm: window.apexGetUtm ? apexGetUtm() : undefined }
       }).then(function (res) {
         if (res.error || !res.data || !res.data.url) {
           return extractInvokeError(res).then(function (msg) {
@@ -634,6 +640,7 @@
           apexTrack('registration_completed', { product: 'ground_school_pack', checkout_step: 'instant_access' });
           apexTrack('checkout_started', { product: 'ground_school_pack', checkout_step: 'redirect_to_stripe', price: 400 });
         }
+        if (window.apexTrackStandard) apexTrackStandard('InitiateCheckout', { content_name: 'Private Pilot Ground School — Full Course', value: 400, currency: 'USD' });
         window.location.href = res.data.url;
       }).catch(function () {
         groundSchoolPackInstantAccessSubmit.disabled = false;

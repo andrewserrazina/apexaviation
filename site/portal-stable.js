@@ -121,6 +121,7 @@
         memberSince: profile && profile.created_at,
         checkridePrepUnlocked: !!(profile && profile.checkride_prep_unlocked),
         groundSchoolPackUnlocked: !!(profile && profile.private_pilot_ground_school_pack_unlocked),
+        checkrideTiming: profile && profile.checkride_timing,
         totalXp: (profile && profile.total_xp) || 0,
         currentRank: (profile && profile.current_rank) || 'student_pilot',
         streakFreezesBanked: (profile && profile.streak_freezes_banked) || 0,
@@ -294,7 +295,17 @@
     if (id === 'admin' && member.role === 'admin') loadAdminDashboard();
     if (id === 'guided-notes' && member.role === 'admin') loadGuidedNotes();
     if (id === 'success-wall') renderSuccessWall();
-    if (id === 'ground-school') loadGroundSchool();
+    if (id === 'ground-school') {
+      loadGroundSchool();
+      logEventOnce('ground_school_calendar_viewed');
+      if (window.apexTrack) apexTrack('product_preview_viewed', { product: 'ground_school' });
+    }
+    if (id === 'checkride-prep') {
+      logEventOnce('checkride_prep_viewed');
+      if (window.apexTrack) apexTrack('product_preview_viewed', { product: 'checkride_prep' });
+      if (window.apexTrackStandard) apexTrackStandard('ViewContent', { content_name: 'Checkride Prep Pack' });
+    }
+    if (id === 'ai-dpe-practice' && window.apexTrack) apexTrack('first_lesson_started', { profile_id: member.id, feature: 'ai_dpe_practice' });
     if (id === 'ask-andrew') loadAskAndrewHistory();
   }
   window.apexShowSection = showSection;
@@ -467,7 +478,7 @@
     unlockModalCta.textContent = 'Redirecting to secure checkout…';
 
     apexSupabase.functions.invoke('create-checkout-session', {
-      body: { purpose: 'unlock-checkride-prep', origin: window.location.origin },
+      body: { purpose: 'unlock-checkride-prep', origin: window.location.origin, utm: window.apexGetUtm ? apexGetUtm() : undefined },
       headers: { Authorization: 'Bearer ' + accessToken }
     }).then(function (res) {
       if (res.error || !res.data || !res.data.url) {
@@ -478,6 +489,7 @@
           unlockModalError.classList.add('show');
         });
       }
+      if (window.apexTrackStandard) apexTrackStandard('InitiateCheckout', { content_name: 'Checkride Prep Pack' });
       window.location.href = res.data.url;
     }).catch(function () {
       unlockModalCta.disabled = false;
@@ -497,7 +509,7 @@
     mockOralBookBtn.textContent = 'Redirecting to secure checkout…';
 
     apexSupabase.functions.invoke('create-checkout-session', {
-      body: { purpose: 'book-mock-oral', origin: window.location.origin },
+      body: { purpose: 'book-mock-oral', origin: window.location.origin, utm: window.apexGetUtm ? apexGetUtm() : undefined },
       headers: { Authorization: 'Bearer ' + accessToken }
     }).then(function (res) {
       if (res.error || !res.data || !res.data.url) {
@@ -508,6 +520,7 @@
           mockOralError.classList.add('show');
         });
       }
+      if (window.apexTrackStandard) apexTrackStandard('InitiateCheckout', { content_name: '60-Minute Mock Oral', value: 99, currency: 'USD' });
       window.location.href = res.data.url;
     }).catch(function () {
       mockOralBookBtn.disabled = false;
@@ -883,7 +896,10 @@
     groundSchoolSessions.forEach(function (s) {
       var full = s.spotsLeft <= 0;
       var packCovers = s.courseId === 'PPL' && member && member.groundSchoolPackUnlocked;
-      var registerLabel = packCovers ? 'Register — Included in Your Pack' : (full ? 'Join Waitlist — $25' : 'Register — $25');
+      var alreadyRegistered = s.kind === 'scheduled_class' && myScheduledEnrollments.some(function (e) {
+        return e.scheduled_ground_class_id === s.id && e.attendance_status !== 'canceled';
+      });
+      var registerLabel = alreadyRegistered ? 'Already Registered' : (packCovers ? 'Register — Included in Your Pack' : (full ? 'Join Waitlist — $25' : 'Register — $25'));
       var card = document.createElement('div');
       card.className = 'portal-card';
       card.innerHTML =
@@ -891,8 +907,8 @@
         '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">' + s.title + '</h3>' +
         '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:4px">' + fmtSessionDate(s.scheduled_at) + '</p>' +
         '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-bottom:16px">' + (full && !packCovers ? 'Full — join the waitlist' : s.spotsLeft + ' spot' + (s.spotsLeft === 1 ? '' : 's') + ' left') + '</p>' +
-        '<button class="btn btn--primary" data-register style="width:100%">' + registerLabel + '</button>';
-      card.querySelector('[data-register]').addEventListener('click', function () { openGroundSchoolModal(s); });
+        '<button class="btn btn--primary" data-register style="width:100%"' + (alreadyRegistered ? ' disabled' : '') + '>' + registerLabel + '</button>';
+      if (!alreadyRegistered) card.querySelector('[data-register]').addEventListener('click', function () { openGroundSchoolModal(s); });
       listEl.appendChild(card);
     });
   }
@@ -1011,6 +1027,8 @@
 
   function openGroundSchoolModal(s) {
     activeGroundSession = s;
+    logEventOnce('ground_school_class_viewed', { class_id: s.id });
+    if (window.apexTrack) apexTrack('product_preview_viewed', { product: 'ground_school_class', class_id: s.id });
     groundSchoolModalTitle.textContent = s.title;
     groundSchoolModalWhen.textContent = fmtSessionDate(s.scheduled_at);
     groundSchoolModalError.classList.remove('show');
@@ -1044,7 +1062,8 @@
         scheduledClassId: activeGroundSession.kind === 'scheduled_class' ? activeGroundSession.id : undefined,
         name: member.name,
         email: member.email,
-        origin: window.location.origin
+        origin: window.location.origin,
+        utm: window.apexGetUtm ? apexGetUtm() : undefined
       }
     }).then(function (res) {
       if (res.error || !res.data || !res.data.url) {
@@ -1055,6 +1074,7 @@
           groundSchoolModalError.classList.add('show');
         });
       }
+      if (window.apexTrackStandard) apexTrackStandard('InitiateCheckout', { content_name: 'Ground School — ' + activeGroundSession.title, value: 25, currency: 'USD' });
       window.location.href = res.data.url;
     }).catch(function () {
       groundSchoolModalCta.disabled = false;
@@ -1150,7 +1170,7 @@
       groundSchoolPackUnlockBtn.textContent = 'Redirecting to secure checkout…';
 
       apexSupabase.functions.invoke('create-checkout-session', {
-        body: { purpose: 'unlock-ground-school-pack', origin: window.location.origin },
+        body: { purpose: 'unlock-ground-school-pack', origin: window.location.origin, utm: window.apexGetUtm ? apexGetUtm() : undefined },
         headers: { Authorization: 'Bearer ' + accessToken }
       }).then(function (res) {
         if (res.error || !res.data || !res.data.url) {
@@ -1161,6 +1181,7 @@
             errorEl.classList.add('show');
           });
         }
+        if (window.apexTrackStandard) apexTrackStandard('InitiateCheckout', { content_name: 'Private Pilot Ground School — Full Course', value: 400, currency: 'USD' });
         window.location.href = res.data.url;
       }).catch(function () {
         groundSchoolPackUnlockBtn.disabled = false;
@@ -1200,10 +1221,30 @@
   }
   if (urlParams.get('registered') === '1') {
     toast('You\'re registered for ground school!');
+    var gsAmountCents = parseInt(urlParams.get('amount_cents'), 10);
+    var gsValue = isNaN(gsAmountCents) ? 25 : gsAmountCents / 100;
     if (window.gtag) gtag('event', 'purchase', {
-      currency: 'USD', value: 25,
-      items: [{ item_name: 'Ground School Session', price: 25, quantity: 1 }]
+      currency: 'USD', value: gsValue,
+      items: [{ item_name: 'Ground School Session', price: gsValue, quantity: 1 }]
     });
+    // Meta Pixel Purchase -- this $25 purchase had no tracking at all
+    // before (only the GA4 event above existed). Same session_id dedup
+    // pattern as the Checkride Prep/Membership/Ground-School-Pack blocks
+    // at the top of this file; no discount path on this product (flat
+    // $25, no allow_promotion_codes), so the quoted amount is always
+    // what was actually charged.
+    var gsSessionId = urlParams.get('session_id');
+    var gsDedupeKey = gsSessionId ? 'apex_fbq_purchase_gs_' + gsSessionId : null;
+    if (window.fbq && (!gsDedupeKey || !localStorage.getItem(gsDedupeKey))) {
+      fbq('track', 'Purchase', { value: gsValue, currency: 'USD', content_name: 'Ground School Session' });
+      if (gsDedupeKey) localStorage.setItem(gsDedupeKey, '1');
+    }
+    var gsFunnelDedupeKey = gsSessionId ? 'apex_funnel_purchase_gs_' + gsSessionId : null;
+    if (window.apexTrack && (!gsFunnelDedupeKey || !localStorage.getItem(gsFunnelDedupeKey))) {
+      apexTrack('purchase_completed', { product: 'ground_school_class', price: gsValue });
+      apexTrack('ground_school_class_purchased', { price: gsValue });
+      if (gsFunnelDedupeKey) localStorage.setItem(gsFunnelDedupeKey, '1');
+    }
   }
   if (urlParams.get('mockoral') === '1') {
     toast('Payment received! Andrew will email you to schedule your Mock Oral.');
@@ -1352,6 +1393,8 @@
   var myPurchase = null;
   var myInvoices = [];
   var myGroundRegistrations = [];
+  var myScheduledEnrollments = []; // scheduled_ground_classes-based registrations (v58 get_my_ground_school_enrollments), separate from the legacy myGroundRegistrations above
+  var groundSchoolModuleCount = 0; // total published PPL modules -- denominator for Ground School Progress
 
   function loadProgress() {
     return Promise.all([
@@ -1371,7 +1414,9 @@
       apexSupabase.from('portal_checkride_results').select('*').eq('profile_id', member.id).maybeSingle(),
       apexSupabase.from('portal_access_purchases').select('*').eq('profile_id', member.id).maybeSingle(),
       apexSupabase.from('invoices').select('*').eq('student_id', member.id).order('issued_at', { ascending: false }),
-      apexSupabase.from('ground_registrations').select('*, session:ground_sessions(*)').eq('profile_id', member.id)
+      apexSupabase.from('ground_registrations').select('*, session:ground_sessions(*)').eq('profile_id', member.id),
+      apexSupabase.rpc('get_my_ground_school_enrollments'),
+      apexSupabase.rpc('get_ground_school_module_count', { p_course_id: 'PPL' })
     ]).then(function (results) {
       (results[0].data || []).forEach(function (r) {
         studied[r.question_id] = r.completed;
@@ -1411,6 +1456,8 @@
       myPurchase = results[14].data || null;
       myInvoices = results[15].data || [];
       myGroundRegistrations = results[16].data || [];
+      myScheduledEnrollments = results[17].data || [];
+      groundSchoolModuleCount = typeof results[18].data === 'number' ? results[18].data : 0;
     }).catch(function (e) { console.error('Failed to load portal progress', e); });
   }
 
@@ -3675,6 +3722,12 @@
     var isFirstLogin = !loggedEventTypes['first_login'];
     logEventOnce('first_login');
     if (isFirstLogin && window.apexTrack) apexTrack('portal_first_login', { profile_id: member.id });
+    // CompleteRegistration -- fires once, at the member's actual first
+    // login (password set + portal opened for real), not at account
+    // creation (that's Lead, fired in portal-login.html's signup
+    // handler). This is the "portal signup completion" moment.
+    if (isFirstLogin && window.apexTrackStandard) apexTrackStandard('CompleteRegistration', { content_name: 'Apex Advantage Portal' });
+    if (isFirstLogin) showWelcomeOnboarding();
 
     if (DPE_DATA.some(function (d) { return studied[d.id]; })) {
       var wasNew = !loggedEventTypes['first_question_completed'];
@@ -3701,6 +3754,34 @@
       sendPortalEmail(member.email, 'Checkride Mode: complete', emailTemplateCheckrideModeDone());
       logEmailSent('checkride_mode_completed_email');
     }
+  }
+
+  // Lightweight first-session welcome -- shown exactly once (gated on the
+  // same isFirstLogin flag as the CompleteRegistration pixel event above,
+  // so it can never reappear on a later login). Three low-commitment
+  // actions, no purchase CTA -- a brand-new free member should get
+  // oriented before any contextual conversion logic (getMemberConversionState
+  // below) starts recommending paid products.
+  function showWelcomeOnboarding() {
+    var card = document.getElementById('welcomeOnboardingCard');
+    if (!card) return;
+    card.hidden = false;
+    document.getElementById('welcomeOnboardingName').textContent = firstName(member.name);
+    document.getElementById('welcomeOnboardingDismiss').addEventListener('click', function () {
+      card.hidden = true;
+    });
+    document.getElementById('welcomeOnboardingPractice').addEventListener('click', function () {
+      card.hidden = true;
+      if (member.checkridePrepUnlocked) { showSection('ai-dpe-practice'); } else { openUnlockModal(); }
+    });
+    document.getElementById('welcomeOnboardingStudy').addEventListener('click', function () {
+      card.hidden = true;
+      showSection('free-resources');
+    });
+    document.getElementById('welcomeOnboardingTrainLive').addEventListener('click', function () {
+      card.hidden = true;
+      showSection('ground-school');
+    });
   }
 
   function emailTemplate1FirstQuestion() {
@@ -4224,6 +4305,227 @@
   }
 
   /* ══════════════════════════════════════════════════════════════
+     CONVERSION STATE — a single, reusable read of "where is this member
+     in the acquisition funnel" (Visitor -> Free Member -> Engaged Member
+     -> $25 Ground School -> $400 Full Pack / Checkride Prep), built
+     entirely from data already loaded above (entitlements, real
+     enrollment counts, the member's own checkride date/timing, logged
+     portal_events). No new tracking, no invasive signals -- this exists
+     so the "Recommended Next Step" card (and anything else contextual
+     going forward) reads member state from one place instead of
+     scattering ad hoc if/else checks through the UI.
+     ══════════════════════════════════════════════════════════════ */
+  var CONVERSION_STATES = [
+    'multi_product_customer', 'full_ground_school_student', 'checkride_prep_customer',
+    'repeat_class_student', 'individual_class_student', 'checkride_soon',
+    'ground_school_interested', 'active_free_member', 'new_free_member'
+  ];
+
+  function daysToCheckride() {
+    if (!checkrideDate) return null;
+    var target = new Date(checkrideDate + 'T00:00:00');
+    return Math.ceil((target - new Date()) / 86400000);
+  }
+
+  function paidClassCount() {
+    var scheduled = myScheduledEnrollments.filter(function (e) {
+      return e.payment_status === 'paid' || e.payment_status === 'ground_school_pack';
+    }).length;
+    var legacy = myGroundRegistrations.filter(function (r) {
+      return r.payment_status === 'paid' || r.payment_status === 'free_referral';
+    }).length;
+    return scheduled + legacy;
+  }
+
+  function getMemberConversionState() {
+    if (!member) return 'new_free_member';
+
+    if (member.checkridePrepUnlocked && member.groundSchoolPackUnlocked) return 'multi_product_customer';
+    if (member.groundSchoolPackUnlocked) return 'full_ground_school_student';
+    if (member.checkridePrepUnlocked) return 'checkride_prep_customer';
+
+    var classCount = paidClassCount();
+    if (classCount >= 2) return 'repeat_class_student';
+    if (classCount === 1) return 'individual_class_student';
+
+    // "Soon" prefers the member's own real checkride date
+    // (portal_checkride_date) over the coarser signup-time
+    // checkride_timing bucket whenever they've set one -- it's the more
+    // precise, self-maintained signal of the two.
+    var realDaysOut = daysToCheckride();
+    var soonByRealDate = realDaysOut !== null && realDaysOut <= 30;
+    var soonByTimingBucket = realDaysOut === null &&
+      (member.checkrideTiming === 'within_14_days' || member.checkrideTiming === 'within_30_days');
+    if (soonByRealDate || soonByTimingBucket) return 'checkride_soon';
+
+    if (loggedEventTypes['ground_school_calendar_viewed'] || loggedEventTypes['ground_school_class_viewed']) {
+      return 'ground_school_interested';
+    }
+
+    var hasEngaged = DPE_DATA.some(function (d) { return studied[d.id]; }) ||
+      SCENARIOS.some(function (s) { return studied[s.id]; }) ||
+      checkrideModeDone ||
+      Object.keys(studyDays).length > 0;
+    return hasEngaged ? 'active_free_member' : 'new_free_member';
+  }
+
+  // Recommended Next Step -- contextual by design (spec: "Apex knows what
+  // would help me next," not an ad slot). Deliberately separate from
+  // renderMyTraining's study-progress "Next Best Action" card below --
+  // that one is about *what to study*, this one is about *what stage of
+  // the program you're at*. Never links straight to checkout; every
+  // paid-product recommendation goes to the section/page where the
+  // member can read about it first (spec: "allow the member to
+  // understand the product first").
+  function renderRecommendedNextStep() {
+    var el = document.getElementById('recommendedNextStepCard');
+    if (!el) return;
+    var state = getMemberConversionState();
+    var content;
+
+    if (state === 'multi_product_customer' || state === 'full_ground_school_student') {
+      content = null; // handled by the Ground School Progress card instead -- see renderGroundSchoolProgress
+    } else if (state === 'checkride_prep_customer') {
+      content = {
+        eyebrow: 'Keep Going',
+        title: 'Stay Sharp for Checkride Day',
+        body: "You're unlocked. Keep working weak areas and running AI DPE Practice so nothing on oral exam day is a surprise.",
+        cta: 'Open AI DPE Practice',
+        go: function () { showSection('ai-dpe-practice'); }
+      };
+    } else if (state === 'repeat_class_student') {
+      content = {
+        eyebrow: 'Complete the Full Ground School',
+        title: "You've Already Started Training With Apex Advantage",
+        body: 'Enroll in the complete Private Pilot Ground School for access to the full 21-module program — $400, no per-class charge after.',
+        cta: 'View Full Ground School',
+        go: function () { showSection('ground-school'); }
+      };
+    } else if (state === 'individual_class_student') {
+      content = {
+        eyebrow: 'Keep Going',
+        title: 'Continue Building Your Private Pilot Knowledge',
+        body: 'Register for the next Apex Advantage Ground School class in the series.',
+        cta: 'View Next Class',
+        go: function () { showSection('ground-school'); }
+      };
+    } else if (state === 'checkride_soon') {
+      content = {
+        eyebrow: 'Your Checkride Is Getting Close',
+        title: 'Turn Studying Into Checkride-Ready Answers',
+        body: 'The complete Apex Advantage Checkride Prep System — DPE question bank, scenarios, AI DPE Practice, and progress tracking — is built for exactly this window.',
+        cta: 'Explore Checkride Prep',
+        go: function () { showSection('checkride-prep'); }
+      };
+    } else if (state === 'ground_school_interested') {
+      content = {
+        eyebrow: 'Join Us Live',
+        title: 'Apex Advantage Ground School Is Live',
+        body: 'Instructor-led, scenario-based training built to help you understand the material — not just memorize it. Classes are $25 individually.',
+        cta: 'View Upcoming Classes',
+        go: function () { showSection('ground-school'); }
+      };
+    } else if (state === 'active_free_member') {
+      content = {
+        eyebrow: 'Keep Exploring',
+        title: 'Round Out Your Free Account',
+        body: "You've started studying — Apex Advantage Ground School classes are live if you'd rather train with an instructor in real time.",
+        cta: 'View Upcoming Classes',
+        go: function () { showSection('ground-school'); }
+      };
+    } else {
+      content = {
+        eyebrow: 'Get Started',
+        title: 'Start Practicing for Your Checkride',
+        body: 'Practice realistic oral-exam questions with AI DPE Practice and start building confidence answering out loud.',
+        cta: 'Start AI DPE Practice',
+        go: function () { if (member.checkridePrepUnlocked) showSection('ai-dpe-practice'); else openUnlockModal(); }
+      };
+    }
+
+    if (!content) { el.hidden = true; return; }
+    el.hidden = false;
+    el.innerHTML =
+      '<div class="portal-header__eyebrow" style="margin-bottom:8px">' + content.eyebrow + '</div>' +
+      '<h3 style="color:#fff;font-size:18px;font-weight:800;margin-bottom:8px">' + content.title + '</h3>' +
+      '<p style="color:rgba(255,255,255,0.6);font-size:14px;line-height:1.6;margin-bottom:16px">' + content.body + '</p>' +
+      '<button type="button" class="btn btn--primary" id="recommendedNextStepCta">' + content.cta + '</button>';
+    document.getElementById('recommendedNextStepCta').addEventListener('click', content.go);
+  }
+
+  // Full Ground School students: replace the sales pitch with a coherent
+  // "Your Ground School" progress card instead -- real enrollment/
+  // attendance data only (get_my_ground_school_enrollments,
+  // get_ground_school_module_count, supabase-portal-schema-v58.sql),
+  // never fabricated from the calendar date alone. "Completed" means
+  // attendance_status = 'attended', not just that the class date passed.
+  // Ground school $25-class registration success card -- confirmation is
+  // the dominant purpose; the Full Ground School mention is one line at
+  // the bottom, not a competing pitch (spec: don't overwhelm the
+  // confirmation). Reads the real most-recently-registered class from
+  // already-loaded data (myScheduledEnrollments/myGroundRegistrations)
+  // rather than needing extra params on the Stripe success_url.
+  function renderGroundSchoolRegistrationSuccess() {
+    var el = document.getElementById('groundSchoolRegistrationSuccessCard');
+    if (!el || urlParams.get('registered') !== '1') return;
+
+    var scheduled = myScheduledEnrollments.slice().sort(function (a, b) {
+      return (a.class_date + a.start_time) < (b.class_date + b.start_time) ? 1 : -1;
+    })[0];
+    var legacy = myGroundRegistrations.filter(function (r) { return r.session; }).sort(function (a, b) {
+      return new Date(b.session.scheduled_at) - new Date(a.session.scheduled_at);
+    })[0];
+
+    var title, whenText;
+    if (scheduled) {
+      title = scheduled.class_title;
+      whenText = new Date(scheduled.class_date + 'T' + scheduled.start_time).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    } else if (legacy) {
+      title = legacy.session.title;
+      whenText = new Date(legacy.session.scheduled_at).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    } else {
+      title = null;
+      whenText = null;
+    }
+
+    el.hidden = false;
+    el.innerHTML =
+      '<div class="portal-header__eyebrow" style="margin-bottom:8px">Registration Confirmed</div>' +
+      '<h3 style="color:#fff;font-size:19px;font-weight:800;margin-bottom:10px">You\'re registered.</h3>' +
+      (title ? '<p style="color:rgba(255,255,255,0.7);font-size:14px;margin-bottom:4px"><strong style="color:#fff">' + title + '</strong></p><p style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:16px">' + whenText + '</p>' : '<p style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:16px">Check your email for the exact class time and any prep materials.</p>') +
+      '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:0 0 14px" />' +
+      '<p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:12px">Enjoy Apex Advantage? Your class is part of the same live Ground School curriculum. Students who want the complete program can enroll in the Full Ground School.</p>' +
+      '<button type="button" class="btn btn--ghost" id="gsRegistrationSuccessFullPackBtn">Explore Full Ground School</button>';
+
+    var fullPackBtn = document.getElementById('gsRegistrationSuccessFullPackBtn');
+    if (fullPackBtn) fullPackBtn.addEventListener('click', function () { el.hidden = true; document.getElementById('groundSchoolPackCard').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+  }
+
+  function renderGroundSchoolProgress() {
+    var el = document.getElementById('groundSchoolProgressCard');
+    if (!el) return;
+    if (!member || !member.groundSchoolPackUnlocked) { el.hidden = true; return; }
+    el.hidden = false;
+
+    var completed = myScheduledEnrollments.filter(function (e) { return e.attendance_status === 'attended'; }).length;
+    var todayStr = new Date().toISOString().slice(0, 10);
+    var next = myScheduledEnrollments
+      .filter(function (e) { return e.attendance_status === 'registered' && e.class_date >= todayStr; })
+      .sort(function (a, b) { return (a.class_date + a.start_time) < (b.class_date + b.start_time) ? -1 : 1; })[0];
+
+    var totalLabel = groundSchoolModuleCount > 0 ? groundSchoolModuleCount : '—';
+    var nextHtml = next
+      ? '<p style="color:rgba(255,255,255,0.6);font-size:14px"><strong style="color:#fff">Next class:</strong> ' + next.class_title + ' — ' + new Date(next.class_date + 'T' + next.start_time).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + '</p>'
+      : '<p style="color:rgba(255,255,255,0.5);font-size:14px">No upcoming class registered yet — register for your next session below.</p>';
+
+    el.innerHTML =
+      '<div class="portal-header__eyebrow" style="margin-bottom:8px">Your Ground School</div>' +
+      '<h3 style="color:#fff;font-size:18px;font-weight:800;margin-bottom:10px">' + completed + ' of ' + totalLabel + ' Modules</h3>' +
+      '<div class="portal-progress-bar" style="margin-bottom:14px"><div class="portal-progress-bar__fill" style="width:' + (groundSchoolModuleCount > 0 ? Math.round((completed / groundSchoolModuleCount) * 100) : 0) + '%"></div></div>' +
+      nextHtml;
+  }
+
+  /* ══════════════════════════════════════════════════════════════
      MY TRAINING — "what should I study today" panel + study plan.
      Every recommendation here is derived live from real progress data
      (studied{}, CATEGORY_META coverage, SCENARIOS, myGroundRegistrations)
@@ -4369,6 +4671,9 @@
       renderAcsCoverage();
       renderQotd();
       renderMyTraining();
+      renderRecommendedNextStep();
+      renderGroundSchoolProgress();
+      renderGroundSchoolRegistrationSuccess();
       renderAchievements();
       loadAchievementRarity();
       renderStudyHeatmap();

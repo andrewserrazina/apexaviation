@@ -27,11 +27,25 @@ const corsHeaders = {
 // (supabase-portal-schema-v39.sql).
 const CHECKRIDE_TIMINGS = ['within_14_days', 'within_30_days', 'within_60_days', 'more_than_60_days', 'not_scheduled']
 
+// First-touch UTM capture (supabase-portal-schema-v58.sql) -- these
+// values come from the visitor's browser (analytics-events.js reading
+// its own first-visit-only localStorage keys), so they're treated as
+// untrusted input: capped length, no control characters, dropped
+// entirely if malformed rather than erroring the whole signup.
+function sanitizeUtm(utm: any): Record<string, string | null> {
+  const out: Record<string, string | null> = {}
+  for (const key of ['source', 'medium', 'campaign', 'content', 'term']) {
+    const val = utm && typeof utm === 'object' ? utm[key] : null
+    out[key] = typeof val === 'string' && /^[\x20-\x7e]{1,200}$/.test(val) ? val : null
+  }
+  return out
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    const { name, email, dest, checkride_timing } = await req.json()
+    const { name, email, dest, checkride_timing, utm_first } = await req.json()
     if (!name || !email) {
       return new Response(JSON.stringify({ error: 'Missing required fields: name, email' }), {
         status: 400,
@@ -68,8 +82,19 @@ serve(async (req) => {
     // isn't part of that trigger, so it's set here as a direct update
     // rather than touching a trigger every other account-creation path
     // (admin-created instructors, etc.) also relies on.
-    if (safeCheckrideTiming) {
-      await supabase.from('profiles').update({ checkride_timing: safeCheckrideTiming }).eq('id', created.user.id)
+    const safeUtm = sanitizeUtm(utm_first)
+    const hasUtm = Object.values(safeUtm).some((v) => v !== null)
+    if (safeCheckrideTiming || hasUtm) {
+      await supabase.from('profiles').update({
+        ...(safeCheckrideTiming ? { checkride_timing: safeCheckrideTiming } : {}),
+        ...(hasUtm ? {
+          signup_utm_source: safeUtm.source,
+          signup_utm_medium: safeUtm.medium,
+          signup_utm_campaign: safeUtm.campaign,
+          signup_utm_content: safeUtm.content,
+          signup_utm_term: safeUtm.term,
+        } : {}),
+      }).eq('id', created.user.id)
     }
 
     // Without an explicit redirectTo, generateLink falls back to whatever
