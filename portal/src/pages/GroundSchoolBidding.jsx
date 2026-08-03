@@ -25,6 +25,21 @@ function bidStatusBadgeClass(status) {
   return 'status-badge'
 }
 
+function fmtClock(iso) {
+  return iso ? new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null
+}
+
+// Scheduled duration vs actual duration, in minutes -- surfaced right
+// where the instructor clocks out so a significant variance from the
+// published class time is visible immediately, not just later in
+// Payroll's aggregate compliance view.
+function durationVarianceMinutes(row) {
+  if (!row.actual_start_time || !row.actual_end_time) return null
+  const scheduledMinutes = (new Date(`${row.class_date}T${row.end_time}`) - new Date(`${row.class_date}T${row.start_time}`)) / 60000
+  const actualMinutes = (new Date(row.actual_end_time) - new Date(row.actual_start_time)) / 60000
+  return Math.round(actualMinutes - scheduledMinutes)
+}
+
 export default function GroundSchoolBidding() {
   const { profile } = useAuth()
   const isAdmin = profile?.role === 'admin'
@@ -36,8 +51,16 @@ export default function GroundSchoolBidding() {
   const [savingId, setSavingId] = useState(null)
   const [noteDrafts, setNoteDrafts] = useState({}) // classId -> in-progress note text
 
+  const [myClasses, setMyClasses] = useState([])
+  const [myClassesLoading, setMyClassesLoading] = useState(true)
+  const [myClassesError, setMyClassesError] = useState('')
+  const [clockSavingId, setClockSavingId] = useState(null)
+
   const todayStr = new Date().toISOString().slice(0, 10)
   const windowEndStr = new Date(Date.now() + WINDOW_DAYS * 86400000).toISOString().slice(0, 10)
+  // A day of grace behind "today" so a class that started last night (or
+  // just after midnight) doesn't disappear from view before it's finished.
+  const yesterdayStr = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
 
   async function load() {
     setLoading(true)
@@ -56,7 +79,45 @@ export default function GroundSchoolBidding() {
     setLoading(false)
   }
 
+  async function loadMyClasses() {
+    if (!profile?.id) return
+    setMyClassesLoading(true)
+    const { data, error: loadError } = await supabase
+      .from('scheduled_ground_classes')
+      .select('*')
+      .eq('instructor_id', profile.id)
+      .in('status', ['published', 'completed'])
+      .gte('class_date', yesterdayStr)
+      .lte('class_date', windowEndStr)
+      .order('class_date', { ascending: true })
+      .order('start_time', { ascending: true })
+
+    if (loadError) setMyClassesError(loadError.message)
+    else setMyClasses(data ?? [])
+    setMyClassesLoading(false)
+  }
+
   useEffect(() => { load() }, [])
+  useEffect(() => { loadMyClasses() }, [profile?.id])
+
+  async function startClass(row) {
+    setClockSavingId(row.id)
+    setMyClassesError('')
+    const { error: startError } = await supabase.rpc('start_scheduled_ground_class', { p_class_id: row.id })
+    setClockSavingId(null)
+    if (startError) { setMyClassesError(startError.message); return }
+    await loadMyClasses()
+  }
+
+  async function finishClass(row) {
+    if (!window.confirm(`Finish "${row.title}"? This marks the class complete and records the end time for payroll.`)) return
+    setClockSavingId(row.id)
+    setMyClassesError('')
+    const { error: finishError } = await supabase.rpc('finish_scheduled_ground_class', { p_class_id: row.id })
+    setClockSavingId(null)
+    if (finishError) { setMyClassesError(finishError.message); return }
+    await loadMyClasses()
+  }
 
   const rows = useMemo(() => classes.map(row => ({
     ...row,
@@ -118,6 +179,45 @@ export default function GroundSchoolBidding() {
           </p>
         </div>
       </div>
+
+      {myClassesError && <div className="form-error" style={{ marginBottom: 16 }}>{myClassesError}</div>}
+
+      {!myClassesLoading && myClasses.length > 0 && (
+        <section className="card" style={{ marginBottom: 24 }}>
+          <h3 className="card__title" style={{ marginBottom: 14 }}>My Assigned Classes</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {myClasses.map(row => {
+              const variance = durationVarianceMinutes(row)
+              return (
+                <div key={row.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+                  <div>
+                    <strong>{row.title}</strong>
+                    <p style={{ color: 'var(--muted)', fontSize: 13, margin: '4px 0 0' }}>
+                      {formatDateTime(row)}
+                      {row.actual_start_time && ` · Started ${fmtClock(row.actual_start_time)}`}
+                      {row.actual_end_time && ` · Finished ${fmtClock(row.actual_end_time)}`}
+                      {variance !== null && Math.abs(variance) >= 10 && (
+                        <span style={{ color: '#f87171' }}> · {variance > 0 ? `Ran ${variance} min over` : `Ended ${Math.abs(variance)} min early`}</span>
+                      )}
+                    </p>
+                  </div>
+                  {row.status === 'completed' ? (
+                    <span className="status-badge status-badge--success">Completed</span>
+                  ) : row.actual_start_time ? (
+                    <button className="btn-primary-sm" disabled={clockSavingId === row.id} onClick={() => finishClass(row)}>
+                      {clockSavingId === row.id ? 'Finishing…' : 'Finish Class'}
+                    </button>
+                  ) : (
+                    <button className="btn-primary-sm" disabled={clockSavingId === row.id} onClick={() => startClass(row)}>
+                      {clockSavingId === row.id ? 'Starting…' : 'Start Class'}
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
 
       {error && <div className="form-error" style={{ marginBottom: 16 }}>{error}</div>}
       {notice && <div className="form-success" style={{ marginBottom: 16 }}>{notice}</div>}
