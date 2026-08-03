@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
 import CalendarGrid from '../components/CalendarGrid'
@@ -395,6 +396,9 @@ export default function AdminGroundSchoolSchedule() {
                         <div className="action-row">
                           <button className="btn-link" onClick={() => openRoster(row)}>Roster{row.enrolled_count ? ` (${row.enrolled_count})` : ''}</button>
                           <button className="btn-link" onClick={() => openEdit(row)}>Edit</button>
+                          {row.status === 'published' && !row.instructor_id && (
+                            <Link className="btn-link" to="/ground-school-bidding">View Bids</Link>
+                          )}
                           {row.status !== 'canceled' && <button className="btn-link" onClick={() => cancelClass(row)}>Cancel</button>}
                         </div>
                       </td>

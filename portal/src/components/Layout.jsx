@@ -26,6 +26,7 @@ const navGroups = [
       { to: '/endorsements',    label: 'Endorsements',    roles: ['admin', 'instructor', 'student'] },
       { to: '/ground-schedule', label: 'Ground School',   roles: ['admin', 'instructor', 'student'] },
       { to: '/admin/ground-school-schedule', label: 'Class Scheduler', roles: ['admin'] },
+      { to: '/ground-school-bidding', label: 'Ground School Bidding', roles: ['admin', 'instructor'] },
       { to: '/instructor-hub',  label: 'Instructor Hub',  roles: ['admin', 'instructor'] },
     ],
   },
