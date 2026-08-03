@@ -16,7 +16,7 @@ Every module ties back to the ACS, the Airplane Flying Handbook, the Pilot's Han
 
 ---
 
-# DELIVERABLE 1 — THE 21 MODULES
+# DELIVERABLE 1 — THE 20 MODULES
 
 ---
 
@@ -745,42 +745,9 @@ Every module ties back to the ACS, the Airplane Flying Handbook, the Pilot's Han
 **Checkride Corner**
 1. *(This module IS the Checkride Corner — full mock oral exam delivered live.)*
 
-**Apex Challenge:** Identify your two weakest mock-oral topics and complete a focused self-study plan before Module 21.
+**Apex Challenge:** Identify your two weakest mock-oral topics and complete a focused self-study plan before your checkride.
 
 **Simulator Integration:** N/A — oral exam simulation module.
-
----
-
-### Module 21: Practical Test Success
-
-**Purpose:** Finalize logistical, procedural, and psychological readiness for checkride day itself, closing the loop on "Train Beyond the Checkride."
-
-**Learning Objectives**
-- Assemble a complete, examiner-ready document package (logbook, endorsements, IACRA, ID)
-- Explain the standard flow of checkride day from arrival through debrief
-- Apply pre-checkride risk management to personal readiness (rest, weather, currency)
-- Explain how to professionally handle a Notice of Disapproval if it occurs
-- Articulate a personal post-certificate flying and proficiency plan
-
-**Core Knowledge Areas**
-- Document checklist: logbook endorsements, IACRA application, photo ID, aircraft documents
-- Checkride day flow: documents review, oral exam, flight portion, debrief
-- Personal readiness: IMSAFE applied to checkride day specifically, weather contingency planning
-- Notice of Disapproval procedure and how to professionally regroup
-- Post-certificate planning: currency, continued education, next ratings
-
-**Scenario Workshop:** Run a full "checkride day simulation" — document check, abbreviated oral, and a discussion of what to do if weather forces a reschedule the morning of the test.
-
-**Checkride Corner**
-1. What documents must you bring to your checkride, and where do you find each one?
-2. Walk me through what happens if the examiner gives you a Notice of Disapproval on one task.
-3. How would you handle marginal weather on the morning of your checkride?
-4. What's your plan for staying proficient in the months after you earn your certificate?
-5. What's the very first thing you do when you meet your examiner?
-
-**Apex Challenge:** Assemble your actual personal document package for your upcoming checkride and have it reviewed by your instructor for completeness.
-
-**Simulator Integration:** Final full-mission Redbird "checkride simulation" combining maneuvers, an abbreviated cross-country leg, and an emergency inject — scored against ACS standards.
 
 ---
 
@@ -896,7 +863,7 @@ Gold is a spotlight, not a paint bucket. On any given slide, gold should touch n
 ## Visual Consistency Rules
 1. Every module's deck uses the exact same slide-type templates in the exact same order — students should be able to predict "Checkride Corner is coming" from the visual rhythm alone before the title even appears
 2. Logo/wordmark appears only on Cover and Closing slides — never watermarked on every slide, which feels low-end
-3. One diagram style system across the entire 21-module curriculum (consistent line weight, color use, and labeling convention) so visual literacy compounds module over module
+3. One diagram style system across the entire 20-module curriculum (consistent line weight, color use, and labeling convention) so visual literacy compounds module over module
 4. No slide transitions/animations beyond a simple fade — anything flashier reads as amateur, not premium
 
 ---
@@ -904,7 +871,7 @@ Gold is a spotlight, not a paint bucket. On any given slide, gold should touch n
 # DELIVERABLE 4 — THE APEX ADVANTAGE STUDENT WORKBOOK TEMPLATE
 
 ## Reusable Module Structure
-Every one of the 21 modules uses this identical workbook skeleton, so students build a muscle-memory navigation habit across the whole course.
+Every one of the 20 modules uses this identical workbook skeleton, so students build a muscle-memory navigation habit across the whole course.
 
 **1. Module Cover Page**
 - Module number, title, and Phase
@@ -966,7 +933,7 @@ Every one of the 21 modules uses this identical workbook skeleton, so students b
 
 ## Digital PDF Use
 - Tagged, fillable PDF form fields for every blank in the Guided Notes and Worksheet sections, so tablet-based students can type or write directly without printing
-- Bookmark/outline structure in the PDF matching the 21-module, 7-phase hierarchy for instant navigation
+- Bookmark/outline structure in the PDF matching the 20-module, 7-phase hierarchy for instant navigation
 - Hyperlinked Table of Contents on the digital cover page
 
 ## Note-Taking Structure Philosophy

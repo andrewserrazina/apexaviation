@@ -13,7 +13,7 @@
 --    specific purchase ("which campaign generated this purchase").
 --
 -- 2. Two read-only RPCs so the portal can show a Full Ground School
---    student's real progress ("6 of 21 modules") and mark classes the
+--    student's real progress ("6 of 20 modules") and mark classes the
 --    member already registered for -- without loosening
 --    scheduled_ground_classes' existing "Students view published
 --    upcoming ground classes" RLS policy (supabase-portal-schema-v15.sql),

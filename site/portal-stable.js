@@ -4397,7 +4397,7 @@
       content = {
         eyebrow: 'Complete the Full Ground School',
         title: "You've Already Started Training With Apex Advantage",
-        body: 'Enroll in the complete Private Pilot Ground School for access to the full 21-module program — $400, no per-class charge after.',
+        body: 'Enroll in the complete Private Pilot Ground School for access to the full 20-module program — $400, no per-class charge after.',
         cta: 'View Full Ground School',
         go: function () { showSection('ground-school'); }
       };
