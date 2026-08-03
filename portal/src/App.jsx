@@ -38,6 +38,7 @@ const OperationsSettings = lazy(() => import('./pages/operations/OperationsSetti
 const PortalSelector = lazy(() => import('./pages/PortalSelector'))
 const FlightStudentDashboard = lazy(() => import('./pages/FlightStudentDashboard'))
 const AdminGroundSchoolSchedule = lazy(() => import('./pages/AdminGroundSchoolSchedule'))
+const GroundSchoolBidding = lazy(() => import('./pages/GroundSchoolBidding'))
 const XpLedger = lazy(() => import('./pages/XpLedger'))
 const Missions = lazy(() => import('./pages/Missions'))
 const PilotJourney = lazy(() => import('./pages/PilotJourney'))
@@ -60,6 +61,7 @@ export default function App() {
               <Route path="/operations/simulator" element={<ProtectedRoute roles={['admin', 'instructor']}><OperationsSimulator /></ProtectedRoute>} />
               <Route path="/operations/settings" element={<ProtectedRoute adminOnly><OperationsSettings /></ProtectedRoute>} />
               <Route path="/admin/ground-school-schedule" element={<ProtectedRoute adminOnly><AdminGroundSchoolSchedule /></ProtectedRoute>} />
+              <Route path="/ground-school-bidding" element={<ProtectedRoute roles={['admin', 'instructor']}><GroundSchoolBidding /></ProtectedRoute>} />
               <Route path="/students"    element={<ProtectedRoute adminOnly><Students /></ProtectedRoute>} />
               <Route path="/instructors" element={<ProtectedRoute><Instructors /></ProtectedRoute>} />
               <Route path="/aircraft"    element={<ProtectedRoute><Aircraft /></ProtectedRoute>} />
