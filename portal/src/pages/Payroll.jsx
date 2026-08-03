@@ -43,6 +43,8 @@ export default function Payroll() {
   const [adjForm, setAdjForm] = useState({ description: '', amount: '' })
   const [adjSaving, setAdjSaving] = useState(false)
 
+  const [classesModal, setClassesModal] = useState(null) // { instructor }
+
   useEffect(() => { load() }, [periodStart, periodEnd])
 
   async function load() {
@@ -56,7 +58,7 @@ export default function Payroll() {
     ] = await Promise.all([
       supabase.from('profiles').select('id, full_name, email, hourly_rate, ground_school_rate').eq('role', 'instructor').order('full_name'),
       supabase.from('logbook_entries').select('instructor_id, duration_hours, date').gte('date', periodStart).lte('date', periodEnd),
-      supabase.from('scheduled_ground_classes').select('instructor_id, class_date, status').gte('class_date', periodStart).lte('class_date', periodEnd),
+      supabase.from('scheduled_ground_classes').select('instructor_id, title, class_date, start_time, end_time, status, actual_start_time, actual_end_time').gte('class_date', periodStart).lte('class_date', periodEnd),
       supabase.from('ground_sessions').select('instructor_id, scheduled_at, duration_minutes'),
       supabase.from('payroll_adjustments').select('*, instructor:instructor_id(full_name)').gte('created_at', periodStart).lte('created_at', `${periodEnd}T23:59:59`),
     ])
@@ -75,10 +77,26 @@ export default function Payroll() {
     return logbook.filter(l => l.instructor_id === instructorId).reduce((s, l) => s + (l.duration_hours ?? 0), 0)
   }
 
+  // Only counts a scheduled_ground_classes row toward pay once it's
+  // actually been clocked complete (actual_end_time set via "Finish
+  // Class") -- a class merely being scheduled/published no longer means
+  // it was taught. Legacy ground_sessions predates that tracking, so it
+  // still counts on scheduling alone (see supabase-portal-schema-v60.sql).
+  function completedClassesFor(instructorId) {
+    return scheduledClasses.filter(c => c.instructor_id === instructorId && c.actual_end_time)
+  }
+
   function classesFor(instructorId) {
-    const scheduled = scheduledClasses.filter(c => c.instructor_id === instructorId).length
+    const scheduled = completedClassesFor(instructorId).length
     const legacy = legacySessions.filter(s => s.instructor_id === instructorId).length
     return scheduled + legacy
+  }
+
+  function classDurationVarianceMinutes(row) {
+    if (!row.actual_start_time || !row.actual_end_time || !row.class_date || !row.start_time || !row.end_time) return null
+    const scheduledMinutes = (new Date(`${row.class_date}T${row.end_time}`) - new Date(`${row.class_date}T${row.start_time}`)) / 60000
+    const actualMinutes = (new Date(row.actual_end_time) - new Date(row.actual_start_time)) / 60000
+    return Math.round(actualMinutes - scheduledMinutes)
   }
 
   function adjustmentsFor(instructorId) {
@@ -130,7 +148,7 @@ export default function Payroll() {
 
   function exportCSV() {
     const csv = toCSV(
-      ['Instructor', 'Flight Hours', 'Hourly Rate', 'Ground Classes', 'Ground Rate', 'Adjustments ($)', 'Total Pay ($)'],
+      ['Instructor', 'Flight Hours', 'Hourly Rate', 'Classes Taught', 'Ground Rate', 'Adjustments ($)', 'Total Pay ($)'],
       instructors.map(inst => [
         inst.full_name,
         flightHoursFor(inst.id).toFixed(1),
@@ -175,7 +193,7 @@ export default function Payroll() {
                 <th>Instructor</th>
                 <th>Flight Hours</th>
                 <th>Hourly Rate</th>
-                <th>Ground Classes</th>
+                <th>Classes Taught</th>
                 <th>Ground Rate</th>
                 <th>Adjustments</th>
                 <th>Total Pay</th>
@@ -198,6 +216,9 @@ export default function Payroll() {
                     <div style={{ display: 'flex', gap: 10 }}>
                       <button className="btn-link" style={{ fontSize: 12 }} onClick={() => openRateModal(inst)}>Rates</button>
                       <button className="btn-link" style={{ fontSize: 12 }} onClick={() => openAdjModal(inst)}>+ Adjustment</button>
+                      {completedClassesFor(inst.id).length > 0 && (
+                        <button className="btn-link" style={{ fontSize: 12 }} onClick={() => setClassesModal({ instructor: inst })}>Classes</button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -256,6 +277,44 @@ export default function Payroll() {
               </div>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {classesModal && (
+        <Modal title={`Classes Taught — ${classesModal.instructor.full_name}`} onClose={() => setClassesModal(null)} wide>
+          <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 16 }}>
+            Only classes clocked complete (Start Class / Finish Class in Ground School Bidding) count toward pay. Variance beyond 10 minutes from the scheduled time is flagged.
+          </p>
+          <div className="table-scroll">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Class</th>
+                  <th>Scheduled</th>
+                  <th>Actual</th>
+                  <th>Variance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {completedClassesFor(classesModal.instructor.id).map((row, i) => {
+                  const variance = classDurationVarianceMinutes(row)
+                  return (
+                    <tr key={i}>
+                      <td><strong>{row.title}</strong><br /><span style={{ color: 'var(--muted)', fontSize: 12 }}>{row.class_date}</span></td>
+                      <td>{row.start_time?.slice(0, 5)}–{row.end_time?.slice(0, 5)}</td>
+                      <td>{new Date(row.actual_start_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}–{new Date(row.actual_end_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</td>
+                      <td style={{ color: variance !== null && Math.abs(variance) >= 10 ? '#f87171' : 'var(--muted)' }}>
+                        {variance === null ? '—' : variance > 0 ? `+${variance} min` : `${variance} min`}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="modal-form__actions">
+            <button type="button" className="btn-secondary" onClick={() => setClassesModal(null)}>Close</button>
+          </div>
         </Modal>
       )}
     </Layout>
