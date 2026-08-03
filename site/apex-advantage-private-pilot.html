@@ -3,31 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Private Pilot Ground School | Apex Advantage — Apex Aviation</title>
-  <meta name="description" content="The Apex Advantage Private Pilot Ground School prepares you for the FAA Knowledge Exam, checkride oral, and real-world flying — not just memorization. Live virtual sessions, enrolling now." />
-  <meta property="og:title" content="Private Pilot Ground School | Apex Advantage" />
-  <meta property="og:description" content="21 modules. 7 phases. One standard: real proficiency. Live virtual ground school for aspiring private pilots — enrolling now." />
+  <title>Live Private Pilot Ground School | $25/Class or $400 Complete — Apex Advantage</title>
+  <meta name="description" content="Live, instructor-led Private Pilot Ground School. $25 per class or $400 for the complete program — attend the classes you need, join anytime, no cohort to fall behind in." />
+  <meta property="og:title" content="Live Private Pilot Ground School | Apex Advantage" />
+  <meta property="og:description" content="Live, instructor-led classes built around real questions and scenarios — not another video playlist. $25 per class or $400 for the complete program." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://apexaviationtx.com/apex-advantage-private-pilot.html" />
   <meta property="og:image" content="https://apexaviationtx.com/apexwhite.png" />
   <meta property="og:site_name" content="Apex Aviation" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Private Pilot Ground School | Apex Advantage" />
-  <meta name="twitter:description" content="21 modules. 7 phases. Live virtual ground school built for real-world proficiency — not just passing the written. Enrolling now." />
+  <meta name="twitter:title" content="Live Private Pilot Ground School | Apex Advantage" />
+  <meta name="twitter:description" content="Live, instructor-led classes built around real questions and scenarios. $25 per class or $400 for the complete program." />
   <meta name="twitter:image" content="https://apexaviationtx.com/apexwhite.png" />
-  <link rel="canonical" href="https://apexaviationtx.com/apex-advantage-private-pilot.html" />
-  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
-  <link rel="stylesheet" href="pages.css" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "Course",
     "name": "Apex Advantage Private Pilot Ground School",
-    "description": "A 21-module, 7-phase live virtual ground school covering aerodynamics, airspace, navigation, weather, performance, risk management, and checkride preparation for aspiring private pilots.",
+    "description": "A live virtual ground school covering aerodynamics, airspace, navigation, weather, performance, risk management, and checkride preparation for aspiring private pilots.",
     "provider": {
       "@type": "EducationalOrganization",
       "name": "Apex Aviation",
@@ -43,8 +36,7 @@
         "priceCurrency": "USD",
         "unitText": "session"
       },
-      "availability": "https://schema.org/PreOrder",
-      "validFrom": "2026-09-01"
+      "availability": "https://schema.org/InStock"
     },
     "educationalCredentialAwarded": "FAA PAR Knowledge Test Endorsement",
     "courseMode": "online",
@@ -54,6 +46,13 @@
     "url": "https://apexaviationtx.com/apex-advantage-private-pilot.html"
   }
   </script>
+  <link rel="canonical" href="https://apexaviationtx.com/apex-advantage-private-pilot.html" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="pages.css" />
   <!-- Google Analytics 4 -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-JFPBCF2GXE"></script>
   <script>
@@ -74,7 +73,7 @@
   'https://connect.facebook.net/en_US/fbevents.js');
   fbq('init', '1049117198055794');
   fbq('track', 'PageView');
-  fbq('track', 'ViewContent', { content_name: 'Private Pilot Ground School', value: 400, currency: 'USD' });
+  fbq('track', 'ViewContent', { content_name: 'Private Pilot Ground School' });
   </script>
   <noscript><img height="1" width="1" style="display:none"
   src="https://www.facebook.com/tr?id=1049117198055794&ev=PageView&noscript=1"
@@ -267,32 +266,113 @@
       margin: 0;
     }
 
-    /* Who it's for list */
-    .for-list {
+    /* Live-class stage cards (LEARN/APPLY/ANSWER/ASK) */
+    .stage-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 2px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .stage-card {
+      background: #162C4F;
+      padding: 30px 24px;
+      text-align: center;
+    }
+    .stage-card__num {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 10px;
+    }
+    .stage-card h3 { font-size: 16px; font-weight: 800; color: #fff; margin: 0 0 8px; }
+    .stage-card p { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.6; margin: 0; }
+
+    /* Class discovery cards */
+    .gs-class-card {
+      background: #162C4F;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 24px;
+      transition: border-color 0.2s;
+    }
+    .gs-class-card--matched {
+      border: 2px solid var(--gold);
+      background: rgba(244,180,0,0.06);
+    }
+    .gs-class-card__badge {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 8px;
+    }
+    .gs-class-card__title { font-size: 16px; font-weight: 700; color: #fff; margin: 0 0 6px; }
+    .gs-class-card__meta { font-size: 13px; color: rgba(255,255,255,0.55); margin: 0 0 4px; }
+    .gs-class-card__seats { font-size: 12px; color: rgba(255,255,255,0.4); margin: 0 0 16px; }
+    .gs-reserve-form {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      display: none;
+    }
+    .gs-reserve-form.open { display: block; }
+    .gs-reserve-form input {
+      width: 100%;
+      padding: 11px 14px;
+      margin-bottom: 10px;
+      border: 1.5px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      font-family: var(--font);
+      font-size: 14px;
+      color: #fff;
+      background: rgba(11,31,58,0.6);
+      outline: none;
+    }
+    .gs-class-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 12px;
-      list-style: none;
-      padding: 0;
-      margin: 0;
+      gap: 18px;
+      max-width: 1080px;
+      margin: 0 auto;
     }
-    .for-list li {
-      display: flex;
-      align-items: flex-start;
-      gap: 14px;
-      background: #162C4F;
-      border: 1px solid rgba(255,255,255,0.07);
+    .gs-topic-banner {
+      max-width: 1080px;
+      margin: 0 auto 20px;
+      padding: 12px 18px;
+      background: rgba(244,180,0,0.08);
+      border: 1px solid rgba(244,180,0,0.25);
       border-radius: 10px;
-      padding: 18px 20px;
-      color: rgba(255,255,255,0.85);
-      font-size: 14px;
-      font-weight: 500;
-    }
-    .for-list li span.check {
       color: var(--gold);
-      font-size: 16px;
-      margin-top: 1px;
-      flex-shrink: 0;
+      font-size: 13px;
+      font-weight: 600;
+      display: none;
+    }
+
+    /* Sticky mobile CTA */
+    .gs-sticky-cta {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 500;
+      background: #0B1F3A;
+      border-top: 1px solid rgba(244,180,0,0.25);
+      padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    }
+    .gs-sticky-cta a {
+      display: block;
+      text-align: center;
+      width: 100%;
+    }
+    @media (max-width: 720px) {
+      .gs-sticky-cta { display: block; }
+      body { padding-bottom: 68px; }
     }
 
     @media (max-width: 640px) {
@@ -352,93 +432,164 @@
   </header>
 
   <!-- ═══════════════════════════════════════════════════════════
-       HERO
+       HERO — single primary CTA (view classes), $25 offer visible
+       immediately, no competing equal-weight buttons
   ════════════════════════════════════════════════════════════ -->
-  <section class="page-hero" style="min-height:560px;display:flex;align-items:center">
+  <section class="page-hero" style="min-height:520px;display:flex;align-items:center">
     <div class="page-hero__bg-text">GROUND SCHOOL</div>
-    <div class="container page-hero__inner" style="padding-top:80px;padding-bottom:80px">
-      <div class="section__eyebrow">Apex Advantage · Live Instructor-Led Ground School · Private Pilot Series · Enrolling Now</div>
-      <h1 class="page-hero__title" style="max-width:700px">Train Beyond<br /><span>the Checkride.&#8482;</span></h1>
-      <p class="page-hero__sub" style="max-width:620px">Not another prerecorded video course. The Apex Advantage Private Pilot Ground School is built around live instruction, real-time discussion, and mentorship from experienced flight instructors — preparing you for the FAA Knowledge Exam, checkride oral, and real-world flying.</p>
-      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:36px">
-        <a href="portal-login.html?view=signup&offer=ground-school-pack" class="btn btn--primary">Get the Full Course — $400</a>
-        <a href="portal-login.html?view=signup" class="btn btn--ghost">Create Free Account — Pay Per Session</a>
+    <div class="container page-hero__inner" style="padding-top:72px;padding-bottom:56px">
+      <div class="section__eyebrow">Live Private Pilot Ground School</div>
+      <h1 class="page-hero__title" style="max-width:700px">Stop watching ground school.<br /><span>Start participating.</span></h1>
+      <p class="page-hero__sub" style="max-width:620px">Live, instructor-led Private Pilot Ground School built around real questions, scenarios, and practical application.</p>
+      <div style="display:flex;align-items:baseline;gap:10px;margin-top:24px">
+        <span style="font-size:32px;font-weight:800;color:#fff">$25</span>
+        <span style="font-size:15px;color:rgba(255,255,255,0.55)">per live class — take the classes you need, or complete all of them</span>
       </div>
-      <p style="margin-top:20px;font-size:13px;color:rgba(255,255,255,0.4)">Closer to checkride day right now? The <a href="checkride-prep.html" style="color:var(--gold)">virtual Checkride Prep Pack</a> is open today too.</p>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:24px">
+        <a href="#upcoming-classes" class="btn btn--primary" data-apx-cta data-apx-cta-location="hero">View Upcoming Classes</a>
+      </div>
+      <p style="margin-top:18px;font-size:13px;color:rgba(255,255,255,0.45)">Want the complete program? <a href="#full-pack" style="color:var(--gold)">Complete Ground School — $400</a></p>
     </div>
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════
-       FEATURE STRIP
+       UPCOMING LIVE CLASSES — real data, no fabricated seat counts.
+       Deep-link support: ?topic=<text> highlights + scrolls to the
+       first matching class (generic substring match against module
+       title/class title, not a hardcoded per-topic map).
   ════════════════════════════════════════════════════════════ -->
-  <div style="background:rgba(244,180,0,0.07);border-top:1px solid rgba(244,180,0,0.15);border-bottom:1px solid rgba(244,180,0,0.15)">
-    <div class="container" style="display:flex;flex-wrap:wrap;gap:0;justify-content:center">
-      <div style="display:flex;align-items:center;gap:10px;padding:18px 36px;border-right:1px solid rgba(244,180,0,0.12)">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span style="font-size:13px;font-weight:600;color:#fff">Live Instructor-Led</span>
+  <section class="section section--dark" id="upcoming-classes">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Live &amp; Instructor-Led</div>
+        <h2 class="section__title">Upcoming<br/><em class="accent">Live Classes.</em></h2>
+        <p class="section__desc" style="max-width:620px">Every class below is live, taught by a real instructor. Reserve a seat for $25 — no account required.</p>
       </div>
-      <div style="display:flex;align-items:center;gap:10px;padding:18px 36px;border-right:1px solid rgba(244,180,0,0.12)">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 6v6l4 2" stroke="#F4B400" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="10" stroke="#F4B400" stroke-width="2"/></svg>
-        <span style="font-size:13px;font-weight:600;color:#fff">21 Modules · 7 Phases</span>
+
+      <div class="gs-topic-banner" id="gsTopicBanner"></div>
+      <div id="gsClassesError" style="max-width:1080px;margin:0 auto 16px;color:#f87171;font-size:14px;display:none"></div>
+      <div id="gsClassesLoading" style="text-align:center;color:rgba(255,255,255,0.4);font-size:14px">Loading upcoming classes…</div>
+      <div id="gsClassesEmpty" style="display:none;text-align:center;color:rgba(255,255,255,0.5);font-size:14px;max-width:520px;margin:0 auto">
+        No classes are scheduled at the moment — check back soon, or <a href="contact.html" style="color:var(--gold)">contact us</a> to ask about the next one.
       </div>
-      <div style="display:flex;align-items:center;gap:10px;padding:18px 36px;border-right:1px solid rgba(244,180,0,0.12)">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span style="font-size:13px;font-weight:600;color:#fff">$25 Per Session</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;padding:18px 36px">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span style="font-size:13px;font-weight:600;color:#fff">PAR Endorsement Included</span>
-      </div>
+      <div class="gs-class-grid" id="gsClassGrid"></div>
     </div>
-  </div>
+  </section>
 
   <!-- ═══════════════════════════════════════════════════════════
-       INTRODUCTION / PHILOSOPHY
+       WHY APEX IS DIFFERENT — condensed from the philosophy +
+       6-card difference grid + "who it's for" list that used to be
+       three separate sections here.
   ════════════════════════════════════════════════════════════ -->
   <section class="section section--light">
     <div class="container">
-      <div style="max-width:900px;margin:0 auto">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center">
-          <div>
-            <div class="section__eyebrow">Why It's Different</div>
-            <h2 style="color:var(--white);font-size:30px;font-weight:800;line-height:1.25;margin:0 0 20px">Most ground schools teach you to pass.<br/><span style="color:var(--gold)">We teach you to fly.</span></h2>
-            <p style="color:rgba(255,255,255,0.65);line-height:1.85;margin-bottom:16px">Sporty's, King Schools, Pilot Institute — they're all built around the same idea: watch videos, take quizzes, move on. What's missing is a real instructor in the room who can answer the question you're actually stuck on and adjust when a concept isn't clicking.</p>
-            <p style="color:rgba(255,255,255,0.65);line-height:1.85;margin-bottom:24px">Apex Advantage is live, instructor-led, and scenario-driven. Every session connects theory to real-world application through interactive discussion and mentorship — so by the time you sit for your oral exam, you understand aviation the way a safe pilot should, not just the way a test-taker does.</p>
-            <blockquote style="border-left:3px solid var(--gold);padding:14px 20px;margin:0;background:rgba(244,180,0,0.06);border-radius:0 10px 10px 0">
-              <p style="color:var(--white);font-size:16px;font-style:italic;font-weight:600;line-height:1.6;margin:0">"At Apex Aviation, we believe great pilots are built through understanding, discussion, and mentorship — not memorization."</p>
-            </blockquote>
-          </div>
-          <div style="display:grid;gap:12px">
-            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:14px">
-              <div style="color:var(--gold);font-size:18px;flex-shrink:0">✈</div>
-              <div style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">FAA Knowledge Exam preparation</div>
-            </div>
-            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:14px">
-              <div style="color:var(--gold);font-size:18px;flex-shrink:0">📋</div>
-              <div style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Oral exam &amp; checkride preparation</div>
-            </div>
-            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:14px">
-              <div style="color:var(--gold);font-size:18px;flex-shrink:0">🧭</div>
-              <div style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Real-world aeronautical decision-making</div>
-            </div>
-            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:14px">
-              <div style="color:var(--gold);font-size:18px;flex-shrink:0">🎯</div>
-              <div style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Scenario-based learning every session</div>
-            </div>
-            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:14px">
-              <div style="color:var(--gold);font-size:18px;flex-shrink:0">🖥</div>
-              <div style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Simulator-enhanced training available</div>
-            </div>
-            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:14px">
-              <div style="color:var(--gold);font-size:18px;flex-shrink:0">👨‍✈️</div>
-              <div style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Direct instructor access throughout</div>
-            </div>
-            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:14px">
-              <div style="color:var(--gold);font-size:18px;flex-shrink:0">🔬</div>
-              <div style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Modern, technique-driven instruction</div>
-            </div>
-          </div>
+      <div class="section__header">
+        <div class="section__eyebrow">Why Apex Is Different</div>
+        <h2 class="section__title">This isn't another<br/><em class="accent">video playlist.</em></h2>
+        <p class="section__desc" style="max-width:640px">Sporty's, King Schools, Pilot Institute — solid prerecorded programs. Apex Advantage is a different kind of experience: live, in real time, with a real instructor in the room.</p>
+      </div>
+      <div class="diff-grid" style="max-width:1040px;margin:0 auto">
+        <div class="diff-card">
+          <div class="diff-card__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <h3>Ask Questions Live</h3>
+          <p>Get clarification in real time from an instructor — not a comment section or a support ticket.</p>
         </div>
+        <div class="diff-card">
+          <div class="diff-card__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7l6-3 5.447 2.724A1 1 0 0121 7.618v10.764a1 1 0 01-1.447.894L15 17l-6 3z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <h3>Work Through Real Scenarios</h3>
+          <p>Apply what you learn instead of only memorizing definitions — the same way experienced pilots actually think.</p>
+        </div>
+        <div class="diff-card">
+          <div class="diff-card__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <h3>Practice Checkride-Style Discussion</h3>
+          <p>Build confidence explaining aviation concepts out loud, the way a DPE will actually question you.</p>
+        </div>
+        <div class="diff-card">
+          <div class="diff-card__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 6v6l4 2" stroke="#F4B400" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="10" stroke="#F4B400" stroke-width="2"/></svg></div>
+          <h3>Attend What You Need</h3>
+          <p>Take one class, several, or complete the full program — whatever fits where you are in training.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       WHAT HAPPENS IN A LIVE CLASS
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section" style="background:#0b1627">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Class Format</div>
+        <h2 class="section__title">What happens in<br/><em class="accent">a live class?</em></h2>
+      </div>
+      <div class="stage-grid" style="max-width:1040px;margin:0 auto">
+        <div class="stage-card">
+          <div class="stage-card__num">Learn</div>
+          <h3>Instructor-Led Knowledge</h3>
+          <p>Core concepts taught live, not lectured to a camera.</p>
+        </div>
+        <div class="stage-card">
+          <div class="stage-card__num">Apply</div>
+          <h3>Scenario Discussion</h3>
+          <p>Work the concept into a realistic aviation situation.</p>
+        </div>
+        <div class="stage-card">
+          <div class="stage-card__num">Answer</div>
+          <h3>Checkride-Style Questions</h3>
+          <p>Practice explaining it the way a DPE will ask for it.</p>
+        </div>
+        <div class="stage-card">
+          <div class="stage-card__num">Ask</div>
+          <h3>Live Q&amp;A</h3>
+          <p>Get the question you actually have answered, in real time.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       $25 INDIVIDUAL CLASS OFFER
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--light">
+    <div class="container">
+      <div style="max-width:720px;margin:0 auto;text-align:center">
+        <div class="section__eyebrow" style="display:flex;justify-content:center">Start Here</div>
+        <h2 class="section__title">Start with one live<br/><em class="accent">class for $25.</em></h2>
+        <p style="color:rgba(255,255,255,0.65);line-height:1.85;font-size:16px;margin:0 auto 24px;max-width:560px">No full-program commitment required. Attend only the topics you need, join at any point in the schedule — no cohort to fall behind in.</p>
+        <a href="#upcoming-classes" class="btn btn--primary" data-apx-cta data-apx-cta-location="offer_25">View Upcoming Classes</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       GROUND SCHOOL FLEXIBILITY
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section" style="background:#0b1627">
+    <div class="container">
+      <div style="max-width:760px;margin:0 auto;text-align:center">
+        <div class="section__eyebrow" style="display:flex;justify-content:center">How It Works</div>
+        <h2 class="section__title" style="margin-bottom:16px">Train on your<br/><em class="accent">schedule.</em></h2>
+        <p style="color:rgba(255,255,255,0.65);line-height:1.85;font-size:16px;margin:0 auto">Apex Advantage Ground School is modular by design. Students can attend one live class, take only the topics they need, join at any point, return for later modules, or enroll in the complete program.</p>
+        <p style="color:var(--gold);font-weight:700;font-size:15px;margin-top:20px">No cohort to fall behind in. No requirement to start with Module 1.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       COMPLETE PROGRAM — $400
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--light" id="full-pack">
+    <div class="container">
+      <div style="max-width:720px;margin:0 auto;text-align:center">
+        <div class="section__eyebrow" style="display:flex;justify-content:center">Want the Complete Program?</div>
+        <h2 class="section__title" style="margin-bottom:16px">20 live modules<br/><em class="accent">— $400.</em></h2>
+        <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:24px 28px;max-width:400px;margin:0 auto 24px;text-align:left">
+          <div style="display:flex;justify-content:space-between;font-size:14px;color:rgba(255,255,255,0.6);margin-bottom:8px"><span>20 classes at $25</span><span>$500</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:14px;color:rgba(255,255,255,0.6);margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.08)"><span>Complete program</span><span>$400</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:15px;color:var(--gold);font-weight:700"><span>You save</span><span>$100 (20%)</span></div>
+        </div>
+        <p style="color:rgba(255,255,255,0.55);font-size:14px;margin:0 auto 24px;max-width:520px">The individual-class option isn't going anywhere — it's a legitimate way to attend Apex Advantage Ground School. The complete program is simply the best value if you know you want all of it.</p>
+        <a href="portal-login.html?view=signup&offer=ground-school-pack" class="btn btn--primary" data-apx-cta data-apx-cta-location="full_pack">Enroll in Complete Ground School</a>
       </div>
     </div>
   </section>
@@ -735,123 +886,116 @@
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════
-       THE APEX ADVANTAGE DIFFERENCE
+       LEARN FROM A REAL FLIGHT INSTRUCTOR
   ════════════════════════════════════════════════════════════ -->
   <section class="section" style="background:#0b1627">
     <div class="container">
-      <div class="section__header">
-        <div class="section__eyebrow">What Sets It Apart</div>
-        <h2 class="section__title">The Apex Advantage<br/><em class="accent">difference.</em></h2>
-      </div>
-      <div class="diff-grid" style="max-width:1040px;margin:0 auto">
-
-        <div class="diff-card">
-          <div class="diff-card__icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0L9 7" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <h3>Scenario-Based Learning</h3>
-          <p>Students learn through realistic aviation situations rather than rote memorization — the same way experienced pilots actually think in the cockpit.</p>
-        </div>
-
-        <div class="diff-card">
-          <div class="diff-card__icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <h3>Live Instructor-Led Training</h3>
-          <p>Learn directly from experienced flight instructors through engaging live classroom sessions that encourage questions, discussion, and critical thinking — not passive video consumption.</p>
-        </div>
-
-        <div class="diff-card">
-          <div class="diff-card__icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <h3>Simulator Integration</h3>
-          <p>Apply concepts in realistic training scenarios using advanced aviation training devices — then bring that same understanding into the actual airplane.</p>
-        </div>
-
-        <div class="diff-card">
-          <div class="diff-card__icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <h3>Real-World Readiness</h3>
-          <p>Develop the judgment, situational awareness, and decision-making skills required for safe flying long after the certificate is in your wallet.</p>
-        </div>
-
-        <div class="diff-card">
-          <div class="diff-card__icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <h3>Checkride Confidence</h3>
-          <p>Structured preparation for both the FAA Knowledge Exam and the practical test — including mock orals, ACS deep-dives, and test-day strategies.</p>
-        </div>
-
-        <div class="diff-card">
-          <div class="diff-card__icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <h3>Community of Pilots</h3>
-          <p>Train alongside other aspiring pilots, share experiences, discuss scenarios, and learn in a collaborative environment that promotes accountability and long-term success.</p>
-        </div>
-
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══════════════════════════════════════════════════════════
-       WHO THIS IS FOR
-  ════════════════════════════════════════════════════════════ -->
-  <section class="section section--light">
-    <div class="container">
-      <div class="section__header">
-        <div class="section__eyebrow">Is This For You?</div>
-        <h2 class="section__title">Built for every pilot<br/><em class="accent">at every stage.</em></h2>
-      </div>
-      <ul class="for-list" style="max-width:860px;margin:0 auto">
-        <li><span class="check">✓</span> New aspiring pilots who are ready to begin their journey</li>
-        <li><span class="check">✓</span> Students currently working toward their Private Pilot Certificate</li>
-        <li><span class="check">✓</span> Individuals preparing specifically for the FAA Knowledge Exam</li>
-        <li><span class="check">✓</span> Students seeking stronger support before their checkride</li>
-        <li><span class="check">✓</span> Pilots who want a deeper knowledge foundation to fly safer</li>
-      </ul>
-      <p style="text-align:center;color:rgba(255,255,255,0.45);font-size:13px;margin-top:24px">Apex Advantage is 100% live and virtual — available to aspiring pilots anywhere in the country.</p>
-    </div>
-  </section>
-
-  <!-- ═══════════════════════════════════════════════════════════
-       ANDREW CREDIBILITY
-  ════════════════════════════════════════════════════════════ -->
-  <section class="section" style="background:#0b1627">
-    <div class="container">
-      <div style="max-width:860px;margin:0 auto;display:flex;gap:48px;align-items:center;flex-wrap:wrap">
+      <div style="max-width:820px;margin:0 auto;display:flex;gap:44px;align-items:center;flex-wrap:wrap">
         <div style="flex-shrink:0">
-          <div style="width:120px;height:120px;border-radius:50%;overflow:hidden;border:3px solid var(--gold)">
+          <div style="width:110px;height:110px;border-radius:50%;overflow:hidden;border:3px solid var(--gold)">
             <img src="images/AndrewHeadshot.JPG" alt="Andrew Serrazina — CFI, CFII, AGI" style="width:100%;height:100%;object-fit:cover;object-position:center top" />
           </div>
         </div>
         <div style="flex:1;min-width:260px">
-          <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Your Instructor</div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);margin-bottom:10px">Learn From a Real Flight Instructor</div>
           <h2 style="font-size:24px;font-weight:800;color:var(--white);margin:0 0 6px">Andrew Serrazina</h2>
           <p style="font-size:13px;color:var(--gold);font-weight:600;margin:0 0 16px;text-transform:uppercase;letter-spacing:0.06em">CFI · CFII · AGI · Comm. ASEL · Comm. AMEL</p>
-          <p style="color:rgba(255,255,255,0.75);line-height:1.8;font-size:15px;margin:0 0 16px">Andrew designed Apex Advantage because he saw how most ground schools fail student pilots — passive, generic, and completely disconnected from what it actually takes to fly safely. Every module is taught live, built around how real pilots think, and grounded in scenario-based application.</p>
-          <p style="color:rgba(255,255,255,0.55);font-size:13px;font-weight:600">2.5M+ content views · Hundreds of students endorsed</p>
+          <p style="color:rgba(255,255,255,0.75);line-height:1.8;font-size:15px;margin:0 0 12px">Apex Advantage is built around the way pilots are actually taught and questioned: understand it, explain it, and apply it.</p>
+          <p style="color:rgba(255,255,255,0.55);font-size:13px;font-weight:600">2.5M+ content views</p>
         </div>
       </div>
     </div>
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════
-       BOTTOM CTA
+       FAQ
   ════════════════════════════════════════════════════════════ -->
-  <section class="section section--light">
+  <section class="section faq-section section--light">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Common Questions</div>
+        <h2 class="section__title">Ground School FAQs</h2>
+      </div>
+      <div class="faq-list">
+        <div class="faq-item">
+          <button class="faq-item__question">
+            Is the Ground School live?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>Yes. Every class is live and taught by a real instructor — no prerecorded videos, no self-study modules. You attend, ask questions in real time, and work through scenarios with the instructor.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            Do I have to buy the full program?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>No. Individual classes are $25 each — attend as many or as few as you want.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            Can I attend only certain modules?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>Yes. Pick the topics you need from the upcoming class list above.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            Do I have to start with Module 1?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>No. Ground School is modular — join at any point in the schedule based on what you need.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            What if I miss a class?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>There's no cohort to fall behind in. Classes repeat on the schedule, so you can attend that topic again whenever it comes back around.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            How much is the complete Ground School?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>$400 for the complete program — no per-class charge after that.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            How much would all the classes cost individually?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>At $25 per class, 20 classes would run $500 — the complete program at $400 saves $100 (20%) if you know you want all of it.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            Is Ground School part of the free Apex Advantage account?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>A free Apex Advantage account lets you browse the class calendar, but live classes themselves are paid — $25 per class or $400 for the complete program. A single $25 class doesn't even require creating an account first.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            How do I register?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>Pick a class above and reserve your seat — you'll pay securely via Stripe and get a confirmation with the class link. For the complete program, use the Enroll button, which creates your free portal account in the same step.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       FINAL CTA
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section" style="background:#0b1627">
     <div class="container">
       <div style="text-align:center;padding:64px 32px;background:linear-gradient(135deg,#162C4F,#0d1e35);border-radius:20px;border:1px solid rgba(255,255,255,0.06);max-width:720px;margin:0 auto">
-        <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:16px">Enrolling Now · Nationwide, Virtual</div>
-        <h2 style="color:var(--white);font-size:34px;font-weight:800;line-height:1.2;margin:0 0 16px">Start Your Aviation Journey<br/>with Confidence</h2>
-        <p style="color:rgba(255,255,255,0.65);margin:0 auto 12px;max-width:500px;line-height:1.8;font-size:16px">Join the Apex Advantage Private Pilot Ground School and build the knowledge, skills, and confidence needed to become a safe, capable pilot — not just a certificated one.</p>
-        <p style="color:rgba(255,255,255,0.4);font-size:13px;margin-bottom:36px">$400 for the full 21-module series, or $25 per session if you'd rather pay as you go. Free account required either way.</p>
-        <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
-          <a href="portal-login.html?view=signup&offer=ground-school-pack" class="btn btn--primary">Get the Full Course — $400</a>
-          <a href="portal-login.html?view=signup" class="btn btn--ghost">Create Free Account</a>
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:16px">Live &amp; Enrolling Now</div>
+        <h2 style="color:var(--white);font-size:32px;font-weight:800;line-height:1.2;margin:0 0 16px">Stop Watching.<br/>Start Participating.</h2>
+        <p style="color:rgba(255,255,255,0.65);margin:0 auto 12px;max-width:500px;line-height:1.8;font-size:16px">$25 per live class, or $400 for the complete program. No account required for a single class.</p>
+        <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:24px">
+          <a href="#upcoming-classes" class="btn btn--primary" data-apx-cta data-apx-cta-location="final_cta">View Upcoming Classes</a>
+          <a href="portal-login.html?view=signup&offer=ground-school-pack" class="btn btn--ghost" data-apx-cta data-apx-cta-location="final_cta_full_pack">Enroll in Complete Ground School</a>
         </div>
       </div>
 
@@ -859,9 +1003,9 @@
       <a href="checkride-prep.html" style="display:flex;align-items:center;gap:20px;max-width:720px;margin:24px auto 0;padding:20px 28px;background:rgba(244,180,0,0.06);border:1px solid rgba(244,180,0,0.2);border-radius:14px;text-decoration:none;flex-wrap:wrap">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <div style="flex:1;min-width:200px">
-          <div style="font-size:11px;font-weight:700;color:var(--gold);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px">Available Today — No Waiting for September</div>
-          <div style="font-size:15px;font-weight:700;color:#fff">Private Pilot Checkride Prep Pack — $29</div>
-          <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:3px">300+ DPE-style questions, scenario training, Ask Andrew, and progress tracking in the virtual member portal</div>
+          <div style="font-size:11px;font-weight:700;color:var(--gold);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px">Closer to Checkride Day?</div>
+          <div style="font-size:15px;font-weight:700;color:#fff">Private Pilot Checkride Prep Pack</div>
+          <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:3px">300+ DPE-style questions, AI DPE Practice, scenario training, and progress tracking in the virtual member portal</div>
         </div>
         <div style="font-size:13px;font-weight:600;color:var(--gold);white-space:nowrap">Get the Pack →</div>
       </a>
@@ -906,7 +1050,7 @@
           <a href="instructors.html">Our Instructors</a>
           <a href="fleet.html">The Simulator</a>
           <a href="about.html#founder">Andrew Serrazina</a>
-          <a href="home.html#waitlist">Founding Members</a>
+          <a href="portal-login.html?view=signup">Create Free Account</a>
         </div>
         <div>
           <h4>Contact</h4>
@@ -924,18 +1068,26 @@
     </div>
   </footer>
 
+  <!-- Sticky mobile CTA -->
+  <div class="gs-sticky-cta">
+    <a href="#upcoming-classes" class="btn btn--primary" data-apx-cta data-apx-cta-location="sticky_mobile">View Classes · From $25</a>
+  </div>
+
   <script>
     window.APEX_EXIT_POPUP = {
       mode: 'cta',
       eyebrow: 'Free Guide, No Card Required',
       heading: "Wait — the guide's free.",
-      body: 'Create your free Apex Advantage account and get "10 Questions DPEs Love to Ask" instantly. Upgrade to the full Private Pilot Checkride Prep Pack whenever you\'re ready.',
+      body: 'Create your free Apex Advantage account and get "10 Questions DPEs Love to Ask" instantly. Add live Ground School classes or the Checkride Prep System whenever you\'re ready.',
       ctaText: 'Get the Free Guide',
       ctaHref: 'portal-login.html?view=signup',
       ctaNote: 'Free forever. No credit card required.'
     };
   </script>
   <script src="script.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="portal-supabase.js"></script>
+  <script src="analytics-events.js"></script>
   <script>
     // Curriculum accordion
     document.querySelectorAll('.phase-section__header').forEach(function(header) {
@@ -956,6 +1108,161 @@
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.click(); }
       });
     });
+
+    if (window.apexTrack) apexTrack('landing_page_viewed', { product: 'ground_school_private_pilot' });
+
+    // ── UTM passthrough on primary CTA links (same pattern as
+    // apex-advantage.html) — belt-and-suspenders alongside
+    // analytics-events.js's own localStorage-based capture. ──
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var pairs = [];
+      ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (k) {
+        if (params.has(k)) pairs.push(k + '=' + encodeURIComponent(params.get(k)));
+      });
+      if (pairs.length) {
+        var query = pairs.join('&');
+        document.querySelectorAll('[data-apx-cta]').forEach(function (a) {
+          if (a.getAttribute('href').indexOf('#') === 0) return; // in-page anchors carry no checkout, nothing to append to
+          a.href = a.href + (a.href.indexOf('?') === -1 ? '?' : '&') + query;
+        });
+      }
+    })();
+
+    // ── Upcoming Live Classes: real data via get_upcoming_ground_school_classes
+    // (supabase-portal-schema-v61.sql) — anon-safe, no fabricated seat
+    // counts. Reserve Your Seat opens an inline name/email capture that
+    // calls create-checkout-session's anonymous-friendly
+    // 'ground-school-registration' purpose directly -- no account
+    // required for a single $25 class. ──
+    (function () {
+      var grid = document.getElementById('gsClassGrid');
+      var loadingEl = document.getElementById('gsClassesLoading');
+      var emptyEl = document.getElementById('gsClassesEmpty');
+      var errorEl = document.getElementById('gsClassesError');
+      var topicBanner = document.getElementById('gsTopicBanner');
+      var topicParam = new URLSearchParams(window.location.search).get('topic');
+
+      function fmtDateTime(row) {
+        var start = new Date(row.class_date + 'T' + row.start_time);
+        var date = start.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+        var time = start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        return date + ' · ' + time + ' ' + (row.timezone || '');
+      }
+
+      function matchesTopic(row, topic) {
+        if (!topic) return false;
+        var needle = topic.toLowerCase();
+        return (row.module_title || '').toLowerCase().indexOf(needle) !== -1 ||
+          (row.title || '').toLowerCase().indexOf(needle) !== -1;
+      }
+
+      function reserveSeat(row, formEl) {
+        var nameInput = formEl.querySelector('[data-gs-name]');
+        var emailInput = formEl.querySelector('[data-gs-email]');
+        var errorEl = formEl.querySelector('[data-gs-form-error]');
+        var btn = formEl.querySelector('[data-gs-submit]');
+        errorEl.style.display = 'none';
+        if (!nameInput.value.trim() || !emailInput.value.trim()) {
+          errorEl.textContent = 'Enter your name and email.';
+          errorEl.style.display = 'block';
+          return;
+        }
+        btn.disabled = true;
+        btn.textContent = 'Redirecting to secure checkout…';
+        if (window.apexTrackStandard) apexTrackStandard('InitiateCheckout', { content_name: 'Ground School — ' + row.title, value: 25, currency: 'USD' });
+        if (window.apexTrack) apexTrack('checkout_started', { product: 'ground_school_class', class_id: row.id, class_topic: row.module_title, price: 25 });
+        apexSupabase.functions.invoke('create-checkout-session', {
+          body: {
+            purpose: 'ground-school-registration',
+            scheduledClassId: row.id,
+            name: nameInput.value.trim(),
+            email: emailInput.value.trim(),
+            origin: window.location.origin,
+            utm: window.apexGetUtm ? apexGetUtm() : undefined
+          }
+        }).then(function (res) {
+          if (res.error || !res.data || !res.data.url) {
+            btn.disabled = false;
+            btn.textContent = 'Confirm & Pay $25';
+            errorEl.textContent = (res.data && res.data.error) || 'Could not start checkout. Please try again.';
+            errorEl.style.display = 'block';
+            return;
+          }
+          window.location.href = res.data.url;
+        }).catch(function () {
+          btn.disabled = false;
+          btn.textContent = 'Confirm & Pay $25';
+          errorEl.textContent = 'Could not start checkout. Please try again.';
+          errorEl.style.display = 'block';
+        });
+      }
+
+      function renderClass(row) {
+        var spotsLeft = (row.capacity != null && row.enrolled_count != null) ? row.capacity - row.enrolled_count : null;
+        var full = spotsLeft !== null && spotsLeft <= 0;
+        var matched = matchesTopic(row, topicParam);
+
+        var card = document.createElement('div');
+        card.className = 'gs-class-card' + (matched ? ' gs-class-card--matched' : '');
+        card.id = 'gs-class-' + row.id;
+        card.innerHTML =
+          '<div class="gs-class-card__badge">' + (row.module_id ? row.module_id + ' · ' : '') + (row.module_title || 'Private Pilot') + '</div>' +
+          '<h3 class="gs-class-card__title">' + row.title + '</h3>' +
+          '<p class="gs-class-card__meta">' + fmtDateTime(row) + (row.instructor_name ? ' · ' + row.instructor_name : '') + '</p>' +
+          '<p class="gs-class-card__seats">' + (spotsLeft !== null ? (full ? 'Class full' : spotsLeft + ' spot' + (spotsLeft === 1 ? '' : 's') + ' left') : '') + ' · $25</p>' +
+          (full ? '' : '<button type="button" class="btn btn--primary" data-gs-reserve-btn style="width:100%">Reserve Your Seat</button>') +
+          (full ? '' :
+            '<div class="gs-reserve-form" data-gs-form>' +
+              '<div data-gs-form-error style="display:none;color:#f87171;font-size:13px;margin-bottom:10px"></div>' +
+              '<input type="text" placeholder="Full name" data-gs-name />' +
+              '<input type="email" placeholder="Email" data-gs-email />' +
+              '<button type="button" class="btn btn--primary" data-gs-submit style="width:100%">Confirm &amp; Pay $25</button>' +
+            '</div>');
+
+        if (!full) {
+          var reserveBtn = card.querySelector('[data-gs-reserve-btn]');
+          var formEl = card.querySelector('[data-gs-form]');
+          reserveBtn.addEventListener('click', function () {
+            formEl.classList.add('open');
+            reserveBtn.style.display = 'none';
+          });
+          card.querySelector('[data-gs-submit]').addEventListener('click', function () { reserveSeat(row, formEl); });
+        }
+
+        return card;
+      }
+
+      apexSupabase.rpc('get_upcoming_ground_school_classes', { p_course_id: 'PPL', p_limit: 12 }).then(function (res) {
+        loadingEl.style.display = 'none';
+        if (res.error) {
+          errorEl.textContent = 'Could not load upcoming classes right now. Please refresh, or contact us to ask about the schedule.';
+          errorEl.style.display = 'block';
+          return;
+        }
+        var rows = res.data || [];
+        if (window.apexTrack) apexTrack('product_preview_viewed', { product: 'ground_school_calendar' });
+        if (!rows.length) {
+          emptyEl.style.display = 'block';
+          return;
+        }
+        rows.forEach(function (row) { grid.appendChild(renderClass(row)); });
+
+        if (topicParam) {
+          var matchedRow = rows.find(function (row) { return matchesTopic(row, topicParam); });
+          if (matchedRow) {
+            topicBanner.textContent = 'You came for ' + topicParam + ' — highlighted below.';
+            topicBanner.style.display = 'block';
+            var el = document.getElementById('gs-class-' + matchedRow.id);
+            if (el) setTimeout(function () { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 400);
+          }
+        }
+      }).catch(function () {
+        loadingEl.style.display = 'none';
+        errorEl.textContent = 'Could not load upcoming classes right now. Please refresh, or contact us to ask about the schedule.';
+        errorEl.style.display = 'block';
+      });
+    })();
   </script>
 </body>
 </html>
