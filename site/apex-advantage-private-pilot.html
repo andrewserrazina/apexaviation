@@ -423,6 +423,11 @@
       font-size: 13px; color: rgba(255,255,255,0.7); padding: 12px 0; border-top: 1px solid rgba(255,255,255,0.1);
     }
     .gs-preview-panel__price { font-size: 24px; font-weight: 800; color: var(--gold); }
+    .gs-preview-panel__link {
+      display: block; margin-top: 16px; font-size: 13px; font-weight: 700; color: var(--gold);
+      text-decoration: none;
+    }
+    .gs-preview-panel__link:hover { text-decoration: underline; }
     .gs-trust-bar {
       background: rgba(244,180,0,0.06); border-top: 1px solid rgba(244,180,0,0.12); border-bottom: 1px solid rgba(244,180,0,0.12);
     }
@@ -438,6 +443,38 @@
        component (pages.css) -- does not affect other pages using it. */
     .social-proof-strip__quote p { font-size: 16px; color: rgba(255,255,255,0.85); }
     .social-proof-strip__quote cite { font-size: 14px; font-weight: 800; }
+
+    /* Live-vs-prerecorded comparison */
+    .gs-compare-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+      max-width: 880px; margin: 0 auto;
+    }
+    .gs-compare-col {
+      background: #162C4F; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 26px 26px 22px;
+    }
+    .gs-compare-col--gold { border-color: rgba(244,180,0,0.35); background: rgba(244,180,0,0.05); }
+    .gs-compare-col__label {
+      font-size: 13px; font-weight: 800; color: var(--gold); margin-bottom: 16px;
+    }
+    .gs-compare-col__label--muted { color: rgba(255,255,255,0.5); }
+    .gs-compare-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
+    .gs-compare-list li {
+      font-size: 14px; color: rgba(255,255,255,0.55); padding-left: 22px; position: relative; line-height: 1.5;
+    }
+    .gs-compare-list li::before { content: '–'; position: absolute; left: 0; color: rgba(255,255,255,0.3); }
+    .gs-compare-list--gold li { color: rgba(255,255,255,0.85); font-weight: 600; }
+    .gs-compare-list--gold li::before { content: '✓'; color: var(--gold); }
+    @media (max-width: 700px) {
+      .gs-compare-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Program stat strip */
+    .gs-stat-strip {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 32px;
+      max-width: 900px; margin: 36px auto 0; padding-top: 32px; border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .gs-stat-strip__item { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.7); }
+    .gs-stat-strip__item svg { flex-shrink: 0; }
 
     @media (max-width: 900px) {
       .gs-hero-grid { grid-template-columns: 1fr; gap: 36px; }
@@ -484,7 +521,7 @@
           </div>
           <div class="section__eyebrow">Apex Advantage · Private Pilot Ground School</div>
           <h1 class="page-hero__title gs-hero-headline">Stop watching ground school.<br /><span>Start participating.</span></h1>
-          <p class="page-hero__sub" style="max-width:520px">Join a live, instructor-led Private Pilot Ground School class built around real explanations, practical scenarios, and time to ask questions.</p>
+          <p class="page-hero__sub" style="max-width:520px">Finally understand the aviation concepts you've been trying to memorize. Join a live, instructor-led Private Pilot Ground School class built around real explanations, practical scenarios, and time to ask questions.</p>
 
           <ul class="gs-benefit-strip">
             <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Live Online</li>
@@ -496,7 +533,7 @@
           <div class="gs-topic-hero-callout" id="gsHeroTopicCallout"></div>
 
           <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:24px">
-            <a href="#upcoming-classes" class="btn btn--primary" id="gsHeroCta" data-apx-cta data-apx-cta-location="hero_cold">Reserve a Live Class — $25</a>
+            <a href="#upcoming-classes" class="btn btn--primary" id="gsHeroCta" data-apx-cta data-apx-cta-location="hero_cold">Reserve My Seat — $25</a>
           </div>
           <p class="gs-hero-reassurance">No subscription · Secure checkout · Live online</p>
           <p style="margin-top:18px;font-size:13px;color:rgba(255,255,255,0.45)">Want the complete program? <a href="#full-pack" style="color:var(--gold)">All 20 live classes · $400 · Save $100</a></p>
@@ -505,7 +542,7 @@
         <div class="gs-preview-panel" id="gsPreviewPanel">
           <div class="gs-preview-panel__brand">Apex Advantage</div>
           <div class="gs-preview-panel__title">Private Pilot Ground School</div>
-          <div class="gs-preview-panel__label">Next Live Class</div>
+          <div class="gs-preview-panel__label">Your Next Live Class</div>
           <div class="gs-preview-panel__module" id="gsPreviewModule">Loading next class…</div>
           <div class="gs-preview-panel__row" id="gsPreviewWhen" style="display:none"></div>
           <div class="gs-preview-panel__row" id="gsPreviewInstructor" style="display:none"></div>
@@ -514,6 +551,7 @@
             <span class="gs-preview-panel__price">$25</span>
           </div>
           <div class="gs-preview-panel__row" id="gsPreviewSeats" style="display:none"></div>
+          <a href="#upcoming-classes" id="gsPreviewLink" class="gs-preview-panel__link" style="display:none" data-apx-cta data-apx-cta-location="hero_preview">View This Class →</a>
         </div>
 
       </div>
@@ -570,7 +608,7 @@
        first matching class (generic substring match against module
        title/class title, not a hardcoded per-topic map).
   ════════════════════════════════════════════════════════════ -->
-  <section class="section section--dark" id="upcoming-classes">
+  <section class="section section--dark" id="upcoming-classes" style="padding:32px 0 80px">
     <div class="container">
       <div class="section__header">
         <div class="section__eyebrow">Live &amp; Instructor-Led</div>
@@ -589,37 +627,38 @@
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════
-       WHY APEX IS DIFFERENT — condensed from the philosophy +
-       6-card difference grid + "who it's for" list that used to be
-       three separate sections here.
+       WHY LIVE GROUND SCHOOL FEELS DIFFERENT — concise two-column
+       comparison, replacing the earlier competitor-naming paragraph +
+       4-card grid (the comparison folds their substance into a
+       tighter, more instantly-scannable format for cold traffic).
   ════════════════════════════════════════════════════════════ -->
   <section class="section section--light">
     <div class="container">
       <div class="section__header">
-        <div class="section__eyebrow">Why Apex Is Different</div>
-        <h2 class="section__title">This isn't another<br/><em class="accent">video playlist.</em></h2>
-        <p class="section__desc" style="max-width:640px">Sporty's, King Schools, Pilot Institute — solid prerecorded programs. Apex Advantage is a different kind of experience: live, in real time, with a real instructor in the room.</p>
+        <div class="section__eyebrow">The Difference</div>
+        <h2 class="section__title">Why live ground school<br/><em class="accent">feels different.</em></h2>
+        <p class="section__desc" style="max-width:640px">Prerecorded courses can be useful. Apex Advantage offers a different experience: live instruction, real-time questions, and scenario-based application.</p>
       </div>
-      <div class="diff-grid" style="max-width:1040px;margin:0 auto">
-        <div class="diff-card">
-          <div class="diff-card__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <h3>Ask Questions Live</h3>
-          <p>Get clarification in real time from an instructor — not a comment section or a support ticket.</p>
+      <div class="gs-compare-grid">
+        <div class="gs-compare-col">
+          <div class="gs-compare-col__label gs-compare-col__label--muted">Traditional Prerecorded Ground School</div>
+          <ul class="gs-compare-list">
+            <li>Watch videos alone</li>
+            <li>Pause and search when confused</li>
+            <li>Memorize definitions</li>
+            <li>Hope you understand the scenario</li>
+            <li>No real-time feedback</li>
+          </ul>
         </div>
-        <div class="diff-card">
-          <div class="diff-card__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7l6-3 5.447 2.724A1 1 0 0121 7.618v10.764a1 1 0 01-1.447.894L15 17l-6 3z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <h3>Work Through Real Scenarios</h3>
-          <p>Apply what you learn instead of only memorizing definitions — the same way experienced pilots actually think.</p>
-        </div>
-        <div class="diff-card">
-          <div class="diff-card__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <h3>Practice Checkride-Style Discussion</h3>
-          <p>Build confidence explaining aviation concepts out loud, the way a DPE will actually question you.</p>
-        </div>
-        <div class="diff-card">
-          <div class="diff-card__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 6v6l4 2" stroke="#F4B400" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="10" stroke="#F4B400" stroke-width="2"/></svg></div>
-          <h3>Attend What You Need</h3>
-          <p>Take one class, several, or complete the full program — whatever fits where you are in training.</p>
+        <div class="gs-compare-col gs-compare-col--gold">
+          <div class="gs-compare-col__label">Apex Advantage Live Ground School</div>
+          <ul class="gs-compare-list gs-compare-list--gold">
+            <li>Learn with a real instructor</li>
+            <li>Ask questions immediately</li>
+            <li>Work through scenarios</li>
+            <li>Practice explaining concepts</li>
+            <li>Leave knowing what to study next</li>
+          </ul>
         </div>
       </div>
     </div>
@@ -694,6 +733,12 @@
           <h3>Complete the Program</h3>
           <p>Attend all 20 modules when you want the full curriculum, at a discount over paying per class.</p>
         </div>
+      </div>
+      <div class="gs-stat-strip">
+        <div class="gs-stat-strip__item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>20 Live Modules</div>
+        <div class="gs-stat-strip__item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>7 Training Phases</div>
+        <div class="gs-stat-strip__item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Live Online</div>
+        <div class="gs-stat-strip__item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Attend From Anywhere</div>
       </div>
     </div>
   </section>
@@ -1021,8 +1066,13 @@
           <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);margin-bottom:10px">Learn From a Real Flight Instructor</div>
           <h2 style="font-size:24px;font-weight:800;color:var(--white);margin:0 0 6px">Andrew Serrazina</h2>
           <p style="font-size:13px;color:var(--gold);font-weight:600;margin:0 0 16px;text-transform:uppercase;letter-spacing:0.06em">CFI · CFII · AGI · Comm. ASEL · Comm. AMEL</p>
-          <p style="color:rgba(255,255,255,0.75);line-height:1.8;font-size:15px;margin:0 0 12px">Apex Advantage is built around the way pilots are actually taught and questioned: understand it, explain it, and apply it.</p>
-          <p style="color:rgba(255,255,255,0.55);font-size:13px;font-weight:600">2.5M+ content views</p>
+          <p style="color:rgba(255,255,255,0.75);line-height:1.8;font-size:15px;margin:0 0 16px">Apex Advantage is built around the way pilots are actually taught and questioned: understand it, explain it, and apply it.</p>
+          <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px">
+            <li style="font-size:13px;color:rgba(255,255,255,0.65);display:flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>FAA-certified flight instructor</li>
+            <li style="font-size:13px;color:rgba(255,255,255,0.65);display:flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Founder of Apex Aviation, creator of Apex Advantage</li>
+            <li style="font-size:13px;color:rgba(255,255,255,0.65);display:flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Experience preparing student pilots for oral and practical tests</li>
+          </ul>
+          <p style="color:rgba(255,255,255,0.55);font-size:13px;font-weight:600;margin-top:14px">2.5M+ content views</p>
         </div>
       </div>
     </div>
@@ -1047,10 +1097,10 @@
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
-            Do I have to buy the full program?
+            Do I have to start with Module 1?
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div class="faq-item__answer"><p>No. Individual classes are $25 each — attend as many or as few as you want.</p></div>
+          <div class="faq-item__answer"><p>No. Ground School is modular — join at any point in the schedule based on what you need.</p></div>
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
@@ -1061,10 +1111,10 @@
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
-            Do I have to start with Module 1?
+            Do I have to buy the full program?
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div class="faq-item__answer"><p>No. Ground School is modular — join at any point in the schedule based on what you need.</p></div>
+          <div class="faq-item__answer"><p>No. Individual classes are $25 each — attend as many or as few as you want.</p></div>
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
@@ -1393,22 +1443,25 @@
       }
 
       // ── Hero product-visual panel — reuses this same RPC result
-      // (no second network call). Shows the real earliest upcoming
-      // class (rows are already ordered by class_date, start_time by
-      // the RPC itself); falls back to a generic, non-date branded
-      // panel if nothing is scheduled, so the hero never fabricates a
-      // date or seat count. ──
-      function renderHeroPreview(rows) {
+      // (no second network call). Shows the topic-matched class when
+      // ?topic= resolved to a real one, otherwise the earliest
+      // upcoming class (rows are already ordered by class_date,
+      // start_time by the RPC itself); falls back to a generic,
+      // non-date branded panel if nothing is scheduled, so the hero
+      // never fabricates a date or seat count. The "View This Class"
+      // link only appears once we know the exact card it points to. ──
+      function renderHeroPreview(rows, preferredRow) {
         var moduleEl = document.getElementById('gsPreviewModule');
         var whenEl = document.getElementById('gsPreviewWhen');
         var instructorEl = document.getElementById('gsPreviewInstructor');
         var seatsEl = document.getElementById('gsPreviewSeats');
+        var linkEl = document.getElementById('gsPreviewLink');
         if (!moduleEl) return;
         if (!rows.length) {
           moduleEl.textContent = '20 Live Modules · 7 Phases';
           return;
         }
-        var next = rows[0];
+        var next = preferredRow || rows[0];
         moduleEl.textContent = next.title;
         whenEl.innerHTML = '<span>When</span><span>' + fmtDateTime(next) + '</span>';
         whenEl.style.display = 'flex';
@@ -1421,6 +1474,12 @@
           seatsEl.innerHTML = '<span>Spots left</span><span>' + Math.max(spotsLeft, 0) + '</span>';
           seatsEl.style.display = 'flex';
         }
+        if (linkEl) {
+          linkEl.href = '#gs-class-' + next.id;
+          linkEl.dataset.classTopic = next.module_title || '';
+          linkEl.dataset.classId = next.id;
+          linkEl.style.display = 'block';
+        }
       }
 
       // ── Hero CTA/topic-callout upgrade once real data is in — only
@@ -1431,7 +1490,7 @@
         var heroCta = document.getElementById('gsHeroCta');
         if (callout) callout.textContent = topicParam + ' class available — ' + fmtDateTime(matchedRow);
         if (heroCta) {
-          heroCta.textContent = 'Reserve ' + topicParam + ' Seat — $25';
+          heroCta.textContent = 'Reserve My ' + topicParam + ' Seat — $25';
           heroCta.dataset.classTopic = matchedRow.module_title || topicParam;
           heroCta.dataset.classId = matchedRow.id;
         }
@@ -1446,22 +1505,20 @@
         }
         var rows = res.data || [];
         if (window.apexTrack) apexTrack('product_preview_viewed', { product: 'ground_school_calendar' });
-        renderHeroPreview(rows);
+        var matchedRow = topicParam ? rows.find(function (row) { return matchesTopic(row, topicParam); }) : null;
+        renderHeroPreview(rows, matchedRow);
         if (!rows.length) {
           emptyEl.style.display = 'block';
           return;
         }
         rows.forEach(function (row) { grid.appendChild(renderClass(row)); });
 
-        if (topicParam) {
-          var matchedRow = rows.find(function (row) { return matchesTopic(row, topicParam); });
-          if (matchedRow) {
-            topicBanner.textContent = 'You came for ' + topicParam + ' — highlighted below.';
-            topicBanner.style.display = 'block';
-            upgradeHeroForTopic(matchedRow, topicParam);
-            var el = document.getElementById('gs-class-' + matchedRow.id);
-            if (el) setTimeout(function () { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 400);
-          }
+        if (topicParam && matchedRow) {
+          topicBanner.textContent = 'You came for ' + topicParam + ' — highlighted below.';
+          topicBanner.style.display = 'block';
+          upgradeHeroForTopic(matchedRow, topicParam);
+          var el = document.getElementById('gs-class-' + matchedRow.id);
+          if (el) setTimeout(function () { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 400);
         }
       }).catch(function () {
         loadingEl.style.display = 'none';
