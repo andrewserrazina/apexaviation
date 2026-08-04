@@ -390,9 +390,12 @@
       padding: 6px 14px; border-radius: 100px; margin-bottom: 18px;
     }
     .gs-hero-grid {
-      display: grid; grid-template-columns: 1fr 380px; gap: 56px; align-items: center;
+      display: grid; grid-template-columns: 1fr 400px; gap: 48px; align-items: center;
       max-width: 1100px; margin: 0 auto; position: relative; z-index: 1;
     }
+    /* Tuned so "Stop watching ground school." reliably holds one line
+       on desktop instead of an awkward mid-phrase 3rd-line wrap. */
+    .gs-hero-headline { font-size: clamp(28px, 3.4vw, 44px) !important; max-width: 660px !important; }
     .gs-benefit-strip {
       display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 22px 0 0; padding: 0; list-style: none;
     }
@@ -407,19 +410,19 @@
     }
     .gs-hero-reassurance { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 12px; }
     .gs-preview-panel {
-      background: linear-gradient(160deg, #162C4F, #0d1e35);
-      border: 1px solid rgba(244,180,0,0.25); border-radius: 18px; padding: 28px;
-      box-shadow: 0 20px 56px rgba(0,0,0,0.4); min-height: 264px;
+      background: linear-gradient(160deg, #1a3868, #0d1e35);
+      border: 1.5px solid rgba(244,180,0,0.32); border-radius: 18px; padding: 30px 30px 26px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.5); min-height: 276px;
     }
     .gs-preview-panel__brand { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); margin-bottom: 2px; }
-    .gs-preview-panel__title { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 22px; }
-    .gs-preview-panel__label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 8px; }
-    .gs-preview-panel__module { font-size: 17px; font-weight: 800; color: #fff; margin-bottom: 14px; line-height: 1.3; min-height: 44px; }
+    .gs-preview-panel__title { font-size: 14px; font-weight: 700; color: rgba(255,255,255,0.85); margin-bottom: 24px; }
+    .gs-preview-panel__label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 8px; }
+    .gs-preview-panel__module { font-size: 19px; font-weight: 800; color: #fff; margin-bottom: 16px; line-height: 1.3; min-height: 50px; }
     .gs-preview-panel__row {
       display: flex; justify-content: space-between; align-items: center;
-      font-size: 13px; color: rgba(255,255,255,0.65); padding: 10px 0; border-top: 1px solid rgba(255,255,255,0.08);
+      font-size: 13px; color: rgba(255,255,255,0.7); padding: 12px 0; border-top: 1px solid rgba(255,255,255,0.1);
     }
-    .gs-preview-panel__price { font-size: 22px; font-weight: 800; color: var(--gold); }
+    .gs-preview-panel__price { font-size: 24px; font-weight: 800; color: var(--gold); }
     .gs-trust-bar {
       background: rgba(244,180,0,0.06); border-top: 1px solid rgba(244,180,0,0.12); border-bottom: 1px solid rgba(244,180,0,0.12);
     }
@@ -430,6 +433,11 @@
     }
     .gs-trust-bar__item:last-child { border-right: none; }
     .gs-trust-bar__item span { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.75); }
+
+    /* Page-local readability bump for the shared .social-proof-strip
+       component (pages.css) -- does not affect other pages using it. */
+    .social-proof-strip__quote p { font-size: 16px; color: rgba(255,255,255,0.85); }
+    .social-proof-strip__quote cite { font-size: 14px; font-weight: 800; }
 
     @media (max-width: 900px) {
       .gs-hero-grid { grid-template-columns: 1fr; gap: 36px; }
@@ -464,7 +472,7 @@
        dpe-questions.html .cp-hero-grid). Single primary CTA ($25),
        $400 kept as a small secondary link, no fabricated scarcity.
   ════════════════════════════════════════════════════════════ -->
-  <section class="page-hero" style="padding-top:104px;padding-bottom:0">
+  <section class="page-hero" style="padding-top:92px;padding-bottom:0">
     <div class="page-hero__bg-text">GROUND SCHOOL</div>
     <div class="container page-hero__inner">
       <div class="gs-hero-grid">
@@ -475,7 +483,7 @@
             Live · Instructor-Led · $25 Per Class
           </div>
           <div class="section__eyebrow">Apex Advantage · Private Pilot Ground School</div>
-          <h1 class="page-hero__title" style="max-width:620px">Stop watching ground school.<br /><span>Start participating.</span></h1>
+          <h1 class="page-hero__title gs-hero-headline">Stop watching ground school.<br /><span>Start participating.</span></h1>
           <p class="page-hero__sub" style="max-width:520px">Join a live, instructor-led Private Pilot Ground School class built around real explanations, practical scenarios, and time to ask questions.</p>
 
           <ul class="gs-benefit-strip">
@@ -488,9 +496,9 @@
           <div class="gs-topic-hero-callout" id="gsHeroTopicCallout"></div>
 
           <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:24px">
-            <a href="#upcoming-classes" class="btn btn--primary" id="gsHeroCta" data-apx-cta data-apx-cta-location="hero_cold">View Live Classes — From $25</a>
+            <a href="#upcoming-classes" class="btn btn--primary" id="gsHeroCta" data-apx-cta data-apx-cta-location="hero_cold">Reserve a Live Class — $25</a>
           </div>
-          <p class="gs-hero-reassurance">No subscription · Secure checkout · Attend from anywhere</p>
+          <p class="gs-hero-reassurance">No subscription · Secure checkout · Live online</p>
           <p style="margin-top:18px;font-size:13px;color:rgba(255,255,255,0.45)">Want the complete program? <a href="#full-pack" style="color:var(--gold)">All 20 live classes · $400 · Save $100</a></p>
         </div>
 
@@ -618,15 +626,18 @@
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════
-       WHAT HAPPENS IN A LIVE CLASS
+       WHAT HAPPENS IN A LIVE CLASS — merged with the former standalone
+       $25 offer section (redundant: hero, class cards, and this
+       section all already sell $25). One continuous section now:
+       format explanation → $25 entry offer → CTA.
   ════════════════════════════════════════════════════════════ -->
-  <section class="section" style="background:#0b1627">
+  <section class="section" style="background:#0b1627;padding:52px 0">
     <div class="container">
       <div class="section__header">
         <div class="section__eyebrow">Class Format</div>
         <h2 class="section__title">What happens in<br/><em class="accent">a live class?</em></h2>
       </div>
-      <div class="stage-grid" style="max-width:1040px;margin:0 auto">
+      <div class="stage-grid" style="max-width:1160px;margin:0 auto">
         <div class="stage-card">
           <div class="stage-card__num">Learn</div>
           <h3>Instructor-Led Knowledge</h3>
@@ -648,52 +659,64 @@
           <p>Get the question you actually have answered, in real time.</p>
         </div>
       </div>
-    </div>
-  </section>
-
-  <!-- ═══════════════════════════════════════════════════════════
-       $25 INDIVIDUAL CLASS OFFER
-  ════════════════════════════════════════════════════════════ -->
-  <section class="section section--light">
-    <div class="container">
-      <div style="max-width:720px;margin:0 auto;text-align:center">
-        <div class="section__eyebrow" style="display:flex;justify-content:center">Start Here</div>
-        <h2 class="section__title">Start with one live<br/><em class="accent">class for $25.</em></h2>
-        <p style="color:rgba(255,255,255,0.65);line-height:1.85;font-size:16px;margin:0 auto 24px;max-width:560px">No full-program commitment required. Attend only the topics you need, join at any point in the schedule — no cohort to fall behind in.</p>
-        <a href="#upcoming-classes" class="btn btn--primary" data-apx-cta data-apx-cta-location="offer_25">View Upcoming Classes</a>
+      <div style="max-width:640px;margin:40px auto 0;text-align:center;padding-top:36px;border-top:1px solid rgba(255,255,255,0.08)">
+        <h3 style="font-size:22px;font-weight:800;color:#fff;margin:0 0 10px">Start with one live class for $25.</h3>
+        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.75;margin:0 0 22px">No full-program commitment. Choose the topic you need and join live.</p>
+        <a href="#upcoming-classes" class="btn btn--primary" data-apx-cta data-apx-cta-location="class_format_offer">View Upcoming Classes</a>
       </div>
     </div>
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════
-       GROUND SCHOOL FLEXIBILITY
+       GROUND SCHOOL THAT FITS YOUR TRAINING — 3-column flexibility
+       features (was a narrow heading/paragraph-only block).
   ════════════════════════════════════════════════════════════ -->
-  <section class="section" style="background:#0b1627">
+  <section class="section section--light" style="padding:52px 0">
     <div class="container">
-      <div style="max-width:760px;margin:0 auto;text-align:center">
+      <div class="section__header">
         <div class="section__eyebrow" style="display:flex;justify-content:center">How It Works</div>
-        <h2 class="section__title" style="margin-bottom:16px">Train on your<br/><em class="accent">schedule.</em></h2>
-        <p style="color:rgba(255,255,255,0.65);line-height:1.85;font-size:16px;margin:0 auto">Apex Advantage Ground School is modular by design. Students can attend one live class, take only the topics they need, join at any point, return for later modules, or enroll in the complete program.</p>
-        <p style="color:var(--gold);font-weight:700;font-size:15px;margin-top:20px">No cohort to fall behind in. No requirement to start with Module 1.</p>
+        <h2 class="section__title" style="margin-bottom:12px">Ground School That<br/><em class="accent">Fits Your Training.</em></h2>
+        <p class="section__desc">No cohort to fall behind in. No required starting point.</p>
+      </div>
+      <div class="diff-grid" style="max-width:1160px;margin:0 auto">
+        <div class="diff-card">
+          <div class="diff-card__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 6v6l4 2" stroke="#F4B400" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="10" stroke="#F4B400" stroke-width="2"/></svg></div>
+          <h3>Start Anywhere</h3>
+          <p>No requirement to begin with Module 1 — join at any point in the schedule.</p>
+        </div>
+        <div class="diff-card">
+          <div class="diff-card__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7l6-3 5.447 2.724A1 1 0 0121 7.618v10.764a1 1 0 01-1.447.894L15 17l-6 3z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <h3>Choose Your Classes</h3>
+          <p>Take only the topics you actually need, whenever they come up on the schedule.</p>
+        </div>
+        <div class="diff-card">
+          <div class="diff-card__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <h3>Complete the Program</h3>
+          <p>Attend all 20 modules when you want the full curriculum, at a discount over paying per class.</p>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════
-       COMPLETE PROGRAM — $400
+       WANT THE COMPLETE PROGRAM? — $400 (given more visual authority:
+       a wider, more premium offer card, without overpowering the $25
+       entry offer above it or hiding individual-class purchasing).
   ════════════════════════════════════════════════════════════ -->
-  <section class="section section--light" id="full-pack">
+  <section class="section" style="background:#0b1627;padding:60px 0" id="full-pack">
     <div class="container">
-      <div style="max-width:720px;margin:0 auto;text-align:center">
+      <div style="max-width:640px;margin:0 auto 32px;text-align:center">
         <div class="section__eyebrow" style="display:flex;justify-content:center">Want the Complete Program?</div>
-        <h2 class="section__title" style="margin-bottom:16px">20 live modules<br/><em class="accent">— $400.</em></h2>
-        <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:24px 28px;max-width:400px;margin:0 auto 24px;text-align:left">
-          <div style="display:flex;justify-content:space-between;font-size:14px;color:rgba(255,255,255,0.6);margin-bottom:8px"><span>20 classes at $25</span><span>$500</span></div>
-          <div style="display:flex;justify-content:space-between;font-size:14px;color:rgba(255,255,255,0.6);margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.08)"><span>Complete program</span><span>$400</span></div>
-          <div style="display:flex;justify-content:space-between;font-size:15px;color:var(--gold);font-weight:700"><span>You save</span><span>$100 (20%)</span></div>
-        </div>
-        <p style="color:rgba(255,255,255,0.55);font-size:14px;margin:0 auto 24px;max-width:520px">The individual-class option isn't going anywhere — it's a legitimate way to attend Apex Advantage Ground School. The complete program is simply the best value if you know you want all of it.</p>
-        <a href="portal-login.html?view=signup&offer=ground-school-pack" class="btn btn--primary" data-apx-cta data-apx-cta-location="full_pack">Enroll in Complete Ground School</a>
+        <h2 class="section__title" style="margin-bottom:0">20 live modules<br/><em class="accent">— $400.</em></h2>
+      </div>
+      <div style="background:linear-gradient(145deg,#162C4F,#0d1e35);border:1.5px solid rgba(244,180,0,0.3);border-radius:20px;padding:36px 40px;max-width:560px;margin:0 auto 24px;box-shadow:0 20px 56px rgba(0,0,0,0.35)">
+        <div style="display:flex;justify-content:space-between;font-size:15px;color:rgba(255,255,255,0.6);margin-bottom:12px"><span>20 classes at $25</span><span>$500</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:15px;color:rgba(255,255,255,0.6);margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.1)"><span>Complete program</span><span>$400</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:18px;color:var(--gold);font-weight:800"><span>You save</span><span>$100 (20%)</span></div>
+      </div>
+      <div style="max-width:560px;margin:0 auto;text-align:center">
+        <a href="portal-login.html?view=signup&offer=ground-school-pack" class="btn btn--primary" data-apx-cta data-apx-cta-location="full_pack" style="display:inline-block;margin-bottom:18px">Enroll in Complete Ground School</a>
+        <p style="color:rgba(255,255,255,0.5);font-size:13px;margin:0;line-height:1.7">The $25 individual-class option is always available. The complete program is simply the best value if you want all 20.</p>
       </div>
     </div>
   </section>
@@ -1268,11 +1291,22 @@
       var topicBanner = document.getElementById('gsTopicBanner');
       var topicParam = new URLSearchParams(window.location.search).get('topic');
 
+      // Admin scheduling only offers these IANA zones (AdminGroundSchoolSchedule.jsx
+      // TIME_ZONES) -- database values stay IANA, this is customer-facing display only.
+      var TZ_ABBR = {
+        'America/Chicago': 'CT',
+        'America/New_York': 'ET',
+        'America/Denver': 'MT',
+        'America/Los_Angeles': 'PT',
+        'UTC': 'UTC'
+      };
+
       function fmtDateTime(row) {
         var start = new Date(row.class_date + 'T' + row.start_time);
         var date = start.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
         var time = start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-        return date + ' · ' + time + ' ' + (row.timezone || '');
+        var tz = TZ_ABBR[row.timezone] || row.timezone || '';
+        return date + ' · ' + time + (tz ? ' ' + tz : '');
       }
 
       function matchesTopic(row, topic) {
