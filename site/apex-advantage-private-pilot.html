@@ -1789,7 +1789,15 @@
         }
       }
 
-      apexSupabase.rpc('get_upcoming_ground_school_classes', { p_course_id: 'PPL', p_limit: 12 }).then(function (res) {
+      // p_limit was 12 back when this only fed a flat card list -- fine
+      // for a short list, but it silently truncated the calendar mid-
+      // month (real classes existed through month-end in the admin
+      // schedule, e.g. modules 13-18, that a 12-row cap never reached).
+      // A calendar needs the real published schedule, not just the
+      // first 12 chronologically. The RPC has no server-side cap
+      // (supabase-portal-schema-v61.sql: `limit greatest(p_limit, 1)`),
+      // so raising it client-side is enough -- no migration needed.
+      apexSupabase.rpc('get_upcoming_ground_school_classes', { p_course_id: 'PPL', p_limit: 100 }).then(function (res) {
         loadingEl.style.display = 'none';
         if (res.error) {
           errorEl.textContent = 'Could not load upcoming classes right now. Please refresh, or contact us to ask about the schedule.';
