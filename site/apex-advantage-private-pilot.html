@@ -89,34 +89,62 @@
   </script>
   <style>
     /* ── Page-specific additions ── */
-    .phase-timeline {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 0;
-      border-radius: 14px;
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.08);
+
+    /* Program Overview — cascading/fanned deck of 7 phase cards.
+       Later cards overlap earlier ones (default DOM stacking handles
+       this for normal-flow siblings); hover/focus/tap lifts a card
+       forward and above the rest via z-index. Clicking a card jumps
+       to and expands the matching phase in the Full Curriculum
+       accordion below, so the "reveal" surfaces real content instead
+       of duplicating it here. */
+    .phase-fan {
+      max-width: 720px;
+      margin: 0 auto;
+      padding-bottom: 24px;
     }
-    .phase-card {
-      background: #162C4F;
-      padding: 28px 24px;
-      border-right: 1px solid rgba(255,255,255,0.07);
-      border-bottom: 1px solid rgba(255,255,255,0.07);
+    .phase-fan__card {
       position: relative;
-      transition: background 0.2s;
+      background: #162C4F;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 22px 26px;
+      cursor: pointer;
+      margin-top: -30px;
+      margin-left: calc(var(--i) * 10px);
+      margin-right: calc((6 - var(--i)) * 10px);
+      z-index: var(--i);
+      box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+      transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease, opacity 0.5s ease;
+      opacity: 0;
+      transform: translateY(28px);
     }
-    .phase-card:last-child { border-right: none; }
-    .phase-card:hover { background: #1c3660; }
+    .phase-fan:first-child,
+    .phase-fan__card:first-child { margin-top: 0; }
+    .phase-fan.in-view .phase-fan__card {
+      opacity: 1;
+      transform: translateY(0);
+      transition-delay: calc(var(--i) * 90ms);
+    }
+    .phase-fan__card:hover,
+    .phase-fan__card:focus-visible,
+    .phase-fan__card.is-active {
+      transform: translateY(-8px) scale(1.015);
+      box-shadow: 0 24px 48px rgba(0,0,0,0.5);
+      background: #1c3660;
+      z-index: 20;
+      outline: none;
+    }
+    .phase-fan__row { display: flex; align-items: baseline; gap: 16px; }
     .phase-num {
-      font-size: 38px;
+      font-size: 34px;
       font-weight: 800;
-      color: rgba(244,180,0,0.18);
+      color: rgba(244,180,0,0.28);
       line-height: 1;
-      margin-bottom: 8px;
       font-family: 'Montserrat', sans-serif;
+      flex-shrink: 0;
     }
     .phase-title {
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 700;
       color: #fff;
     }
@@ -124,6 +152,21 @@
       font-size: 12px;
       color: rgba(255,255,255,0.45);
       margin-top: 4px;
+    }
+    .phase-fan__hint {
+      font-size: 11px; font-weight: 700; color: var(--gold); margin-top: 10px;
+      opacity: 0; transition: opacity 0.2s;
+    }
+    .phase-fan__card:hover .phase-fan__hint,
+    .phase-fan__card:focus-visible .phase-fan__hint,
+    .phase-fan__card.is-active .phase-fan__hint { opacity: 1; }
+    @media (max-width: 640px) {
+      .phase-fan__card { margin-left: 0 !important; margin-right: 0 !important; margin-top: -18px; padding: 18px 20px; }
+      .phase-fan__card:hover, .phase-fan__card.is-active { transform: translateY(-4px); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .phase-fan__card { transition: none; opacity: 1; transform: none; }
+      .phase-fan__card:hover, .phase-fan__card.is-active { transform: none; }
     }
 
     /* Curriculum accordion */
@@ -231,65 +274,46 @@
       padding: 3px 10px;
     }
 
-    /* Difference cards */
-    .diff-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 20px;
-    }
-    .diff-card {
-      background: #162C4F;
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 14px;
-      padding: 30px 26px;
-    }
-    .diff-card__icon {
-      width: 46px;
-      height: 46px;
-      border-radius: 12px;
-      background: rgba(244,180,0,0.1);
+    /* Live-class flow steps (LEARN → APPLY → ANSWER → ASK) — a
+       connected numbered flow instead of a plain card grid, to read
+       as a sequence rather than four unrelated benefits. */
+    .flow-steps {
       display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 16px;
+      align-items: flex-start;
+      position: relative;
     }
-    .diff-card h3 {
-      font-size: 16px;
-      font-weight: 700;
-      color: #fff;
-      margin: 0 0 8px;
+    .flow-steps::before {
+      content: '';
+      position: absolute;
+      top: 21px; left: 40px; right: 40px;
+      height: 2px;
+      background: linear-gradient(90deg, rgba(244,180,0,0.05), rgba(244,180,0,0.4), rgba(244,180,0,0.05));
     }
-    .diff-card p {
-      font-size: 14px;
-      color: rgba(255,255,255,0.6);
-      line-height: 1.75;
-      margin: 0;
-    }
-
-    /* Live-class stage cards (LEARN/APPLY/ANSWER/ASK) */
-    .stage-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 2px;
-      border-radius: 14px;
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.08);
-    }
-    .stage-card {
-      background: #162C4F;
-      padding: 30px 24px;
+    .flow-step {
+      flex: 1;
       text-align: center;
+      padding: 0 14px;
+      position: relative;
     }
-    .stage-card__num {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--gold);
-      margin-bottom: 10px;
+    .flow-step__badge {
+      width: 42px; height: 42px; border-radius: 50%;
+      background: #0b1627; border: 2px solid var(--gold);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 800; color: var(--gold);
+      margin: 0 auto 16px; position: relative; z-index: 1;
     }
-    .stage-card h3 { font-size: 16px; font-weight: 800; color: #fff; margin: 0 0 8px; }
-    .stage-card p { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.6; margin: 0; }
+    .flow-step__label {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 8px;
+    }
+    .flow-step h3 { font-size: 15px; font-weight: 800; color: #fff; margin: 0 0 6px; }
+    .flow-step p { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.6; margin: 0; }
+    @media (max-width: 720px) {
+      .flow-steps { flex-direction: column; gap: 28px; }
+      .flow-steps::before { top: 0; bottom: 0; left: 21px; right: auto; width: 2px; height: auto; background: linear-gradient(180deg, rgba(244,180,0,0.05), rgba(244,180,0,0.4), rgba(244,180,0,0.05)); }
+      .flow-step { display: flex; align-items: center; gap: 16px; text-align: left; padding: 0; }
+      .flow-step__badge { margin: 0; flex-shrink: 0; }
+    }
 
     /* Class discovery cards */
     .gs-class-card {
@@ -376,7 +400,6 @@
     }
 
     @media (max-width: 640px) {
-      .phase-timeline { grid-template-columns: 1fr 1fr; }
       .phase-section__header { padding: 18px 20px; }
       .phase-section__body { padding: 0 20px 24px; }
     }
@@ -423,6 +446,11 @@
       font-size: 13px; color: rgba(255,255,255,0.7); padding: 12px 0; border-top: 1px solid rgba(255,255,255,0.1);
     }
     .gs-preview-panel__price { font-size: 24px; font-weight: 800; color: var(--gold); }
+    .gs-preview-panel__link {
+      display: block; margin-top: 16px; font-size: 13px; font-weight: 700; color: var(--gold);
+      text-decoration: none;
+    }
+    .gs-preview-panel__link:hover { text-decoration: underline; }
     .gs-trust-bar {
       background: rgba(244,180,0,0.06); border-top: 1px solid rgba(244,180,0,0.12); border-bottom: 1px solid rgba(244,180,0,0.12);
     }
@@ -438,6 +466,82 @@
        component (pages.css) -- does not affect other pages using it. */
     .social-proof-strip__quote p { font-size: 16px; color: rgba(255,255,255,0.85); }
     .social-proof-strip__quote cite { font-size: 14px; font-weight: 800; }
+
+    /* Live-vs-prerecorded comparison */
+    .gs-compare-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+      max-width: 880px; margin: 0 auto;
+    }
+    .gs-compare-col {
+      background: #162C4F; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 26px 26px 22px;
+    }
+    .gs-compare-col--gold { border-color: rgba(244,180,0,0.35); background: rgba(244,180,0,0.05); }
+    .gs-compare-col__label {
+      font-size: 13px; font-weight: 800; color: var(--gold); margin-bottom: 16px;
+    }
+    .gs-compare-col__label--muted { color: rgba(255,255,255,0.5); }
+    .gs-compare-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
+    .gs-compare-list li {
+      font-size: 14px; color: rgba(255,255,255,0.55); padding-left: 22px; position: relative; line-height: 1.5;
+    }
+    .gs-compare-list li::before { content: '–'; position: absolute; left: 0; color: rgba(255,255,255,0.3); }
+    .gs-compare-list--gold li { color: rgba(255,255,255,0.85); font-weight: 600; }
+    .gs-compare-list--gold li::before { content: '✓'; color: var(--gold); }
+    @media (max-width: 700px) {
+      .gs-compare-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Flexibility feature rows — horizontal icon-left rows instead of
+       the icon-top card grid used elsewhere on the page, so this
+       section reads distinctly from the comparison-column layout. */
+    .feature-rows {
+      display: flex; flex-direction: column;
+      max-width: 720px; margin: 0 auto;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .feature-row {
+      display: flex; align-items: center; gap: 22px;
+      padding: 22px 8px; border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .feature-row__icon {
+      width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+      background: rgba(244,180,0,0.1);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .feature-row h3 { font-size: 15px; font-weight: 800; color: #fff; margin: 0 0 4px; }
+    .feature-row p { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.6; margin: 0; }
+
+    /* Program stat strip */
+    .gs-stat-strip {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 32px;
+      max-width: 900px; margin: 36px auto 0; padding-top: 32px; border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .gs-stat-strip__item { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.7); }
+    .gs-stat-strip__item svg { flex-shrink: 0; }
+
+    /* $400 full-pack — asymmetric split instead of the centered-stack
+       pattern used elsewhere, so it reads as its own distinct offer. */
+    .fullpack-split {
+      display: grid; grid-template-columns: 1fr 380px; gap: 48px; align-items: center;
+      max-width: 980px; margin: 0 auto;
+    }
+    .fullpack-split__card {
+      position: relative;
+      background: linear-gradient(145deg,#162C4F,#0d1e35);
+      border: 1.5px solid rgba(244,180,0,0.3); border-radius: 20px;
+      padding: 40px 32px 32px;
+      box-shadow: 0 20px 56px rgba(0,0,0,0.35);
+    }
+    .fullpack-split__ribbon {
+      position: absolute; top: -13px; left: 32px;
+      background: var(--gold); color: #080f1e; font-size: 11px; font-weight: 800;
+      letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 14px; border-radius: 100px;
+    }
+    @media (max-width: 800px) {
+      .fullpack-split { grid-template-columns: 1fr; text-align: center; }
+      .fullpack-split__copy p { margin-left: auto; margin-right: auto; }
+      .fullpack-split__card { max-width: 420px; margin: 0 auto; }
+    }
 
     @media (max-width: 900px) {
       .gs-hero-grid { grid-template-columns: 1fr; gap: 36px; }
@@ -484,7 +588,7 @@
           </div>
           <div class="section__eyebrow">Apex Advantage · Private Pilot Ground School</div>
           <h1 class="page-hero__title gs-hero-headline">Stop watching ground school.<br /><span>Start participating.</span></h1>
-          <p class="page-hero__sub" style="max-width:520px">Join a live, instructor-led Private Pilot Ground School class built around real explanations, practical scenarios, and time to ask questions.</p>
+          <p class="page-hero__sub" style="max-width:520px">Finally understand the aviation concepts you've been trying to memorize. Join a live, instructor-led Private Pilot Ground School class built around real explanations, practical scenarios, and time to ask questions.</p>
 
           <ul class="gs-benefit-strip">
             <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Live Online</li>
@@ -496,7 +600,7 @@
           <div class="gs-topic-hero-callout" id="gsHeroTopicCallout"></div>
 
           <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:24px">
-            <a href="#upcoming-classes" class="btn btn--primary" id="gsHeroCta" data-apx-cta data-apx-cta-location="hero_cold">Reserve a Live Class — $25</a>
+            <a href="#upcoming-classes" class="btn btn--primary" id="gsHeroCta" data-apx-cta data-apx-cta-location="hero_cold">Reserve My Seat — $25</a>
           </div>
           <p class="gs-hero-reassurance">No subscription · Secure checkout · Live online</p>
           <p style="margin-top:18px;font-size:13px;color:rgba(255,255,255,0.45)">Want the complete program? <a href="#full-pack" style="color:var(--gold)">All 20 live classes · $400 · Save $100</a></p>
@@ -505,7 +609,7 @@
         <div class="gs-preview-panel" id="gsPreviewPanel">
           <div class="gs-preview-panel__brand">Apex Advantage</div>
           <div class="gs-preview-panel__title">Private Pilot Ground School</div>
-          <div class="gs-preview-panel__label">Next Live Class</div>
+          <div class="gs-preview-panel__label">Your Next Live Class</div>
           <div class="gs-preview-panel__module" id="gsPreviewModule">Loading next class…</div>
           <div class="gs-preview-panel__row" id="gsPreviewWhen" style="display:none"></div>
           <div class="gs-preview-panel__row" id="gsPreviewInstructor" style="display:none"></div>
@@ -514,6 +618,7 @@
             <span class="gs-preview-panel__price">$25</span>
           </div>
           <div class="gs-preview-panel__row" id="gsPreviewSeats" style="display:none"></div>
+          <a href="#upcoming-classes" id="gsPreviewLink" class="gs-preview-panel__link" style="display:none" data-apx-cta data-apx-cta-location="hero_preview">View This Class →</a>
         </div>
 
       </div>
@@ -570,7 +675,7 @@
        first matching class (generic substring match against module
        title/class title, not a hardcoded per-topic map).
   ════════════════════════════════════════════════════════════ -->
-  <section class="section section--dark" id="upcoming-classes">
+  <section class="section section--dark" id="upcoming-classes" style="padding:32px 0 80px">
     <div class="container">
       <div class="section__header">
         <div class="section__eyebrow">Live &amp; Instructor-Led</div>
@@ -589,37 +694,38 @@
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════
-       WHY APEX IS DIFFERENT — condensed from the philosophy +
-       6-card difference grid + "who it's for" list that used to be
-       three separate sections here.
+       WHY LIVE GROUND SCHOOL FEELS DIFFERENT — concise two-column
+       comparison, replacing the earlier competitor-naming paragraph +
+       4-card grid (the comparison folds their substance into a
+       tighter, more instantly-scannable format for cold traffic).
   ════════════════════════════════════════════════════════════ -->
   <section class="section section--light">
     <div class="container">
       <div class="section__header">
-        <div class="section__eyebrow">Why Apex Is Different</div>
-        <h2 class="section__title">This isn't another<br/><em class="accent">video playlist.</em></h2>
-        <p class="section__desc" style="max-width:640px">Sporty's, King Schools, Pilot Institute — solid prerecorded programs. Apex Advantage is a different kind of experience: live, in real time, with a real instructor in the room.</p>
+        <div class="section__eyebrow">The Difference</div>
+        <h2 class="section__title">Why live ground school<br/><em class="accent">feels different.</em></h2>
+        <p class="section__desc" style="max-width:640px">Prerecorded courses can be useful. Apex Advantage offers a different experience: live instruction, real-time questions, and scenario-based application.</p>
       </div>
-      <div class="diff-grid" style="max-width:1040px;margin:0 auto">
-        <div class="diff-card">
-          <div class="diff-card__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <h3>Ask Questions Live</h3>
-          <p>Get clarification in real time from an instructor — not a comment section or a support ticket.</p>
+      <div class="gs-compare-grid">
+        <div class="gs-compare-col">
+          <div class="gs-compare-col__label gs-compare-col__label--muted">Traditional Prerecorded Ground School</div>
+          <ul class="gs-compare-list">
+            <li>Watch videos alone</li>
+            <li>Pause and search when confused</li>
+            <li>Memorize definitions</li>
+            <li>Hope you understand the scenario</li>
+            <li>No real-time feedback</li>
+          </ul>
         </div>
-        <div class="diff-card">
-          <div class="diff-card__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7l6-3 5.447 2.724A1 1 0 0121 7.618v10.764a1 1 0 01-1.447.894L15 17l-6 3z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <h3>Work Through Real Scenarios</h3>
-          <p>Apply what you learn instead of only memorizing definitions — the same way experienced pilots actually think.</p>
-        </div>
-        <div class="diff-card">
-          <div class="diff-card__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <h3>Practice Checkride-Style Discussion</h3>
-          <p>Build confidence explaining aviation concepts out loud, the way a DPE will actually question you.</p>
-        </div>
-        <div class="diff-card">
-          <div class="diff-card__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 6v6l4 2" stroke="#F4B400" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="10" stroke="#F4B400" stroke-width="2"/></svg></div>
-          <h3>Attend What You Need</h3>
-          <p>Take one class, several, or complete the full program — whatever fits where you are in training.</p>
+        <div class="gs-compare-col gs-compare-col--gold">
+          <div class="gs-compare-col__label">Apex Advantage Live Ground School</div>
+          <ul class="gs-compare-list gs-compare-list--gold">
+            <li>Learn with a real instructor</li>
+            <li>Ask questions immediately</li>
+            <li>Work through scenarios</li>
+            <li>Practice explaining concepts</li>
+            <li>Leave knowing what to study next</li>
+          </ul>
         </div>
       </div>
     </div>
@@ -637,24 +743,28 @@
         <div class="section__eyebrow">Class Format</div>
         <h2 class="section__title">What happens in<br/><em class="accent">a live class?</em></h2>
       </div>
-      <div class="stage-grid" style="max-width:1160px;margin:0 auto">
-        <div class="stage-card">
-          <div class="stage-card__num">Learn</div>
+      <div class="flow-steps" style="max-width:960px;margin:0 auto">
+        <div class="flow-step">
+          <div class="flow-step__badge">1</div>
+          <div class="flow-step__label">Learn</div>
           <h3>Instructor-Led Knowledge</h3>
           <p>Core concepts taught live, not lectured to a camera.</p>
         </div>
-        <div class="stage-card">
-          <div class="stage-card__num">Apply</div>
+        <div class="flow-step">
+          <div class="flow-step__badge">2</div>
+          <div class="flow-step__label">Apply</div>
           <h3>Scenario Discussion</h3>
           <p>Work the concept into a realistic aviation situation.</p>
         </div>
-        <div class="stage-card">
-          <div class="stage-card__num">Answer</div>
+        <div class="flow-step">
+          <div class="flow-step__badge">3</div>
+          <div class="flow-step__label">Answer</div>
           <h3>Checkride-Style Questions</h3>
           <p>Practice explaining it the way a DPE will ask for it.</p>
         </div>
-        <div class="stage-card">
-          <div class="stage-card__num">Ask</div>
+        <div class="flow-step">
+          <div class="flow-step__badge">4</div>
+          <div class="flow-step__label">Ask</div>
           <h3>Live Q&amp;A</h3>
           <p>Get the question you actually have answered, in real time.</p>
         </div>
@@ -678,22 +788,25 @@
         <h2 class="section__title" style="margin-bottom:12px">Ground School That<br/><em class="accent">Fits Your Training.</em></h2>
         <p class="section__desc">No cohort to fall behind in. No required starting point.</p>
       </div>
-      <div class="diff-grid" style="max-width:1160px;margin:0 auto">
-        <div class="diff-card">
-          <div class="diff-card__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 6v6l4 2" stroke="#F4B400" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="10" stroke="#F4B400" stroke-width="2"/></svg></div>
-          <h3>Start Anywhere</h3>
-          <p>No requirement to begin with Module 1 — join at any point in the schedule.</p>
+      <div class="feature-rows">
+        <div class="feature-row">
+          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 6v6l4 2" stroke="#F4B400" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="10" stroke="#F4B400" stroke-width="2"/></svg></div>
+          <div><h3>Start Anywhere</h3><p>No requirement to begin with Module 1 — join at any point in the schedule.</p></div>
         </div>
-        <div class="diff-card">
-          <div class="diff-card__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7l6-3 5.447 2.724A1 1 0 0121 7.618v10.764a1 1 0 01-1.447.894L15 17l-6 3z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <h3>Choose Your Classes</h3>
-          <p>Take only the topics you actually need, whenever they come up on the schedule.</p>
+        <div class="feature-row">
+          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7l6-3 5.447 2.724A1 1 0 0121 7.618v10.764a1 1 0 01-1.447.894L15 17l-6 3z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><h3>Choose Your Classes</h3><p>Take only the topics you actually need, whenever they come up on the schedule.</p></div>
         </div>
-        <div class="diff-card">
-          <div class="diff-card__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <h3>Complete the Program</h3>
-          <p>Attend all 20 modules when you want the full curriculum, at a discount over paying per class.</p>
+        <div class="feature-row">
+          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><h3>Complete the Program</h3><p>Attend all 20 modules when you want the full curriculum, at a discount over paying per class.</p></div>
         </div>
+      </div>
+      <div class="gs-stat-strip">
+        <div class="gs-stat-strip__item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>20 Live Modules</div>
+        <div class="gs-stat-strip__item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>7 Training Phases</div>
+        <div class="gs-stat-strip__item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Live Online</div>
+        <div class="gs-stat-strip__item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Attend From Anywhere</div>
       </div>
     </div>
   </section>
@@ -705,18 +818,19 @@
   ════════════════════════════════════════════════════════════ -->
   <section class="section" style="background:#0b1627;padding:60px 0" id="full-pack">
     <div class="container">
-      <div style="max-width:640px;margin:0 auto 32px;text-align:center">
-        <div class="section__eyebrow" style="display:flex;justify-content:center">Want the Complete Program?</div>
-        <h2 class="section__title" style="margin-bottom:0">20 live modules<br/><em class="accent">— $400.</em></h2>
-      </div>
-      <div style="background:linear-gradient(145deg,#162C4F,#0d1e35);border:1.5px solid rgba(244,180,0,0.3);border-radius:20px;padding:36px 40px;max-width:560px;margin:0 auto 24px;box-shadow:0 20px 56px rgba(0,0,0,0.35)">
-        <div style="display:flex;justify-content:space-between;font-size:15px;color:rgba(255,255,255,0.6);margin-bottom:12px"><span>20 classes at $25</span><span>$500</span></div>
-        <div style="display:flex;justify-content:space-between;font-size:15px;color:rgba(255,255,255,0.6);margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.1)"><span>Complete program</span><span>$400</span></div>
-        <div style="display:flex;justify-content:space-between;font-size:18px;color:var(--gold);font-weight:800"><span>You save</span><span>$100 (20%)</span></div>
-      </div>
-      <div style="max-width:560px;margin:0 auto;text-align:center">
-        <a href="portal-login.html?view=signup&offer=ground-school-pack" class="btn btn--primary" data-apx-cta data-apx-cta-location="full_pack" style="display:inline-block;margin-bottom:18px">Enroll in Complete Ground School</a>
-        <p style="color:rgba(255,255,255,0.5);font-size:13px;margin:0;line-height:1.7">The $25 individual-class option is always available. The complete program is simply the best value if you want all 20.</p>
+      <div class="fullpack-split">
+        <div class="fullpack-split__copy">
+          <div class="section__eyebrow">Want the Complete Program?</div>
+          <h2 class="section__title" style="margin-bottom:14px">20 live modules<br/><em class="accent">— $400.</em></h2>
+          <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.8;margin:0 0 24px;max-width:420px">The $25 individual-class option is always available. The complete program is simply the best value if you want all 20.</p>
+          <a href="portal-login.html?view=signup&offer=ground-school-pack" class="btn btn--primary" data-apx-cta data-apx-cta-location="full_pack">Enroll in Complete Ground School</a>
+        </div>
+        <div class="fullpack-split__card">
+          <div class="fullpack-split__ribbon">Best Value</div>
+          <div style="display:flex;justify-content:space-between;font-size:15px;color:rgba(255,255,255,0.6);margin-bottom:12px"><span>20 classes at $25</span><span>$500</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:15px;color:rgba(255,255,255,0.6);margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.1)"><span>Complete program</span><span>$400</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:18px;color:var(--gold);font-weight:800"><span>You save</span><span>$100 (20%)</span></div>
+        </div>
       </div>
     </div>
   </section>
@@ -731,41 +845,34 @@
         <h2 class="section__title">Seven phases.<br/><em class="accent">One complete pilot.</em></h2>
         <p class="section__desc">Students progress through seven structured training phases — from the fundamentals of flight to checkride-day confidence — building on each layer as they go.</p>
       </div>
-      <div class="phase-timeline" style="max-width:1040px;margin:0 auto">
-        <div class="phase-card">
-          <div class="phase-num">01</div>
-          <div class="phase-title">Pilot Foundations</div>
-          <div class="phase-sub">Aero · Systems · Certificates</div>
+      <div class="phase-fan" id="phaseFan">
+        <div class="phase-fan__card" style="--i:0" role="button" tabindex="0" data-phase="1">
+          <div class="phase-fan__row"><div class="phase-num">01</div><div><div class="phase-title">Pilot Foundations</div><div class="phase-sub">Aero · Systems · Certificates</div></div></div>
+          <div class="phase-fan__hint">View Phase 1 curriculum ↓</div>
         </div>
-        <div class="phase-card">
-          <div class="phase-num">02</div>
-          <div class="phase-title">Airspace &amp; Regulations</div>
-          <div class="phase-sub">FARs · Airspace · Airports</div>
+        <div class="phase-fan__card" style="--i:1" role="button" tabindex="0" data-phase="2">
+          <div class="phase-fan__row"><div class="phase-num">02</div><div><div class="phase-title">Airspace &amp; Regulations</div><div class="phase-sub">FARs · Airspace · Airports</div></div></div>
+          <div class="phase-fan__hint">View Phase 2 curriculum ↓</div>
         </div>
-        <div class="phase-card">
-          <div class="phase-num">03</div>
-          <div class="phase-title">Navigation</div>
-          <div class="phase-sub">Charts · DR · GPS · VOR</div>
+        <div class="phase-fan__card" style="--i:2" role="button" tabindex="0" data-phase="3">
+          <div class="phase-fan__row"><div class="phase-num">03</div><div><div class="phase-title">Navigation</div><div class="phase-sub">Charts · DR · GPS · VOR</div></div></div>
+          <div class="phase-fan__hint">View Phase 3 curriculum ↓</div>
         </div>
-        <div class="phase-card">
-          <div class="phase-num">04</div>
-          <div class="phase-title">Weather</div>
-          <div class="phase-sub">Theory · Products · ADM</div>
+        <div class="phase-fan__card" style="--i:3" role="button" tabindex="0" data-phase="4">
+          <div class="phase-fan__row"><div class="phase-num">04</div><div><div class="phase-title">Weather</div><div class="phase-sub">Theory · Products · ADM</div></div></div>
+          <div class="phase-fan__hint">View Phase 4 curriculum ↓</div>
         </div>
-        <div class="phase-card">
-          <div class="phase-num">05</div>
-          <div class="phase-title">Performance &amp; Planning</div>
-          <div class="phase-sub">W&amp;B · Charts · XC Planning</div>
+        <div class="phase-fan__card" style="--i:4" role="button" tabindex="0" data-phase="5">
+          <div class="phase-fan__row"><div class="phase-num">05</div><div><div class="phase-title">Performance &amp; Planning</div><div class="phase-sub">W&amp;B · Charts · XC Planning</div></div></div>
+          <div class="phase-fan__hint">View Phase 5 curriculum ↓</div>
         </div>
-        <div class="phase-card">
-          <div class="phase-num">06</div>
-          <div class="phase-title">Risk Management</div>
-          <div class="phase-sub">ADM · Human Factors · Emerg.</div>
+        <div class="phase-fan__card" style="--i:5" role="button" tabindex="0" data-phase="6">
+          <div class="phase-fan__row"><div class="phase-num">06</div><div><div class="phase-title">Risk Management</div><div class="phase-sub">ADM · Human Factors · Emerg.</div></div></div>
+          <div class="phase-fan__hint">View Phase 6 curriculum ↓</div>
         </div>
-        <div class="phase-card" style="border-right:none">
-          <div class="phase-num">07</div>
-          <div class="phase-title">Checkride Success</div>
-          <div class="phase-sub">ACS · Mock Oral Exam</div>
+        <div class="phase-fan__card" style="--i:6" role="button" tabindex="0" data-phase="7">
+          <div class="phase-fan__row"><div class="phase-num">07</div><div><div class="phase-title">Checkride Success</div><div class="phase-sub">ACS · Mock Oral Exam</div></div></div>
+          <div class="phase-fan__hint">View Phase 7 curriculum ↓</div>
         </div>
       </div>
     </div>
@@ -1021,8 +1128,13 @@
           <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);margin-bottom:10px">Learn From a Real Flight Instructor</div>
           <h2 style="font-size:24px;font-weight:800;color:var(--white);margin:0 0 6px">Andrew Serrazina</h2>
           <p style="font-size:13px;color:var(--gold);font-weight:600;margin:0 0 16px;text-transform:uppercase;letter-spacing:0.06em">CFI · CFII · AGI · Comm. ASEL · Comm. AMEL</p>
-          <p style="color:rgba(255,255,255,0.75);line-height:1.8;font-size:15px;margin:0 0 12px">Apex Advantage is built around the way pilots are actually taught and questioned: understand it, explain it, and apply it.</p>
-          <p style="color:rgba(255,255,255,0.55);font-size:13px;font-weight:600">2.5M+ content views</p>
+          <p style="color:rgba(255,255,255,0.75);line-height:1.8;font-size:15px;margin:0 0 16px">Apex Advantage is built around the way pilots are actually taught and questioned: understand it, explain it, and apply it.</p>
+          <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px">
+            <li style="font-size:13px;color:rgba(255,255,255,0.65);display:flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>FAA-certified flight instructor</li>
+            <li style="font-size:13px;color:rgba(255,255,255,0.65);display:flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Founder of Apex Aviation, creator of Apex Advantage</li>
+            <li style="font-size:13px;color:rgba(255,255,255,0.65);display:flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Experience preparing student pilots for oral and practical tests</li>
+          </ul>
+          <p style="color:rgba(255,255,255,0.55);font-size:13px;font-weight:600;margin-top:14px">2.5M+ content views</p>
         </div>
       </div>
     </div>
@@ -1047,10 +1159,10 @@
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
-            Do I have to buy the full program?
+            Do I have to start with Module 1?
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div class="faq-item__answer"><p>No. Individual classes are $25 each — attend as many or as few as you want.</p></div>
+          <div class="faq-item__answer"><p>No. Ground School is modular — join at any point in the schedule based on what you need.</p></div>
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
@@ -1061,10 +1173,10 @@
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
-            Do I have to start with Module 1?
+            Do I have to buy the full program?
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div class="faq-item__answer"><p>No. Ground School is modular — join at any point in the schedule based on what you need.</p></div>
+          <div class="faq-item__answer"><p>No. Individual classes are $25 each — attend as many or as few as you want.</p></div>
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
@@ -1230,6 +1342,44 @@
       });
     });
 
+    // ── Program Overview phase-fan: cascading scroll-reveal + click
+    // jumps to and opens the matching real Phase in the Full
+    // Curriculum accordion below, instead of duplicating that content
+    // here. ──
+    (function () {
+      var fan = document.getElementById('phaseFan');
+      if (!fan) return;
+      if ('IntersectionObserver' in window) {
+        var observer = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              fan.classList.add('in-view');
+              observer.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.15 });
+        observer.observe(fan);
+      } else {
+        fan.classList.add('in-view');
+      }
+
+      var cards = fan.querySelectorAll('.phase-fan__card');
+      cards.forEach(function (card) {
+        function activate() {
+          cards.forEach(function (c) { c.classList.toggle('is-active', c === card); });
+          var targetHeader = document.querySelector('.phase-section__header[data-phase="' + card.dataset.phase + '"]');
+          if (targetHeader) {
+            if (targetHeader.getAttribute('aria-expanded') !== 'true') targetHeader.click();
+            targetHeader.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
+        card.addEventListener('click', activate);
+        card.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); }
+        });
+      });
+    })();
+
     if (window.apexTrack) apexTrack('landing_page_viewed', { product: 'ground_school_private_pilot' });
 
     // ── UTM passthrough on primary CTA links (same pattern as
@@ -1393,22 +1543,25 @@
       }
 
       // ── Hero product-visual panel — reuses this same RPC result
-      // (no second network call). Shows the real earliest upcoming
-      // class (rows are already ordered by class_date, start_time by
-      // the RPC itself); falls back to a generic, non-date branded
-      // panel if nothing is scheduled, so the hero never fabricates a
-      // date or seat count. ──
-      function renderHeroPreview(rows) {
+      // (no second network call). Shows the topic-matched class when
+      // ?topic= resolved to a real one, otherwise the earliest
+      // upcoming class (rows are already ordered by class_date,
+      // start_time by the RPC itself); falls back to a generic,
+      // non-date branded panel if nothing is scheduled, so the hero
+      // never fabricates a date or seat count. The "View This Class"
+      // link only appears once we know the exact card it points to. ──
+      function renderHeroPreview(rows, preferredRow) {
         var moduleEl = document.getElementById('gsPreviewModule');
         var whenEl = document.getElementById('gsPreviewWhen');
         var instructorEl = document.getElementById('gsPreviewInstructor');
         var seatsEl = document.getElementById('gsPreviewSeats');
+        var linkEl = document.getElementById('gsPreviewLink');
         if (!moduleEl) return;
         if (!rows.length) {
           moduleEl.textContent = '20 Live Modules · 7 Phases';
           return;
         }
-        var next = rows[0];
+        var next = preferredRow || rows[0];
         moduleEl.textContent = next.title;
         whenEl.innerHTML = '<span>When</span><span>' + fmtDateTime(next) + '</span>';
         whenEl.style.display = 'flex';
@@ -1421,6 +1574,12 @@
           seatsEl.innerHTML = '<span>Spots left</span><span>' + Math.max(spotsLeft, 0) + '</span>';
           seatsEl.style.display = 'flex';
         }
+        if (linkEl) {
+          linkEl.href = '#gs-class-' + next.id;
+          linkEl.dataset.classTopic = next.module_title || '';
+          linkEl.dataset.classId = next.id;
+          linkEl.style.display = 'block';
+        }
       }
 
       // ── Hero CTA/topic-callout upgrade once real data is in — only
@@ -1431,7 +1590,7 @@
         var heroCta = document.getElementById('gsHeroCta');
         if (callout) callout.textContent = topicParam + ' class available — ' + fmtDateTime(matchedRow);
         if (heroCta) {
-          heroCta.textContent = 'Reserve ' + topicParam + ' Seat — $25';
+          heroCta.textContent = 'Reserve My ' + topicParam + ' Seat — $25';
           heroCta.dataset.classTopic = matchedRow.module_title || topicParam;
           heroCta.dataset.classId = matchedRow.id;
         }
@@ -1446,22 +1605,20 @@
         }
         var rows = res.data || [];
         if (window.apexTrack) apexTrack('product_preview_viewed', { product: 'ground_school_calendar' });
-        renderHeroPreview(rows);
+        var matchedRow = topicParam ? rows.find(function (row) { return matchesTopic(row, topicParam); }) : null;
+        renderHeroPreview(rows, matchedRow);
         if (!rows.length) {
           emptyEl.style.display = 'block';
           return;
         }
         rows.forEach(function (row) { grid.appendChild(renderClass(row)); });
 
-        if (topicParam) {
-          var matchedRow = rows.find(function (row) { return matchesTopic(row, topicParam); });
-          if (matchedRow) {
-            topicBanner.textContent = 'You came for ' + topicParam + ' — highlighted below.';
-            topicBanner.style.display = 'block';
-            upgradeHeroForTopic(matchedRow, topicParam);
-            var el = document.getElementById('gs-class-' + matchedRow.id);
-            if (el) setTimeout(function () { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 400);
-          }
+        if (topicParam && matchedRow) {
+          topicBanner.textContent = 'You came for ' + topicParam + ' — highlighted below.';
+          topicBanner.style.display = 'block';
+          upgradeHeroForTopic(matchedRow, topicParam);
+          var el = document.getElementById('gs-class-' + matchedRow.id);
+          if (el) setTimeout(function () { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 400);
         }
       }).catch(function () {
         loadingEl.style.display = 'none';
