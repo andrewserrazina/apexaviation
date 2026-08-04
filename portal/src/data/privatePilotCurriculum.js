@@ -1,5 +1,5 @@
 // Structured from PrivateCurriculum.md (Apex Advantage Ground School
-// Framework -- 21 modules, 7 phases). PrivateCurriculum.md previously
+// Framework -- 20 modules, 7 phases). PrivateCurriculum.md previously
 // held a different, incorrect 14-module document that didn't reflect
 // the actual curriculum; both this file and the live syllabus data
 // were built from that wrong version until corrected. Keep this file
@@ -37,7 +37,6 @@ export const privatePilotModules = [
   { id: 'PPL-M18', phase: 'Phase 6: Risk Management', title: 'Emergency Procedures', purpose: 'Build calm, checklist-driven emergency response habits through repetition, so reaction under real stress defaults to trained procedure rather than panic.' },
   { id: 'PPL-M19', phase: 'Phase 7: Checkride Success', title: 'ACS Mastery', purpose: 'Make the ACS itself a working tool the student can navigate confidently, understanding exactly how they\'ll be evaluated on both knowledge and skill.' },
   { id: 'PPL-M20', phase: 'Phase 7: Checkride Success', title: 'Mock Oral Exam', purpose: 'Simulate the real pressure, pacing, and unpredictability of a DPE oral exam in a low-stakes setting, with direct feedback on both content and communication style.' },
-  { id: 'PPL-M21', phase: 'Phase 7: Checkride Success', title: 'Practical Test Success', purpose: 'Finalize logistical, procedural, and psychological readiness for checkride day itself, closing the loop on "Train Beyond the Checkride."' },
 ]
 
 export const privatePilotLessons = privatePilotModules.map((module, index) => ({

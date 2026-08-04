@@ -380,6 +380,62 @@
       .phase-section__header { padding: 18px 20px; }
       .phase-section__body { padding: 0 20px 24px; }
     }
+
+    /* ── Cold-traffic hero (structural reference: dpe-questions.html's
+       .cp-hero-grid) ── */
+    .gs-hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--gold); color: #080f1e;
+      font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 14px; border-radius: 100px; margin-bottom: 18px;
+    }
+    .gs-hero-grid {
+      display: grid; grid-template-columns: 1fr 380px; gap: 56px; align-items: center;
+      max-width: 1100px; margin: 0 auto; position: relative; z-index: 1;
+    }
+    .gs-benefit-strip {
+      display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 22px 0 0; padding: 0; list-style: none;
+    }
+    .gs-benefit-strip li {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.7);
+    }
+    .gs-topic-hero-callout {
+      display: none; margin: 18px 0 0; padding: 10px 16px; max-width: 460px;
+      background: rgba(244,180,0,0.08); border: 1px solid rgba(244,180,0,0.25);
+      border-radius: 10px; color: var(--gold); font-size: 13px; font-weight: 600;
+    }
+    .gs-hero-reassurance { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 12px; }
+    .gs-preview-panel {
+      background: linear-gradient(160deg, #162C4F, #0d1e35);
+      border: 1px solid rgba(244,180,0,0.25); border-radius: 18px; padding: 28px;
+      box-shadow: 0 20px 56px rgba(0,0,0,0.4); min-height: 264px;
+    }
+    .gs-preview-panel__brand { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); margin-bottom: 2px; }
+    .gs-preview-panel__title { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 22px; }
+    .gs-preview-panel__label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 8px; }
+    .gs-preview-panel__module { font-size: 17px; font-weight: 800; color: #fff; margin-bottom: 14px; line-height: 1.3; min-height: 44px; }
+    .gs-preview-panel__row {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 13px; color: rgba(255,255,255,0.65); padding: 10px 0; border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .gs-preview-panel__price { font-size: 22px; font-weight: 800; color: var(--gold); }
+    .gs-trust-bar {
+      background: rgba(244,180,0,0.06); border-top: 1px solid rgba(244,180,0,0.12); border-bottom: 1px solid rgba(244,180,0,0.12);
+    }
+    .gs-trust-bar__inner { display: flex; flex-wrap: wrap; justify-content: center; }
+    .gs-trust-bar__item {
+      display: flex; align-items: center; gap: 10px; padding: 16px 28px;
+      border-right: 1px solid rgba(244,180,0,0.1);
+    }
+    .gs-trust-bar__item:last-child { border-right: none; }
+    .gs-trust-bar__item span { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.75); }
+
+    @media (max-width: 900px) {
+      .gs-hero-grid { grid-template-columns: 1fr; gap: 36px; }
+      .gs-preview-panel { order: 2; max-width: 400px; margin: 0 auto; }
+      .gs-hero-copy { order: 1; }
+    }
   </style>
 </head>
 <body>
@@ -390,67 +446,115 @@
         <img src="apexwhite.png" alt="Apex Aviation" height="40" style="display:block;width:auto" />
       </a>
       <nav class="nav__links">
-        <a href="programs.html">Services</a>
-        <div class="nav__dropdown" id="trainingDropdown">
-          <button class="nav__dropdown-toggle" aria-expanded="false" aria-haspopup="true">
-            Training
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-          <div class="nav__dropdown-menu">
-            <a href="private-pilot-training.html">Private Pilot</a>
-            <a href="instrument-rating-training.html">Instrument Rating</a>
-            <a href="commercial-pilot-training.html">Commercial Pilot</a>
-            <a href="apex-advantage.html">Apex Advantage</a>
-            <a href="ground-school-locations.html">Ground School Near You</a>
-          </div>
-        </div>
-        <a href="fleet.html">Facility</a>
-        <a href="about.html">About</a>
-        <a href="instructors.html">Team</a>
-        <a href="pricing.html">Pricing</a>
         <a href="apex-advantage.html" class="btn btn--nav-outline">Apex Advantage</a>
-        <a href="portal-login.html" class="btn btn--nav-ghost">Login</a>
-        <a href="contact.html" class="btn btn--nav">Book a Session</a>
+        <a href="portal-login.html" style="font-size:13px;color:rgba(255,255,255,0.55)">Already registered? <span style="color:var(--gold);font-weight:600">Log in</span></a>
       </nav>
       <button class="nav__hamburger" id="hamburger" aria-label="Toggle menu">
         <span></span><span></span><span></span>
       </button>
     </div>
     <div class="nav__mobile" id="mobileMenu">
-      <a href="programs.html">Services</a>
-      <a href="private-pilot-training.html">Private Pilot Training</a>
-      <a href="instrument-rating-training.html">Instrument Rating</a>
-      <a href="commercial-pilot-training.html">Commercial Pilot</a>
-      <a href="apex-advantage.html">Apex Advantage Ground School</a>
-      <a href="fleet.html">Facility</a>
-      <a href="about.html">About</a>
-      <a href="instructors.html">Team</a>
-      <a href="pricing.html">Pricing</a>
-      <a href="portal-login.html">Login</a>
-      <a href="contact.html">Book a Session</a>
+      <a href="apex-advantage.html">Apex Advantage</a>
+      <a href="portal-login.html">Already registered? Log in</a>
     </div>
   </header>
 
   <!-- ═══════════════════════════════════════════════════════════
-       HERO — single primary CTA (view classes), $25 offer visible
-       immediately, no competing equal-weight buttons
+       HERO — cold-traffic two-column layout (structural reference:
+       dpe-questions.html .cp-hero-grid). Single primary CTA ($25),
+       $400 kept as a small secondary link, no fabricated scarcity.
   ════════════════════════════════════════════════════════════ -->
-  <section class="page-hero" style="min-height:520px;display:flex;align-items:center">
+  <section class="page-hero" style="padding-top:104px;padding-bottom:0">
     <div class="page-hero__bg-text">GROUND SCHOOL</div>
-    <div class="container page-hero__inner" style="padding-top:72px;padding-bottom:56px">
-      <div class="section__eyebrow">Live Private Pilot Ground School</div>
-      <h1 class="page-hero__title" style="max-width:700px">Stop watching ground school.<br /><span>Start participating.</span></h1>
-      <p class="page-hero__sub" style="max-width:620px">Live, instructor-led Private Pilot Ground School built around real questions, scenarios, and practical application.</p>
-      <div style="display:flex;align-items:baseline;gap:10px;margin-top:24px">
-        <span style="font-size:32px;font-weight:800;color:#fff">$25</span>
-        <span style="font-size:15px;color:rgba(255,255,255,0.55)">per live class — take the classes you need, or complete all of them</span>
+    <div class="container page-hero__inner">
+      <div class="gs-hero-grid">
+
+        <div class="gs-hero-copy">
+          <div class="gs-hero-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="#080f1e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Live · Instructor-Led · $25 Per Class
+          </div>
+          <div class="section__eyebrow">Apex Advantage · Private Pilot Ground School</div>
+          <h1 class="page-hero__title" style="max-width:620px">Stop watching ground school.<br /><span>Start participating.</span></h1>
+          <p class="page-hero__sub" style="max-width:520px">Join a live, instructor-led Private Pilot Ground School class built around real explanations, practical scenarios, and time to ask questions.</p>
+
+          <ul class="gs-benefit-strip">
+            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Live Online</li>
+            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Instructor-Led</li>
+            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Scenario-Based</li>
+            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>$25 Per Class</li>
+          </ul>
+
+          <div class="gs-topic-hero-callout" id="gsHeroTopicCallout"></div>
+
+          <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:24px">
+            <a href="#upcoming-classes" class="btn btn--primary" id="gsHeroCta" data-apx-cta data-apx-cta-location="hero_cold">View Live Classes — From $25</a>
+          </div>
+          <p class="gs-hero-reassurance">No subscription · Secure checkout · Attend from anywhere</p>
+          <p style="margin-top:18px;font-size:13px;color:rgba(255,255,255,0.45)">Want the complete program? <a href="#full-pack" style="color:var(--gold)">All 20 live classes · $400 · Save $100</a></p>
+        </div>
+
+        <div class="gs-preview-panel" id="gsPreviewPanel">
+          <div class="gs-preview-panel__brand">Apex Advantage</div>
+          <div class="gs-preview-panel__title">Private Pilot Ground School</div>
+          <div class="gs-preview-panel__label">Next Live Class</div>
+          <div class="gs-preview-panel__module" id="gsPreviewModule">Loading next class…</div>
+          <div class="gs-preview-panel__row" id="gsPreviewWhen" style="display:none"></div>
+          <div class="gs-preview-panel__row" id="gsPreviewInstructor" style="display:none"></div>
+          <div class="gs-preview-panel__row">
+            <span>Per class</span>
+            <span class="gs-preview-panel__price">$25</span>
+          </div>
+          <div class="gs-preview-panel__row" id="gsPreviewSeats" style="display:none"></div>
+        </div>
+
       </div>
-      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:24px">
-        <a href="#upcoming-classes" class="btn btn--primary" data-apx-cta data-apx-cta-location="hero">View Upcoming Classes</a>
-      </div>
-      <p style="margin-top:18px;font-size:13px;color:rgba(255,255,255,0.45)">Want the complete program? <a href="#full-pack" style="color:var(--gold)">Complete Ground School — $400</a></p>
     </div>
   </section>
+
+  <!-- Trust bar -->
+  <div class="gs-trust-bar">
+    <div class="container gs-trust-bar__inner">
+      <div class="gs-trust-bar__item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Live Instructor</span>
+      </div>
+      <div class="gs-trust-bar__item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Ask Questions in Real Time</span>
+      </div>
+      <div class="gs-trust-bar__item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Scenario-Based</span>
+      </div>
+      <div class="gs-trust-bar__item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>$25 Per Class</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Social proof -->
+  <div class="social-proof-strip">
+    <div class="social-proof-strip__stars" aria-label="5 out of 5 stars">
+      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
+      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
+      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
+      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
+      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
+    </div>
+    <p class="social-proof-strip__caption">Real feedback from Apex Aviation students</p>
+    <div class="social-proof-strip__quotes">
+      <blockquote class="social-proof-strip__quote">
+        <p>"Explains subjects in great detail. Definitely will attend his courses again."</p>
+        <cite>— Patricia M.</cite>
+      </blockquote>
+      <blockquote class="social-proof-strip__quote">
+        <p>"I had an amazing experience training with Andrew as my Certified Flight Instructor. From day one, he made everything feel approachable and stress-free, even when learning some of the more challenging concepts. He's incredibly knowledgeable, patient, and knows how to explain things in a way that actually sticks."</p>
+        <cite>— Alyssa K.</cite>
+      </blockquote>
+    </div>
+  </div>
 
   <!-- ═══════════════════════════════════════════════════════════
        UPCOMING LIVE CLASSES — real data, no fabricated seat counts.
@@ -638,7 +742,7 @@
         <div class="phase-card" style="border-right:none">
           <div class="phase-num">07</div>
           <div class="phase-title">Checkride Success</div>
-          <div class="phase-sub">ACS · Mock Oral · Test Day</div>
+          <div class="phase-sub">ACS · Mock Oral Exam</div>
         </div>
       </div>
     </div>
@@ -651,7 +755,7 @@
     <div class="container">
       <div class="section__header">
         <div class="section__eyebrow">Full Curriculum</div>
-        <h2 class="section__title">21 modules.<br/><em class="accent">Nothing left out.</em></h2>
+        <h2 class="section__title">20 modules.<br/><em class="accent">Nothing left out.</em></h2>
         <p class="section__desc">Each phase expands into detailed modules that cover theory, practical application, and real-world scenarios. Select any phase below to explore what's covered.</p>
       </div>
 
@@ -854,7 +958,7 @@
           <div class="phase-section__header" role="button" tabindex="0" aria-expanded="false" data-phase="7">
             <div class="phase-section__num">7</div>
             <div class="phase-section__label">
-              <div class="phase-section__label-eyebrow">Phase 7 · 3 Modules</div>
+              <div class="phase-section__label-eyebrow">Phase 7 · 2 Modules</div>
               <div class="phase-section__label-title">Checkride Success</div>
             </div>
             <svg class="phase-section__chevron" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -870,12 +974,6 @@
               <div class="module-card__title"><span class="module-card__badge">Module 20</span> Mock Oral Exam</div>
               <ul class="module-topics">
                 <li>Structured oral preparation</li><li>Practice scenarios</li><li>Confidence building</li>
-              </ul>
-            </div>
-            <div class="module-card">
-              <div class="module-card__title"><span class="module-card__badge">Module 21</span> Practical Test Success</div>
-              <ul class="module-topics">
-                <li>Checkride strategies</li><li>Stress management</li><li>Test-day preparation</li><li>Professional pilot habits</li>
               </ul>
             </div>
           </div>
@@ -1129,6 +1227,33 @@
       }
     })();
 
+    // ── CTA click analytics — this page had UTM passthrough but no
+    // click-level tracking on [data-apx-cta] before this hero rework.
+    // gsHeroCta's dataset.classTopic/classId are filled in by the topic
+    // callout logic below once a real matching class is found. ──
+    document.querySelectorAll('[data-apx-cta]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        if (!window.gtag) return;
+        gtag('event', 'ground_school_cta_click', {
+          location: el.dataset.apxCtaLocation || 'unknown',
+          class_topic: el.dataset.classTopic || undefined,
+          class_id: el.dataset.classId || undefined
+        });
+      });
+    });
+
+    // ── Hero topic callout (?topic=<text>) — shows a generic message
+    // immediately (no fabricated date), then upgrades to the real
+    // date/time once get_upcoming_ground_school_classes resolves and a
+    // match is found, reusing that same result set below. ──
+    (function () {
+      var topicParam = new URLSearchParams(window.location.search).get('topic');
+      var callout = document.getElementById('gsHeroTopicCallout');
+      if (!topicParam || !callout) return;
+      callout.textContent = 'Looking for ' + topicParam + '? Your next class is highlighted below.';
+      callout.style.display = 'block';
+    })();
+
     // ── Upcoming Live Classes: real data via get_upcoming_ground_school_classes
     // (supabase-portal-schema-v61.sql) — anon-safe, no fabricated seat
     // counts. Reserve Your Seat opens an inline name/email capture that
@@ -1233,6 +1358,51 @@
         return card;
       }
 
+      // ── Hero product-visual panel — reuses this same RPC result
+      // (no second network call). Shows the real earliest upcoming
+      // class (rows are already ordered by class_date, start_time by
+      // the RPC itself); falls back to a generic, non-date branded
+      // panel if nothing is scheduled, so the hero never fabricates a
+      // date or seat count. ──
+      function renderHeroPreview(rows) {
+        var moduleEl = document.getElementById('gsPreviewModule');
+        var whenEl = document.getElementById('gsPreviewWhen');
+        var instructorEl = document.getElementById('gsPreviewInstructor');
+        var seatsEl = document.getElementById('gsPreviewSeats');
+        if (!moduleEl) return;
+        if (!rows.length) {
+          moduleEl.textContent = '20 Live Modules · 7 Phases';
+          return;
+        }
+        var next = rows[0];
+        moduleEl.textContent = next.title;
+        whenEl.innerHTML = '<span>When</span><span>' + fmtDateTime(next) + '</span>';
+        whenEl.style.display = 'flex';
+        if (next.instructor_name) {
+          instructorEl.innerHTML = '<span>Instructor</span><span>' + next.instructor_name + '</span>';
+          instructorEl.style.display = 'flex';
+        }
+        var spotsLeft = (next.capacity != null && next.enrolled_count != null) ? next.capacity - next.enrolled_count : null;
+        if (spotsLeft !== null) {
+          seatsEl.innerHTML = '<span>Spots left</span><span>' + Math.max(spotsLeft, 0) + '</span>';
+          seatsEl.style.display = 'flex';
+        }
+      }
+
+      // ── Hero CTA/topic-callout upgrade once real data is in — only
+      // fires if ?topic= matched an actual scheduled class; otherwise
+      // the generic hero CTA/callout set earlier stays as-is. ──
+      function upgradeHeroForTopic(matchedRow, topicParam) {
+        var callout = document.getElementById('gsHeroTopicCallout');
+        var heroCta = document.getElementById('gsHeroCta');
+        if (callout) callout.textContent = topicParam + ' class available — ' + fmtDateTime(matchedRow);
+        if (heroCta) {
+          heroCta.textContent = 'Reserve ' + topicParam + ' Seat — $25';
+          heroCta.dataset.classTopic = matchedRow.module_title || topicParam;
+          heroCta.dataset.classId = matchedRow.id;
+        }
+      }
+
       apexSupabase.rpc('get_upcoming_ground_school_classes', { p_course_id: 'PPL', p_limit: 12 }).then(function (res) {
         loadingEl.style.display = 'none';
         if (res.error) {
@@ -1242,6 +1412,7 @@
         }
         var rows = res.data || [];
         if (window.apexTrack) apexTrack('product_preview_viewed', { product: 'ground_school_calendar' });
+        renderHeroPreview(rows);
         if (!rows.length) {
           emptyEl.style.display = 'block';
           return;
@@ -1253,6 +1424,7 @@
           if (matchedRow) {
             topicBanner.textContent = 'You came for ' + topicParam + ' — highlighted below.';
             topicBanner.style.display = 'block';
+            upgradeHeroForTopic(matchedRow, topicParam);
             var el = document.getElementById('gs-class-' + matchedRow.id);
             if (el) setTimeout(function () { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 400);
           }
@@ -1261,6 +1433,8 @@
         loadingEl.style.display = 'none';
         errorEl.textContent = 'Could not load upcoming classes right now. Please refresh, or contact us to ask about the schedule.';
         errorEl.style.display = 'block';
+        var moduleEl = document.getElementById('gsPreviewModule');
+        if (moduleEl) moduleEl.textContent = '20 Live Modules · 7 Phases';
       });
     })();
   </script>
