@@ -89,34 +89,62 @@
   </script>
   <style>
     /* ── Page-specific additions ── */
-    .phase-timeline {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 0;
-      border-radius: 14px;
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.08);
+
+    /* Program Overview — cascading/fanned deck of 7 phase cards.
+       Later cards overlap earlier ones (default DOM stacking handles
+       this for normal-flow siblings); hover/focus/tap lifts a card
+       forward and above the rest via z-index. Clicking a card jumps
+       to and expands the matching phase in the Full Curriculum
+       accordion below, so the "reveal" surfaces real content instead
+       of duplicating it here. */
+    .phase-fan {
+      max-width: 720px;
+      margin: 0 auto;
+      padding-bottom: 24px;
     }
-    .phase-card {
-      background: #162C4F;
-      padding: 28px 24px;
-      border-right: 1px solid rgba(255,255,255,0.07);
-      border-bottom: 1px solid rgba(255,255,255,0.07);
+    .phase-fan__card {
       position: relative;
-      transition: background 0.2s;
+      background: #162C4F;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 22px 26px;
+      cursor: pointer;
+      margin-top: -30px;
+      margin-left: calc(var(--i) * 10px);
+      margin-right: calc((6 - var(--i)) * 10px);
+      z-index: var(--i);
+      box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+      transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease, opacity 0.5s ease;
+      opacity: 0;
+      transform: translateY(28px);
     }
-    .phase-card:last-child { border-right: none; }
-    .phase-card:hover { background: #1c3660; }
+    .phase-fan:first-child,
+    .phase-fan__card:first-child { margin-top: 0; }
+    .phase-fan.in-view .phase-fan__card {
+      opacity: 1;
+      transform: translateY(0);
+      transition-delay: calc(var(--i) * 90ms);
+    }
+    .phase-fan__card:hover,
+    .phase-fan__card:focus-visible,
+    .phase-fan__card.is-active {
+      transform: translateY(-8px) scale(1.015);
+      box-shadow: 0 24px 48px rgba(0,0,0,0.5);
+      background: #1c3660;
+      z-index: 20;
+      outline: none;
+    }
+    .phase-fan__row { display: flex; align-items: baseline; gap: 16px; }
     .phase-num {
-      font-size: 38px;
+      font-size: 34px;
       font-weight: 800;
-      color: rgba(244,180,0,0.18);
+      color: rgba(244,180,0,0.28);
       line-height: 1;
-      margin-bottom: 8px;
       font-family: 'Montserrat', sans-serif;
+      flex-shrink: 0;
     }
     .phase-title {
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 700;
       color: #fff;
     }
@@ -124,6 +152,21 @@
       font-size: 12px;
       color: rgba(255,255,255,0.45);
       margin-top: 4px;
+    }
+    .phase-fan__hint {
+      font-size: 11px; font-weight: 700; color: var(--gold); margin-top: 10px;
+      opacity: 0; transition: opacity 0.2s;
+    }
+    .phase-fan__card:hover .phase-fan__hint,
+    .phase-fan__card:focus-visible .phase-fan__hint,
+    .phase-fan__card.is-active .phase-fan__hint { opacity: 1; }
+    @media (max-width: 640px) {
+      .phase-fan__card { margin-left: 0 !important; margin-right: 0 !important; margin-top: -18px; padding: 18px 20px; }
+      .phase-fan__card:hover, .phase-fan__card.is-active { transform: translateY(-4px); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .phase-fan__card { transition: none; opacity: 1; transform: none; }
+      .phase-fan__card:hover, .phase-fan__card.is-active { transform: none; }
     }
 
     /* Curriculum accordion */
@@ -231,65 +274,46 @@
       padding: 3px 10px;
     }
 
-    /* Difference cards */
-    .diff-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 20px;
-    }
-    .diff-card {
-      background: #162C4F;
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 14px;
-      padding: 30px 26px;
-    }
-    .diff-card__icon {
-      width: 46px;
-      height: 46px;
-      border-radius: 12px;
-      background: rgba(244,180,0,0.1);
+    /* Live-class flow steps (LEARN → APPLY → ANSWER → ASK) — a
+       connected numbered flow instead of a plain card grid, to read
+       as a sequence rather than four unrelated benefits. */
+    .flow-steps {
       display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 16px;
+      align-items: flex-start;
+      position: relative;
     }
-    .diff-card h3 {
-      font-size: 16px;
-      font-weight: 700;
-      color: #fff;
-      margin: 0 0 8px;
+    .flow-steps::before {
+      content: '';
+      position: absolute;
+      top: 21px; left: 40px; right: 40px;
+      height: 2px;
+      background: linear-gradient(90deg, rgba(244,180,0,0.05), rgba(244,180,0,0.4), rgba(244,180,0,0.05));
     }
-    .diff-card p {
-      font-size: 14px;
-      color: rgba(255,255,255,0.6);
-      line-height: 1.75;
-      margin: 0;
-    }
-
-    /* Live-class stage cards (LEARN/APPLY/ANSWER/ASK) */
-    .stage-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 2px;
-      border-radius: 14px;
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.08);
-    }
-    .stage-card {
-      background: #162C4F;
-      padding: 30px 24px;
+    .flow-step {
+      flex: 1;
       text-align: center;
+      padding: 0 14px;
+      position: relative;
     }
-    .stage-card__num {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--gold);
-      margin-bottom: 10px;
+    .flow-step__badge {
+      width: 42px; height: 42px; border-radius: 50%;
+      background: #0b1627; border: 2px solid var(--gold);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 800; color: var(--gold);
+      margin: 0 auto 16px; position: relative; z-index: 1;
     }
-    .stage-card h3 { font-size: 16px; font-weight: 800; color: #fff; margin: 0 0 8px; }
-    .stage-card p { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.6; margin: 0; }
+    .flow-step__label {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 8px;
+    }
+    .flow-step h3 { font-size: 15px; font-weight: 800; color: #fff; margin: 0 0 6px; }
+    .flow-step p { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.6; margin: 0; }
+    @media (max-width: 720px) {
+      .flow-steps { flex-direction: column; gap: 28px; }
+      .flow-steps::before { top: 0; bottom: 0; left: 21px; right: auto; width: 2px; height: auto; background: linear-gradient(180deg, rgba(244,180,0,0.05), rgba(244,180,0,0.4), rgba(244,180,0,0.05)); }
+      .flow-step { display: flex; align-items: center; gap: 16px; text-align: left; padding: 0; }
+      .flow-step__badge { margin: 0; flex-shrink: 0; }
+    }
 
     /* Class discovery cards */
     .gs-class-card {
@@ -376,7 +400,6 @@
     }
 
     @media (max-width: 640px) {
-      .phase-timeline { grid-template-columns: 1fr 1fr; }
       .phase-section__header { padding: 18px 20px; }
       .phase-section__body { padding: 0 20px 24px; }
     }
@@ -468,6 +491,26 @@
       .gs-compare-grid { grid-template-columns: 1fr; }
     }
 
+    /* Flexibility feature rows — horizontal icon-left rows instead of
+       the icon-top card grid used elsewhere on the page, so this
+       section reads distinctly from the comparison-column layout. */
+    .feature-rows {
+      display: flex; flex-direction: column;
+      max-width: 720px; margin: 0 auto;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .feature-row {
+      display: flex; align-items: center; gap: 22px;
+      padding: 22px 8px; border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .feature-row__icon {
+      width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+      background: rgba(244,180,0,0.1);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .feature-row h3 { font-size: 15px; font-weight: 800; color: #fff; margin: 0 0 4px; }
+    .feature-row p { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.6; margin: 0; }
+
     /* Program stat strip */
     .gs-stat-strip {
       display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 32px;
@@ -475,6 +518,30 @@
     }
     .gs-stat-strip__item { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.7); }
     .gs-stat-strip__item svg { flex-shrink: 0; }
+
+    /* $400 full-pack — asymmetric split instead of the centered-stack
+       pattern used elsewhere, so it reads as its own distinct offer. */
+    .fullpack-split {
+      display: grid; grid-template-columns: 1fr 380px; gap: 48px; align-items: center;
+      max-width: 980px; margin: 0 auto;
+    }
+    .fullpack-split__card {
+      position: relative;
+      background: linear-gradient(145deg,#162C4F,#0d1e35);
+      border: 1.5px solid rgba(244,180,0,0.3); border-radius: 20px;
+      padding: 40px 32px 32px;
+      box-shadow: 0 20px 56px rgba(0,0,0,0.35);
+    }
+    .fullpack-split__ribbon {
+      position: absolute; top: -13px; left: 32px;
+      background: var(--gold); color: #080f1e; font-size: 11px; font-weight: 800;
+      letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 14px; border-radius: 100px;
+    }
+    @media (max-width: 800px) {
+      .fullpack-split { grid-template-columns: 1fr; text-align: center; }
+      .fullpack-split__copy p { margin-left: auto; margin-right: auto; }
+      .fullpack-split__card { max-width: 420px; margin: 0 auto; }
+    }
 
     @media (max-width: 900px) {
       .gs-hero-grid { grid-template-columns: 1fr; gap: 36px; }
@@ -676,24 +743,28 @@
         <div class="section__eyebrow">Class Format</div>
         <h2 class="section__title">What happens in<br/><em class="accent">a live class?</em></h2>
       </div>
-      <div class="stage-grid" style="max-width:1160px;margin:0 auto">
-        <div class="stage-card">
-          <div class="stage-card__num">Learn</div>
+      <div class="flow-steps" style="max-width:960px;margin:0 auto">
+        <div class="flow-step">
+          <div class="flow-step__badge">1</div>
+          <div class="flow-step__label">Learn</div>
           <h3>Instructor-Led Knowledge</h3>
           <p>Core concepts taught live, not lectured to a camera.</p>
         </div>
-        <div class="stage-card">
-          <div class="stage-card__num">Apply</div>
+        <div class="flow-step">
+          <div class="flow-step__badge">2</div>
+          <div class="flow-step__label">Apply</div>
           <h3>Scenario Discussion</h3>
           <p>Work the concept into a realistic aviation situation.</p>
         </div>
-        <div class="stage-card">
-          <div class="stage-card__num">Answer</div>
+        <div class="flow-step">
+          <div class="flow-step__badge">3</div>
+          <div class="flow-step__label">Answer</div>
           <h3>Checkride-Style Questions</h3>
           <p>Practice explaining it the way a DPE will ask for it.</p>
         </div>
-        <div class="stage-card">
-          <div class="stage-card__num">Ask</div>
+        <div class="flow-step">
+          <div class="flow-step__badge">4</div>
+          <div class="flow-step__label">Ask</div>
           <h3>Live Q&amp;A</h3>
           <p>Get the question you actually have answered, in real time.</p>
         </div>
@@ -717,21 +788,18 @@
         <h2 class="section__title" style="margin-bottom:12px">Ground School That<br/><em class="accent">Fits Your Training.</em></h2>
         <p class="section__desc">No cohort to fall behind in. No required starting point.</p>
       </div>
-      <div class="diff-grid" style="max-width:1160px;margin:0 auto">
-        <div class="diff-card">
-          <div class="diff-card__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 6v6l4 2" stroke="#F4B400" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="10" stroke="#F4B400" stroke-width="2"/></svg></div>
-          <h3>Start Anywhere</h3>
-          <p>No requirement to begin with Module 1 — join at any point in the schedule.</p>
+      <div class="feature-rows">
+        <div class="feature-row">
+          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 6v6l4 2" stroke="#F4B400" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="10" stroke="#F4B400" stroke-width="2"/></svg></div>
+          <div><h3>Start Anywhere</h3><p>No requirement to begin with Module 1 — join at any point in the schedule.</p></div>
         </div>
-        <div class="diff-card">
-          <div class="diff-card__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7l6-3 5.447 2.724A1 1 0 0121 7.618v10.764a1 1 0 01-1.447.894L15 17l-6 3z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <h3>Choose Your Classes</h3>
-          <p>Take only the topics you actually need, whenever they come up on the schedule.</p>
+        <div class="feature-row">
+          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7l6-3 5.447 2.724A1 1 0 0121 7.618v10.764a1 1 0 01-1.447.894L15 17l-6 3z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><h3>Choose Your Classes</h3><p>Take only the topics you actually need, whenever they come up on the schedule.</p></div>
         </div>
-        <div class="diff-card">
-          <div class="diff-card__icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <h3>Complete the Program</h3>
-          <p>Attend all 20 modules when you want the full curriculum, at a discount over paying per class.</p>
+        <div class="feature-row">
+          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><h3>Complete the Program</h3><p>Attend all 20 modules when you want the full curriculum, at a discount over paying per class.</p></div>
         </div>
       </div>
       <div class="gs-stat-strip">
@@ -750,18 +818,19 @@
   ════════════════════════════════════════════════════════════ -->
   <section class="section" style="background:#0b1627;padding:60px 0" id="full-pack">
     <div class="container">
-      <div style="max-width:640px;margin:0 auto 32px;text-align:center">
-        <div class="section__eyebrow" style="display:flex;justify-content:center">Want the Complete Program?</div>
-        <h2 class="section__title" style="margin-bottom:0">20 live modules<br/><em class="accent">— $400.</em></h2>
-      </div>
-      <div style="background:linear-gradient(145deg,#162C4F,#0d1e35);border:1.5px solid rgba(244,180,0,0.3);border-radius:20px;padding:36px 40px;max-width:560px;margin:0 auto 24px;box-shadow:0 20px 56px rgba(0,0,0,0.35)">
-        <div style="display:flex;justify-content:space-between;font-size:15px;color:rgba(255,255,255,0.6);margin-bottom:12px"><span>20 classes at $25</span><span>$500</span></div>
-        <div style="display:flex;justify-content:space-between;font-size:15px;color:rgba(255,255,255,0.6);margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.1)"><span>Complete program</span><span>$400</span></div>
-        <div style="display:flex;justify-content:space-between;font-size:18px;color:var(--gold);font-weight:800"><span>You save</span><span>$100 (20%)</span></div>
-      </div>
-      <div style="max-width:560px;margin:0 auto;text-align:center">
-        <a href="portal-login.html?view=signup&offer=ground-school-pack" class="btn btn--primary" data-apx-cta data-apx-cta-location="full_pack" style="display:inline-block;margin-bottom:18px">Enroll in Complete Ground School</a>
-        <p style="color:rgba(255,255,255,0.5);font-size:13px;margin:0;line-height:1.7">The $25 individual-class option is always available. The complete program is simply the best value if you want all 20.</p>
+      <div class="fullpack-split">
+        <div class="fullpack-split__copy">
+          <div class="section__eyebrow">Want the Complete Program?</div>
+          <h2 class="section__title" style="margin-bottom:14px">20 live modules<br/><em class="accent">— $400.</em></h2>
+          <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.8;margin:0 0 24px;max-width:420px">The $25 individual-class option is always available. The complete program is simply the best value if you want all 20.</p>
+          <a href="portal-login.html?view=signup&offer=ground-school-pack" class="btn btn--primary" data-apx-cta data-apx-cta-location="full_pack">Enroll in Complete Ground School</a>
+        </div>
+        <div class="fullpack-split__card">
+          <div class="fullpack-split__ribbon">Best Value</div>
+          <div style="display:flex;justify-content:space-between;font-size:15px;color:rgba(255,255,255,0.6);margin-bottom:12px"><span>20 classes at $25</span><span>$500</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:15px;color:rgba(255,255,255,0.6);margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.1)"><span>Complete program</span><span>$400</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:18px;color:var(--gold);font-weight:800"><span>You save</span><span>$100 (20%)</span></div>
+        </div>
       </div>
     </div>
   </section>
@@ -776,41 +845,34 @@
         <h2 class="section__title">Seven phases.<br/><em class="accent">One complete pilot.</em></h2>
         <p class="section__desc">Students progress through seven structured training phases — from the fundamentals of flight to checkride-day confidence — building on each layer as they go.</p>
       </div>
-      <div class="phase-timeline" style="max-width:1040px;margin:0 auto">
-        <div class="phase-card">
-          <div class="phase-num">01</div>
-          <div class="phase-title">Pilot Foundations</div>
-          <div class="phase-sub">Aero · Systems · Certificates</div>
+      <div class="phase-fan" id="phaseFan">
+        <div class="phase-fan__card" style="--i:0" role="button" tabindex="0" data-phase="1">
+          <div class="phase-fan__row"><div class="phase-num">01</div><div><div class="phase-title">Pilot Foundations</div><div class="phase-sub">Aero · Systems · Certificates</div></div></div>
+          <div class="phase-fan__hint">View Phase 1 curriculum ↓</div>
         </div>
-        <div class="phase-card">
-          <div class="phase-num">02</div>
-          <div class="phase-title">Airspace &amp; Regulations</div>
-          <div class="phase-sub">FARs · Airspace · Airports</div>
+        <div class="phase-fan__card" style="--i:1" role="button" tabindex="0" data-phase="2">
+          <div class="phase-fan__row"><div class="phase-num">02</div><div><div class="phase-title">Airspace &amp; Regulations</div><div class="phase-sub">FARs · Airspace · Airports</div></div></div>
+          <div class="phase-fan__hint">View Phase 2 curriculum ↓</div>
         </div>
-        <div class="phase-card">
-          <div class="phase-num">03</div>
-          <div class="phase-title">Navigation</div>
-          <div class="phase-sub">Charts · DR · GPS · VOR</div>
+        <div class="phase-fan__card" style="--i:2" role="button" tabindex="0" data-phase="3">
+          <div class="phase-fan__row"><div class="phase-num">03</div><div><div class="phase-title">Navigation</div><div class="phase-sub">Charts · DR · GPS · VOR</div></div></div>
+          <div class="phase-fan__hint">View Phase 3 curriculum ↓</div>
         </div>
-        <div class="phase-card">
-          <div class="phase-num">04</div>
-          <div class="phase-title">Weather</div>
-          <div class="phase-sub">Theory · Products · ADM</div>
+        <div class="phase-fan__card" style="--i:3" role="button" tabindex="0" data-phase="4">
+          <div class="phase-fan__row"><div class="phase-num">04</div><div><div class="phase-title">Weather</div><div class="phase-sub">Theory · Products · ADM</div></div></div>
+          <div class="phase-fan__hint">View Phase 4 curriculum ↓</div>
         </div>
-        <div class="phase-card">
-          <div class="phase-num">05</div>
-          <div class="phase-title">Performance &amp; Planning</div>
-          <div class="phase-sub">W&amp;B · Charts · XC Planning</div>
+        <div class="phase-fan__card" style="--i:4" role="button" tabindex="0" data-phase="5">
+          <div class="phase-fan__row"><div class="phase-num">05</div><div><div class="phase-title">Performance &amp; Planning</div><div class="phase-sub">W&amp;B · Charts · XC Planning</div></div></div>
+          <div class="phase-fan__hint">View Phase 5 curriculum ↓</div>
         </div>
-        <div class="phase-card">
-          <div class="phase-num">06</div>
-          <div class="phase-title">Risk Management</div>
-          <div class="phase-sub">ADM · Human Factors · Emerg.</div>
+        <div class="phase-fan__card" style="--i:5" role="button" tabindex="0" data-phase="6">
+          <div class="phase-fan__row"><div class="phase-num">06</div><div><div class="phase-title">Risk Management</div><div class="phase-sub">ADM · Human Factors · Emerg.</div></div></div>
+          <div class="phase-fan__hint">View Phase 6 curriculum ↓</div>
         </div>
-        <div class="phase-card" style="border-right:none">
-          <div class="phase-num">07</div>
-          <div class="phase-title">Checkride Success</div>
-          <div class="phase-sub">ACS · Mock Oral Exam</div>
+        <div class="phase-fan__card" style="--i:6" role="button" tabindex="0" data-phase="7">
+          <div class="phase-fan__row"><div class="phase-num">07</div><div><div class="phase-title">Checkride Success</div><div class="phase-sub">ACS · Mock Oral Exam</div></div></div>
+          <div class="phase-fan__hint">View Phase 7 curriculum ↓</div>
         </div>
       </div>
     </div>
@@ -1279,6 +1341,44 @@
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.click(); }
       });
     });
+
+    // ── Program Overview phase-fan: cascading scroll-reveal + click
+    // jumps to and opens the matching real Phase in the Full
+    // Curriculum accordion below, instead of duplicating that content
+    // here. ──
+    (function () {
+      var fan = document.getElementById('phaseFan');
+      if (!fan) return;
+      if ('IntersectionObserver' in window) {
+        var observer = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              fan.classList.add('in-view');
+              observer.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.15 });
+        observer.observe(fan);
+      } else {
+        fan.classList.add('in-view');
+      }
+
+      var cards = fan.querySelectorAll('.phase-fan__card');
+      cards.forEach(function (card) {
+        function activate() {
+          cards.forEach(function (c) { c.classList.toggle('is-active', c === card); });
+          var targetHeader = document.querySelector('.phase-section__header[data-phase="' + card.dataset.phase + '"]');
+          if (targetHeader) {
+            if (targetHeader.getAttribute('aria-expanded') !== 'true') targetHeader.click();
+            targetHeader.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
+        card.addEventListener('click', activate);
+        card.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); }
+        });
+      });
+    })();
 
     if (window.apexTrack) apexTrack('landing_page_viewed', { product: 'ground_school_private_pilot' });
 
