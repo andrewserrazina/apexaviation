@@ -1613,6 +1613,7 @@
       var dayLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
       function jumpToClassCard(row) {
+        if (window.gtag) gtag('event', 'ground_school_cta_click', { location: 'calendar_event', class_topic: row.module_title || undefined, class_id: row.id });
         setView('list');
         var el = document.getElementById('gs-class-' + row.id);
         if (!el) return;
@@ -1695,7 +1696,10 @@
       }
 
       document.querySelectorAll('#gsViewTabs .gs-view-tab').forEach(function (tab) {
-        tab.addEventListener('click', function () { setView(tab.dataset.gsView); });
+        tab.addEventListener('click', function () {
+          if (window.gtag) gtag('event', 'ground_school_cta_click', { location: 'view_tab_' + tab.dataset.gsView });
+          setView(tab.dataset.gsView);
+        });
       });
 
       function renderClass(row) {
