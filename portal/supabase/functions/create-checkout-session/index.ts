@@ -627,6 +627,19 @@ serve(async (req) => {
         .single()
       if (gsErr || !groundSession) return jsonError('Ground school session not found', 404)
 
+      // Mirrors the scheduledClassId branch's pre-check above -- this legacy
+      // path never had one, so a member who already paid could reopen
+      // Ground School and get charged a second time before the webhook's
+      // own dedup guard (confirm_legacy_ground_registration, v63) ever ran.
+      const { data: existingRegistration } = await supabase
+        .from('ground_registrations')
+        .select('id')
+        .eq('session_id', sessionId)
+        .ilike('email', email)
+        .eq('payment_status', 'paid')
+        .maybeSingle()
+      if (existingRegistration) return jsonError('This email is already registered for this session', 409)
+
       const when = new Date(groundSession.scheduled_at).toLocaleString('en-US', {
         weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
       })
