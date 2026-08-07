@@ -792,6 +792,38 @@
   var groundSchoolLoaded = false;
   var activeGroundSession = null;
 
+  // Admin scheduling only offers 5 fixed IANA zones (AdminGroundSchoolSchedule.jsx
+  // TIME_ZONES) -- scheduled_ground_classes.class_date/start_time are a wall-clock
+  // time IN THAT ZONE, not the viewer's local zone. `new Date(class_date+'T'+
+  // start_time)` silently parses that wall-clock string as if it were already in
+  // the browser's own timezone, which is only correct for a Central-time viewer.
+  // This converts a wall-clock date/time + IANA zone into the real UTC instant by
+  // asking what that same instant looks like in the target zone vs. UTC and
+  // correcting for the difference -- handles each zone's own DST rules correctly
+  // since toLocaleString reflects the actual offset in effect on that date.
+  function tzOffsetMs(instant, timeZone) {
+    var parts = {};
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: timeZone, hourCycle: 'h23',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    }).formatToParts(instant).forEach(function (p) { parts[p.type] = p.value; });
+    var asUtc = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+    return asUtc - instant.getTime();
+  }
+
+  // Converts a class's wall-clock date/time + IANA zone (scheduled_ground_
+  // classes.timezone) into the real UTC instant. A single offset guess can
+  // land on the wrong side of a DST transition, so this takes a second pass
+  // using the first guess's instant to re-derive the offset -- only matters
+  // for the ~1hr/year transition window, but it's free to get right.
+  function zonedWallClockToUtc(dateStr, timeStr, timeZone) {
+    var naiveUtc = new Date(dateStr + 'T' + timeStr + 'Z');
+    if (!timeZone) return naiveUtc;
+    var guess = new Date(naiveUtc.getTime() - tzOffsetMs(naiveUtc, timeZone));
+    return new Date(naiveUtc.getTime() - tzOffsetMs(guess, timeZone));
+  }
+
   function fmtSessionDate(iso) {
     return new Date(iso).toLocaleString('en-US', {
       weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
@@ -815,7 +847,7 @@
 
     Promise.all([
       apexSupabase.from('ground_sessions')
-        .select('*, ground_registrations(id, is_waitlisted)')
+        .select('*')
         .gte('scheduled_at', new Date().toISOString())
         .order('scheduled_at'),
       // Admin-scheduled Private Pilot curriculum classes
@@ -829,28 +861,52 @@
         .eq('status', 'published')
         .gte('class_date', today)
         .order('class_date')
-        .order('start_time')
+        .order('start_time'),
+      // Real per-session confirmed counts (v63) -- NOT the embedded
+      // `ground_registrations(id, is_waitlisted)` select this used to
+      // use, which silently returned only the CALLER's own row (RLS on
+      // the embedded table), making every member see a confirmed-count
+      // of 0 or 1 regardless of the real headcount.
+      apexSupabase.rpc('get_legacy_ground_session_confirmed_counts')
     ]).then(function (results) {
+      var confirmedCounts = {};
+      (results[2].data || []).forEach(function (row) { confirmedCounts[row.session_id] = row.confirmed_count; });
+
       var legacy = (results[0].data || []).map(function (s) {
-        var confirmed = (s.ground_registrations || []).filter(function (r) { return !r.is_waitlisted; }).length;
+        var confirmed = confirmedCounts[s.id] || 0;
+        var alreadyRegistered = myGroundRegistrations.some(function (r) {
+          return r.session_id === s.id && r.payment_status !== 'refunded' && r.payment_status !== 'canceled';
+        });
         return {
           kind: 'legacy',
           id: s.id,
           title: s.title,
           category: s.category || 'General',
           scheduled_at: s.scheduled_at,
-          spotsLeft: s.max_students - confirmed
+          spotsLeft: s.max_students - confirmed,
+          alreadyRegistered: alreadyRegistered,
+          packCovers: false
         };
       });
       var scheduled = (results[1].data || []).map(function (s) {
+        var alreadyRegistered = myScheduledEnrollments.some(function (e) {
+          return e.scheduled_ground_class_id === s.id && e.attendance_status !== 'canceled';
+        });
         return {
           kind: 'scheduled_class',
           id: s.id,
           courseId: s.course_id,
           title: s.title,
           category: s.module_title || 'Private Pilot',
-          scheduled_at: new Date(s.class_date + 'T' + s.start_time).toISOString(),
-          spotsLeft: s.capacity - s.enrolled_count
+          // Wall-clock class_date/start_time are in the class's own
+          // timezone column, not the viewer's -- convert to a true UTC
+          // instant so every render (Cards/Calendar/Week/modal) shows
+          // the correct time for whoever is looking at it, not the
+          // class's own local time mislabeled as the viewer's.
+          scheduled_at: zonedWallClockToUtc(s.class_date, s.start_time, s.timezone).toISOString(),
+          spotsLeft: s.capacity - s.enrolled_count,
+          alreadyRegistered: alreadyRegistered,
+          packCovers: s.course_id === 'PPL' && member && member.groundSchoolPackUnlocked
         };
       });
       groundSchoolSessions = legacy.concat(scheduled).sort(function (a, b) {
@@ -895,20 +951,16 @@
     listEl.className = 'portal-grid portal-grid--2';
     groundSchoolSessions.forEach(function (s) {
       var full = s.spotsLeft <= 0;
-      var packCovers = s.courseId === 'PPL' && member && member.groundSchoolPackUnlocked;
-      var alreadyRegistered = s.kind === 'scheduled_class' && myScheduledEnrollments.some(function (e) {
-        return e.scheduled_ground_class_id === s.id && e.attendance_status !== 'canceled';
-      });
-      var registerLabel = alreadyRegistered ? 'Already Registered' : (packCovers ? 'Register — Included in Your Pack' : (full ? 'Join Waitlist — $25' : 'Register — $25'));
+      var registerLabel = s.alreadyRegistered ? 'Already Registered' : (s.packCovers ? 'Register — Included in Your Pack' : (full ? 'Join Waitlist — $25' : 'Register — $25'));
       var card = document.createElement('div');
       card.className = 'portal-card';
       card.innerHTML =
         '<div class="portal-header__eyebrow" style="margin-bottom:8px">' + s.category.toUpperCase() + '</div>' +
         '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">' + s.title + '</h3>' +
         '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:4px">' + fmtSessionDate(s.scheduled_at) + '</p>' +
-        '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-bottom:16px">' + (full && !packCovers ? 'Full — join the waitlist' : s.spotsLeft + ' spot' + (s.spotsLeft === 1 ? '' : 's') + ' left') + '</p>' +
-        '<button class="btn btn--primary" data-register style="width:100%"' + (alreadyRegistered ? ' disabled' : '') + '>' + registerLabel + '</button>';
-      if (!alreadyRegistered) card.querySelector('[data-register]').addEventListener('click', function () { openGroundSchoolModal(s); });
+        '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-bottom:16px">' + (full && !s.packCovers ? 'Full — join the waitlist' : s.spotsLeft + ' spot' + (s.spotsLeft === 1 ? '' : 's') + ' left') + '</p>' +
+        '<button class="btn btn--primary" data-register style="width:100%"' + (s.alreadyRegistered ? ' disabled' : '') + '>' + registerLabel + '</button>';
+      if (!s.alreadyRegistered) card.querySelector('[data-register]').addEventListener('click', function () { openGroundSchoolModal(s); });
       listEl.appendChild(card);
     });
   }
@@ -944,7 +996,7 @@
         '<span class="gs-calendar__cell-num">' + day + '</span>';
       sessionsOnDay(day).forEach(function (s) {
         html += '<div class="gs-cal-event" data-gs-event="' + s.id + '">' +
-          '<span>' + new Date(s.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '</span>' +
+          '<span>' + new Date(s.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + (s.alreadyRegistered ? ' · Registered' : '') + '</span>' +
           '<span>' + s.title + '</span></div>';
       });
       html += '</div>';
@@ -992,8 +1044,8 @@
           html += '<div class="gs-week-row">' +
             '<div><span class="gs-week-row__title">' + s.title + '</span>' +
             '<span class="gs-week-row__time">' + new Date(s.scheduled_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '</span></div>' +
-            '<button type="button" class="btn btn--ghost" data-gs-event="' + s.id + '" style="padding:6px 14px;font-size:12px">' +
-            (s.spotsLeft <= 0 ? 'Waitlist' : 'Sign Up') + '</button></div>';
+            '<button type="button" class="btn btn--ghost" data-gs-event="' + s.id + '" style="padding:6px 14px;font-size:12px"' + (s.alreadyRegistered ? ' disabled' : '') + '>' +
+            (s.alreadyRegistered ? 'Registered' : (s.spotsLeft <= 0 ? 'Waitlist' : 'Sign Up')) + '</button></div>';
         });
       }
       html += '</div>';
@@ -1032,6 +1084,20 @@
     groundSchoolModalTitle.textContent = s.title;
     groundSchoolModalWhen.textContent = fmtSessionDate(s.scheduled_at);
     groundSchoolModalError.classList.remove('show');
+    // Single defense-in-depth check for "already registered," covering
+    // Calendar/Week's click-to-open paths too -- those don't check
+    // alreadyRegistered before calling this (unlike Cards, which never
+    // attaches the click handler in the first place), so without this a
+    // member could still reach the paid-checkout CTA from those views.
+    if (s.alreadyRegistered) {
+      groundSchoolModalRedeemBtn.style.display = 'none';
+      groundSchoolModalPackBtn.style.display = 'none';
+      groundSchoolModalCta.style.display = 'none';
+      groundSchoolModalError.textContent = 'You\'re already registered for this class.';
+      groundSchoolModalError.classList.add('show');
+      groundSchoolModalOverlay.classList.add('show');
+      return;
+    }
     // redeem_referral_reward() (v24) only spends against the legacy
     // ground_sessions/ground_registrations path -- not wired to
     // scheduled_ground_classes, so the option isn't offered there.
@@ -1039,9 +1105,8 @@
     // A member with the $400 full-course pack never needs the $25 CTA
     // for a Private Pilot class -- swap it for the pack-covered button
     // instead of offering both.
-    var packCovers = s.courseId === 'PPL' && member && member.groundSchoolPackUnlocked;
-    groundSchoolModalPackBtn.style.display = packCovers ? 'block' : 'none';
-    groundSchoolModalCta.style.display = packCovers ? 'none' : 'block';
+    groundSchoolModalPackBtn.style.display = s.packCovers ? 'block' : 'none';
+    groundSchoolModalCta.style.display = s.packCovers ? 'none' : 'block';
     groundSchoolModalOverlay.classList.add('show');
   }
   function closeGroundSchoolModal() { groundSchoolModalOverlay.classList.remove('show'); }
@@ -4476,16 +4541,19 @@
       return new Date(b.session.scheduled_at) - new Date(a.session.scheduled_at);
     })[0];
 
-    var title, whenText;
+    var title, whenText, meetingUrl;
     if (scheduled) {
       title = scheduled.class_title;
-      whenText = new Date(scheduled.class_date + 'T' + scheduled.start_time).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      whenText = zonedWallClockToUtc(scheduled.class_date, scheduled.start_time, scheduled.timezone).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      meetingUrl = scheduled.meeting_url;
     } else if (legacy) {
       title = legacy.session.title;
       whenText = new Date(legacy.session.scheduled_at).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      meetingUrl = null;
     } else {
       title = null;
       whenText = null;
+      meetingUrl = null;
     }
 
     el.hidden = false;
@@ -4493,6 +4561,7 @@
       '<div class="portal-header__eyebrow" style="margin-bottom:8px">Registration Confirmed</div>' +
       '<h3 style="color:#fff;font-size:19px;font-weight:800;margin-bottom:10px">You\'re registered.</h3>' +
       (title ? '<p style="color:rgba(255,255,255,0.7);font-size:14px;margin-bottom:4px"><strong style="color:#fff">' + title + '</strong></p><p style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:16px">' + whenText + '</p>' : '<p style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:16px">Check your email for the exact class time and any prep materials.</p>') +
+      (meetingUrl ? '<a href="' + meetingUrl + '" target="_blank" rel="noopener" class="btn btn--primary" style="width:100%;margin-bottom:14px">Join the Class →</a>' : '') +
       '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:0 0 14px" />' +
       '<p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:12px">Enjoy Apex Advantage? Your class is part of the same live Ground School curriculum. Students who want the complete program can enroll in the Full Ground School.</p>' +
       '<button type="button" class="btn btn--ghost" id="gsRegistrationSuccessFullPackBtn">Explore Full Ground School</button>';
@@ -4515,7 +4584,9 @@
 
     var totalLabel = groundSchoolModuleCount > 0 ? groundSchoolModuleCount : '—';
     var nextHtml = next
-      ? '<p style="color:rgba(255,255,255,0.6);font-size:14px"><strong style="color:#fff">Next class:</strong> ' + next.class_title + ' — ' + new Date(next.class_date + 'T' + next.start_time).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + '</p>'
+      ? '<p style="color:rgba(255,255,255,0.6);font-size:14px"><strong style="color:#fff">Next class:</strong> ' + next.class_title + ' — ' + zonedWallClockToUtc(next.class_date, next.start_time, next.timezone).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) +
+        (next.meeting_url ? ' &middot; <a href="' + next.meeting_url + '" target="_blank" rel="noopener" style="color:#fff;text-decoration:underline">Join link</a>' : '') +
+        '</p>'
       : '<p style="color:rgba(255,255,255,0.5);font-size:14px">No upcoming class registered yet — register for your next session below.</p>';
 
     el.innerHTML =
