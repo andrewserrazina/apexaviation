@@ -248,7 +248,7 @@ async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Che
   if (scheduledClassId) {
     const { data: scheduledClass } = await supabase
       .from('scheduled_ground_classes')
-      .select('id, title, lesson_title, class_date, start_time, timezone')
+      .select('id, title, lesson_title, class_date, start_time, timezone, meeting_url')
       .eq('id', scheduledClassId)
       .maybeSingle()
 
@@ -298,11 +298,19 @@ async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Che
         })
       : ''
     const title = scheduledClass?.title || 'Ground School'
+    // meeting_url is required by the DB for any class that reached
+    // 'published' (supabase-portal-schema-v15.sql), but nothing in this
+    // codebase ever emailed or displayed it to the student before this --
+    // they'd have no way to know how to actually join the class they paid for.
+    const joinLinkHtml = scheduledClass?.meeting_url
+      ? `<a href="${scheduledClass.meeting_url}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Join the Class →</a>`
+      : ''
 
     await sendEmail(supabase, email, `You're registered — ${title}`,
       template(`
         <h2 style="color:#F4B400;margin:0 0 4px;">You're confirmed, ${fullName.split(' ')[0]}!</h2>
         <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">You're registered for <strong style="color:#fff">${title}</strong> on ${when}. See you there.</p>
+        ${joinLinkHtml}
       `))
     return
   }
