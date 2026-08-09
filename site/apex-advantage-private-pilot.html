@@ -526,6 +526,13 @@
        component (pages.css) -- does not affect other pages using it. */
     .social-proof-strip__quote p { font-size: 16px; color: rgba(255,255,255,0.85); }
     .social-proof-strip__quote cite { font-size: 14px; font-weight: 800; }
+    /* This page uses 3 similarly-short quotes instead of the shared
+       component's usual 2, so it needs its own column count -- pages.css
+       still owns the <720px single-column collapse. */
+    .gs-social-proof-quotes { grid-template-columns: repeat(3, 1fr); max-width: 1040px; }
+    @media (max-width: 720px) {
+      .gs-social-proof-quotes { grid-template-columns: 1fr; }
+    }
 
     /* Live-vs-prerecorded comparison */
     .gs-compare-grid {
@@ -645,7 +652,7 @@
        dpe-questions.html .cp-hero-grid). Single primary CTA ($25),
        $400 kept as a small secondary link, no fabricated scarcity.
   ════════════════════════════════════════════════════════════ -->
-  <section class="page-hero" style="padding-top:92px;padding-bottom:0">
+  <section class="page-hero" style="padding-top:92px;padding-bottom:64px">
     <div class="page-hero__bg-text">GROUND SCHOOL</div>
     <div class="container page-hero__inner">
       <div class="gs-hero-grid">
@@ -726,14 +733,18 @@
       <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
     </div>
     <p class="social-proof-strip__caption">Real feedback from Apex Aviation students</p>
-    <div class="social-proof-strip__quotes">
+    <div class="social-proof-strip__quotes gs-social-proof-quotes">
       <blockquote class="social-proof-strip__quote">
         <p>"Explains subjects in great detail. Definitely will attend his courses again."</p>
         <cite>— Patricia M.</cite>
       </blockquote>
       <blockquote class="social-proof-strip__quote">
-        <p>"I had an amazing experience training with Andrew as my Certified Flight Instructor. From day one, he made everything feel approachable and stress-free, even when learning some of the more challenging concepts. He's incredibly knowledgeable, patient, and knows how to explain things in a way that actually sticks."</p>
-        <cite>— Alyssa K.</cite>
+        <p>"Excellent Instructor! I had a great time with Andrew on his class! Looking forward to his VOR-focused class in the near future."</p>
+        <cite>— Victor G.</cite>
+      </blockquote>
+      <blockquote class="social-proof-strip__quote">
+        <p>"Andrew was great, knowledgeable, friendly, and made you feel comfortable in the plane. I highly recommend him for your pilot training needs."</p>
+        <cite>— Alex B.</cite>
       </blockquote>
     </div>
   </div>
