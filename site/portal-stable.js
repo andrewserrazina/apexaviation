@@ -4398,6 +4398,60 @@
     window.print();
   });
 
+  // ── Delete Account ──────────────────────────────────────────────
+  // Required for App Store submission (Guideline 5.1.1(v): any app with
+  // account creation must offer in-app account deletion). Type-to-confirm
+  // with the member's own email, since this is irreversible -- calls the
+  // delete-account edge function, which anonymizes identity fields,
+  // erases AI chat/Guided Notes content, cancels any active subscription,
+  // and soft-deletes the auth account server-side.
+  document.getElementById('openDeleteAccountBtn').addEventListener('click', function () {
+    var overlay = document.getElementById('deleteAccountOverlay');
+    overlay.hidden = false;
+    overlay.innerHTML =
+      '<div class="portal-practice-panel">' +
+        '<button class="portal-practice-panel__close" id="deleteAccountCloseBtn" type="button">' +
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
+        '</button>' +
+        '<h3 style="color:#f87171;font-size:19px;font-weight:700;margin-bottom:14px">Delete your account?</h3>' +
+        '<p style="color:rgba(255,255,255,0.6);font-size:14px;line-height:1.7;margin-bottom:18px">This immediately disables your login, cancels any active subscription, and erases your name, email, and AI chat history. Purchase and Ground School attendance records are kept in anonymized form for accounting purposes. <strong style="color:#fff">This can\'t be undone.</strong></p>' +
+        '<div class="form-group" style="margin-bottom:18px"><label style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px">Type your email (' + escapeHtmlSafe(member.email) + ') to confirm</label>' +
+          '<input type="text" id="deleteAccountConfirmInput" autocomplete="off" style="width:100%;padding:11px 14px;border:1.5px solid rgba(248,113,113,0.3);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none" /></div>' +
+        '<button class="btn btn--full" id="deleteAccountConfirmBtn" disabled style="background:#f87171;color:#1a0a0a;opacity:0.5;cursor:not-allowed">Permanently Delete My Account</button>' +
+        '<p id="deleteAccountError" class="portal-modal__error"></p>' +
+      '</div>';
+    document.getElementById('deleteAccountCloseBtn').addEventListener('click', function () { overlay.hidden = true; });
+    var input = document.getElementById('deleteAccountConfirmInput');
+    var confirmBtn = document.getElementById('deleteAccountConfirmBtn');
+    input.addEventListener('input', function () {
+      var matches = input.value.trim().toLowerCase() === String(member.email || '').trim().toLowerCase();
+      confirmBtn.disabled = !matches;
+      confirmBtn.style.opacity = matches ? '1' : '0.5';
+      confirmBtn.style.cursor = matches ? 'pointer' : 'not-allowed';
+    });
+    confirmBtn.addEventListener('click', function () {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Deleting…';
+      var errorEl = document.getElementById('deleteAccountError');
+      errorEl.classList.remove('show');
+      apexSupabase.functions.invoke('delete-account', {
+        headers: { Authorization: 'Bearer ' + accessToken }
+      }).then(function (res) {
+        if (res.error || !res.data || !res.data.success) {
+          return extractInvokeError(res).then(function (msg) {
+            errorEl.textContent = msg || 'Could not delete your account. Please try again or contact info@apexaviationtx.com.';
+            errorEl.classList.add('show');
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Permanently Delete My Account';
+          });
+        }
+        apexSupabase.auth.signOut().then(function () {
+          window.location.href = 'portal-login.html?deleted=1';
+        });
+      });
+    });
+  });
+
   document.getElementById('openPassedFormBtn').addEventListener('click', function () {
     var overlay = document.getElementById('passedOverlay');
     overlay.hidden = false;

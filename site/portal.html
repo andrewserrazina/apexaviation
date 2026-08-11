@@ -1605,9 +1605,16 @@
           </div>
           <button class="btn btn--primary" id="openPassedFormBtn">🎉 I Passed My Checkride</button>
         </div>
+
+        <div class="portal-card portal-danger-zone" style="margin-top:20px">
+          <h3 style="color:#f87171;font-size:16px;font-weight:700;margin-bottom:6px">Delete Account</h3>
+          <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:16px">Permanently disables your login, cancels any active subscription, and erases your name, email, and AI chat history. Purchase and Ground School attendance records are kept in anonymized form for accounting purposes. This can't be undone.</p>
+          <button class="btn btn--ghost" id="openDeleteAccountBtn" style="border-color:rgba(248,113,113,0.4);color:#f87171">Delete My Account</button>
+        </div>
       </section>
 
       <div id="passedOverlay" class="portal-practice-overlay" hidden></div>
+      <div id="deleteAccountOverlay" class="portal-practice-overlay" hidden></div>
 
       <!-- Training Report -- print/PDF-oriented overlay, deliberately
            light-on-white regardless of the portal's dark theme (it's meant
