@@ -106,7 +106,7 @@
     <div class="container page-hero__inner">
       <div class="section__eyebrow">Legal</div>
       <h1 class="page-hero__title">Privacy Policy</h1>
-      <p class="page-hero__sub">Last updated: June 2026</p>
+      <p class="page-hero__sub">Last updated: August 2026</p>
     </div>
   </section>
 
@@ -127,6 +127,18 @@
         </ul>
         <p style="margin-bottom:32px">We do not collect payment information directly — billing is handled through third-party processors.</p>
 
+        <h2 style="color:var(--white);font-size:22px;font-weight:800;margin:0 0 12px">The Apex Advantage member portal</h2>
+        <p style="margin-bottom:16px">If you create an Apex Advantage member portal account (web or the Apex Advantage mobile app), we collect additional information beyond what's listed above:</p>
+        <ul style="margin:0 0 20px;padding-left:24px">
+          <li style="margin-bottom:8px"><strong>Account information</strong> — your name and email (password is handled entirely by our authentication provider, Supabase, and never stored in our own database).</li>
+          <li style="margin-bottom:8px"><strong>Profile details</strong> — certificate status, checkride timing/date, and next rating interest, if you provide them.</li>
+          <li style="margin-bottom:8px"><strong>Payment metadata</strong> — we never see or store your card number. Stripe (our payment processor) handles all card data directly; we store only transaction metadata such as amount, product tier, and Stripe's own reference IDs.</li>
+          <li style="margin-bottom:8px"><strong>AI feature conversations</strong> — messages you send to Ask Andrew or AI DPE Practice are sent to Anthropic (which provides the underlying AI model) to generate a response, and the conversation is stored in our database so you can access your own history.</li>
+          <li style="margin-bottom:8px"><strong>Referral information</strong> — if you refer a friend, we collect their email address to track your referral reward.</li>
+          <li style="margin-bottom:8px"><strong>Study and usage data</strong> — which questions and scenarios you've studied, study time, streaks, achievements, and similar progress data, used to power your dashboard and readiness tracking.</li>
+        </ul>
+        <p style="margin-bottom:32px">Purchase/signup analytics events we send to Google Analytics and Meta only include product name, price, and currency — never your name or email. Google, Meta, and Microsoft Clarity (see below) may still collect standard device or cookie identifiers through their own SDKs, independent of what we explicitly send them.</p>
+
         <h2 style="color:var(--white);font-size:22px;font-weight:800;margin:0 0 12px">How we use your information</h2>
         <p style="margin-bottom:16px">We use the information we collect to:</p>
         <ul style="margin:0 0 32px;padding-left:24px">
@@ -144,23 +156,35 @@
           <li style="margin-bottom:8px"><strong>Google Analytics 4</strong> — collects anonymized usage data (pages visited, session duration, traffic source) to help us understand how visitors use the site. See <a href="https://policies.google.com/privacy" target="_blank" rel="noopener" style="color:var(--gold)">Google's privacy policy</a>.</li>
           <li style="margin-bottom:8px"><strong>Microsoft Clarity</strong> — records anonymized session heatmaps and click data to help us improve site usability. See <a href="https://privacy.microsoft.com/en-us/privacystatement" target="_blank" rel="noopener" style="color:var(--gold)">Microsoft's privacy policy</a>.</li>
           <li style="margin-bottom:8px"><strong>Google Fonts</strong> — loads typefaces from Google's servers. See <a href="https://policies.google.com/privacy" target="_blank" rel="noopener" style="color:var(--gold)">Google's privacy policy</a>.</li>
+          <li style="margin-bottom:8px"><strong>Stripe</strong> — processes all member portal payments directly; we never see your card details. See <a href="https://stripe.com/privacy" target="_blank" rel="noopener" style="color:var(--gold)">Stripe's privacy policy</a>.</li>
+          <li style="margin-bottom:8px"><strong>Supabase</strong> — hosts the member portal's authentication and database. See <a href="https://supabase.com/privacy" target="_blank" rel="noopener" style="color:var(--gold)">Supabase's privacy policy</a>.</li>
+          <li style="margin-bottom:8px"><strong>Anthropic</strong> — provides the AI model behind Ask Andrew and AI DPE Practice. Messages you send to these features are processed by Anthropic to generate a response. See <a href="https://www.anthropic.com/legal/privacy" target="_blank" rel="noopener" style="color:var(--gold)">Anthropic's privacy policy</a>.</li>
         </ul>
 
         <h2 style="color:var(--white);font-size:22px;font-weight:800;margin:0 0 12px">Cookies &amp; analytics</h2>
         <p style="margin-bottom:32px">This site uses Google Analytics 4 and Microsoft Clarity to collect anonymized data about how visitors interact with our pages. These services may set cookies on your device. You can opt out of Google Analytics using <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener" style="color:var(--gold)">Google's opt-out browser add-on</a>. Third-party services (Google Fonts) may also set their own cookies governed by their respective privacy policies.</p>
 
         <h2 style="color:var(--white);font-size:22px;font-weight:800;margin:0 0 12px">Data retention</h2>
-        <p style="margin-bottom:32px">We retain your contact information for as long as we have an active relationship with you or as required for business purposes. You can request deletion of your data at any time by emailing <a href="mailto:info@apexaviationtx.com" style="color:var(--gold)">info@apexaviationtx.com</a>.</p>
+        <p style="margin-bottom:32px">We retain your contact information for as long as we have an active relationship with you or as required for business purposes. Member portal accounts can be deleted directly in the app (see below) or by emailing <a href="mailto:info@apexaviationtx.com" style="color:var(--gold)">info@apexaviationtx.com</a>.</p>
+
+        <h2 style="color:var(--white);font-size:22px;font-weight:800;margin:0 0 12px">Deleting your member portal account</h2>
+        <p style="margin-bottom:16px">Member portal accounts can be deleted directly in the app: <strong>Account → Delete Account</strong>. This immediately:</p>
+        <ul style="margin:0 0 16px;padding-left:24px">
+          <li style="margin-bottom:8px">Disables your login</li>
+          <li style="margin-bottom:8px">Cancels any active subscription</li>
+          <li style="margin-bottom:8px">Erases your name, email, and AI chat/Guided Notes history</li>
+        </ul>
+        <p style="margin-bottom:32px">Purchase and Ground School attendance records are retained in anonymized form (no longer tied to your name or email) for accounting and legal purposes, consistent with standard financial recordkeeping practice. This action cannot be undone.</p>
 
         <h2 style="color:var(--white);font-size:22px;font-weight:800;margin:0 0 12px">Your rights</h2>
         <p style="margin-bottom:16px">You have the right to:</p>
         <ul style="margin:0 0 32px;padding-left:24px">
           <li style="margin-bottom:8px">Request access to the personal data we hold about you</li>
           <li style="margin-bottom:8px">Request correction of inaccurate data</li>
-          <li style="margin-bottom:8px">Request deletion of your data</li>
+          <li style="margin-bottom:8px">Request or self-service deletion of your data</li>
           <li style="margin-bottom:8px">Unsubscribe from any communications at any time</li>
         </ul>
-        <p style="margin-bottom:32px">To exercise any of these rights, contact us at <a href="mailto:info@apexaviationtx.com" style="color:var(--gold)">info@apexaviationtx.com</a>.</p>
+        <p style="margin-bottom:32px">To exercise any of these rights, contact us at <a href="mailto:info@apexaviationtx.com" style="color:var(--gold)">info@apexaviationtx.com</a>, or use the in-app account deletion described above.</p>
 
         <h2 style="color:var(--white);font-size:22px;font-weight:800;margin:0 0 12px">Changes to this policy</h2>
         <p style="margin-bottom:32px">We may update this privacy policy from time to time. When we do, we'll update the "Last updated" date at the top of this page. Continued use of the site after changes constitutes acceptance of the updated policy.</p>
