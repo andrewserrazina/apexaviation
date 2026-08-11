@@ -969,6 +969,19 @@
 .portal-debrief__domain-verdict--ok { background: rgba(244,180,0,0.14); color: var(--gold-light, #f9d04a); }
 .portal-debrief__domain-verdict--weak { background: rgba(248,113,113,0.14); color: #f87171; }
 .portal-debrief__actions { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+.portal-dpe-history__trend { display: flex; flex-wrap: wrap; gap: 8px; }
+.portal-dpe-history__trend-pill {
+  font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 100px;
+  background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.1);
+}
+.portal-dpe-history__trend-pill--up { background: rgba(74,222,128,0.12); color: #4ade80; border-color: rgba(74,222,128,0.3); }
+.portal-dpe-history__trend-pill--down { background: rgba(248,113,113,0.12); color: #f87171; border-color: rgba(248,113,113,0.3); }
+.portal-dpe-history__session {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 12px 0; border-top: 1px solid rgba(255,255,255,0.07);
+}
+.portal-dpe-history__session-date { color: rgba(255,255,255,0.7); font-size: 13px; }
+.portal-dpe-history__session-meta { color: rgba(255,255,255,0.4); font-size: 12px; margin-top: 2px; }
 @media (max-width: 640px) {
   .portal-debrief__cols { grid-template-columns: 1fr; }
   .portal-chat__bubble { max-width: 90%; }

@@ -4821,6 +4821,65 @@
     };
   }
 
+  // ── AI DPE History ──────────────────────────────────────────────
+  // ai_dpe_sessions has always stored a full transcript + qualitative
+  // debrief per session (v32.sql); this is the first place any of it is
+  // shown back to the member. Trend is derived deterministically by
+  // comparing the two most recent COMPLETED sessions' per-domain verdicts
+  // -- no numeric scoring exists anywhere in the AI DPE pipeline, so this
+  // stays qualitative throughout rather than inventing a percentage.
+  var AI_DPE_VERDICT_RANK = { weak: 0, ok: 1, strong: 2 };
+  var AI_DPE_VERDICT_LABEL = { weak: 'Weak', ok: 'OK', strong: 'Strong' };
+
+  function computeAiDpeTrend() {
+    var completed = myAiDpeSessions.filter(function (s) { return s.status === 'completed' && s.debrief; });
+    if (!completed.length) return [];
+    var latest = completed[0].debrief;
+    var prior = completed[1] ? completed[1].debrief : null;
+    return (latest.perDomain || []).map(function (d) {
+      var priorDomain = prior ? (prior.perDomain || []).filter(function (p) { return p.domain === d.domain; })[0] : null;
+      var direction = 'flat';
+      if (priorDomain && AI_DPE_VERDICT_RANK[d.verdict] > AI_DPE_VERDICT_RANK[priorDomain.verdict]) direction = 'up';
+      else if (priorDomain && AI_DPE_VERDICT_RANK[d.verdict] < AI_DPE_VERDICT_RANK[priorDomain.verdict]) direction = 'down';
+      var text = direction === 'up' ? d.domain + ' improving' : direction === 'down' ? d.domain + ' slipping' : d.domain + ' — ' + AI_DPE_VERDICT_LABEL[d.verdict];
+      return { text: text, direction: direction };
+    });
+  }
+
+  function escapeHtmlSafe(str) {
+    var div = document.createElement('div');
+    div.textContent = str == null ? '' : String(str);
+    return div.innerHTML;
+  }
+
+  function renderAiDpeHistory() {
+    var card = document.getElementById('aiDpeHistoryCard');
+    if (!card) return;
+    if (!myAiDpeSessions.length) { card.hidden = true; return; }
+    card.hidden = false;
+
+    var trend = computeAiDpeTrend();
+    var trendEl = document.getElementById('aiDpeTrendList');
+    trendEl.innerHTML = trend.length
+      ? '<div class="portal-dpe-history__trend">' + trend.map(function (t) {
+          return '<span class="portal-dpe-history__trend-pill' + (t.direction === 'up' ? ' portal-dpe-history__trend-pill--up' : t.direction === 'down' ? ' portal-dpe-history__trend-pill--down' : '') + '">' + escapeHtmlSafe(t.text) + '</span>';
+        }).join('') + '</div>'
+      : '<p style="color:rgba(255,255,255,0.4);font-size:13px">Complete a second session to see a trend by ACS area.</p>';
+
+    var listEl = document.getElementById('aiDpeSessionList');
+    listEl.innerHTML = myAiDpeSessions.slice(0, 5).map(function (s) {
+      var when = new Date(s.started_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      var badge = (s.status === 'completed' && s.debrief && s.debrief.overallReadiness)
+        ? '<span class="portal-debrief__badge portal-debrief__badge--' + escapeHtmlSafe(s.debrief.overallReadiness) + '" style="padding:4px 10px;font-size:11px">' +
+          (s.debrief.overallReadiness === 'ready' ? 'Ready' : s.debrief.overallReadiness === 'not_yet' ? 'Not Yet' : 'Almost') + '</span>'
+        : '<span style="color:rgba(255,255,255,0.4);font-size:12px;text-transform:capitalize">' + escapeHtmlSafe(String(s.status || '').replace('_', ' ')) + '</span>';
+      return '<div class="portal-dpe-history__session">' +
+        '<div><div class="portal-dpe-history__session-date">' + when + '</div>' +
+        '<div class="portal-dpe-history__session-meta">' + (s.questions_asked || 0) + ' question' + (s.questions_asked === 1 ? '' : 's') + '</div></div>' +
+        badge + '</div>';
+    }).join('');
+  }
+
   function renderMyTraining() {
     var plan = computeTrainingPlan();
 
@@ -4899,6 +4958,7 @@
       renderAcsCoverage();
       renderQotd();
       renderMyTraining();
+      renderAiDpeHistory();
       renderRecommendedNextStep();
       renderGroundSchoolProgress();
       renderGroundSchoolRegistrationSuccess();

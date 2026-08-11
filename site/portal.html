@@ -1316,6 +1316,17 @@
           <p>A full simulated oral exam with an AI acting as your DPE — real follow-up questions, no script, and an honest debrief when you're done. Practice as many times as you want.</p>
         </div>
 
+        <!-- AI DPE History -- every session's transcript/debrief has always
+             been saved server-side (ai_dpe_sessions, v32.sql); this is the
+             first UI that reads it back. Hidden entirely for a member with
+             no sessions yet, so the first-time experience is unchanged. -->
+        <div id="aiDpeHistoryCard" class="portal-card" hidden style="margin-bottom:24px;max-width:680px">
+          <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:4px">Your AI DPE History</h3>
+          <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:16px">Every practice session you've run, and how your last two compare by ACS area.</p>
+          <div id="aiDpeTrendList" style="margin-bottom:18px"></div>
+          <div id="aiDpeSessionList"></div>
+        </div>
+
         <div id="aiDpeStart" class="portal-card" style="max-width:560px">
           <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:10px">Before You Begin</h3>
           <p style="color:rgba(255,255,255,0.65);line-height:1.7;font-size:14px;margin-bottom:14px">This works best like the real thing: answer in full sentences, don't look anything up mid-exam, and expect follow-up questions if an answer is vague. A session runs about 8-9 questions across different ACS areas and ends with a readiness debrief — strengths, weak spots, and what to review before your actual checkride.</p>

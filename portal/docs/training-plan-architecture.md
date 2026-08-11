@@ -217,12 +217,21 @@ filtered by `auth.uid()`), fetched into `myAiDpeSessions` in the main
 `loadProgress()` call. This is what makes Training Plan priority #7 ("AI DPE
 if not run recently") possible with real data instead of guessing.
 
-**Deferred:** a dedicated "AI DPE History" view (session list + qualitative
-trend summary, spec section 12) is not built this pass. The data path now
-exists end-to-end (RPC → `myAiDpeSessions`); building the view is
-UI-only work on top of data this pass already wired up. Scoring stays
-qualitative throughout, per the spec's own instruction not to invent
-numbers where the model only produces qualitative verdicts.
+**Built (added later in this same pass):** an "AI DPE History" card
+(`site/portal.html` → `#aiDpeHistoryCard`, inside `section-ai-dpe-practice`)
+showing the member's session list (date, question count, overall-readiness
+badge reusing the existing `.portal-debrief__badge--*` classes) and a
+qualitative trend row. `computeAiDpeTrend()` compares the two most recent
+*completed* sessions' `perDomain` verdicts per domain
+(`weak`/`ok`/`strong`, ranked) and labels each domain "improving,"
+"slipping," or its current verdict — entirely deterministic, no numbers
+invented where the model only ever produced qualitative verdicts. The card
+stays hidden for a member with zero sessions, so a first-time member's
+experience is unchanged. Verified via the same Playwright mock harness with
+two synthetic completed sessions showing one domain improving and one
+slipping — both rendered with correct direction and pill styling, and the
+Training Plan's "AI DPE not done recently" check correctly switched to
+recommending Rapid Fire once a real recent session existed in the mock data.
 
 ## 8. Explicitly deferred (not started this pass)
 
