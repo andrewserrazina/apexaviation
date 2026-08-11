@@ -1460,6 +1460,7 @@
   var myGroundRegistrations = [];
   var myScheduledEnrollments = []; // scheduled_ground_classes-based registrations (v58 get_my_ground_school_enrollments), separate from the legacy myGroundRegistrations above
   var groundSchoolModuleCount = 0; // total published PPL modules -- denominator for Ground School Progress
+  var myAiDpeSessions = []; // most-recent-first, from get_my_recent_ai_dpe_sessions (v64) -- feeds Training Plan + future AI DPE History view
 
   function loadProgress() {
     return Promise.all([
@@ -1481,7 +1482,8 @@
       apexSupabase.from('invoices').select('*').eq('student_id', member.id).order('issued_at', { ascending: false }),
       apexSupabase.from('ground_registrations').select('*, session:ground_sessions(*)').eq('profile_id', member.id),
       apexSupabase.rpc('get_my_ground_school_enrollments'),
-      apexSupabase.rpc('get_ground_school_module_count', { p_course_id: 'PPL' })
+      apexSupabase.rpc('get_ground_school_module_count', { p_course_id: 'PPL' }),
+      apexSupabase.rpc('get_my_recent_ai_dpe_sessions', { p_limit: 10 })
     ]).then(function (results) {
       (results[0].data || []).forEach(function (r) {
         studied[r.question_id] = r.completed;
@@ -1523,6 +1525,7 @@
       myGroundRegistrations = results[16].data || [];
       myScheduledEnrollments = results[17].data || [];
       groundSchoolModuleCount = typeof results[18].data === 'number' ? results[18].data : 0;
+      myAiDpeSessions = results[19].data || [];
     }).catch(function (e) { console.error('Failed to load portal progress', e); });
   }
 
@@ -2422,6 +2425,67 @@
       { code: null, title: null, categories: ['adm'] }
     ] }
   ];
+
+  /* Maps each of the 20 Private Pilot Ground School modules (real IDs/
+     titles from portal/src/data/privatePilotCurriculum.js, mirrored into
+     scheduled_ground_classes.module_id) onto the 11 DPE/scenario topic
+     categories above, plus a related free resource page where one exists.
+     No module<->category mapping existed anywhere in the codebase before
+     this -- built by matching module topic to category topic, same
+     judgment call ACS_TRACKER already makes for "Human Factors" ->
+     'aeromedical' (I.H above). Where a module doesn't map cleanly onto
+     any one category (Aerodynamics, FARs Simplified) the closest fit is
+     used and noted below; two modules (Airplane... wait) -- ACS Mastery
+     and Mock Oral Exam are cumulative review, not tied to one category,
+     so `categories` is empty and `cumulative: true` instead.
+     See docs/training-plan-architecture.md for the full writeup. */
+  var GS_MODULE_CONTENT_MAP = {
+    'PPL-M01': { title: 'Becoming a Pilot', categories: ['eligibility'], freeResource: null },
+    'PPL-M02': { title: 'Aerodynamics', categories: ['performance'], freeResource: null, approximate: true },
+    'PPL-M03': { title: 'Aircraft Systems', categories: ['aircraft-systems'], freeResource: null },
+    'PPL-M04': { title: 'FARs Simplified', categories: ['privileges', 'eligibility'], freeResource: null, approximate: true },
+    'PPL-M05': { title: 'Airspace Mastery', categories: ['airspace'], freeResource: null },
+    'PPL-M06': { title: 'Airport Operations', categories: ['airspace'], freeResource: 'radio-calls' },
+    'PPL-M07': { title: 'Sectional Charts', categories: ['crosscountry'], freeResource: null },
+    'PPL-M08': { title: 'Pilotage & Dead Reckoning', categories: ['crosscountry'], freeResource: null },
+    'PPL-M09': { title: 'Navigation Systems', categories: ['crosscountry'], freeResource: null },
+    'PPL-M10': { title: 'Weather Theory', categories: ['weather'], freeResource: null },
+    'PPL-M11': { title: 'Weather Products', categories: ['weather'], freeResource: null },
+    'PPL-M12': { title: 'Weather Decision Making', categories: ['weather', 'adm'], freeResource: null },
+    'PPL-M13': { title: 'Weight & Balance', categories: ['performance'], freeResource: 'weight-balance' },
+    'PPL-M14': { title: 'Aircraft Performance', categories: ['performance'], freeResource: null },
+    'PPL-M15': { title: 'Cross-Country Planning', categories: ['crosscountry'], freeResource: null },
+    'PPL-M16': { title: 'Aeronautical Decision Making', categories: ['adm'], freeResource: null },
+    'PPL-M17': { title: 'Human Factors', categories: ['aeromedical'], freeResource: null },
+    'PPL-M18': { title: 'Emergency Procedures', categories: ['emergency'], freeResource: 'spin-awareness' },
+    'PPL-M19': { title: 'ACS Mastery', categories: [], freeResource: null, cumulative: true },
+    'PPL-M20': { title: 'Mock Oral Exam', categories: [], freeResource: null, cumulative: true }
+  };
+
+  function getModuleContent(moduleId) {
+    return GS_MODULE_CONTENT_MAP[moduleId] || null;
+  }
+
+  // Ground School companion/Guided Notes entitlement: the $400 pack
+  // unlocks every module (profiles.private_pilot_ground_school_pack_
+  // unlocked, same flag enroll_in_ground_school_via_pack checks
+  // server-side, v57.sql); a $25 single-class purchase only entitles the
+  // one module actually bought -- that fact lives as a row in
+  // scheduled_ground_class_enrollments (surfaced to the client as
+  // myScheduledEnrollments via get_my_ground_school_enrollments, v63.sql),
+  // keyed by lesson_id, not a flag on profiles. This mirrors the exact
+  // per-row entitlement pattern already used for "already registered"
+  // checks in loadGroundSchool() -- see zonedWallClockToUtc's neighbors
+  // above. Client-side gate only; the real boundary is still RLS on
+  // guided_notes once that table's policy is opened past admin-only
+  // (see docs/training-plan-architecture.md).
+  function hasModuleAccess(moduleId) {
+    if (!member) return false;
+    if (member.groundSchoolPackUnlocked) return true;
+    return myScheduledEnrollments.some(function (e) {
+      return e.lesson_id === moduleId && (e.payment_status === 'paid' || e.payment_status === 'ground_school_pack');
+    });
+  }
 
   function taskCoverage(categories) {
     var done = 0, total = 0;
@@ -3837,7 +3901,10 @@
     });
     document.getElementById('welcomeOnboardingPractice').addEventListener('click', function () {
       card.hidden = true;
-      if (member.checkridePrepUnlocked) { showSection('ai-dpe-practice'); } else { openUnlockModal(); }
+      var countdownCard = document.getElementById('checkrideCountdownCard');
+      if (countdownCard) countdownCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      var dateInput = document.getElementById('checkrideDateInput');
+      if (dateInput) dateInput.focus();
     });
     document.getElementById('welcomeOnboardingStudy').addEventListener('click', function () {
       card.hidden = true;
@@ -4499,11 +4566,14 @@
         go: function () { showSection('ground-school'); }
       };
     } else {
+      // Explicitly an upsell card (eyebrow "Get Started"), unlike the
+      // welcome onboarding card -- so a locked AI DPE CTA here is fine,
+      // but the label has to say so; it can't read as a free action.
       content = {
         eyebrow: 'Get Started',
         title: 'Start Practicing for Your Checkride',
         body: 'Practice realistic oral-exam questions with AI DPE Practice and start building confidence answering out loud.',
-        cta: 'Start AI DPE Practice',
+        cta: member.checkridePrepUnlocked ? 'Start AI DPE Practice' : 'Unlock AI DPE Practice — $29',
         go: function () { if (member.checkridePrepUnlocked) showSection('ai-dpe-practice'); else openUnlockModal(); }
       };
     }
@@ -4613,115 +4683,202 @@
     return text.length > max ? text.slice(0, max - 1).trim() + '…' : text;
   }
 
-  function renderMyTraining() {
-    var weakest = weakestCategory();
-    var unstudiedScenario = SCENARIOS.filter(function (s) { return !studied[s.id]; })[0];
+  // Merges both Ground School sources (scheduled_ground_classes via
+  // myScheduledEnrollments, and legacy ground_sessions via
+  // myGroundRegistrations) into one "what's the member's next class"
+  // answer -- the old Next Class card only ever checked the legacy
+  // source, so a member registered only for a modern scheduled class saw
+  // "No registered class yet".
+  function upcomingRegisteredClass() {
+    var now = new Date();
+    var candidates = [];
+    myScheduledEnrollments.forEach(function (e) {
+      if (e.attendance_status === 'canceled') return;
+      if (e.payment_status !== 'paid' && e.payment_status !== 'ground_school_pack') return;
+      var when = zonedWallClockToUtc(e.class_date, e.start_time, e.timezone);
+      if (when > now) candidates.push({ title: e.class_title, when: when, meetingUrl: e.meeting_url, moduleId: e.lesson_id });
+    });
+    myGroundRegistrations.forEach(function (r) {
+      if (!r.session) return;
+      if (r.payment_status === 'refunded' || r.payment_status === 'canceled') return;
+      var when = new Date(r.session.scheduled_at);
+      if (when > now) candidates.push({ title: r.session.title, when: when, meetingUrl: null, moduleId: null });
+    });
+    candidates.sort(function (a, b) { return a.when - b.when; });
+    return candidates[0] || null;
+  }
 
-    var recommendation;
-    if (!member.checkridePrepUnlocked) {
-      // DPE_DATA/SCENARIOS/CATEGORY_META are all empty for a non-unlocked
-      // member (get-premium-content withholds real content server-side),
-      // so none of the below signals are meaningful yet -- recommend the
-      // unlock itself rather than falsely reporting "fully caught up".
-      recommendation = {
-        title: 'Unlock the Checkride Prep System',
-        body: '300+ DPE questions, scenario training, and AI oral exam practice — unlock once to start building real readiness data.',
-        go: function () { openUnlockModal(); }
+  // ── Apex Training Plan ──────────────────────────────────────────
+  // Single source of truth for "what should this member do today,"
+  // superseding what used to be three independently-computed answers
+  // (My Training's Next Best Action, Recommended Next Step, and the
+  // Checkride Countdown card all read the same underlying signals but
+  // never shared logic). Priority order is deliberate and deterministic
+  // -- see docs/training-plan-architecture.md for the full writeup and
+  // the reasoning behind computing this live instead of persisting a
+  // daily_tasks table.
+  //
+  // Every `done` flag reflects a real, already-tracked completion signal
+  // (studied{}, SCENARIOS completion) -- never fabricated. Action-type
+  // tasks (join a class, run AI DPE, Rapid Fire) have no "done" concept
+  // because there's no persisted "did they actually do it today" signal
+  // for those yet; they're always offered as an open action, same as
+  // they were as standalone buttons before this.
+  function computeTrainingPlan() {
+    var next = upcomingRegisteredClass();
+    var hoursToClass = next ? (next.when.getTime() - Date.now()) / 3600000 : null;
+    var classImminent = hoursToClass !== null && hoursToClass <= 24;
+    var checkrideDays = checkrideDate ? Math.ceil((new Date(checkrideDate + 'T00:00:00') - new Date()) / 86400000) : null;
+    var unlocked = !!(member && member.checkridePrepUnlocked);
+    var readinessPct = unlocked ? computeReadiness() : 0;
+    var weakest = unlocked ? weakestCategory() : null;
+
+    var tasks = [];
+    if (classImminent) {
+      tasks.push({
+        type: 'ground_school_class',
+        label: 'Join ' + next.title + ' — ' + next.when.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' }),
+        done: false,
+        go: function () { showSection('ground-school'); }
+      });
+    }
+
+    if (!unlocked) {
+      tasks.push({ label: 'Unlock the Checkride Prep System', done: false, go: function () { openUnlockModal(); } });
+      tasks.push({ label: 'Answer your first oral exam question', done: false, go: function () { openUnlockModal(); } });
+      tasks.push({ label: 'Try your first training scenario', done: false, go: function () { openUnlockModal(); } });
+      return {
+        unlocked: false, checkrideDays: checkrideDays, readinessPct: 0, primaryFocus: null,
+        nextClass: next, classImminent: classImminent, tasks: tasks,
+        whyText: classImminent ? null : "You haven't unlocked Checkride Prep yet — every recommendation below depends on real study data, so start there."
       };
-    } else if (qotdQuestion && !studied[qotdQuestion.id]) {
-      recommendation = {
-        title: "Answer today's oral exam question",
-        body: truncate(qotdQuestion.q, 88),
+    }
+
+    // Today's oral-exam question -- a real daily-habit signal, kept from
+    // the original Next Best Action logic.
+    if (qotdQuestion) {
+      tasks.push({
+        label: "Answer today's oral exam question",
+        done: !!studied[qotdQuestion.id],
         go: function () {
           showSection('dashboard');
           var el = document.getElementById('qotdRevealBtn');
           if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-      };
-    } else if (weakest) {
-      recommendation = {
-        title: 'Review your weakest area: ' + weakest.label,
-        body: Math.round(weakest.pct * 100) + '% complete — this is the fastest way to move your readiness score.',
-        go: function () { goToCategory(weakest.cat); }
-      };
-    } else if (unstudiedScenario) {
-      recommendation = {
-        title: 'Try a new scenario',
-        body: truncate(unstudiedScenario.title, 88),
-        go: function () { showSection('scenarios'); }
-      };
-    } else {
-      recommendation = {
-        title: "You're fully caught up",
-        body: 'Every question and scenario is marked studied. Keep your streak alive with a rapid-fire review.',
-        go: function () { showSection('dpe-library'); }
-      };
+      });
     }
 
-    var actionEl = document.getElementById('studentNextActionCard');
-    actionEl.innerHTML = '<p class="portal-my-training__label">Next Best Action</p><h3>' + recommendation.title + '</h3><p>' + recommendation.body + '</p>';
-    actionEl.onclick = recommendation.go;
+    if (weakest) {
+      tasks.push({
+        label: 'Review ' + weakest.label + ' (' + Math.round(weakest.pct * 100) + '% complete)',
+        done: false,
+        go: function () { goToCategory(weakest.cat); }
+      });
+      var weakScenario = SCENARIOS.filter(function (s) { return s.category === weakest.cat && !studied[s.id]; })[0];
+      if (weakScenario) {
+        tasks.push({ label: 'Complete the ' + truncate(weakScenario.title, 60) + ' scenario', done: false, go: function () { showSection('scenarios'); } });
+      }
+    } else {
+      var allScenariosDone = SCENARIOS.length > 0 && SCENARIOS.every(function (s) { return studied[s.id]; });
+      tasks.push({ label: 'All ACS areas complete', done: true, go: function () { showSection('dpe-library'); } });
+      tasks.push({ label: allScenariosDone ? 'Scenario Training complete' : 'Complete Scenario Training', done: allScenariosDone, go: function () { showSection('scenarios'); } });
+    }
+
+    // AI DPE Practice if not run in the last 7 days, else a lighter
+    // Rapid Fire suggestion -- myAiDpeSessions is most-recent-first
+    // (get_my_recent_ai_dpe_sessions, v64.sql).
+    if (tasks.length < 4) {
+      var lastAiDpe = myAiDpeSessions[0];
+      var daysSinceAiDpe = lastAiDpe ? Math.floor((Date.now() - new Date(lastAiDpe.started_at).getTime()) / 86400000) : null;
+      if (daysSinceAiDpe === null || daysSinceAiDpe >= 7) {
+        tasks.push({ label: 'Run an AI DPE Practice round', done: false, go: function () { showSection('ai-dpe-practice'); } });
+      } else {
+        tasks.push({
+          label: 'Complete a 5-minute DPE Rapid Fire', done: false,
+          go: function () {
+            showSection('dpe-library');
+            var btn = document.getElementById('launchRapidFire');
+            if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+      }
+    }
+
+    var whyText;
+    if (classImminent) {
+      whyText = next.title + ' starts ' + (hoursToClass <= 1 ? 'within the hour' : 'today') + ' — get ready before it starts.';
+    } else if (checkrideDays !== null && checkrideDays >= 0 && checkrideDays <= 14 && weakest) {
+      whyText = 'Your checkride is ' + checkrideDays + ' day' + (checkrideDays === 1 ? '' : 's') + ' away, and ' + weakest.label + ' is your lowest-scoring area — this is the fastest way to move readiness before then.';
+    } else if (weakest) {
+      whyText = weakest.label + ' is currently your lowest-performing ACS category.';
+    } else {
+      whyText = "You're fully caught up on questions and scenarios. Keep your streak alive with a Rapid Fire review.";
+    }
+
+    return {
+      unlocked: true, checkrideDays: checkrideDays, readinessPct: readinessPct, primaryFocus: weakest,
+      nextClass: next, classImminent: classImminent, tasks: tasks, whyText: whyText
+    };
+  }
+
+  function renderMyTraining() {
+    var plan = computeTrainingPlan();
 
     var continueBtn = document.getElementById('continueTrainingBtn');
-    if (continueBtn) continueBtn.onclick = function (e) { e.preventDefault(); recommendation.go(); };
+    var firstIncomplete = plan.tasks.filter(function (t) { return !t.done; })[0];
+    if (continueBtn) continueBtn.onclick = function (e) { e.preventDefault(); (firstIncomplete || plan.tasks[0]).go(); };
 
-    var classEl = document.getElementById('studentNextClassCard');
-    var upcoming = myGroundRegistrations
-      .filter(function (r) { return r.session && new Date(r.session.scheduled_at) > new Date(); })
-      .sort(function (a, b) { return new Date(a.session.scheduled_at) - new Date(b.session.scheduled_at); })[0];
-    if (upcoming) {
-      var when = new Date(upcoming.session.scheduled_at).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-      classEl.innerHTML = '<p class="portal-my-training__label">Next Class</p><h3>' + upcoming.session.title + '</h3><p>' + when + (upcoming.session.location ? ' · ' + upcoming.session.location : '') + '</p>';
+    var preclassEl = document.getElementById('trainingPlanPreclassBanner');
+    if (plan.classImminent && plan.nextClass) {
+      preclassEl.hidden = false;
+      preclassEl.innerHTML =
+        '<div><div class="portal-header__eyebrow">Starting Soon</div><h3>' + plan.nextClass.title + '</h3><p>' +
+        plan.nextClass.when.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + '</p></div>' +
+        '<div class="portal-my-training__preclass-actions">' +
+        '<button type="button" class="btn btn--ghost" id="trainingPlanPreclassGs">View in Ground School</button>' +
+        (plan.nextClass.meetingUrl ? '<a href="' + plan.nextClass.meetingUrl + '" target="_blank" rel="noopener" class="btn btn--primary">Join Class →</a>' : '') +
+        '</div>';
+      var gsBtn = document.getElementById('trainingPlanPreclassGs');
+      if (gsBtn) gsBtn.addEventListener('click', function () { showSection('ground-school'); });
     } else {
-      classEl.innerHTML = '<p class="portal-my-training__label">Next Class</p><h3>No registered class yet</h3><p>Register for an upcoming live ground school class when you’re ready.</p>';
-    }
-    classEl.onclick = function () { showSection('ground-school'); };
-
-    var resumeEl = document.getElementById('studentResumeCard');
-    var nextQuestion = DPE_DATA.filter(function (d) { return !studied[d.id]; })[0];
-    if (!member.checkridePrepUnlocked) {
-      resumeEl.innerHTML = '<p class="portal-my-training__label">Resume Studying</p><h3>Unlock to begin</h3><p>The DPE Question Bank, scenarios, and lessons all start tracking your progress here once unlocked.</p>';
-      resumeEl.onclick = function () { openUnlockModal(); };
-    } else if (nextQuestion) {
-      resumeEl.innerHTML = '<p class="portal-my-training__label">Resume Studying</p><h3>' + nextQuestion.sectionLabel + '</h3><p>' + truncate(nextQuestion.q, 80) + '</p>';
-      resumeEl.onclick = function () { goToCategory(nextQuestion.section); };
-    } else {
-      resumeEl.innerHTML = '<p class="portal-my-training__label">Resume Studying</p><h3>Question bank complete</h3><p>Every DPE question is marked studied — try the Scenario Center or AI Oral Exam Practice next.</p>';
-      resumeEl.onclick = function () { showSection('scenarios'); };
+      preclassEl.hidden = true;
     }
 
-    var allScenariosDone = SCENARIOS.length > 0 && SCENARIOS.every(function (s) { return studied[s.id]; });
-    var planItems = !member.checkridePrepUnlocked ? [
-      { label: 'Unlock the Checkride Prep System', done: false, go: function () { openUnlockModal(); } },
-      { label: 'Answer your first oral exam question', done: false, go: function () { openUnlockModal(); } },
-      { label: 'Try your first training scenario', done: false, go: function () { openUnlockModal(); } }
-    ] : [
-      {
-        label: "Answer today's oral exam question",
-        done: !!(qotdQuestion && studied[qotdQuestion.id]),
-        go: recommendation.go
-      },
-      weakest
-        ? { label: 'Review ' + weakest.label + ' (' + Math.round(weakest.pct * 100) + '% complete)', done: false, go: function () { goToCategory(weakest.cat); } }
-        : { label: 'All ACS areas complete', done: true, go: function () { showSection('dpe-library'); } },
-      { label: allScenariosDone ? 'Scenario Training complete' : 'Complete Scenario Training', done: allScenariosDone, go: function () { showSection('scenarios'); } }
-    ];
+    var checkrideEl = document.getElementById('trainingPlanCheckride');
+    checkrideEl.querySelector('h3').textContent = plan.checkrideDays === null ? 'Not set'
+      : plan.checkrideDays < 0 ? 'Passed'
+      : plan.checkrideDays === 0 ? 'Today'
+      : plan.checkrideDays + ' day' + (plan.checkrideDays === 1 ? '' : 's');
+    checkrideEl.onclick = function () {
+      var card = document.getElementById('checkrideCountdownCard');
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+
+    var readinessEl = document.getElementById('trainingPlanReadiness');
+    readinessEl.querySelector('h3').textContent = plan.unlocked ? plan.readinessPct + '%' : 'Locked';
+    readinessEl.onclick = function () { showSection('progress'); };
+
+    var focusEl = document.getElementById('trainingPlanFocus');
+    focusEl.querySelector('h3').textContent = !plan.unlocked ? 'Unlock to see' : (plan.primaryFocus ? plan.primaryFocus.label : 'All areas covered');
+    focusEl.onclick = function () { if (plan.primaryFocus) goToCategory(plan.primaryFocus.cat); else showSection('dpe-library'); };
 
     var planEl = document.getElementById('studentStudyPlanList');
     var planCompleteEl = document.getElementById('studentStudyPlanComplete');
-    var allPlanItemsDone = member.checkridePrepUnlocked && planItems.every(function (item) { return item.done; });
+    var whyEl = document.getElementById('trainingPlanWhy');
+    var allPlanItemsDone = plan.unlocked && plan.tasks.length > 0 && plan.tasks.every(function (item) { return item.done; });
 
     planEl.hidden = allPlanItemsDone;
     planCompleteEl.hidden = !allPlanItemsDone;
+    if (whyEl) { whyEl.hidden = !plan.whyText || allPlanItemsDone; whyEl.textContent = plan.whyText || ''; }
 
-    planEl.innerHTML = planItems.map(function (item, i) {
+    planEl.innerHTML = plan.tasks.map(function (item, i) {
       return '<div class="portal-plan-item' + (item.done ? ' portal-plan-item--done' : '') + '" data-plan-idx="' + i + '">' +
         '<span class="portal-plan-item__check">' + (item.done ? '✓' : '') + '</span>' +
         '<span class="portal-plan-item__label">' + item.label + '</span>' +
       '</div>';
     }).join('');
     planEl.querySelectorAll('[data-plan-idx]').forEach(function (row, i) {
-      row.addEventListener('click', function () { planItems[i].go(); });
+      row.addEventListener('click', function () { plan.tasks[i].go(); });
     });
   }
 

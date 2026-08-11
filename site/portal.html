@@ -207,9 +207,9 @@
           </div>
           <div class="portal-grid portal-grid--3">
             <button type="button" class="portal-card" id="welcomeOnboardingPractice" style="text-align:left;cursor:pointer">
-              <div class="portal-header__eyebrow" style="margin-bottom:8px">Practice</div>
-              <h4 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">Start AI DPE Practice</h4>
-              <p style="color:rgba(255,255,255,0.5);font-size:13px">Answer realistic oral-exam questions and build confidence answering out loud.</p>
+              <div class="portal-header__eyebrow" style="margin-bottom:8px">Plan</div>
+              <h4 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">Set Your Checkride Date</h4>
+              <p style="color:rgba(255,255,255,0.5);font-size:13px">Get a live countdown and a training plan built around your real timeline.</p>
             </button>
             <button type="button" class="portal-card" id="welcomeOnboardingStudy" style="text-align:left;cursor:pointer">
               <div class="portal-header__eyebrow" style="margin-bottom:8px">Study</div>
@@ -309,30 +309,34 @@
              program the member is at). Never a direct-to-checkout link. -->
         <div class="portal-card" id="recommendedNextStepCard" hidden style="margin-bottom:24px;background:linear-gradient(120deg, rgba(244,180,0,0.10), rgba(11,31,58,0.4));border-color:rgba(244,180,0,0.2)"></div>
 
+        <!-- Your Training Plan -- single unified engine (computeTrainingPlan())
+             replacing what used to be three separate recommendation systems
+             (Next Best Action, Next Class, Resume Studying) that could
+             disagree with each other. See docs/training-plan-architecture.md. -->
         <div class="portal-card portal-my-training" style="margin-bottom:24px">
           <div class="portal-my-training__head">
             <div>
-              <div class="portal-header__eyebrow" style="margin-bottom:6px">My Training</div>
+              <div class="portal-header__eyebrow" style="margin-bottom:6px">Your Training Plan</div>
               <h2>What to work on next.</h2>
-              <p>Your classes, study plan, and progress in one place.</p>
+              <p>Your checkride timeline, readiness, and today's plan, in one place.</p>
             </div>
             <button class="btn btn--ghost" data-goto="progress">View Full Progress</button>
           </div>
+
+          <div class="portal-my-training__preclass" id="trainingPlanPreclassBanner" hidden></div>
+
           <div class="portal-my-training__grid">
-            <div class="portal-my-training__panel portal-my-training__panel--primary" id="studentNextActionCard">
-              <p class="portal-my-training__label">Next Best Action</p>
-              <h3>Loading…</h3>
-              <p>We’ll recommend your next training step once your progress loads.</p>
+            <div class="portal-my-training__panel portal-my-training__panel--primary" id="trainingPlanCheckride">
+              <p class="portal-my-training__label">Checkride</p>
+              <h3>—</h3>
             </div>
-            <div class="portal-my-training__panel" id="studentNextClassCard">
-              <p class="portal-my-training__label">Next Class</p>
-              <h3>No registered class yet</h3>
-              <p>Register for an upcoming live ground school class when you’re ready.</p>
+            <div class="portal-my-training__panel" id="trainingPlanReadiness">
+              <p class="portal-my-training__label">Readiness</p>
+              <h3>—</h3>
             </div>
-            <div class="portal-my-training__panel" id="studentResumeCard">
-              <p class="portal-my-training__label">Resume Studying</p>
-              <h3>Start with today’s question</h3>
-              <p>Open the daily oral-exam question and answer it out loud.</p>
+            <div class="portal-my-training__panel" id="trainingPlanFocus">
+              <p class="portal-my-training__label">Primary Focus</p>
+              <h3>—</h3>
             </div>
           </div>
           <div class="portal-my-training__plan-head">
@@ -340,6 +344,7 @@
             <h4>Today's Flight Plan</h4>
           </div>
           <div class="portal-my-training__plan" id="studentStudyPlanList"></div>
+          <p class="portal-my-training__why" id="trainingPlanWhy" hidden></p>
           <div class="portal-my-training__plan-complete" id="studentStudyPlanComplete" hidden>
             <span>✓</span>
             <div>

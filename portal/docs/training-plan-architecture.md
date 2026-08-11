@@ -1,0 +1,272 @@
+# Apex Advantage Training OS — Phase 1 architecture
+
+Scope note: this is the foundation-and-first-slice pass of a much larger spec
+("Apex Advantage Training Operating System"). It ships real, verified code for
+the highest-leverage/lowest-risk pieces and documents the rest as designed but
+deferred, rather than shipping shallow, unverified versions of everything.
+See the "Deferred" section at the bottom for what's next and why it wasn't
+done in this pass.
+
+## 1. What existed before this pass
+
+Three independent systems all answered some version of "what should this
+member do next," none sharing logic or data model:
+
+1. **`renderMyTraining()`** (`site/portal-stable.js`) — "what to study,"
+   feeding both the Next Best Action card and Today's Flight Plan checklist.
+   Priority: unstudied QOTD → weakest ACS category → unstudied scenario →
+   "caught up."
+2. **`renderRecommendedNextStep()` / `getMemberConversionState()`** —
+   "what stage of the program you're at" (new free member, individual-class
+   student, checkride-soon, etc.), driving a separate upsell card.
+3. **`renderCheckrideCountdown()`** — a standalone day-count widget reading
+   the same `checkrideDate` as #2 but with its own (slightly different)
+   day-math.
+
+Three separate implementations of "find the member's worst ACS category"
+existed across `weakestCategory()`, `renderWeakAreas()`, and
+`checkWeakAreaEmail()`.
+
+## 2. What this pass changed
+
+**`computeTrainingPlan()`** (new, `site/portal-stable.js`) is now the single
+source of truth for "what should this member do today." It implements the
+spec's exact priority order:
+
+1. Upcoming registered Ground School class within 24 hours (elevates a
+   pre-class banner + a "Join the class" task, outranks everything else)
+2. Not-unlocked state (returns the unlock-prompt task list, same as before)
+3. Checkride within 14 days + a weak category → both surface in the "why"
+   explanation together
+4. Weakest ACS category → review task
+5. An unstudied scenario *within that weak category* specifically (not just
+   any scenario, per spec) → task
+6. Today's oral-exam question if unstudied (kept — a real daily-habit signal
+   the original system already had)
+7. AI DPE Practice if the member's last session (`myAiDpeSessions[0]`, via
+   the new `get_my_recent_ai_dpe_sessions` RPC) is ≥7 days old or doesn't
+   exist
+8. Otherwise, a lighter DPE Rapid Fire suggestion
+9. "All ACS areas complete" / caught-up state when there's no weak category
+   left
+
+Task list is capped at 4 items (matches the spec's mockup). `renderMyTraining()`
+now calls this once and renders its output into a redesigned dashboard card
+(`Your Training Plan` — `site/portal.html`) showing Checkride days / Readiness
+% / Primary Focus up top, the flight-plan checklist, and a "why these tasks"
+line — replacing the old 3-mini-card grid (Next Best Action / Next Class /
+Resume Studying), which is retired (nothing else referenced those DOM IDs).
+
+`renderRecommendedNextStep()` and `renderCheckrideCountdown()` are
+**unchanged in their own right** — they still serve genuinely distinct
+purposes (stage-based upsell messaging; the actual date-editing control) and
+nothing in the spec requires deleting working systems. What changed is that
+they're no longer the *only* place a member sees their checkride countdown or
+weak-area signal — that summary now also appears, consistently, in the
+unified Training Plan card.
+
+### Bug fixed as a side effect
+
+`renderMyTraining()`'s old "Next Class" check only read the legacy
+`myGroundRegistrations` table, so a member registered only for a modern
+`scheduled_ground_classes` class saw "No registered class yet." The new
+`upcomingRegisteredClass()` helper merges both sources.
+
+## 3. Why computed, not persisted (`daily_tasks` table)
+
+The spec explicitly allows either approach ("If a new table is not necessary
+and the plan can be generated dynamically from existing progress state,
+prefer the simpler architecture"). This pass computes the plan live, every
+render, with no new table. Reasoning:
+
+- Every signal the plan needs already persists in its own table/RPC
+  (`portal_question_progress`, `portal_scenario_progress`,
+  `scheduled_ground_class_enrollments`, `ai_dpe_sessions`,
+  `portal_checkride_date`). A `daily_tasks` table would be a *cache* of a
+  join across all of them, not a new source of truth — and caches go stale.
+- A persisted table needs a generation job (what runs it — page load? cron?
+  webhook?), a completion-sync mechanism, and a migration path for every
+  future change to the priority logic. None of that exists today, and this
+  session has no way to stand up or test a cron job against a live database.
+- The plan is cheap to compute: it's array filters and a handful of
+  comparisons over data that's already loaded into the client for other
+  widgets on the same page load. There's no performance case for caching it.
+
+**Tradeoff being accepted:** a persisted table would let the plan carry
+state across a session (e.g., "this task was explicitly dismissed today, not
+just completed") and would support the notification event catalog in
+section 8 more naturally (a change to a persisted task row is a clean
+webhook trigger; a recomputed-every-render value isn't). If/when
+notifications become real infrastructure, revisit this — a lightweight
+`training_plan_snapshots` table written once per day per member (not a full
+task-tracking system) would likely be the right middle ground.
+
+## 4. Module ↔ content mapping (`GS_MODULE_CONTENT_MAP`)
+
+No mapping between the 20 Ground School modules and the 11 DPE/scenario
+categories existed anywhere in the codebase before this. Built in
+`site/portal-stable.js` next to `ACS_TRACKER` (which already does the same
+kind of topic-matching for DPE categories → real ACS Areas of Operation, so
+this follows established precedent, e.g. `ACS_TRACKER` already maps "Human
+Factors" → `aeromedical`, which this table also uses for `PPL-M17`).
+
+Real IDs from `portal/src/data/privatePilotCurriculum.js`, matched to the
+real 11-category taxonomy (`dpe_categories`, seeded in
+`supabase-portal-schema-v5.sql` + `v10.sql`) by topic:
+
+| Module | Category mapping | Note |
+|---|---|---|
+| PPL-M01 Becoming a Pilot | eligibility | |
+| PPL-M02 Aerodynamics | performance | approximate — no exact category exists |
+| PPL-M03 Aircraft Systems | aircraft-systems | exact |
+| PPL-M04 FARs Simplified | privileges, eligibility | approximate |
+| PPL-M05 Airspace Mastery | airspace | exact |
+| PPL-M06 Airport Operations | airspace | + radio-calls.html free resource |
+| PPL-M07–09 Navigation trio | crosscountry | |
+| PPL-M10–11 Weather Theory/Products | weather | exact |
+| PPL-M12 Weather Decision Making | weather, adm | |
+| PPL-M13 Weight & Balance | performance | + weight-balance.html free resource |
+| PPL-M14 Aircraft Performance | performance | exact |
+| PPL-M15 Cross-Country Planning | crosscountry | exact |
+| PPL-M16 Aeronautical Decision Making | adm | exact |
+| PPL-M17 Human Factors | aeromedical | matches ACS_TRACKER's existing I.H mapping |
+| PPL-M18 Emergency Procedures | emergency | + spin-awareness.html free resource |
+| PPL-M19 ACS Mastery | *(none — cumulative)* | `cumulative: true` |
+| PPL-M20 Mock Oral Exam | *(none — cumulative)* | `cumulative: true` |
+
+Two modules (Aerodynamics, FARs Simplified) don't map cleanly onto any single
+category — the 11-category taxonomy was built for DPE oral-exam question
+topics, not 1:1 against the Ground School curriculum's module breakdown.
+Flagged `approximate: true` rather than silently presented as exact.
+
+`getModuleContent(moduleId)` is the read accessor; nothing else in the
+codebase depended on this data existing, so this is additive only.
+
+## 5. Ground School companion / Guided Notes entitlement (`hasModuleAccess`)
+
+Per the audited entitlement model (`profiles.checkride_prep_unlocked`,
+`profiles.private_pilot_ground_school_pack_unlocked` as flat boolean
+"unlock everything" flags vs. per-row entitlement for individual $25
+purchases):
+
+```js
+function hasModuleAccess(moduleId) {
+  if (!member) return false;
+  if (member.groundSchoolPackUnlocked) return true;       // $400 pack: all 20
+  return myScheduledEnrollments.some(function (e) {        // $25 buyer: just their module
+    return e.lesson_id === moduleId && (e.payment_status === 'paid' || e.payment_status === 'ground_school_pack');
+  });
+}
+```
+
+This reuses already-loaded client data (`myScheduledEnrollments`, from
+`get_my_ground_school_enrollments`) — no new RPC needed. **This is a
+client-side convenience check only.** The real boundary for Guided Notes
+specifically is the `guided_notes` RLS policy (below), which is not yet
+opened past admin-only in this pass.
+
+## 6. Guided Notes: what's real vs. what's deferred
+
+Audited in full before touching anything:
+
+- **The RLS flip is a single, already-documented change.**
+  `supabase-portal-schema-v14.sql`'s header comment states exactly what to
+  do: drop the `and exists(...role = 'admin')` clause from the one policy.
+  No other schema change needed.
+- **The save/autosave mechanism is already production-quality.** Debounced
+  autosave + manual save, both hitting the same idempotent `upsert` on
+  `(profile_id, course_id, module_id, section_id, prompt_id)`. Nothing to
+  build here.
+- **The content is not ready.** Only 3 of 20 modules
+  (`PPL-M01`/`M02`/`M03`) have any authored prompts at all, and even those
+  are a single free-text question per prompt — no objectives section, no
+  fill-in-the-blank structure, no "Checkride Corner," no post-class review
+  questions (all called for in spec section 8).
+
+**Decision: do not flip the RLS policy in this pass.** Flipping it now would
+put a half-built feature (3/20 modules, minimal structure) in front of real
+paying Ground School students. The framework (schema, save mechanism,
+entitlement check) is production-ready; the content isn't. Shipping the flip
+without content would be worse than not shipping it.
+
+**What's needed to finish this:**
+1. Author the missing 17 modules' prompt sets, plus retrofit the existing 3
+   with the fuller structure (objectives / key concepts / fill-in areas /
+   scenario prompts / Checkride Corner / review questions) spec section 8
+   calls for. This is content work, not engineering — it shouldn't be
+   fabricated by this pass.
+2. Once content exists: run the one-line RLS policy change, gate the nav
+   item and `showSection`/`enforceGuidedNotesAccess` checks on
+   `hasModuleAccess(moduleId)` instead of `role === 'admin'`.
+3. Build the per-module companion page UI (spec section 5) that Guided
+   Notes lives inside — not built this pass; see section 8 below.
+
+## 7. AI DPE memory: what's real vs. what's deferred
+
+Audited finding: **session persistence already existed and was never read
+back.** `ai_dpe_sessions` (schema `v32.sql`) has stored every session's full
+transcript, question count, status, and qualitative debrief
+(`overallReadiness` / `summary` / `strengths[]` / `weaknesses[]` /
+`perDomain[]` — no numeric scores anywhere in the pipeline) since it shipped.
+Nothing in the client ever queried it.
+
+**This pass adds `get_my_recent_ai_dpe_sessions()`** (`v64.sql`) — a
+read-only RPC, same house convention as every other read RPC
+(`language sql / security definer / set search_path = public / stable`,
+filtered by `auth.uid()`), fetched into `myAiDpeSessions` in the main
+`loadProgress()` call. This is what makes Training Plan priority #7 ("AI DPE
+if not run recently") possible with real data instead of guessing.
+
+**Deferred:** a dedicated "AI DPE History" view (session list + qualitative
+trend summary, spec section 12) is not built this pass. The data path now
+exists end-to-end (RPC → `myAiDpeSessions`); building the view is
+UI-only work on top of data this pass already wired up. Scoring stays
+qualitative throughout, per the spec's own instruction not to invent
+numbers where the model only produces qualitative verdicts.
+
+## 8. Explicitly deferred (not started this pass)
+
+Documented here rather than left unstated, so the punch list is honest:
+
+- **Per-module companion pages** (spec section 5) — 20 individual
+  member-facing pages/panels with before/live/after-class checklists. The
+  data this needs (module content map, entitlement check, next-class
+  lookup) is now built; the UI itself is not.
+- **Pre-class / post-class flow beyond the dashboard banner** — this pass
+  adds the elevated "class starts soon" banner + join-class task inside the
+  Training Plan card (spec section 11), but not a dedicated post-class
+  review screen (spec section 10) with its own recommended-next-steps CTA.
+- **Instructor-shareable Training Report** (spec section 14) — not started.
+- **Instructor dashboard** (spec section 15) — not started; explicitly
+  optional in the spec.
+- **New achievements** (Ground School milestones, Training Plan streaks) —
+  spec section 18 confirms adding these requires only a JS change
+  (`ACHIEVEMENT_DEFS` in `site/portal-stable.js` is a hardcoded catalog
+  evaluated client-side, no migration needed), but none were added this
+  pass to avoid badge inflation without a clear signal for what's meaningful.
+- **Analytics events** (spec section 20) — none of the new
+  `training_plan_*` / `module_companion_*` / `guided_notes_*` events were
+  added yet. House convention requires adding each to `EVENT_ALLOWLIST` in
+  `site/analytics-events.js`; deferred until the UI surfaces that would fire
+  them (module companion pages, Guided Notes) actually exist.
+- **Notification event catalog** (spec section 19) — no infrastructure for
+  this exists yet (confirmed: no push/cron system found in this codebase).
+  Not designed in detail this pass beyond noting that a persisted
+  `training_plan_snapshots` table (section 3 above) would be the natural
+  hook if this gets built later.
+
+## 9. Production verification gap
+
+This sandbox has no live Supabase connection. Everything above was verified
+by: reading the actual current source (not assumptions), a full syntax check
+on the modified JS/SQL, and a Playwright test that mocks the Supabase client
+and exercises `computeTrainingPlan()` through the real `renderMyTraining()`
+code path against two realistic data scenarios (weak-category + checkride-
+soon; class-starting-in-3-hours). Both produced correct output end to end —
+see the session's verification notes for exact assertions. What is **not**
+verified: behavior against real member data, real RLS enforcement (the mock
+bypasses RLS entirely), and the `get_my_recent_ai_dpe_sessions` RPC has never
+executed against a live Postgres instance. `supabase-portal-schema-v64.sql`
+must be run in the Supabase SQL editor before `myAiDpeSessions` will ever
+contain real data — until then it silently stays an empty array (the RPC
+call fails gracefully, same pattern as every other RPC in `loadProgress()`).

@@ -484,6 +484,16 @@
 .portal-my-training__plan-head span { font-size: 15px; }
 .portal-my-training__plan-head h4 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.4); margin: 0; }
 .portal-my-training__plan { display: flex; flex-direction: column; gap: 2px; }
+.portal-my-training__why { color: rgba(255,255,255,0.45); font-size: 12.5px; font-style: italic; margin: 10px 0 0; padding: 0 8px; }
+.portal-my-training__preclass {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  background: linear-gradient(120deg, rgba(244,180,0,0.16), rgba(11,31,58,0.4)); border: 1px solid rgba(244,180,0,0.3);
+  border-radius: var(--radius); padding: 16px 20px; margin-bottom: 20px;
+}
+.portal-my-training__preclass h3 { color: #fff; font-size: 15px; font-weight: 800; margin: 0 0 3px; }
+.portal-my-training__preclass p { color: rgba(255,255,255,0.6); font-size: 13px; margin: 0; }
+.portal-my-training__preclass .portal-header__eyebrow { margin-bottom: 6px; }
+.portal-my-training__preclass-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .portal-my-training__plan-complete {
   display: flex; align-items: center; gap: 14px; border-top: 1px solid rgba(255,255,255,0.07); margin-top: 4px; padding: 16px 8px 4px;
 }
