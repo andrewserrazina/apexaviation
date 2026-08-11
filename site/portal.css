@@ -484,6 +484,16 @@
 .portal-my-training__plan-head span { font-size: 15px; }
 .portal-my-training__plan-head h4 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.4); margin: 0; }
 .portal-my-training__plan { display: flex; flex-direction: column; gap: 2px; }
+.portal-my-training__why { color: rgba(255,255,255,0.45); font-size: 12.5px; font-style: italic; margin: 10px 0 0; padding: 0 8px; }
+.portal-my-training__preclass {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  background: linear-gradient(120deg, rgba(244,180,0,0.16), rgba(11,31,58,0.4)); border: 1px solid rgba(244,180,0,0.3);
+  border-radius: var(--radius); padding: 16px 20px; margin-bottom: 20px;
+}
+.portal-my-training__preclass h3 { color: #fff; font-size: 15px; font-weight: 800; margin: 0 0 3px; }
+.portal-my-training__preclass p { color: rgba(255,255,255,0.6); font-size: 13px; margin: 0; }
+.portal-my-training__preclass .portal-header__eyebrow { margin-bottom: 6px; }
+.portal-my-training__preclass-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .portal-my-training__plan-complete {
   display: flex; align-items: center; gap: 14px; border-top: 1px solid rgba(255,255,255,0.07); margin-top: 4px; padding: 16px 8px 4px;
 }
@@ -576,6 +586,45 @@
 }
 .portal-practice-panel__close:hover { color: #fff; }
 .portal-practice-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; font-size: 13px; color: rgba(255,255,255,0.5); font-weight: 600; }
+
+/* Training Report -- deliberately light-on-white (print/PDF target),
+   independent of the portal's dark theme tokens above. */
+.portal-report-overlay {
+  position: fixed; inset: 0; z-index: 400; background: rgba(6,14,28,0.97);
+  display: flex; flex-direction: column; align-items: center; padding: 24px; overflow-y: auto;
+}
+.portal-report-overlay[hidden] { display: none; }
+.portal-report-toolbar { display: flex; gap: 12px; width: 100%; max-width: 720px; margin-bottom: 16px; }
+.portal-report-panel {
+  width: 100%; max-width: 720px; background: #fff; color: #16233b; border-radius: 12px;
+  padding: 48px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); font-family: var(--font); margin-bottom: 24px;
+}
+.portal-report__eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #9a6b00; margin: 0 0 4px; }
+.portal-report__title { font-size: 22px; font-weight: 800; color: #0B1F3A; margin: 0 0 4px; }
+.portal-report__meta { font-size: 12.5px; color: #5a6b84; margin: 0 0 28px; }
+.portal-report__section { margin-bottom: 26px; padding-top: 22px; border-top: 1px solid #e4e8ef; }
+.portal-report__section:first-of-type { border-top: none; padding-top: 0; }
+.portal-report__section h4 { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: #16233b; margin: 0 0 12px; }
+.portal-report__stat-row { display: flex; flex-wrap: wrap; gap: 20px 32px; }
+.portal-report__stat { min-width: 120px; }
+.portal-report__stat-value { font-size: 20px; font-weight: 800; color: #0B1F3A; }
+.portal-report__stat-label { font-size: 12px; color: #5a6b84; margin-top: 2px; }
+.portal-report__list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.portal-report__list li { font-size: 13.5px; color: #33445e; padding-left: 16px; position: relative; }
+.portal-report__list li::before { content: '•'; position: absolute; left: 0; color: #c99400; }
+.portal-report__empty { font-size: 13px; color: #8a97ab; font-style: italic; }
+.portal-report__footer { margin-top: 30px; padding-top: 16px; border-top: 1px solid #e4e8ef; font-size: 11px; color: #9aa6b8; }
+
+@media print {
+  body * { visibility: hidden; }
+  .portal-report-panel, .portal-report-panel * { visibility: visible; }
+  .portal-report-panel {
+    position: absolute; top: 0; left: 0; width: 100%; max-width: none;
+    margin: 0; padding: 0; box-shadow: none; border-radius: 0;
+  }
+  .portal-report-overlay { position: static; background: none; padding: 0; overflow: visible; }
+  .portal-report-toolbar { display: none; }
+}
 .portal-practice-meta__timer { color: var(--gold-light); font-variant-numeric: tabular-nums; }
 .portal-practice-question { font-size: 20px; font-weight: 700; color: #fff; line-height: 1.5; margin-bottom: 24px; min-height: 90px; }
 .portal-practice-answer { display: none; margin-bottom: 20px; }
@@ -959,6 +1008,19 @@
 .portal-debrief__domain-verdict--ok { background: rgba(244,180,0,0.14); color: var(--gold-light, #f9d04a); }
 .portal-debrief__domain-verdict--weak { background: rgba(248,113,113,0.14); color: #f87171; }
 .portal-debrief__actions { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+.portal-dpe-history__trend { display: flex; flex-wrap: wrap; gap: 8px; }
+.portal-dpe-history__trend-pill {
+  font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 100px;
+  background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.1);
+}
+.portal-dpe-history__trend-pill--up { background: rgba(74,222,128,0.12); color: #4ade80; border-color: rgba(74,222,128,0.3); }
+.portal-dpe-history__trend-pill--down { background: rgba(248,113,113,0.12); color: #f87171; border-color: rgba(248,113,113,0.3); }
+.portal-dpe-history__session {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 12px 0; border-top: 1px solid rgba(255,255,255,0.07);
+}
+.portal-dpe-history__session-date { color: rgba(255,255,255,0.7); font-size: 13px; }
+.portal-dpe-history__session-meta { color: rgba(255,255,255,0.4); font-size: 12px; margin-top: 2px; }
 @media (max-width: 640px) {
   .portal-debrief__cols { grid-template-columns: 1fr; }
   .portal-chat__bubble { max-width: 90%; }

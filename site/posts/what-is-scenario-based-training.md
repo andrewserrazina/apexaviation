@@ -79,4 +79,4 @@ Scenario-based training is the foundation of how Apex teaches — in both the vi
 
 Ground school that only covers regulations and weather theory produces pilots who can pass a written test. Ground school built around realistic scenarios produces pilots who can apply that knowledge when it matters. That's the difference we're building the curriculum around.
 
-If you want to understand what scenario-based training feels like in practice — and how it connects to the flying decisions you make every time you leave the pattern — Apex Advantage launches in September 2026. [Join the waitlist](/home.html#waitlist) to be among the first 24 founding members.
+If you want to understand what scenario-based training feels like in practice — and how it connects to the flying decisions you make every time you leave the pattern — Apex Advantage Ground School is live now. [View upcoming classes](/apex-advantage-private-pilot.html) — $25 per class, or $400 for the complete program.

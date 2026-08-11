@@ -207,9 +207,9 @@
           </div>
           <div class="portal-grid portal-grid--3">
             <button type="button" class="portal-card" id="welcomeOnboardingPractice" style="text-align:left;cursor:pointer">
-              <div class="portal-header__eyebrow" style="margin-bottom:8px">Practice</div>
-              <h4 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">Start AI DPE Practice</h4>
-              <p style="color:rgba(255,255,255,0.5);font-size:13px">Answer realistic oral-exam questions and build confidence answering out loud.</p>
+              <div class="portal-header__eyebrow" style="margin-bottom:8px">Plan</div>
+              <h4 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">Set Your Checkride Date</h4>
+              <p style="color:rgba(255,255,255,0.5);font-size:13px">Get a live countdown and a training plan built around your real timeline.</p>
             </button>
             <button type="button" class="portal-card" id="welcomeOnboardingStudy" style="text-align:left;cursor:pointer">
               <div class="portal-header__eyebrow" style="margin-bottom:8px">Study</div>
@@ -309,30 +309,34 @@
              program the member is at). Never a direct-to-checkout link. -->
         <div class="portal-card" id="recommendedNextStepCard" hidden style="margin-bottom:24px;background:linear-gradient(120deg, rgba(244,180,0,0.10), rgba(11,31,58,0.4));border-color:rgba(244,180,0,0.2)"></div>
 
+        <!-- Your Training Plan -- single unified engine (computeTrainingPlan())
+             replacing what used to be three separate recommendation systems
+             (Next Best Action, Next Class, Resume Studying) that could
+             disagree with each other. See docs/training-plan-architecture.md. -->
         <div class="portal-card portal-my-training" style="margin-bottom:24px">
           <div class="portal-my-training__head">
             <div>
-              <div class="portal-header__eyebrow" style="margin-bottom:6px">My Training</div>
+              <div class="portal-header__eyebrow" style="margin-bottom:6px">Your Training Plan</div>
               <h2>What to work on next.</h2>
-              <p>Your classes, study plan, and progress in one place.</p>
+              <p>Your checkride timeline, readiness, and today's plan, in one place.</p>
             </div>
             <button class="btn btn--ghost" data-goto="progress">View Full Progress</button>
           </div>
+
+          <div class="portal-my-training__preclass" id="trainingPlanPreclassBanner" hidden></div>
+
           <div class="portal-my-training__grid">
-            <div class="portal-my-training__panel portal-my-training__panel--primary" id="studentNextActionCard">
-              <p class="portal-my-training__label">Next Best Action</p>
-              <h3>Loading…</h3>
-              <p>We’ll recommend your next training step once your progress loads.</p>
+            <div class="portal-my-training__panel portal-my-training__panel--primary" id="trainingPlanCheckride">
+              <p class="portal-my-training__label">Checkride</p>
+              <h3>—</h3>
             </div>
-            <div class="portal-my-training__panel" id="studentNextClassCard">
-              <p class="portal-my-training__label">Next Class</p>
-              <h3>No registered class yet</h3>
-              <p>Register for an upcoming live ground school class when you’re ready.</p>
+            <div class="portal-my-training__panel" id="trainingPlanReadiness">
+              <p class="portal-my-training__label">Readiness</p>
+              <h3>—</h3>
             </div>
-            <div class="portal-my-training__panel" id="studentResumeCard">
-              <p class="portal-my-training__label">Resume Studying</p>
-              <h3>Start with today’s question</h3>
-              <p>Open the daily oral-exam question and answer it out loud.</p>
+            <div class="portal-my-training__panel" id="trainingPlanFocus">
+              <p class="portal-my-training__label">Primary Focus</p>
+              <h3>—</h3>
             </div>
           </div>
           <div class="portal-my-training__plan-head">
@@ -340,6 +344,7 @@
             <h4>Today's Flight Plan</h4>
           </div>
           <div class="portal-my-training__plan" id="studentStudyPlanList"></div>
+          <p class="portal-my-training__why" id="trainingPlanWhy" hidden></p>
           <div class="portal-my-training__plan-complete" id="studentStudyPlanComplete" hidden>
             <span>✓</span>
             <div>
@@ -1311,6 +1316,17 @@
           <p>A full simulated oral exam with an AI acting as your DPE — real follow-up questions, no script, and an honest debrief when you're done. Practice as many times as you want.</p>
         </div>
 
+        <!-- AI DPE History -- every session's transcript/debrief has always
+             been saved server-side (ai_dpe_sessions, v32.sql); this is the
+             first UI that reads it back. Hidden entirely for a member with
+             no sessions yet, so the first-time experience is unchanged. -->
+        <div id="aiDpeHistoryCard" class="portal-card" hidden style="margin-bottom:24px;max-width:680px">
+          <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:4px">Your AI DPE History</h3>
+          <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:16px">Every practice session you've run, and how your last two compare by ACS area.</p>
+          <div id="aiDpeTrendList" style="margin-bottom:18px"></div>
+          <div id="aiDpeSessionList"></div>
+        </div>
+
         <div id="aiDpeStart" class="portal-card" style="max-width:560px">
           <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:10px">Before You Begin</h3>
           <p style="color:rgba(255,255,255,0.65);line-height:1.7;font-size:14px;margin-bottom:14px">This works best like the real thing: answer in full sentences, don't look anything up mid-exam, and expect follow-up questions if an answer is vague. A session runs about 8-9 questions across different ACS areas and ends with a readiness debrief — strengths, weak spots, and what to review before your actual checkride.</p>
@@ -1576,6 +1592,12 @@
           <p id="mySessionsEmpty" style="color:rgba(255,255,255,0.4);font-size:13px">No ground school sessions yet — <a href="#ground-school" data-goto="ground-school" style="color:var(--gold)">browse upcoming sessions</a>.</p>
         </div>
 
+        <div class="portal-card" style="margin-top:20px">
+          <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">Training Report</h3>
+          <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:16px">A one-page summary of your readiness, study progress, and Ground School attendance — built to hand to your instructor. No billing information or account credentials are included.</p>
+          <button class="btn btn--primary" id="openTrainingReportBtn">Generate Training Report</button>
+        </div>
+
         <div class="portal-card portal-passed-banner" style="margin-top:20px" id="passedBanner">
           <div>
             <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">Passed your checkride?</h3>
@@ -1583,9 +1605,29 @@
           </div>
           <button class="btn btn--primary" id="openPassedFormBtn">🎉 I Passed My Checkride</button>
         </div>
+
+        <div class="portal-card portal-danger-zone" style="margin-top:20px">
+          <h3 style="color:#f87171;font-size:16px;font-weight:700;margin-bottom:6px">Delete Account</h3>
+          <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:16px">Permanently disables your login, cancels any active subscription, and erases your name, email, and AI chat history. Purchase and Ground School attendance records are kept in anonymized form for accounting purposes. This can't be undone.</p>
+          <button class="btn btn--ghost" id="openDeleteAccountBtn" style="border-color:rgba(248,113,113,0.4);color:#f87171">Delete My Account</button>
+        </div>
       </section>
 
       <div id="passedOverlay" class="portal-practice-overlay" hidden></div>
+      <div id="deleteAccountOverlay" class="portal-practice-overlay" hidden></div>
+
+      <!-- Training Report -- print/PDF-oriented overlay, deliberately
+           light-on-white regardless of the portal's dark theme (it's meant
+           to be handed to an instructor as paper/PDF, not read on screen).
+           @media print isolates .portal-report-panel via visibility, so
+           only the report itself prints, not the portal chrome around it. -->
+      <div id="trainingReportOverlay" class="portal-report-overlay" hidden>
+        <div class="portal-report-toolbar">
+          <button type="button" class="btn btn--primary" id="trainingReportPrintBtn">Print / Save as PDF</button>
+          <button type="button" class="btn btn--ghost" id="trainingReportCloseBtn">Close</button>
+        </div>
+        <div class="portal-report-panel" id="trainingReportContent"></div>
+      </div>
 
       <!-- ─────────── ADMIN ANALYTICS (admin role only) ─────────── -->
       <section class="portal-section" id="section-admin">

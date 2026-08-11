@@ -120,6 +120,7 @@
         <h1>Welcome back.</h1>
         <p class="sub">Sign in with your Apex Advantage account to access your Checkride Prep Pack, DPE Question Library, and training tools.</p>
 
+        <div class="login-success" id="loginSuccess"></div>
         <div class="login-error" id="loginError"></div>
 
         <form id="loginForm" novalidate>
@@ -304,6 +305,12 @@
     // Deep link support: portal-login.html?view=signup or #signup
     var requestedView = (new URLSearchParams(window.location.search)).get('view') || window.location.hash.replace('#', '');
     if (requestedView === 'signup') showView('signup');
+
+    if ((new URLSearchParams(window.location.search)).get('deleted') === '1') {
+      var loginSuccessEl = document.getElementById('loginSuccess');
+      loginSuccessEl.textContent = 'Your account has been deleted.';
+      loginSuccessEl.classList.add('show');
+    }
 
     // Visitors arriving from a free-guide page (?dest=...) already asked
     // for a specific resource -- the default copy below leads with paid

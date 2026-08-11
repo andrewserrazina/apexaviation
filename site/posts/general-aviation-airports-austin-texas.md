@@ -107,6 +107,6 @@ KEDC gives you the most infrastructure and flight school options. KHYI gives you
 
 The best pilots in any metro know all of these airports — their approaches, their traffic patterns, their tower personalities, and their weather tendencies. Cross-country flying in Central Texas means knowing which airport fits the mission, not just which one is closest.
 
-Apex Aviation's ground school curriculum — launching September 2026 through Apex Advantage — builds Austin-area airport and airspace knowledge directly into the lessons, because flying proficiency in this region means knowing this region.
+Apex Advantage Ground School — live now — builds Austin-area airport and airspace knowledge directly into the lessons, because flying proficiency in this region means knowing this region.
 
-[Join the waitlist](/home.html#waitlist) to be among the first 24 founding members before enrollment opens.
+[View upcoming classes](/apex-advantage-private-pilot.html) — $25 per class, or $400 for the complete program.

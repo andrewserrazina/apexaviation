@@ -142,7 +142,12 @@ $$;
 
 -- ─────────────────────────────────────────────────────────────────
 -- 3. Add meeting_url to the enrollments a member can see for themselves.
+-- Postgres won't let CREATE OR REPLACE change a function's OUT-parameter
+-- shape (v58's version doesn't have meeting_url), so the old signature
+-- has to be dropped first.
 -- ─────────────────────────────────────────────────────────────────
+drop function if exists public.get_my_ground_school_enrollments();
+
 create or replace function public.get_my_ground_school_enrollments()
 returns table (
   enrollment_id uuid,

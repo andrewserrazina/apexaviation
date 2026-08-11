@@ -60,8 +60,8 @@ That specific decision — the one where you either turn around or you don't —
 
 We built the Apex Advantage ground school curriculum around exactly this kind of training. Not just weather theory — though we cover that in depth, including orographic lifting, the escarpment specifically, and how to read Central Texas weather patterns that don't behave like the textbook. But also the decision-making frameworks that produce pilots who act when the picture is still clear enough to act safely.
 
-Apex Advantage launches September 2026. If you're flying west of I-35 this summer, that knowledge doesn't have to wait until launch — but the structured curriculum, the scenario frameworks, and the cohort of Central Texas pilots working through it together starts in September.
+Apex Advantage Ground School is live now. If you're flying west of I-35 this summer, that knowledge doesn't have to wait — the structured curriculum and scenario frameworks are already running, and there's no cohort to join or fall behind in.
 
 The escarpment isn't going anywhere. Neither is the Gulf moisture. But how you respond to that combination is entirely within your control.
 
-[Join the Apex Advantage waitlist](/home.html#waitlist) and be first in line when enrollment opens.
+[View upcoming Ground School classes](/apex-advantage-private-pilot.html) — $25 per class, or $400 for the complete program.

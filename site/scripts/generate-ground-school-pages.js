@@ -32,11 +32,11 @@ function slugify(city, stateAbbr) {
 
 const COPY_VARIANTS = [
   (city, state) => `Finding a real private pilot ground school near ${city} usually means picking between a handful of local options, awkward weeknight drives, or a self-paced video course you'll never finish. Apex Advantage is a third option: a live, instructor-led class you attend from home in ${state}, on a real schedule, with an actual CFI answering your questions in real time.`,
-  (city, state) => `Most ground school options fall into two camps: an in-person class that only exists if you happen to live near one, or a prerecorded video course with no instructor at all. Pilots in ${city} get a third option with Apex Advantage — live virtual classes, small cohorts, and a CFI/CFII walking through the material with you in real time, no matter where in ${state} you're logging in from.`,
+  (city, state) => `Most ground school options fall into two camps: an in-person class that only exists if you happen to live near one, or a prerecorded video course with no instructor at all. Pilots in ${city} get a third option with Apex Advantage — live virtual classes with a CFI/CFII walking through the material with you in real time, no matter where in ${state} you're logging in from.`,
   (city, state) => `Self-paced ground school courses are easy to buy and easy to abandon. Apex Advantage was built for ${city}-area students who want the structure of a real class — a set schedule, a live instructor, classmates working through the same material — without needing a ground school physically located near ${state}.`,
   (city, state) => `A lot of ground school in ${state} still means either a long drive to whichever flight school happens to run classes near ${city}, or a solo slog through a video library. Apex Advantage runs its Private Pilot ground school live and virtual, so ${city}-area students get real-time instruction and a fixed schedule without needing a local classroom.`,
   (city, state) => `If you've searched for a private pilot ground school near ${city} and mostly found stale course libraries or classes that don't fit your schedule, Apex Advantage is built differently — live, instructor-led sessions delivered virtually, so students throughout ${state} get the same real-time class as anyone in Austin, TX.`,
-  (city, state) => `Ground school shouldn't come down to what happens to exist within driving distance. Apex Advantage delivers its Private Pilot ground school live and virtual, which means ${city}-area students get a real instructor, a real cohort, and a real schedule — the same class Apex runs everywhere else in ${state} and beyond.`,
+  (city, state) => `Ground school shouldn't come down to what happens to exist within driving distance. Apex Advantage delivers its Private Pilot ground school live and virtual, which means ${city}-area students get a real instructor and a real schedule — the same class Apex runs everywhere else in ${state} and beyond, with no fixed sequence to fall behind in.`,
 ];
 
 const FAQS_BY_REGION = {
@@ -57,7 +57,7 @@ const FAQS_BY_REGION = {
   ],
   West: [
     ['Is this ground school available to pilots on the West Coast / Mountain Time?', "Yes — it's delivered live virtual to students anywhere, though classes are currently scheduled in the evening Central Time. Check the schedule for the exact time before you register."],
-    ['What makes this different from a self-paced online ground school?', 'Self-paced courses have no live instructor and no cohort. Apex Advantage runs real, scheduled classes with a CFI/CFII actually teaching and taking questions in real time.'],
+    ['What makes this different from a self-paced online ground school?', 'Self-paced courses have no live instructor and no set class time. Apex Advantage runs real, scheduled classes with a CFI/CFII actually teaching and taking questions in real time.'],
     ['Do I need any equipment beyond a computer?', 'Just a reliable internet connection and a way to join a video call — no special software or hardware required.'],
   ],
 };
@@ -233,8 +233,8 @@ ${faqHtml(region)}
         <div style="margin:48px 0;text-align:center">
           <h3 style="color:var(--white);font-size:22px;font-weight:800;margin:0 0 20px">Ready to Get Started?</h3>
           <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
-            <a href="portal-login.html?view=signup" class="btn btn--primary">Create Your Free Portal Account</a>
-            <a href="home.html?interest=ground-school#waitlist" class="btn btn--outline">Join the Ground School Waitlist</a>
+            <a href="apex-advantage-private-pilot.html" class="btn btn--primary">View Upcoming Classes — $25</a>
+            <a href="portal-login.html?view=signup" class="btn btn--outline">Create Your Free Portal Account</a>
           </div>
         </div>
 

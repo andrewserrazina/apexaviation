@@ -169,6 +169,92 @@ async function handleUnlockCheckridePrep(supabase: any, session: Stripe.Checkout
 // fails after Stripe has already captured payment), just against
 // private_pilot_ground_school_pack_unlocked instead of
 // checkride_prep_unlocked.
+// Post-purchase upgrade: identical mechanics to handleUnlockGroundSchoolPack
+// (same flag, same refund-on-failure fallback), but re-verifies server-side
+// that this profile genuinely has a prior paid enrollment before granting
+// the pack -- defense in depth alongside create-checkout-session's own
+// check at session-creation time, matching this codebase's established
+// two-layer pattern (see v63.sql's duplicate-registration guard for the
+// same edge-function-plus-RPC precedent). By the time this webhook fires,
+// Stripe has already captured the (discounted) payment, so a failure here
+// is a fulfillment problem, not a gate -- refund and alert admin, same as
+// the unlock handler below.
+async function handleUpgradeGroundSchoolPack(supabase: any, session: Stripe.Checkout.Session) {
+  const profileId = session.metadata?.profile_id as string
+  const amountCents = session.amount_total ?? 0
+  const email = session.customer_details?.email || session.customer_email
+
+  if (!profileId) throw new Error('No profile_id on checkout session metadata')
+
+  const { data: paidEnrollments } = await supabase
+    .from('scheduled_ground_class_enrollments')
+    .select('id')
+    .eq('profile_id', profileId)
+    .eq('payment_status', 'paid')
+    .limit(1)
+
+  if (!paidEnrollments?.length) {
+    await sendEmail(supabase, ADMIN_NOTIFICATION_EMAIL, 'ACTION NEEDED: Ground School upgrade paid with no prior enrollment on file',
+      template(`
+        <h2 style="color:#F4B400;margin:0 0 4px;">Review this manually</h2>
+        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">profile_id ${profileId} (${email ?? 'no email on session'}) completed a Ground School upgrade payment, but has no paid class enrollment on file server-side. The pack was NOT granted automatically -- verify manually before unlocking, and consider a refund if this doesn't check out.</p>
+      `))
+    throw new Error(`Upgrade payment for profile ${profileId} has no verifiable prior paid enrollment`)
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', profileId)
+    .maybeSingle()
+  const fullName = profile?.full_name || 'there'
+
+  const { data: unlockedProfile, error: unlockError } = await supabase
+    .from('profiles')
+    .update({ private_pilot_ground_school_pack_unlocked: true })
+    .eq('id', profileId)
+    .select('id, private_pilot_ground_school_pack_unlocked')
+    .maybeSingle()
+
+  if (unlockError || !unlockedProfile?.private_pilot_ground_school_pack_unlocked) {
+    if (session.payment_intent) {
+      try {
+        await stripe.refunds.create({ payment_intent: session.payment_intent as string })
+      } catch (refundErr) {
+        console.error('stripe-webhook: refund failed after ground school upgrade failure', refundErr)
+      }
+    }
+    await sendEmail(supabase, ADMIN_NOTIFICATION_EMAIL, 'ACTION NEEDED: Ground School upgrade failed after payment',
+      template(`
+        <h2 style="color:#F4B400;margin:0 0 4px;">A paid upgrade failed to apply</h2>
+        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">profile_id ${profileId} (${email ?? 'no email on session'}) paid to upgrade to the Private Pilot Ground School pack, but the unlock could not be applied${unlockError ? ': ' + unlockError.message : ' (profile not found)'}. A refund has been attempted automatically. Check Stripe and the profiles table to confirm and follow up with the customer.</p>
+      `))
+    throw unlockError || new Error(`Ground School upgrade unlock flag was not set for profile ${profileId}`)
+  }
+
+  await supabase.from('invoices').insert({
+    student_id: profileId,
+    description: 'Apex Advantage Private Pilot Ground School — Upgrade to Full Course',
+    amount_cents: amountCents,
+    status: 'paid',
+  })
+
+  await supabase.from('portal_events').insert({
+    profile_id: profileId,
+    event_type: 'ground_school_pack_upgraded',
+    metadata: { amount_cents: amountCents, credited_cents: session.metadata?.credited_cents },
+  })
+
+  if (email) {
+    await sendEmail(supabase, email, "You're upgraded — Private Pilot Ground School",
+      template(`
+        <h2 style="color:#F4B400;margin:0 0 4px;">You're all in, ${fullName.split(' ')[0]}!</h2>
+        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your upgrade payment went through — every Private Pilot ground school class is now unlocked on your account, no per-session charge. Register for any upcoming session from your portal.</p>
+        <a href="https://advantage.apexaviationtx.com/portal.html#ground-school" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">See Upcoming Classes →</a>
+      `))
+  }
+}
+
 async function handleUnlockGroundSchoolPack(supabase: any, session: Stripe.Checkout.Session) {
   const profileId = session.metadata?.profile_id as string
   const amountCents = session.amount_total ?? 0
@@ -556,6 +642,8 @@ serve(async (req) => {
       await handleJoinMembership(supabase, session)
     } else if (purpose === 'unlock-ground-school-pack') {
       await handleUnlockGroundSchoolPack(supabase, session)
+    } else if (purpose === 'upgrade-ground-school-pack') {
+      await handleUpgradeGroundSchoolPack(supabase, session)
     } else {
       throw new Error(`Unknown checkout purpose: ${purpose}`)
     }
