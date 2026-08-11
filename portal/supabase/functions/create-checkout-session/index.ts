@@ -443,6 +443,75 @@ serve(async (req) => {
       })
     }
 
+    // Post-purchase upgrade: a member who already paid for one or more
+    // individual $25 classes wants the $400 complete pack, crediting
+    // what they already paid. The credited amount is computed here from
+    // the caller's own real paid enrollment rows -- never a client-
+    // supplied "I already paid $X" claim, which is what would make this
+    // exploitable. Scoped to scheduled_ground_class_enrollments (the
+    // modern system this landing page sells through), not the legacy
+    // ground_registrations table.
+    if (purpose === 'upgrade-ground-school-pack') {
+      const authHeader = req.headers.get('Authorization') || ''
+      const token = authHeader.replace('Bearer ', '').trim()
+      if (!token) return jsonError('Missing Authorization header', 401)
+
+      const { data: userData, error: userErr } = await supabase.auth.getUser(token)
+      if (userErr || !userData?.user) return jsonError('Invalid or expired session', 401)
+
+      const profileId = userData.user.id
+      const email = userData.user.email
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('private_pilot_ground_school_pack_unlocked')
+        .eq('id', profileId)
+        .maybeSingle()
+      if (profile?.private_pilot_ground_school_pack_unlocked) {
+        return jsonError('The Private Pilot Ground School pack is already unlocked on this account', 400)
+      }
+
+      const { data: paidEnrollments } = await supabase
+        .from('scheduled_ground_class_enrollments')
+        .select('amount_cents')
+        .eq('profile_id', profileId)
+        .eq('payment_status', 'paid')
+
+      const creditedCents = (paidEnrollments || []).reduce((sum: number, row: any) => sum + (row.amount_cents || 0), 0)
+      if (creditedCents <= 0) {
+        return jsonError('No prior paid Ground School class found on this account to credit toward the upgrade', 400)
+      }
+
+      const upgradeAmountCents = Math.max(GROUND_SCHOOL_PACK_PRICE_CENTS - creditedCents, 0)
+      if (upgradeAmountCents === 0) {
+        return jsonError('Your prior payments already cover the full program price — contact info@apexaviationtx.com to unlock directly', 400)
+      }
+
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        customer_email: email,
+        line_items: [{
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: 'Apex Advantage Private Pilot Ground School — Upgrade to Full Course',
+              description: `Credits $${(creditedCents / 100).toFixed(2)} already paid toward the $400 complete program.`,
+            },
+            unit_amount: upgradeAmountCents,
+          },
+          quantity: 1,
+        }],
+        metadata: { purpose: 'upgrade-ground-school-pack', profile_id: profileId, credited_cents: String(creditedCents) },
+        success_url: `${siteOrigin}/portal.html?groundschoolpack=1&amount_cents=${upgradeAmountCents}&session_id={CHECKOUT_SESSION_ID}#ground-school`,
+        cancel_url: `${siteOrigin}/portal.html#ground-school`,
+      })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'upgrade-ground-school-pack', email, profileId, amountCents: upgradeAmountCents, utm: body.utm })
+
+      return new Response(JSON.stringify({ url: session.url, amount: upgradeAmountCents, creditedCents }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     if (purpose === 'signup-and-unlock-ground-school-pack') {
       const { name, email, dest } = body
       if (!name || !email) return jsonError('Missing required fields: name, email', 400)

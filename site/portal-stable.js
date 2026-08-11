@@ -4795,6 +4795,21 @@
       meetingUrl = null;
     }
 
+    // Post-purchase $400-pack upgrade offer: only for a member who (a)
+    // isn't already pack-unlocked and (b) has at least one real *paid*
+    // enrollment on file (amount_cents from get_my_ground_school_
+    // enrollments, v65.sql) -- 'ground_school_pack'-status rows aren't
+    // real payments and credit nothing. Shows the real computed credit
+    // client-side for a clear offer, but create-checkout-session
+    // recomputes and verifies this same figure server-side at checkout
+    // time from the same source rows -- this display is informational,
+    // not the authority.
+    var creditedCents = myScheduledEnrollments
+      .filter(function (e) { return e.payment_status === 'paid'; })
+      .reduce(function (sum, e) { return sum + (e.amount_cents || 0); }, 0);
+    var upgradeEligible = !member.groundSchoolPackUnlocked && creditedCents > 0 && creditedCents < 40000;
+    var upgradeRemainingCents = 40000 - creditedCents;
+
     el.hidden = false;
     el.innerHTML =
       '<div class="portal-header__eyebrow" style="margin-bottom:8px">Registration Confirmed</div>' +
@@ -4802,11 +4817,41 @@
       (title ? '<p style="color:rgba(255,255,255,0.7);font-size:14px;margin-bottom:4px"><strong style="color:#fff">' + title + '</strong></p><p style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:16px">' + whenText + '</p>' : '<p style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:16px">Check your email for the exact class time and any prep materials.</p>') +
       (meetingUrl ? '<a href="' + meetingUrl + '" target="_blank" rel="noopener" class="btn btn--primary" style="width:100%;margin-bottom:14px">Join the Class →</a>' : '') +
       '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:0 0 14px" />' +
-      '<p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:12px">Enjoy Apex Advantage? Your class is part of the same live Ground School curriculum. Students who want the complete program can enroll in the Full Ground School.</p>' +
-      '<button type="button" class="btn btn--ghost" id="gsRegistrationSuccessFullPackBtn">Explore Full Ground School</button>';
+      (upgradeEligible
+        ? '<p style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">Want the complete Ground School?</p>' +
+          '<div style="display:flex;justify-content:space-between;font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:6px"><span>All 20 live classes</span><span>$400</span></div>' +
+          '<div style="display:flex;justify-content:space-between;font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.08)"><span>You already paid</span><span>-$' + (creditedCents / 100).toFixed(0) + '</span></div>' +
+          '<div style="display:flex;justify-content:space-between;font-size:15px;color:var(--gold);font-weight:800;margin-bottom:14px"><span>Upgrade remaining access</span><span>$' + (upgradeRemainingCents / 100).toFixed(0) + '</span></div>' +
+          '<button type="button" class="btn btn--primary" id="gsRegistrationSuccessUpgradeBtn" style="width:100%;margin-bottom:10px">Upgrade to Complete Ground School</button>' +
+          '<p id="gsRegistrationSuccessUpgradeError" class="portal-modal__error"></p>'
+        : '<p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:12px">Enjoy Apex Advantage? Your class is part of the same live Ground School curriculum. Students who want the complete program can enroll in the Full Ground School.</p>' +
+          '<button type="button" class="btn btn--ghost" id="gsRegistrationSuccessFullPackBtn">Explore Full Ground School</button>');
 
     var fullPackBtn = document.getElementById('gsRegistrationSuccessFullPackBtn');
     if (fullPackBtn) fullPackBtn.addEventListener('click', function () { el.hidden = true; document.getElementById('groundSchoolPackCard').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+
+    var upgradeBtn = document.getElementById('gsRegistrationSuccessUpgradeBtn');
+    if (upgradeBtn) upgradeBtn.addEventListener('click', function () {
+      upgradeBtn.disabled = true;
+      upgradeBtn.textContent = 'Redirecting to secure checkout…';
+      var errorEl = document.getElementById('gsRegistrationSuccessUpgradeError');
+      errorEl.classList.remove('show');
+      apexSupabase.functions.invoke('create-checkout-session', {
+        body: { purpose: 'upgrade-ground-school-pack', origin: window.location.origin },
+        headers: { Authorization: 'Bearer ' + accessToken }
+      }).then(function (res) {
+        if (res.error || !res.data || !res.data.url) {
+          return extractInvokeError(res).then(function (msg) {
+            errorEl.textContent = msg || 'Could not start checkout. Please try again.';
+            errorEl.classList.add('show');
+            upgradeBtn.disabled = false;
+            upgradeBtn.textContent = 'Upgrade to Complete Ground School';
+          });
+        }
+        if (window.apexTrackStandard) apexTrackStandard('InitiateCheckout', { content_name: 'Ground School Upgrade', value: upgradeRemainingCents / 100, currency: 'USD' });
+        window.location.href = res.data.url;
+      });
+    });
   }
 
   function renderGroundSchoolProgress() {
