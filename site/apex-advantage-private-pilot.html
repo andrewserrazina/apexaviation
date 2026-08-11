@@ -377,6 +377,31 @@
       display: none;
     }
 
+    /* "Not sure where to start?" -- compact decision aid, reduces choice
+       paralysis without becoming its own major section. */
+    .gs-start-guide {
+      max-width: 1080px; margin: 0 auto 28px; padding: 18px 20px;
+      background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px;
+    }
+    .gs-start-guide__heading { font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 14px; }
+    .gs-start-guide__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .gs-start-guide__label { font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--gold); margin-bottom: 4px; }
+    .gs-start-guide__item p { font-size: 13px; color: rgba(255,255,255,0.65); margin: 0; line-height: 1.5; }
+    @media (max-width: 640px) {
+      .gs-start-guide__grid { grid-template-columns: 1fr; gap: 12px; }
+    }
+
+    /* Momentary highlight when the hero preview's "Reserve This Class"
+       link jumps to a card that isn't already topic-matched (--matched
+       is permanent/topic-driven; --flash is a temporary visual landing
+       cue, removed after the animation completes). */
+    .gs-class-card--flash { animation: gsClassFlash 1.6s ease-out; }
+    @keyframes gsClassFlash {
+      0% { box-shadow: 0 0 0 3px rgba(244,180,0,0.6); border-color: var(--gold); }
+      100% { box-shadow: 0 0 0 0 rgba(244,180,0,0); }
+    }
+    .gs-class-card__module-tag { color: rgba(255,255,255,0.28); }
+
     /* Upcoming classes: Calendar / List view toggle + calendar (same
        visual language as the member portal's Ground School calendar,
        portal.css .gs-calendar -- rebuilt locally since this anonymous
@@ -663,8 +688,8 @@
             Live · Instructor-Led · $25 Per Class
           </div>
           <div class="section__eyebrow">Apex Advantage · Private Pilot Ground School</div>
-          <h1 class="page-hero__title gs-hero-headline">Stop watching ground school.<br /><span>Start participating.</span></h1>
-          <p class="page-hero__sub" style="max-width:520px">Finally understand the aviation concepts you've been trying to memorize. Join a live, instructor-led Private Pilot Ground School class built around real explanations, practical scenarios, and time to ask questions.</p>
+          <h1 class="page-hero__title gs-hero-headline" id="gsHeroHeadline">Stop watching ground school.<br /><span>Start participating.</span></h1>
+          <p class="page-hero__sub" id="gsHeroSub" style="max-width:520px">Finally understand the aviation concepts you've been trying to memorize. Join a live, instructor-led Private Pilot Ground School class built around real explanations, practical scenarios, and time to ask questions.</p>
 
           <ul class="gs-benefit-strip">
             <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Live Online</li>
@@ -694,7 +719,8 @@
             <span class="gs-preview-panel__price">$25</span>
           </div>
           <div class="gs-preview-panel__row" id="gsPreviewSeats" style="display:none"></div>
-          <a href="#upcoming-classes" id="gsPreviewLink" class="gs-preview-panel__link" style="display:none" data-apx-cta data-apx-cta-location="hero_preview">View This Class →</a>
+          <a href="#upcoming-classes" id="gsPreviewLink" class="gs-preview-panel__link" style="display:none" data-apx-cta data-apx-cta-location="hero_preview">Reserve This Class →</a>
+          <p id="gsPreviewFull" style="display:none;color:rgba(255,255,255,0.4);font-size:13px;font-weight:700;margin-top:14px;text-align:center">Class Full</p>
         </div>
 
       </div>
@@ -761,6 +787,24 @@
         <div class="section__eyebrow">Live &amp; Instructor-Led</div>
         <h2 class="section__title">Upcoming<br/><em class="accent">Live Classes.</em></h2>
         <p class="section__desc" style="max-width:620px">Every class below is live, taught by a real instructor. Reserve a seat for $25 — no account required.</p>
+      </div>
+
+      <div class="gs-start-guide">
+        <div class="gs-start-guide__heading">Not sure where to start?</div>
+        <div class="gs-start-guide__grid">
+          <div class="gs-start-guide__item">
+            <div class="gs-start-guide__label">New to Flight Training</div>
+            <p>Start with Module 1.</p>
+          </div>
+          <div class="gs-start-guide__item">
+            <div class="gs-start-guide__label">Already Training</div>
+            <p>Choose the topic you need most.</p>
+          </div>
+          <div class="gs-start-guide__item">
+            <div class="gs-start-guide__label">Want the Full Course</div>
+            <p>Get all 20 live classes for <a href="#full-pack" style="color:var(--gold)">$400</a>.</p>
+          </div>
+        </div>
       </div>
 
       <div class="gs-topic-banner" id="gsTopicBanner"></div>
@@ -838,6 +882,7 @@
       <div class="section__header">
         <div class="section__eyebrow">Class Format</div>
         <h2 class="section__title">What happens in<br/><em class="accent">a live class?</em></h2>
+        <p class="section__desc" style="max-width:560px">This is the difference: if something doesn't make sense, you can stop and ask.</p>
       </div>
       <div class="flow-steps" style="max-width:960px;margin:0 auto">
         <div class="flow-step">
@@ -1215,6 +1260,11 @@
   ════════════════════════════════════════════════════════════ -->
   <section class="section" style="background:#0b1627">
     <div class="container">
+      <div style="max-width:820px;margin:0 auto 40px;text-align:center">
+        <h2 style="font-size:24px;font-weight:800;color:var(--white);margin:0 0 8px">A prerecorded course can't tell when you're confused.</h2>
+        <p style="font-size:17px;font-weight:700;color:var(--gold);margin:0 0 18px">A live instructor can.</p>
+        <p style="color:rgba(255,255,255,0.65);line-height:1.8;font-size:15px;margin:0;max-width:600px;margin-left:auto;margin-right:auto">Ask questions in real time, get clarification immediately, work through actual scenarios, and practice explaining concepts out loud — the same way a DPE will ask for them on checkride day.</p>
+      </div>
       <div style="max-width:820px;margin:0 auto;display:flex;gap:44px;align-items:center;flex-wrap:wrap">
         <div style="flex-shrink:0">
           <div style="width:110px;height:110px;border-radius:50%;overflow:hidden;border:3px solid var(--gold)">
@@ -1277,6 +1327,34 @@
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
+            Is this online?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>Yes — every class is entirely online and live. You just need a device and an internet connection to join.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            Can I ask questions during class?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>Yes. Asking questions live, in real time, is the whole point — that's what a prerecorded course can't do.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            Do I have to be an Apex flight student?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>No. Ground School is open to any student pilot working toward their Private Pilot certificate, regardless of where you're doing your actual flight training.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            Can I attend from outside Texas?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>Yes — since every class is online, you can join from anywhere with an internet connection.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
             What if I miss a class?
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
@@ -1284,17 +1362,17 @@
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
-            How much is the complete Ground School?
+            How much is each class?
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div class="faq-item__answer"><p>$400 for the complete program — no per-class charge after that.</p></div>
+          <div class="faq-item__answer"><p>$25 per class, reserved individually — no account required to pay for a single class.</p></div>
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
-            How much would all the classes cost individually?
+            How much is the full program?
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div class="faq-item__answer"><p>At $25 per class, 20 classes would run $500 — the complete program at $400 saves $100 (20%) if you know you want all of it.</p></div>
+          <div class="faq-item__answer"><p>$400 for all 20 classes — no per-class charge after that. At $25 per class individually, 20 classes would run $500, so the complete program saves $100 (20%) if you know you want all of it.</p></div>
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
@@ -1479,6 +1557,22 @@
 
     if (window.apexTrack) apexTrack('landing_page_viewed', { product: 'ground_school_private_pilot' });
 
+    // ── Funnel: schedule section viewed, once per page load. ──
+    if (window.apexTrack && window.IntersectionObserver) {
+      var scheduleSection = document.getElementById('upcoming-classes');
+      if (scheduleSection) {
+        var scheduleObserver = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              apexTrack('ground_school_schedule_viewed', { product: 'ground_school_private_pilot' });
+              scheduleObserver.disconnect();
+            }
+          });
+        }, { threshold: 0.4 });
+        scheduleObserver.observe(scheduleSection);
+      }
+    }
+
     // ── UTM passthrough on primary CTA links (same pattern as
     // apex-advantage.html) — belt-and-suspenders alongside
     // analytics-events.js's own localStorage-based capture. ──
@@ -1522,6 +1616,16 @@
       if (!topicParam || !callout) return;
       callout.textContent = 'Looking for ' + topicParam + '? Your next class is highlighted below.';
       callout.style.display = 'block';
+    })();
+
+    // ── GS02 offer-traffic badge tweak — see applyOfferTrafficHero()
+    // definition below for the matching rule; called here eagerly
+    // (doesn't depend on real class data). ──
+    (function () {
+      var utmContent = (new URLSearchParams(window.location.search).get('utm_content') || '').toLowerCase();
+      if (!/gs02|try/.test(utmContent)) return;
+      var badge = document.querySelector('.gs-hero-badge');
+      if (badge && badge.lastChild) badge.lastChild.textContent = ' Try One Live Class — $25';
     })();
 
     // ── Upcoming Live Classes: real data via get_upcoming_ground_school_classes
@@ -1588,7 +1692,12 @@
         btn.disabled = true;
         btn.textContent = 'Redirecting to secure checkout…';
         if (window.apexTrackStandard) apexTrackStandard('InitiateCheckout', { content_name: 'Ground School — ' + row.title, value: 25, currency: 'USD' });
-        if (window.apexTrack) apexTrack('checkout_started', { product: 'ground_school_class', class_id: row.id, class_topic: row.module_title, price: 25 });
+        if (window.apexTrack) apexTrack('checkout_started', {
+          product: 'ground_school_class', purchase_type: 'single_class', value: 25,
+          class_id: row.id, class_title: row.title, class_topic: row.module_title,
+          module_id: row.module_id || undefined, module_title: row.module_title || undefined,
+          class_date: row.class_date, topic: topicParam || undefined
+        });
         apexSupabase.functions.invoke('create-checkout-session', {
           body: {
             purpose: 'ground-school-registration',
@@ -1623,13 +1732,21 @@
       var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
       var dayLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-      function jumpToClassCard(row) {
-        if (window.gtag) gtag('event', 'ground_school_cta_click', { location: 'calendar_event', class_topic: row.module_title || undefined, class_id: row.id });
+      // trackLocation defaults to 'calendar_event' (its original caller).
+      // Pass null when the click that triggered this already has its own
+      // [data-apx-cta] tracking (e.g. the hero preview link), so this
+      // doesn't fire a second, wrongly-labeled ground_school_cta_click
+      // for the same click.
+      function jumpToClassCard(row, trackLocation) {
+        if (trackLocation === undefined) trackLocation = 'calendar_event';
+        if (trackLocation && window.gtag) gtag('event', 'ground_school_cta_click', { location: trackLocation, class_topic: row.module_title || undefined, class_id: row.id });
         setView('list');
         var el = document.getElementById('gs-class-' + row.id);
         if (!el) return;
         setTimeout(function () {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('gs-class-card--flash');
+          setTimeout(function () { el.classList.remove('gs-class-card--flash'); }, 1700);
           var reserveBtn = el.querySelector('[data-gs-reserve-btn]');
           if (reserveBtn) reserveBtn.click();
         }, 150);
@@ -1722,10 +1839,17 @@
         var card = document.createElement('div');
         card.className = 'gs-class-card' + (matched ? ' gs-class-card--matched' : '');
         card.id = 'gs-class-' + row.id;
+        // Topic first, module number de-emphasized: the badge (already
+        // styled as a bold gold eyebrow) leads with the real topic so a
+        // visitor immediately understands WHAT they're buying, not which
+        // numbered slot it occupies -- module_id (e.g. "PPL-M05") moves
+        // into the meta line at reduced opacity instead of prefixing the
+        // eyebrow. No description field exists on this RPC's rows, so
+        // none is fabricated here -- module title only, per spec.
         card.innerHTML =
-          '<div class="gs-class-card__badge">' + (row.module_id ? row.module_id + ' · ' : '') + (row.module_title || 'Private Pilot') + '</div>' +
+          '<div class="gs-class-card__badge">' + (row.module_title || 'Private Pilot') + '</div>' +
           '<h3 class="gs-class-card__title">' + row.title + '</h3>' +
-          '<p class="gs-class-card__meta">' + fmtDateTime(row) + (instructor ? ' · ' + instructor : '') + '</p>' +
+          '<p class="gs-class-card__meta">' + fmtDateTime(row) + (instructor ? ' · ' + instructor : '') + (row.module_id ? ' <span class="gs-class-card__module-tag">· ' + row.module_id + '</span>' : '') + '</p>' +
           '<p class="gs-class-card__seats">' + (spotsLeft !== null ? (full ? 'Class full' : spotsLeft + ' spot' + (spotsLeft === 1 ? '' : 's') + ' left') : '') + ' · $25</p>' +
           (full ? '' : '<button type="button" class="btn btn--primary" data-gs-reserve-btn style="width:100%">Reserve Your Seat</button>') +
           (full ? '' :
@@ -1740,8 +1864,14 @@
           var reserveBtn = card.querySelector('[data-gs-reserve-btn]');
           var formEl = card.querySelector('[data-gs-form]');
           reserveBtn.addEventListener('click', function () {
+            var eventMeta = {
+              class_id: row.id, class_title: row.title, module_id: row.module_id || undefined,
+              module_title: row.module_title || undefined, class_date: row.class_date, topic: topicParam || undefined
+            };
+            if (window.apexTrack) apexTrack('ground_school_class_selected', eventMeta);
             formEl.classList.add('open');
             reserveBtn.style.display = 'none';
+            if (window.apexTrack) apexTrack('ground_school_reserve_form_opened', eventMeta);
           });
           card.querySelector('[data-gs-submit]').addEventListener('click', function () { reserveSeat(row, formEl); });
         }
@@ -1763,6 +1893,7 @@
         var instructorEl = document.getElementById('gsPreviewInstructor');
         var seatsEl = document.getElementById('gsPreviewSeats');
         var linkEl = document.getElementById('gsPreviewLink');
+        var fullEl = document.getElementById('gsPreviewFull');
         if (!moduleEl) return;
         if (!rows.length) {
           moduleEl.textContent = '20 Live Modules · 7 Phases';
@@ -1778,30 +1909,55 @@
           instructorEl.style.display = 'flex';
         }
         var spotsLeft = (next.capacity != null && next.enrolled_count != null) ? next.capacity - next.enrolled_count : null;
+        var full = spotsLeft !== null && spotsLeft <= 0;
         if (spotsLeft !== null) {
           seatsEl.innerHTML = '<span>Spots left</span><span>' + Math.max(spotsLeft, 0) + '</span>';
           seatsEl.style.display = 'flex';
+        }
+        // A full class gets "Class Full" instead of a CTA that would
+        // just dead-end at a card with no reserve button -- never a fake
+        // CTA, per spec.
+        if (full) {
+          if (linkEl) linkEl.style.display = 'none';
+          if (fullEl) fullEl.style.display = 'block';
+          return;
         }
         if (linkEl) {
           linkEl.href = '#gs-class-' + next.id;
           linkEl.dataset.classTopic = next.module_title || '';
           linkEl.dataset.classId = next.id;
           linkEl.style.display = 'block';
+          // Real navigation (scroll + highlight + open that exact card's
+          // reserve state), not a blind trigger straight into checkout.
+          // trackLocation=null: this link already has its own
+          // [data-apx-cta location="hero_preview"] tracking via the
+          // page-wide delegated click handler, so jumpToClassCard must
+          // not also fire its default 'calendar_event' tracking here.
+          linkEl.addEventListener('click', function (e) {
+            e.preventDefault();
+            jumpToClassCard(next, null);
+          });
         }
       }
 
-      // ── Hero CTA/topic-callout upgrade once real data is in — only
-      // fires if ?topic= matched an actual scheduled class; otherwise
-      // the generic hero CTA/callout set earlier stays as-is. ──
+      // ── Hero CTA/headline/copy upgrade once real data is in — only
+      // fires if ?topic= matched an actual scheduled, non-full class;
+      // otherwise the generic hero stays as-is. Never hardcodes a topic
+      // name -- headline/copy are templated from whatever real string
+      // arrived in ?topic=. ──
       function upgradeHeroForTopic(matchedRow, topicParam) {
         var callout = document.getElementById('gsHeroTopicCallout');
         var heroCta = document.getElementById('gsHeroCta');
+        var headline = document.getElementById('gsHeroHeadline');
+        var sub = document.getElementById('gsHeroSub');
         if (callout) callout.textContent = topicParam + ' class available — ' + fmtDateTime(matchedRow);
         if (heroCta) {
           heroCta.textContent = 'Reserve My ' + topicParam + ' Seat — $25';
           heroCta.dataset.classTopic = matchedRow.module_title || topicParam;
           heroCta.dataset.classId = matchedRow.id;
         }
+        if (headline) headline.innerHTML = topicParam + ' still confusing?<br /><span>Let\'s fix that live.</span>';
+        if (sub) sub.textContent = 'Join the upcoming ' + topicParam + ' class and work through it with a live instructor — real questions, real scenarios, real answers.';
       }
 
       // p_limit was 12 back when this only fed a flat card list -- fine
