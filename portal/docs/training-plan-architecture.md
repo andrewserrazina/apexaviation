@@ -233,7 +233,43 @@ slipping — both rendered with correct direction and pill styling, and the
 Training Plan's "AI DPE not done recently" check correctly switched to
 recommending Rapid Fire once a real recent session existed in the mock data.
 
-## 8. Explicitly deferred (not started this pass)
+## 8. Training Report (downloadable/printable)
+
+Built after the rest of this pass. A "Training Report" card in Account
+opens a print/PDF-oriented overlay generated entirely from data already
+loaded client-side for other widgets — readiness, category coverage
+(strongest/weakest 3 ACS categories), Ground School attendance (via
+`upcomingRegisteredClass()` + `myScheduledEnrollments`), and AI DPE
+sessions/trend (reusing `computeAiDpeTrend()` from section 7) — no new RPC.
+
+Deliberately excludes billing/invoices and email; only name, certificate
+goal, and checkride date identify the member, per the spec's explicit
+"do not expose sensitive account data" instruction.
+
+**Implementation choice: downloadable/printable via `window.print()`, not a
+shareable link.** The spec allowed either; a client-side, sign-in-required
+PDF avoids needing a new signed-token/expiration table and its own RLS
+surface for a first version — a meaningfully bigger security decision than
+this pass wanted to make without more design time. `@media print` isolates
+`.portal-report-panel` via the standard `visibility: hidden` on `body *` /
+`visibility: visible` on the panel subtree, so only the report prints, not
+the portal chrome around it. The panel is styled light-on-white regardless
+of the portal's dark theme, since it's meant to be handed to an instructor
+as paper/PDF, not read on screen.
+
+Verified with a Playwright test asserting both the report's text content
+(all sections populate correctly from mock data covering an unlocked
+member with real Ground School attendance and AI DPE history) and the
+print isolation itself (nav `visibility: hidden`, report panel `visibility:
+visible` under emulated print media).
+
+**If a shareable link is wanted later:** a `training_report_shares` table
+(`profile_id`, a random token, `expires_at`) with a public-safe read-only
+RPC gated on a valid unexpired token would be the natural next step — not
+built here since it's a genuinely different security surface than a
+purely client-side, sign-in-required PDF.
+
+## 9. Explicitly deferred (not started this pass)
 
 Documented here rather than left unstated, so the punch list is honest:
 
@@ -245,7 +281,6 @@ Documented here rather than left unstated, so the punch list is honest:
   adds the elevated "class starts soon" banner + join-class task inside the
   Training Plan card (spec section 11), but not a dedicated post-class
   review screen (spec section 10) with its own recommended-next-steps CTA.
-- **Instructor-shareable Training Report** (spec section 14) — not started.
 - **Instructor dashboard** (spec section 15) — not started; explicitly
   optional in the spec.
 - **New achievements** (Ground School milestones, Training Plan streaks) —
@@ -264,7 +299,7 @@ Documented here rather than left unstated, so the punch list is honest:
   `training_plan_snapshots` table (section 3 above) would be the natural
   hook if this gets built later.
 
-## 9. Production verification gap
+## 10. Production verification gap
 
 This sandbox has no live Supabase connection. Everything above was verified
 by: reading the actual current source (not assumptions), a full syntax check

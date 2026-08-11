@@ -586,6 +586,45 @@
 }
 .portal-practice-panel__close:hover { color: #fff; }
 .portal-practice-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; font-size: 13px; color: rgba(255,255,255,0.5); font-weight: 600; }
+
+/* Training Report -- deliberately light-on-white (print/PDF target),
+   independent of the portal's dark theme tokens above. */
+.portal-report-overlay {
+  position: fixed; inset: 0; z-index: 400; background: rgba(6,14,28,0.97);
+  display: flex; flex-direction: column; align-items: center; padding: 24px; overflow-y: auto;
+}
+.portal-report-overlay[hidden] { display: none; }
+.portal-report-toolbar { display: flex; gap: 12px; width: 100%; max-width: 720px; margin-bottom: 16px; }
+.portal-report-panel {
+  width: 100%; max-width: 720px; background: #fff; color: #16233b; border-radius: 12px;
+  padding: 48px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); font-family: var(--font); margin-bottom: 24px;
+}
+.portal-report__eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #9a6b00; margin: 0 0 4px; }
+.portal-report__title { font-size: 22px; font-weight: 800; color: #0B1F3A; margin: 0 0 4px; }
+.portal-report__meta { font-size: 12.5px; color: #5a6b84; margin: 0 0 28px; }
+.portal-report__section { margin-bottom: 26px; padding-top: 22px; border-top: 1px solid #e4e8ef; }
+.portal-report__section:first-of-type { border-top: none; padding-top: 0; }
+.portal-report__section h4 { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: #16233b; margin: 0 0 12px; }
+.portal-report__stat-row { display: flex; flex-wrap: wrap; gap: 20px 32px; }
+.portal-report__stat { min-width: 120px; }
+.portal-report__stat-value { font-size: 20px; font-weight: 800; color: #0B1F3A; }
+.portal-report__stat-label { font-size: 12px; color: #5a6b84; margin-top: 2px; }
+.portal-report__list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.portal-report__list li { font-size: 13.5px; color: #33445e; padding-left: 16px; position: relative; }
+.portal-report__list li::before { content: '•'; position: absolute; left: 0; color: #c99400; }
+.portal-report__empty { font-size: 13px; color: #8a97ab; font-style: italic; }
+.portal-report__footer { margin-top: 30px; padding-top: 16px; border-top: 1px solid #e4e8ef; font-size: 11px; color: #9aa6b8; }
+
+@media print {
+  body * { visibility: hidden; }
+  .portal-report-panel, .portal-report-panel * { visibility: visible; }
+  .portal-report-panel {
+    position: absolute; top: 0; left: 0; width: 100%; max-width: none;
+    margin: 0; padding: 0; box-shadow: none; border-radius: 0;
+  }
+  .portal-report-overlay { position: static; background: none; padding: 0; overflow: visible; }
+  .portal-report-toolbar { display: none; }
+}
 .portal-practice-meta__timer { color: var(--gold-light); font-variant-numeric: tabular-nums; }
 .portal-practice-question { font-size: 20px; font-weight: 700; color: #fff; line-height: 1.5; margin-bottom: 24px; min-height: 90px; }
 .portal-practice-answer { display: none; margin-bottom: 20px; }

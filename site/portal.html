@@ -1592,6 +1592,12 @@
           <p id="mySessionsEmpty" style="color:rgba(255,255,255,0.4);font-size:13px">No ground school sessions yet — <a href="#ground-school" data-goto="ground-school" style="color:var(--gold)">browse upcoming sessions</a>.</p>
         </div>
 
+        <div class="portal-card" style="margin-top:20px">
+          <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">Training Report</h3>
+          <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:16px">A one-page summary of your readiness, study progress, and Ground School attendance — built to hand to your instructor. No billing information or account credentials are included.</p>
+          <button class="btn btn--primary" id="openTrainingReportBtn">Generate Training Report</button>
+        </div>
+
         <div class="portal-card portal-passed-banner" style="margin-top:20px" id="passedBanner">
           <div>
             <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">Passed your checkride?</h3>
@@ -1602,6 +1608,19 @@
       </section>
 
       <div id="passedOverlay" class="portal-practice-overlay" hidden></div>
+
+      <!-- Training Report -- print/PDF-oriented overlay, deliberately
+           light-on-white regardless of the portal's dark theme (it's meant
+           to be handed to an instructor as paper/PDF, not read on screen).
+           @media print isolates .portal-report-panel via visibility, so
+           only the report itself prints, not the portal chrome around it. -->
+      <div id="trainingReportOverlay" class="portal-report-overlay" hidden>
+        <div class="portal-report-toolbar">
+          <button type="button" class="btn btn--primary" id="trainingReportPrintBtn">Print / Save as PDF</button>
+          <button type="button" class="btn btn--ghost" id="trainingReportCloseBtn">Close</button>
+        </div>
+        <div class="portal-report-panel" id="trainingReportContent"></div>
+      </div>
 
       <!-- ─────────── ADMIN ANALYTICS (admin role only) ─────────── -->
       <section class="portal-section" id="section-admin">

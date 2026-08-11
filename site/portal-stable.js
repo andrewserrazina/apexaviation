@@ -4283,6 +4283,121 @@
     else banner.style.display = 'flex';
   }
 
+  // ── Training Report ─────────────────────────────────────────────
+  // Print/PDF-only, generated entirely from data already loaded client-side
+  // for other widgets on this page (readiness, category coverage, Ground
+  // School enrollments, AI DPE sessions) -- no new RPC. Deliberately
+  // excludes billing/invoices and email; instructor-facing, not a full
+  // account export.
+  function computeTrainingReportData() {
+    var unlocked = !!(member && member.checkridePrepUnlocked);
+    var catList = Object.keys(CATEGORY_META).map(function (cat) {
+      return { cat: cat, label: CATEGORY_META[cat].label, pct: categoryPct(cat) };
+    });
+    var weakest3 = catList.slice().sort(function (a, b) { return a.pct - b.pct; }).slice(0, 3);
+    var strongest3 = catList.slice().sort(function (a, b) { return b.pct - a.pct; }).slice(0, 3);
+
+    var attendedClasses = myScheduledEnrollments.filter(function (e) { return e.attendance_status === 'attended'; });
+    var registeredUpcoming = upcomingRegisteredClass();
+
+    var aiDpeCompleted = myAiDpeSessions.filter(function (s) { return s.status === 'completed'; });
+    var latestDebrief = aiDpeCompleted[0] ? aiDpeCompleted[0].debrief : null;
+
+    var studyDayKeys = Object.keys(studyDays).sort();
+
+    return {
+      unlocked: unlocked,
+      name: member.name,
+      certificateStatus: member.certificateStatus,
+      checkrideDate: checkrideDate,
+      readinessPct: unlocked ? computeReadiness() : null,
+      questionsStudied: unlocked ? DPE_DATA.filter(function (d) { return studied[d.id]; }).length : 0,
+      questionsTotal: unlocked ? DPE_DATA.length : 0,
+      scenariosCompleted: unlocked ? SCENARIOS.filter(function (s) { return studied[s.id]; }).length : 0,
+      scenariosTotal: unlocked ? SCENARIOS.length : 0,
+      weakest3: unlocked ? weakest3.filter(function (c) { return c.pct < 1; }) : [],
+      strongest3: unlocked ? strongest3.filter(function (c) { return c.pct > 0; }) : [],
+      attendedClasses: attendedClasses,
+      registeredUpcoming: registeredUpcoming,
+      groundSchoolModuleCount: groundSchoolModuleCount,
+      aiDpeCompletedCount: aiDpeCompleted.length,
+      latestDebrief: latestDebrief,
+      aiDpeTrend: unlocked ? computeAiDpeTrend() : [],
+      lastActiveDate: studyDayKeys.length ? studyDayKeys[studyDayKeys.length - 1] : null,
+      studyDaysTotal: studyDayKeys.length,
+      generatedAt: new Date()
+    };
+  }
+
+  function fmtReportDate(d) {
+    if (!d) return null;
+    var dt = typeof d === 'string' ? new Date(d + 'T00:00:00') : d;
+    return dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  }
+
+  function renderTrainingReport() {
+    var data = computeTrainingReportData();
+    var el = document.getElementById('trainingReportContent');
+
+    var statRow = function (stats) {
+      return '<div class="portal-report__stat-row">' + stats.map(function (s) {
+        return '<div class="portal-report__stat"><div class="portal-report__stat-value">' + escapeHtmlSafe(s.value) + '</div><div class="portal-report__stat-label">' + escapeHtmlSafe(s.label) + '</div></div>';
+      }).join('') + '</div>';
+    };
+    var catListHtml = function (cats) {
+      return cats.length
+        ? '<ul class="portal-report__list">' + cats.map(function (c) { return '<li>' + escapeHtmlSafe(c.label) + ' — ' + Math.round(c.pct * 100) + '% complete</li>'; }).join('') + '</ul>'
+        : '<p class="portal-report__empty">Not enough data yet.</p>';
+    };
+
+    el.innerHTML =
+      '<p class="portal-report__eyebrow">Apex Advantage</p>' +
+      '<h1 class="portal-report__title">Training Report — ' + escapeHtmlSafe(data.name) + '</h1>' +
+      '<p class="portal-report__meta">Certificate goal: ' + escapeHtmlSafe(data.certificateStatus || 'Not set') +
+        (data.checkrideDate ? ' &nbsp;·&nbsp; Checkride: ' + fmtReportDate(data.checkrideDate) : '') +
+        ' &nbsp;·&nbsp; Generated ' + fmtReportDate(data.generatedAt) + '</p>' +
+
+      '<div class="portal-report__section"><h4>Readiness</h4>' +
+      (data.unlocked
+        ? statRow([{ value: data.readinessPct + '%', label: 'Apex Checkride Readiness' }, { value: data.questionsStudied + '/' + data.questionsTotal, label: 'DPE questions studied' }, { value: data.scenariosCompleted + '/' + data.scenariosTotal, label: 'Scenarios completed' }])
+        : '<p class="portal-report__empty">Checkride Prep is not unlocked on this account, so readiness data isn\'t available yet.</p>') +
+      '</div>' +
+
+      (data.unlocked ? '<div class="portal-report__section"><h4>Strongest Areas</h4>' + catListHtml(data.strongest3) + '</div>' : '') +
+      (data.unlocked ? '<div class="portal-report__section"><h4>Areas Needing Work</h4>' + catListHtml(data.weakest3) + '</div>' : '') +
+
+      '<div class="portal-report__section"><h4>Ground School</h4>' +
+      statRow([{ value: data.attendedClasses.length + '/' + (data.groundSchoolModuleCount || 20), label: 'Modules attended' }]) +
+      (data.attendedClasses.length ? '<ul class="portal-report__list" style="margin-top:12px">' + data.attendedClasses.map(function (e) { return '<li>' + escapeHtmlSafe(e.class_title || e.lesson_title) + '</li>'; }).join('') + '</ul>' : '') +
+      (data.registeredUpcoming ? '<p style="font-size:13px;color:#5a6b84;margin-top:10px">Next registered class: ' + escapeHtmlSafe(data.registeredUpcoming.title) + ' — ' + fmtReportDate(data.registeredUpcoming.when) + '</p>' : '') +
+      '</div>' +
+
+      '<div class="portal-report__section"><h4>AI DPE Practice</h4>' +
+      (data.aiDpeCompletedCount
+        ? statRow([{ value: String(data.aiDpeCompletedCount), label: 'Sessions completed' }]) +
+          (data.latestDebrief ? '<p style="font-size:13px;color:#33445e;margin-top:12px"><strong>Most recent verdict:</strong> ' + escapeHtmlSafe(data.latestDebrief.overallReadiness === 'ready' ? 'Ready for Checkride' : data.latestDebrief.overallReadiness === 'not_yet' ? 'Not Yet — Keep Practicing' : 'Almost There') + '</p>' : '') +
+          (data.aiDpeTrend.length ? '<ul class="portal-report__list" style="margin-top:8px">' + data.aiDpeTrend.map(function (t) { return '<li>' + escapeHtmlSafe(t.text) + '</li>'; }).join('') + '</ul>' : '')
+        : '<p class="portal-report__empty">No AI DPE Practice sessions completed yet.</p>') +
+      '</div>' +
+
+      '<div class="portal-report__section"><h4>Recent Activity</h4>' +
+      statRow([{ value: String(data.studyDaysTotal), label: 'Total days studied' }, { value: data.lastActiveDate ? fmtReportDate(data.lastActiveDate) : '—', label: 'Last active' }]) +
+      '</div>' +
+
+      '<p class="portal-report__footer">Generated from Apex Advantage member portal data. Does not include billing or account credential information.</p>';
+  }
+
+  document.getElementById('openTrainingReportBtn').addEventListener('click', function () {
+    renderTrainingReport();
+    document.getElementById('trainingReportOverlay').hidden = false;
+  });
+  document.getElementById('trainingReportCloseBtn').addEventListener('click', function () {
+    document.getElementById('trainingReportOverlay').hidden = true;
+  });
+  document.getElementById('trainingReportPrintBtn').addEventListener('click', function () {
+    window.print();
+  });
+
   document.getElementById('openPassedFormBtn').addEventListener('click', function () {
     var overlay = document.getElementById('passedOverlay');
     overlay.hidden = false;
