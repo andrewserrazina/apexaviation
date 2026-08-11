@@ -73,6 +73,6 @@ The pilots who fly Central Texas confidently share a few habits: they brief weat
 
 That last point is worth emphasizing. Weather decision-making under pressure — the planned cross-country with passengers, the need to be home that night — is where pilots get into trouble. The time to set your minimums is before you brief, not while you're standing at the fuel pump.
 
-Apex Advantage ground school — launching September 2026 — builds Central Texas weather specifically into the curriculum. Knowing how to read a Skew-T log-P is one thing. Knowing how that map translates to the specific terrain and moisture patterns between Austin and San Antonio is another.
+Apex Advantage Ground School — live now — builds Central Texas weather specifically into the curriculum. Knowing how to read a Skew-T log-P is one thing. Knowing how that map translates to the specific terrain and moisture patterns between Austin and San Antonio is another.
 
-[Join the waitlist](/home.html#waitlist) to secure your spot among the first 24 founding members.
+[View upcoming classes](/apex-advantage-private-pilot.html) — $25 per class, or $400 for the complete program.

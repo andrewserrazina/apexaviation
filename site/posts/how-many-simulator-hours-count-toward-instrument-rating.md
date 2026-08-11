@@ -46,6 +46,6 @@ Our instrument program is structured around the full 20-hour AATD allowance — 
 
 If you're pursuing your instrument rating and you're not using AATD time to its full legal allowance, you're leaving money on the table and making your training harder than it needs to be.
 
-Apex Aviation's AATD simulator facility opens in Austin in January 2027. Ground school through Apex Advantage launches September 2026 — giving you a head start on the knowledge before the sim doors open.
+Apex Aviation's AATD simulator facility opens in Austin in January 2027. Ground School through Apex Advantage is live now — giving you a head start on the knowledge before the sim doors open.
 
-[Join the waitlist](/home.html#waitlist) to lock in founding member pricing before enrollment opens.
+[View upcoming Ground School classes](/apex-advantage-private-pilot.html), or [join the AATD waitlist](/home.html#waitlist) to lock in founding member pricing before the simulator opens.

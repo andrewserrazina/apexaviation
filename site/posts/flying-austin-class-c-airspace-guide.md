@@ -79,4 +79,4 @@ If you're still building that confidence, two things accelerate it faster than a
 
 At Apex, we build Austin-area ATC communication scenarios into both the ground school curriculum and the AATD training sessions — because this is the airspace our students actually fly in, and knowing it specifically matters more than generic radio procedure practice.
 
-Apex Advantage ground school launches September 2026. [Join the waitlist](/home.html#waitlist) to start building your Austin airspace knowledge before the simulator facility opens in January 2027.
+Apex Advantage Ground School is live now. [View upcoming classes](/apex-advantage-private-pilot.html) to start building your Austin airspace knowledge — $25 per class, or $400 for the complete program.
