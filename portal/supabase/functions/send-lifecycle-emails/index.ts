@@ -588,6 +588,21 @@ async function processCheckrideUpsell(supabase: any, profile: any, results: any)
 
     await sendEmail(supabase, profile.email, checkrideUpsellSubject(day, pricing), emailTemplateCheckrideUpsell(day, pricing, timingBucket))
     await markMilestoneSent(supabase, profile.id, emailType)
+
+    // Firing the highest reached stage must exhaust the whole sequence up
+    // to that point, not just this one day -- otherwise a profile caught
+    // up to day N walks backward through N-1, N-2, ... one extra real
+    // send per future run, since each earlier day still reads as
+    // "unfired" on its own. Back-fill portal_events only (never
+    // portal_email_log -- these earlier stages were never actually sent).
+    for (const earlierDay of schedule) {
+      if (earlierDay >= day) continue
+      const earlierType = 'checkride_upsell_day' + earlierDay
+      if (!(await hasMilestoneFired(supabase, profile.id, earlierType))) {
+        await supabase.from('portal_events').insert({ profile_id: profile.id, event_type: earlierType })
+      }
+    }
+
     results.checkride_upsell++
     return
   }

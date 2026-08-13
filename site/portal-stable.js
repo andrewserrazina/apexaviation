@@ -3654,6 +3654,21 @@
         { id: 'pitot-blocked', section: 'Pitot-Static System', prompt: 'What happens when the pitot tube becomes blocked?' },
         { id: 'review-topic', section: 'Self-Assessment', prompt: 'What is one aircraft systems topic you need to review before your checkride?' }
       ]
+    },
+    {
+      courseId: 'PPL',
+      moduleId: 'PPL-M04-FARs-Simplified',
+      courseLabel: 'Private Pilot',
+      moduleLabel: 'Module 04 · FARs Simplified',
+      prompts: [
+        { id: 'part-authority', section: 'Foundations', prompt: 'What is the difference between what Part 61, Part 91, and Part 43 each govern, and why is emergency authority under § 91.3(b) not a “blank check”?' },
+        { id: 'currency-vs-proficiency', section: 'Currency & Medical', prompt: 'What is the difference between currency and proficiency, and what are the day and night passenger-currency requirements under § 61.57?' },
+        { id: 'arrow-aviates', section: 'Documents & Inspections', prompt: 'What do the five ARROW documents and the AV1ATES inspections cover, and how does a Service Bulletin differ from an Airworthiness Directive?' },
+        { id: 'inoperative-equipment', section: 'Required & Inoperative Equipment', prompt: 'When a piece of equipment is inoperative, how does the decision differ depending on whether the aircraft has an approved Minimum Equipment List (MEL)?' },
+        { id: 'right-of-way-altitudes-fuel', section: 'Right-of-Way, Altitudes & Fuel', prompt: 'What are the right-of-way rules for head-on, converging, and overtaking traffic, and what are the minimum fuel reserves for day and night VFR?' },
+        { id: 'imsafe-6hits', section: 'Personal Fitness & Airspace Equipment', prompt: 'What does 6-HITS check that IMSAFE alone does not, and in which classes of airspace — and above what altitude — is ADS-B Out required?' },
+        { id: 'legal-vs-safe', section: 'Putting It Together', prompt: 'Why doesn’t meeting every regulatory minimum automatically mean a flight is a good idea — what’s the difference between legal and safe?' }
+      ]
     }
   ];
 

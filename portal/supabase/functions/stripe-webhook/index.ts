@@ -347,26 +347,45 @@ async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Che
       p_amount_cents: amountCents,
     })
     if (enrollError) {
-      // The enrollment RPC locks the class row and checks capacity
-      // atomically, so this only fires when two people race for the
-      // last seat and both payments land before either webhook runs.
-      // Stripe has already captured the loser's payment by this point
-      // (checkout.session.completed only fires after a successful
-      // charge) -- without an explicit refund here, that student would
-      // be charged for a class they never got into, with nothing to
-      // tell them why.
+      // confirm_scheduled_ground_class_enrollment (v57) raises several
+      // distinct errors -- not just capacity. It also rejects when the
+      // class was canceled/unpublished or its date already passed
+      // between checkout and this webhook running. Stripe has already
+      // captured the payment by this point (checkout.session.completed
+      // only fires after a successful charge), so every one of these
+      // still needs a refund -- but only the capacity message is
+      // actually "the class filled up". Mislabeling the others as that
+      // told students a false reason and hid the real one from admins
+      // (e.g. a class getting canceled out from under an in-flight
+      // payment).
       if (session.payment_intent) {
         try {
           await stripe.refunds.create({ payment_intent: session.payment_intent as string })
         } catch (refundErr) {
-          console.error('stripe-webhook: refund failed after full-class enrollment error', refundErr)
+          console.error('stripe-webhook: refund failed after enrollment error', refundErr)
         }
       }
+      const isCapacityError = /is full/i.test(enrollError.message || '')
       if (email) {
-        await sendEmail(supabase, email, 'Class full — you have been refunded',
+        if (isCapacityError) {
+          await sendEmail(supabase, email, 'Class full — you have been refunded',
+            template(`
+              <h2 style="color:#F4B400;margin:0 0 4px;">Sorry, ${fullName.split(' ')[0]} — that class just filled up</h2>
+              <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Someone grabbed the last seat right as your payment came through. You have not been enrolled, and your payment has been fully refunded. Head back to the Ground School page in your portal to pick another session.</p>
+            `))
+        } else {
+          await sendEmail(supabase, email, "Couldn't complete your registration — you have been refunded",
+            template(`
+              <h2 style="color:#F4B400;margin:0 0 4px;">Sorry, ${fullName.split(' ')[0]} — we couldn't complete that registration</h2>
+              <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">You have not been enrolled, and your payment has been fully refunded. Head back to the Ground School page in your portal to pick another session, or reach out to us if you'd like help finding one.</p>
+            `))
+        }
+      }
+      if (!isCapacityError) {
+        await sendEmail(supabase, ADMIN_NOTIFICATION_EMAIL, 'ACTION NEEDED: Ground school enrollment failed after payment (non-capacity)',
           template(`
-            <h2 style="color:#F4B400;margin:0 0 4px;">Sorry, ${fullName.split(' ')[0]} — that class just filled up</h2>
-            <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Someone grabbed the last seat right as your payment came through. You have not been enrolled, and your payment has been fully refunded. Head back to the Ground School page in your portal to pick another session.</p>
+            <h2 style="color:#F4B400;margin:0 0 4px;">A paid ground school registration failed to apply</h2>
+            <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">${email ?? 'unknown email'} paid for scheduled_ground_class ${scheduledClassId}, but enrollment failed for a reason other than the class being full: "${enrollError.message}". A refund has been attempted automatically and the student was told their registration couldn't be completed (not that the class was full). Check whether the class was canceled/unpublished or its date passed while this payment was in flight, and follow up with the customer if needed.</p>
           `))
       }
       throw enrollError
