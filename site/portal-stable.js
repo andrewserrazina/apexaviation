@@ -3685,6 +3685,213 @@
         { id: 'sectional-chart-mastery', section: 'Other Airspace & Sectional Chart Mastery', prompt: 'What do solid vs. dashed blue and magenta lines represent on a sectional chart, and why can a TFR never be confirmed from a printed chart alone?' },
         { id: 'airspace-decision-framework', section: 'Putting It Together', prompt: 'What are the five steps of the airspace decision framework, and why does the same sequence work for every class of airspace, not just one?' }
       ]
+    },
+    {
+      courseId: 'PPL',
+      moduleId: 'PPL-M06-Airport-Operations',
+      courseLabel: 'Private Pilot',
+      moduleLabel: 'Module 06 · Airport Operations',
+      prompts: [
+        { id: 'runway-markings-signs', section: 'Runway Markings & Signage', prompt: 'What do hold-short lines, the ILS critical area marking, and a displaced threshold each tell you, and what’s your required action at each?' },
+        { id: 'traffic-pattern', section: 'Traffic Pattern', prompt: 'What is a standard traffic pattern entry at a non-towered airport, and what determines pattern altitude and direction of turns?' },
+        { id: 'communication-procedures', section: 'Communication Procedures', prompt: 'What is the ground/tower communication sequence at a towered airport, and how does that compare to the CTAF self-announce sequence at a non-towered field?' },
+        { id: 'runway-incursion', section: 'Runway Incursion Avoidance', prompt: 'What is a runway incursion hot spot, and why does read-back discipline matter when you’re instructed to hold short?' },
+        { id: 'lighting-systems', section: 'Lighting Systems', prompt: 'How do you interpret a PAPI or VASI on approach, and how does pilot-controlled lighting (PCL) work at an airport without a tower?' },
+        { id: 'wake-turbulence', section: 'Wake Turbulence', prompt: 'What is wake turbulence, and how do you adjust your flightpath to avoid it when following a larger aircraft?' }
+      ]
+    },
+    {
+      courseId: 'PPL',
+      moduleId: 'PPL-M07-Sectional-Charts',
+      courseLabel: 'Private Pilot',
+      moduleLabel: 'Module 07 · Sectional Charts',
+      prompts: [
+        { id: 'airport-symbology', section: 'Airport Symbols', prompt: 'What does an airport symbol tell you about whether it’s towered, what services are available, and runway length?' },
+        { id: 'airspace-boundary-lines', section: 'Airspace Boundaries', prompt: 'What’s the difference between the solid blue, dashed blue, and magenta lines used to depict airspace boundaries on a sectional?' },
+        { id: 'terrain-obstacles', section: 'Terrain & Obstacles', prompt: 'How do contour colors and Maximum Elevation Figures (MEFs) help you judge terrain and obstacle clearance along a route?' },
+        { id: 'special-use-airspace-depiction', section: 'Special Use Airspace', prompt: 'How is special use airspace depicted and labeled on a sectional, and how would you check whether it’s currently active?' },
+        { id: 'navaid-symbology', section: 'Navaid Symbology', prompt: 'What information does a VOR compass rose and frequency box give you, and how do you confirm you’re tuned to the correct station?' },
+        { id: 'measuring-tools', section: 'Measuring Tools', prompt: 'How do you use a plotter to measure true course and distance on a sectional?' }
+      ]
+    },
+    {
+      courseId: 'PPL',
+      moduleId: 'PPL-M08-Pilotage-Dead-Reckoning',
+      courseLabel: 'Private Pilot',
+      moduleLabel: 'Module 08 · Pilotage & Dead Reckoning',
+      prompts: [
+        { id: 'course-heading-conversion', section: 'Course to Heading', prompt: 'What is the conversion chain from true course to magnetic course to compass heading, and what gets applied at each step?' },
+        { id: 'wind-correction', section: 'Wind Triangle & Correction Angle', prompt: 'What is a wind correction angle, and how do you find it using an E6B — manual or electronic?' },
+        { id: 'groundspeed-ete', section: 'Groundspeed & ETE', prompt: 'How do you calculate groundspeed and estimated time en route for a planned leg?' },
+        { id: 'fuel-planning-pilotage', section: 'Fuel Planning', prompt: 'What goes into total fuel required for a flight, including the required reserve?' },
+        { id: 'variation-deviation', section: 'Variation & Deviation', prompt: 'What is the difference between magnetic variation and compass deviation, and where does each correction come from?' },
+        { id: 'lost-procedures', section: 'Lost Procedures', prompt: 'What is the “4 C’s” lost procedure, and how would you use pilotage to re-fix your position if your GPS failed?' }
+      ]
+    },
+    {
+      courseId: 'PPL',
+      moduleId: 'PPL-M09-Navigation-Systems',
+      courseLabel: 'Private Pilot',
+      moduleLabel: 'Module 09 · Navigation Systems',
+      prompts: [
+        { id: 'gps-waas-fundamentals', section: 'GPS & WAAS Fundamentals', prompt: 'What does WAAS add to basic GPS accuracy, and what does a RAIM/GPS integrity warning mean to a pilot?' },
+        { id: 'gps-programming', section: 'GPS Programming', prompt: 'How do you program a direct-to or a full flight plan route in a G1000/GNS430-class unit, and how would you verify it’s correct before trusting it?' },
+        { id: 'vor-theory', section: 'VOR Theory', prompt: 'What do radials, the TO/FROM flag, and CDI sensitivity each tell you when navigating by VOR?' },
+        { id: 'vor-accuracy-checks', section: 'VOR Accuracy Checks', prompt: 'What are the ways to check VOR receiver accuracy, and how often is a check required?' },
+        { id: 'dme-autopilot', section: 'DME & Autopilot', prompt: 'What does DME slant range actually measure, and what do the basic autopilot modes — heading, nav, altitude hold — each do?' },
+        { id: 'nav-system-failures', section: 'System Failure Indications', prompt: 'What indications tell you a GPS or VOR system has failed or degraded, and what’s your backup?' }
+      ]
+    },
+    {
+      courseId: 'PPL',
+      moduleId: 'PPL-M10-Weather-Theory',
+      courseLabel: 'Private Pilot',
+      moduleLabel: 'Module 10 · Weather Theory',
+      prompts: [
+        { id: 'atmosphere-pressure', section: 'Atmosphere & Pressure', prompt: 'What is the standard lapse rate, and how do pressure and temperature change with altitude in the standard atmosphere?' },
+        { id: 'fronts', section: 'Air Masses & Fronts', prompt: 'What weather is typically associated with a cold front versus a warm front?' },
+        { id: 'stability', section: 'Stability & Cloud Formation', prompt: 'What’s the difference between a stable and an unstable air mass, and how does cloud type indicate which one you’re in?' },
+        { id: 'thunderstorm-lifecycle', section: 'Thunderstorms', prompt: 'What are the three stages of a thunderstorm’s life cycle, and what hazard is most associated with each?' },
+        { id: 'icing', section: 'Icing', prompt: 'What conditions are most favorable for structural icing, and what’s the difference between rime, clear, and mixed ice?' },
+        { id: 'density-altitude-windshear', section: 'Density Altitude & Wind Shear', prompt: 'What is density altitude and how does it affect performance, and what are the main sources of wind shear a VFR pilot might encounter?' }
+      ]
+    },
+    {
+      courseId: 'PPL',
+      moduleId: 'PPL-M11-Weather-Products',
+      courseLabel: 'Private Pilot',
+      moduleLabel: 'Module 11 · Weather Products',
+      prompts: [
+        { id: 'metar-taf', section: 'METAR & TAF', prompt: 'How do you fully decode a METAR and a TAF without a reference card?' },
+        { id: 'surface-analysis', section: 'Surface Analysis Chart', prompt: 'What do the symbols on a surface analysis chart tell you about fronts and pressure systems along your route?' },
+        { id: 'airmet-sigmet', section: 'AIRMETs & SIGMETs', prompt: 'What’s the difference between an AIRMET, a SIGMET, and a convective SIGMET, and what does each warn about?' },
+        { id: 'gfa', section: 'Graphical Forecast for Aviation', prompt: 'How do you use the GFA’s clouds/weather and turbulence/icing panels to plan a route?' },
+        { id: 'pirep', section: 'PIREPs', prompt: 'What information does a PIREP give you that a forecast alone can’t, and what would you include if filing one?' },
+        { id: 'briefing-sources', section: 'Getting a Briefing', prompt: 'What are the standard sources for obtaining a weather briefing before a cross-country flight?' }
+      ]
+    },
+    {
+      courseId: 'PPL',
+      moduleId: 'PPL-M12-Weather-Decision-Making',
+      courseLabel: 'Private Pilot',
+      moduleLabel: 'Module 12 · Weather Decision Making',
+      prompts: [
+        { id: 'personal-minimums', section: 'Personal Minimums', prompt: 'What are personal minimums, and why might they be more conservative than legal VFR minimums?' },
+        { id: 'deteriorating-weather', section: 'Recognizing Deteriorating Weather', prompt: 'What in-flight cues tell you conditions are deteriorating, and what triggers a 180-degree turn decision?' },
+        { id: 'diversion', section: 'Diversion Planning', prompt: 'What does the decision process for a precautionary landing or diversion actually look like?' },
+        { id: 'vfr-into-imc', section: 'VFR-into-IMC Risk', prompt: 'Why is VFR-into-IMC one of the highest-fatality accident categories, and what human factors typically lead a pilot into it?' },
+        { id: 'risk-frameworks', section: 'Risk Assessment Frameworks', prompt: 'How would you apply the PAVE checklist or the 3P model specifically to a weather go/no-go decision?' },
+        { id: 'scud-running', section: 'Scud Running & Get-There-Itis', prompt: 'What is scud running, and why is “get-there-itis” considered a weather-specific hazardous attitude?' }
+      ]
+    },
+    {
+      courseId: 'PPL',
+      moduleId: 'PPL-M13-Weight-Balance',
+      courseLabel: 'Private Pilot',
+      moduleLabel: 'Module 13 · Weight & Balance',
+      prompts: [
+        { id: 'wb-terminology', section: 'Weight & Balance Terminology', prompt: 'What is the difference between empty weight, useful load, ramp weight, and moment?' },
+        { id: 'wb-methods', section: 'Calculation Methods', prompt: 'How do the POH computation method and the graphical method each arrive at your loaded CG?' },
+        { id: 'cg-effects', section: 'CG Aerodynamic Effects', prompt: 'What happens aerodynamically if you’re loaded outside the forward or aft CG limit?' },
+        { id: 'cg-envelope', section: 'CG Envelope', prompt: 'How do you read a CG envelope graph to determine if a loading is legal?' },
+        { id: 'fuel-burnoff', section: 'Fuel Burn-Off Shift', prompt: 'How does your CG shift as fuel burns off during a flight, and why does that matter for a flight near the CG limit?' },
+        { id: 'wb-records', section: 'Aircraft Records', prompt: 'Where do you find your specific aircraft’s empty weight and moment, and why can’t you assume it matches another aircraft of the same model?' }
+      ]
+    },
+    {
+      courseId: 'PPL',
+      moduleId: 'PPL-M14-Aircraft-Performance',
+      courseLabel: 'Private Pilot',
+      moduleLabel: 'Module 14 · Aircraft Performance',
+      prompts: [
+        { id: 'poh-charts', section: 'POH Performance Charts', prompt: 'How do you read a POH performance chart in table versus graph format to find takeoff and landing distance?' },
+        { id: 'density-altitude-performance', section: 'Density Altitude Effects', prompt: 'How does density altitude affect your takeoff roll, climb rate, and landing distance?' },
+        { id: 'wind-components', section: 'Wind Component Calculations', prompt: 'How do you calculate the headwind and crosswind components for a given wind and runway?' },
+        { id: 'runway-considerations', section: 'Runway Considerations', prompt: 'How do runway surface, slope, and contamination each change your takeoff and landing performance?' },
+        { id: 'climb-performance', section: 'Climb Performance', prompt: 'What factors degrade climb performance, and what does service ceiling actually mean?' },
+        { id: 'cruise-performance', section: 'Cruise Performance', prompt: 'How do you plan cruise performance — power setting, true airspeed, and fuel flow — for a given leg?' }
+      ]
+    },
+    {
+      courseId: 'PPL',
+      moduleId: 'PPL-M15-Cross-Country-Planning',
+      courseLabel: 'Private Pilot',
+      moduleLabel: 'Module 15 · Cross-Country Planning',
+      prompts: [
+        { id: 'nav-log', section: 'Navigation Log', prompt: 'What does a complete navigation log include for each leg of a cross-country flight?' },
+        { id: 'cruising-altitude', section: 'Cruising Altitude Selection', prompt: 'How do the hemispheric rule, terrain, and airspace each factor into your choice of cruising altitude?' },
+        { id: 'total-fuel-planning', section: 'Total Fuel Planning', prompt: 'What goes into your total fuel required for a full cross-country route, including reserves?' },
+        { id: 'alternate-selection', section: 'Alternates & Contingencies', prompt: 'What criteria would you use to select an alternate or contingency airport along your route?' },
+        { id: 'vfr-flight-plan', section: 'Filing a VFR Flight Plan', prompt: 'Why is filing a VFR flight plan good practice even though it isn’t required, and what do activation and closing actually involve?' },
+        { id: 'cross-country-integration', section: 'Putting It Together', prompt: 'How does a complete cross-country plan integrate navigation, weather, performance, and regulatory knowledge into one package?' }
+      ]
+    },
+    {
+      courseId: 'PPL',
+      moduleId: 'PPL-M16-Aeronautical-Decision-Making',
+      courseLabel: 'Private Pilot',
+      moduleLabel: 'Module 16 · Aeronautical Decision Making',
+      prompts: [
+        { id: 'pave-checklist', section: 'PAVE Checklist', prompt: 'What are the four components of the PAVE checklist, and how would you apply it to today’s flight?' },
+        { id: '3p-model', section: '3P Model', prompt: 'What do Perceive, Process, and Perform each mean in the 3P decision-making model?' },
+        { id: 'hazardous-attitudes', section: 'Hazardous Attitudes', prompt: 'What are the five hazardous attitudes, and what’s the antidote to each?' },
+        { id: 'imsafe', section: 'IMSAFE', prompt: 'What does IMSAFE stand for, and how would you use it before a flight?' },
+        { id: 'srm', section: 'Single-Pilot Resource Management', prompt: 'What is single-pilot resource management, and how does it apply when you’re flying alone?' },
+        { id: 'external-pressures', section: 'External Pressures', prompt: 'What are common sources of external pressure on a pilot’s decisions, and how can they distort judgment?' }
+      ]
+    },
+    {
+      courseId: 'PPL',
+      moduleId: 'PPL-M17-Human-Factors',
+      courseLabel: 'Private Pilot',
+      moduleLabel: 'Module 17 · Human Factors',
+      prompts: [
+        { id: 'hypoxia', section: 'Hypoxia', prompt: 'What are the types of hypoxia, and at what altitudes should a pilot start being concerned?' },
+        { id: 'spatial-disorientation', section: 'Spatial Disorientation', prompt: 'What illusions can cause spatial disorientation, and why are they dangerous even to an experienced pilot?' },
+        { id: 'fatigue', section: 'Fatigue', prompt: 'What’s the difference between acute and chronic fatigue, and how does each affect decision-making and reaction time?' },
+        { id: 'alcohol-drugs', section: 'Alcohol, Drugs & Medications', prompt: 'What is the FAA’s rule on alcohol and flying, and why can even an over-the-counter medication ground you?' },
+        { id: 'stress-tunneling', section: 'Stress & Cognitive Tunneling', prompt: 'How does stress affect cognitive performance, and what does “tunneling” under workload look like in the cockpit?' },
+        { id: 'co-poisoning', section: 'Carbon Monoxide', prompt: 'How can carbon monoxide enter the cabin of a piston aircraft, and how would you detect it?' }
+      ]
+    },
+    {
+      courseId: 'PPL',
+      moduleId: 'PPL-M18-Emergency-Procedures',
+      courseLabel: 'Private Pilot',
+      moduleLabel: 'Module 18 · Emergency Procedures',
+      prompts: [
+        { id: 'engine-failure-takeoff', section: 'Engine Failure After Takeoff', prompt: 'What is the “impossible turn,” and what is the standard procedure if your engine fails immediately after takeoff?' },
+        { id: 'engine-failure-flight', section: 'Engine Failure In Flight', prompt: 'What is best glide speed, and how do you go about selecting a field and setting up a forced landing pattern?' },
+        { id: 'inflight-restart', section: 'In-Flight Restart', prompt: 'What’s the general procedure for attempting an in-flight engine restart?' },
+        { id: 'fire-procedures', section: 'Fire Procedures', prompt: 'How does your response differ between an engine fire on the ground, an engine fire in flight, and an electrical or cabin fire?' },
+        { id: 'memory-items', section: 'Memory Items vs. Checklist Items', prompt: 'What’s the difference between a memory item and a checklist-read item, and why does that distinction matter under stress?' },
+        { id: 'post-emergency', section: 'Emergency Communication & Post-Landing', prompt: 'What are your priorities for emergency communication — like squawking 7700 — and for what happens immediately after a forced landing?' }
+      ]
+    },
+    {
+      courseId: 'PPL',
+      moduleId: 'PPL-M19-ACS-Mastery',
+      courseLabel: 'Private Pilot',
+      moduleLabel: 'Module 19 · ACS Mastery',
+      prompts: [
+        { id: 'acs-structure', section: 'ACS Structure', prompt: 'What are the three elements — knowledge, risk management, skill — within an ACS Task, and how do they differ from each other?' },
+        { id: 'special-emphasis-areas', section: 'Special Emphasis Areas', prompt: 'What is a special emphasis area, and can you name three that appear throughout the practical test?' },
+        { id: 'maneuver-tolerances', section: 'Maneuver Tolerances', prompt: 'Where do you find the tolerances for a maneuver in the ACS, and what happens if you bust one momentarily?' },
+        { id: 'examiner-plan', section: 'Examiner’s Plan of Action', prompt: 'What is an examiner’s Plan of Action, and how does it affect which Tasks get combined or tested?' },
+        { id: 'aktr-crossref', section: 'Knowledge Test Report', prompt: 'How would you use your Knowledge Test report (AKTR) and its ACS codes to focus your checkride prep?' }
+      ]
+    },
+    {
+      courseId: 'PPL',
+      moduleId: 'PPL-M20-Mock-Oral-Exam',
+      courseLabel: 'Private Pilot',
+      moduleLabel: 'Module 20 · Mock Oral Exam',
+      prompts: [
+        { id: 'reference-technique', section: 'Using References Live', prompt: 'What’s the difference between using your references well during an oral exam versus relying on pure memorization?' },
+        { id: 'admitting-uncertainty', section: 'Composure Under Uncertainty', prompt: 'What’s the right way to handle a question you don’t immediately know the answer to during your oral exam?' },
+        { id: 'dpe-follow-ups', section: 'DPE Follow-Up Patterns', prompt: 'What are common DPE follow-up question patterns — “why,” “what if,” “show me where” — and why do they matter more than the first answer?' },
+        { id: 'weak-areas', section: 'Self-Assessment', prompt: 'Based on tonight’s mock oral, what are your two weakest topics, and what’s your plan to address them before your checkride?' }
+      ]
     }
   ];
 
