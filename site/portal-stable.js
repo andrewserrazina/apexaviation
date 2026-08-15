@@ -3669,6 +3669,22 @@
         { id: 'imsafe-6hits', section: 'Personal Fitness & Airspace Equipment', prompt: 'What does 6-HITS check that IMSAFE alone does not, and in which classes of airspace — and above what altitude — is ADS-B Out required?' },
         { id: 'legal-vs-safe', section: 'Putting It Together', prompt: 'Why doesn’t meeting every regulatory minimum automatically mean a flight is a good idea — what’s the difference between legal and safe?' }
       ]
+    },
+    {
+      courseId: 'PPL',
+      moduleId: 'PPL-M05-Airspace-Mastery',
+      courseLabel: 'Private Pilot',
+      moduleLabel: 'Module 05 · Airspace Mastery',
+      prompts: [
+        { id: 'controlled-vs-uncontrolled', section: 'Foundations', prompt: 'What is the difference between controlled and uncontrolled airspace, and what are the six classes from most to least structured?' },
+        { id: 'class-g-class-e', section: 'Class G & Class E', prompt: 'What determines where Class G ends and Class E begins, and why doesn’t the absence of a control tower mean the airspace is uncontrolled?' },
+        { id: 'class-d', section: 'Class D', prompt: 'What does it mean for two-way communication to be “established” before entering Class D airspace, and what equipment does Class D require?' },
+        { id: 'class-c', section: 'Class C', prompt: 'How does Class C’s core-and-shelf structure work, and what equipment does Class C require beyond Class D?' },
+        { id: 'class-b', section: 'Class B', prompt: 'How does the clearance required to enter Class B differ from the communication-established standard in Class C/D, and what training do student pilots need before flying into Class B airspace?' },
+        { id: 'class-a-special-use', section: 'Class A & Special Use Airspace', prompt: 'Why is VFR never permitted in Class A airspace, and how do Restricted Areas, Warning Areas, and MOAs differ in what they require of a VFR pilot?' },
+        { id: 'sectional-chart-mastery', section: 'Other Airspace & Sectional Chart Mastery', prompt: 'What do solid vs. dashed blue and magenta lines represent on a sectional chart, and why can a TFR never be confirmed from a printed chart alone?' },
+        { id: 'airspace-decision-framework', section: 'Putting It Together', prompt: 'What are the five steps of the airspace decision framework, and why does the same sequence work for every class of airspace, not just one?' }
+      ]
     }
   ];
 
