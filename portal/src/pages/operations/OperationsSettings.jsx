@@ -3,7 +3,7 @@ import Layout from '../../components/Layout'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
 
-const ROLE_OPTIONS = ['student', 'instructor', 'admin']
+const ROLE_OPTIONS = ['student', 'instructor', 'office_manager', 'admin']
 
 export default function OperationsSettings() {
   const { profile } = useAuth()
@@ -19,7 +19,7 @@ export default function OperationsSettings() {
     const { data, error: loadError } = await supabase
       .from('profiles')
       .select('id, full_name, email, role')
-      .in('role', ['admin', 'instructor'])
+      .in('role', ['admin', 'instructor', 'office_manager'])
       .order('full_name')
 
     if (loadError) setError(loadError.message)
@@ -48,7 +48,7 @@ export default function OperationsSettings() {
       <div className="operations-page-header">
         <p className="operations-eyebrow">Operations configuration</p>
         <h1>Settings</h1>
-        <p>Manage who has admin or instructor access to Apex Operations.</p>
+        <p>Manage who has admin, instructor, or office manager access to Apex Operations.</p>
       </div>
 
       <section className="operations-panel">

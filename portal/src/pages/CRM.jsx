@@ -18,7 +18,11 @@ const BLANK = { full_name: '', email: '', phone: '', stage: 'inquiry', referral_
 
 export default function CRM() {
   const { profile } = useAuth()
-  const isAdmin = profile?.role === 'admin'
+  // Office managers get full CRM management (this page's core purpose
+  // for that role), same as admin -- only instructors are read-mostly
+  // here (they can view/reach the page but the delete action below
+  // stays out of their hands).
+  const canDeleteLead = profile?.role === 'admin' || profile?.role === 'office_manager'
 
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
@@ -224,7 +228,7 @@ export default function CRM() {
                   <p style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6 }}>{activeLead.notes}</p>
                 </div>
               )}
-              {isAdmin && (
+              {canDeleteLead && (
                 <button className="btn-link" style={{ color: '#f87171', fontSize: 12, marginTop: 24 }} onClick={handleDeleteLead}>
                   Delete Lead
                 </button>
