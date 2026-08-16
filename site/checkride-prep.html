@@ -209,6 +209,60 @@
       .btn--cta-primary:hover, .btn--outline-gold:hover { transform: none; }
     }
 
+    /* ─── Early Access announcement bar ───
+       Sits above the sticky header and scrolls away with the page (the
+       header itself stays sticky) -- a slim, factual strip, not a second
+       sticky banner competing with the header. Hidden entirely once
+       Early Access ends (data-cp-early-access), never re-shown. */
+    .cp-announce {
+      background: #F4B400;
+      color: #0B1F3A;
+      text-align: center;
+      padding: 9px 16px;
+    }
+    .cp-announce__inner {
+      max-width: 1140px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: center;
+      gap: 6px 14px;
+      font-family: 'Montserrat', sans-serif;
+    }
+    .cp-announce__text {
+      font-size: 12.5px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+    }
+    .cp-announce__countdown {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      font-variant-numeric: tabular-nums;
+      opacity: 0.85;
+    }
+    @media (max-width: 480px) {
+      .cp-announce { padding: 8px 12px; }
+      .cp-announce__text { font-size: 11.5px; }
+      .cp-announce__countdown { font-size: 11px; }
+    }
+
+    /* ─── Reusable countdown display ───
+       Used sparingly (announcement bar + final CTA only, per the
+       campaign brief) -- days/hours/minutes, no ticking seconds, so it
+       reads as a real deadline instead of a slot-machine. Populated by
+       JS from a fixed absolute timestamp on every render; the static
+       fallback text (visible until/unless JS runs) already states the
+       actual date, so the deadline is understandable with JS disabled. */
+    .cp-countdown {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 6px;
+      font-family: 'Montserrat', sans-serif;
+    }
+    .cp-countdown[data-cp-countdown] { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
     /* ─── Hero ─── */
     /* Full-bleed aviation photo + dark navy overlay -- the same
        treatment (and the same photo) as home.html's .hero__bg, so this
@@ -429,7 +483,8 @@
     .cp-hero__price-top { display: block; font-size: 12px; font-weight: 800; color: #F4B400; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
     .cp-hero__price { font-size: clamp(3.2rem, 4.4vw, 3.8rem); font-weight: 800; color: #F4B400; line-height: 1; font-family: 'Montserrat', sans-serif; }
     .cp-hero__price-regular { display: block; font-size: 14px; font-weight: 700; color: #E5E7EB; margin-top: 6px; }
-    .cp-hero__price-note { font-size: 12.5px; color: rgba(255,255,255,0.5); margin-top: 8px; }
+    .cp-hero__price-regular s { color: rgba(255,255,255,0.5); font-weight: 600; }
+    .cp-hero__price-note { font-size: 12.5px; color: rgba(255,255,255,0.5); margin-top: 4px; }
     .cp-hero__cta-col { grid-area: cta; width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 14px; }
     .cp-hero__cta-row { display: flex; gap: 12px; width: 100%; }
     .cp-hero__cta-row .btn--cta-primary { min-height: 56px; flex: 1 1 auto; }
@@ -746,6 +801,8 @@
     .cp-offer-box__title { font-size: 20px; font-weight: 800; color: #fff; margin: 0 0 20px; }
     .cp-offer-price-row { display: flex; align-items: baseline; gap: 10px; justify-content: center; margin-bottom: 8px; }
     .cp-offer-price { font-size: 52px; font-weight: 800; color: #F4B400; line-height: 1; font-family: 'Montserrat', sans-serif; }
+    .cp-offer-price-regular { font-size: 20px; font-weight: 700; color: rgba(255,255,255,0.5); }
+    .cp-offer-note { font-size: 13px; color: rgba(255,255,255,0.55); margin-bottom: 6px; }
     .cp-offer-urgency { font-size: 13px; font-weight: 700; color: #E5E7EB; letter-spacing: 0.02em; margin-bottom: 24px; }
     .cp-delivery-list { list-style: none; padding: 0; margin: 0 0 28px; display: flex; flex-direction: column; gap: 10px; text-align: left; }
     .cp-delivery-list li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #fff; }
@@ -774,7 +831,10 @@
     .cp-final__eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #F4B400; margin-bottom: 18px; }
     .cp-final h2 { font-size: clamp(1.5rem, 3.6vw, 2.2rem); font-weight: 800; color: #fff; line-height: 1.3; max-width: 720px; margin: 0 auto 18px; }
     .cp-final__desc { color: #E5E7EB; font-size: 15px; line-height: 1.75; max-width: 560px; margin: 0 auto 32px; }
-    .cp-final__offer { font-size: 14px; font-weight: 700; color: #F4B400; margin-bottom: 20px; }
+    .cp-final__offer { font-size: 22px; font-weight: 800; color: #F4B400; margin-bottom: 4px; font-family: 'Montserrat', sans-serif; }
+    .cp-final__offer-regular { font-size: 14px; font-weight: 700; color: #E5E7EB; margin-bottom: 10px; }
+    .cp-final__offer-note { font-size: 13px; color: rgba(255,255,255,0.55); margin-bottom: 4px; }
+    .cp-final__countdown { justify-content: center; margin-bottom: 26px; color: #F4B400; font-size: 15px; font-weight: 700; }
     .cp-final .btn--cta-primary { max-width: 380px; margin: 0 auto; }
     .cp-final__reassurance { font-size: 13px; color: rgba(255,255,255,0.55); margin-top: 18px; }
     .cp-final__brandline { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-top: 28px; }
@@ -831,6 +891,19 @@
 </head>
 <body class="cp-page">
 
+  <!-- ═══ 0. EARLY ACCESS ANNOUNCEMENT BAR ═══
+       Scrolls away with the page (the header below stays sticky).
+       Hidden entirely once Early Access ends -- see the pricing script
+       near the end of the page, which is the single source of truth for
+       "is Early Access still on" (it reads the same RPC that sets the
+       real Stripe price). -->
+  <div class="cp-announce" data-cp-early-access>
+    <div class="cp-announce__inner">
+      <span class="cp-announce__text">EARLY ACCESS: <span data-cp-price>$29</span> THROUGH AUGUST 31 &middot; REGULARLY $49</span>
+      <span class="cp-countdown cp-announce__countdown" data-cp-countdown aria-hidden="true">Ends August 31</span>
+    </div>
+  </div>
+
   <!-- ═══ 1. FOCUSED HEADER ═══ -->
   <header class="cp-header">
     <div class="cp-header__inner">
@@ -856,7 +929,7 @@
     <div class="cp-hero__inner">
       <div class="cp-hero__eyebrow">Private Pilot Checkride Preparation</div>
       <h1>WALK INTO YOUR<br>CHECKRIDE <span class="cp-gold">READY.</span></h1>
-      <p class="cp-hero__sub">Most students know the material&mdash;the oral exam is where that knowledge actually gets tested. Apex Advantage gives you 300+ of the most popular checkride questions with model answers, reasoning, and DPE insights, so you understand why each answer is right and stay confident when the examiner changes the question.</p>
+      <p class="cp-hero__sub">Prepare for the Private Pilot oral with 300+ DPE-style questions, AI DPE Practice, realistic scenarios, and readiness tracking &mdash; so you know exactly what to work on before checkride day.</p>
 
       <div class="cp-hero__showcase">
         <div class="cp-hero__showcase-page cp-hero__showcase-page--back">
@@ -873,11 +946,10 @@
         <div class="cp-hero__showcase-included">
           <div class="cp-hero__showcase-included__label">Included</div>
           <ul>
-            <li>Checkride Prep Workbook</li>
-            <li>DPE Scenario Workshops</li>
-            <li>ACS-Mapped Study Guide</li>
-            <li>Model Answers</li>
-            <li>Instant Digital Access</li>
+            <li>300+ DPE Questions</li>
+            <li>AI DPE Practice</li>
+            <li>Scenario Training</li>
+            <li>Readiness Tracking</li>
           </ul>
         </div>
       </div>
@@ -892,23 +964,23 @@
       </div>
 
       <ul class="cp-hero__benefits">
-        <li>Understand Concepts</li>
-        <li>Practice Real DPE Scenarios</li>
-        <li>ACS-Mapped Study System</li>
-        <li>Instant Digital Access</li>
+        <li>300+ DPE Questions</li>
+        <li>AI DPE Practice</li>
+        <li>Scenario Training</li>
+        <li>Readiness Tracking</li>
       </ul>
 
       <div class="cp-hero__offer">
-        <p class="cp-hero__value-line">Everything you need for the oral exam, in one structured system.</p>
-        <span class="cp-hero__price-top">Launch Pricing</span>
+        <span class="cp-hero__price-top" data-cp-early-access>Early Access Pricing</span>
         <span class="cp-hero__price" data-cp-price>$29</span>
-        <span class="cp-hero__price-regular" data-cp-regular-price>Regular Price $49</span>
-        <div class="cp-hero__price-note">Introductory pricing available for a limited time.</div>
+        <span class="cp-hero__price-regular" data-cp-regular-price>Regular price <s>$49</s></span>
+        <div class="cp-hero__price-note">One-time unlock &middot; No subscription.</div>
+        <div class="cp-hero__price-note" data-cp-early-access>Early Access pricing ends August 31.</div>
       </div>
 
       <div class="cp-hero__cta-col">
         <div class="cp-hero__cta-row">
-          <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-location="hero">GET THE CHECKRIDE SYSTEM</a>
+          <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-cta-label data-cp-location="hero">UNLOCK CHECKRIDE PREP &mdash; $29</a>
           <a href="#included" class="btn--outline-gold" data-cp-secondary-cta data-cp-location="hero">SEE WHAT&rsquo;S INCLUDED</a>
         </div>
       </div>
@@ -1240,21 +1312,23 @@
       <div class="cp-section__eyebrow">Get the Pack</div>
       <h2 class="cp-section__title">START PREPARING WITH THE APEX ADVANTAGE</h2>
       <div class="cp-offer-box">
-        <div class="cp-offer-box__eyebrow">Apex Advantage</div>
-        <h3 class="cp-offer-box__title">CHECKRIDE PREP PACK</h3>
+        <div class="cp-offer-box__eyebrow" data-cp-early-access>Early Access &mdash; Apex Advantage</div>
+        <h3 class="cp-offer-box__title">PRIVATE PILOT CHECKRIDE PREP</h3>
         <div class="cp-offer-price-row">
           <span class="cp-offer-price" data-cp-price>$29</span>
+          <span class="cp-offer-price-regular" data-cp-regular-price><s>$49</s></span>
         </div>
-        <div class="cp-offer-urgency" data-cp-urgency>Launch pricing for the first 25 pilots — then $49</div>
+        <p class="cp-offer-note">One-time unlock &middot; No subscription</p>
+        <div class="cp-offer-urgency" data-cp-urgency>Early Access pricing ends August 31 — then $49</div>
 
         <ul class="cp-delivery-list">
           <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 300+ DPE-style oral questions with model answers</li>
-          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Realistic checkride scenarios &amp; AI DPE Practice</li>
-          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Progress tracking &amp; the full Prep Pack PDF</li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> AI DPE Practice &amp; realistic scenario training</li>
+          <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Readiness tracking &amp; the full Prep Pack PDF</li>
           <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> One-time payment, lifetime access</li>
         </ul>
 
-        <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-location="pricing">GET INSTANT ACCESS</a>
+        <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-cta-label data-cp-location="pricing">UNLOCK CHECKRIDE PREP &mdash; $29</a>
         <p class="cp-offer-box__microcopy">Secure checkout. Instant digital access.</p>
       </div>
     </div>
@@ -1326,10 +1400,10 @@
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
-            What happens after the first 25 pilots purchase it?
+            When does Early Access pricing end?
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div class="faq-item__answer"><p>Pricing moves to the standard rate of $49. The $29 launch price is only guaranteed while founding spots remain.</p></div>
+          <div class="faq-item__answer"><p>Early Access pricing ($29) ends August 31, 2026, after which it moves to the standard rate of $49. There's also a limited number of founding spots at $29 that can run out before that date if enough pilots purchase &mdash; whichever comes first.</p></div>
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
@@ -1357,10 +1431,14 @@
   <section class="cp-final">
     <div class="container">
       <div class="cp-final__eyebrow">Train Beyond the Checkride</div>
-      <h2>STOP MEMORIZING.<br>START UNDERSTANDING.</h2>
+      <h2>YOUR CHECKRIDE IS COMING.<br>FIND THE WEAK SPOTS BEFORE THE DPE DOES.</h2>
       <p class="cp-final__desc">Build the knowledge, scenario awareness, and communication skills you need to walk into your private pilot checkride prepared.</p>
-      <div class="cp-final__offer" data-cp-urgency>$29 launch pricing for the first 25 pilots.</div>
-      <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-location="final">GET THE CHECKRIDE SYSTEM</a>
+      <div class="cp-final__offer" data-cp-price>$29</div>
+      <div class="cp-final__offer-regular" data-cp-regular-price>Regular price <s>$49</s></div>
+      <div class="cp-final__offer-note">One-time unlock &middot; No subscription</div>
+      <div class="cp-final__offer-note" data-cp-early-access>Early Access ends August 31.</div>
+      <div class="cp-countdown cp-final__countdown" data-cp-countdown data-cp-early-access aria-hidden="true">Ends August 31</div>
+      <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-cta-label data-cp-location="final">UNLOCK CHECKRIDE PREP &mdash; $29</a>
       <div class="cp-final__reassurance">Instant digital access &bull; Designed by flight instructors &bull; Built around the ACS</div>
       <div class="cp-final__brandline">Train Beyond the Checkride</div>
     </div>
@@ -1385,8 +1463,8 @@
   <!-- Sticky mini-CTA — persistent bottom bar once past the hero, not a popup -->
   <div class="cp-sticky-cta" id="cpStickyCta">
     <div class="cp-sticky-cta__inner">
-      <div class="cp-sticky-cta__copy">Launch pricing · <strong data-cp-urgency>first 25 pilots only</strong></div>
-      <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-location="sticky">GET INSTANT ACCESS</a>
+      <div class="cp-sticky-cta__copy"><strong data-cp-price>$29</strong> <span data-cp-early-access>Early Access &mdash; ends Aug 31</span></div>
+      <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-cta-label data-cp-location="sticky">UNLOCK CHECKRIDE PREP &mdash; $29</a>
     </div>
   </div>
 
@@ -1439,6 +1517,20 @@
           gtag('event', 'checkride_prep_checkout_start', { location: el.dataset.cpLocation || 'unknown' });
         }
         if (window.apexTrack) apexTrack('checkout_started', { product: 'checkride_prep', checkout_step: 'cta_click', location: el.dataset.cpLocation || 'unknown' });
+        // Early Access-specific signal for the retargeting campaign,
+        // additive to checkout_started above (not a replacement) --
+        // window.cpEarlyAccessActive is set by the live-pricing script
+        // below from the same RPC that sets the real Stripe price, so
+        // this reports what the visitor actually saw, not an assumption.
+        if (window.apexTrack && window.cpEarlyAccessActive !== false) {
+          apexTrack('early_access_cta_click', {
+            product: 'private_pilot_checkride_prep',
+            promotional_price: 29,
+            regular_price: 49,
+            deadline: '2026-08-31T23:59:00-04:00',
+            location: el.dataset.cpLocation || 'unknown'
+          });
+        }
       });
     });
 
@@ -1452,10 +1544,16 @@
     });
 
     // ── UTM passthrough: carry ad-campaign params from this landing
-    // page into the signup/checkout link. Nothing in the codebase
-    // captured UTMs before this — this preserves them through the
-    // first hop only (portal-login.html doesn't yet forward them
-    // further into checkout metadata; see implementation summary). ─
+    // page into the signup/checkout link. Belt-and-suspenders alongside
+    // analytics-events.js's own localStorage capture (included below) --
+    // that script already records first-touch/latest-touch UTM into
+    // localStorage on load, and portal-login.html reads it back via
+    // apexGetUtm()/apexGetFirstTouchUtm() to pass into the actual
+    // checkout call (supabase-portal-schema-v58.sql's checkout_session_
+    // attempts.utm_* / profiles.signup_utm_* columns), so attribution
+    // already survives the full funnel without this. This just makes
+    // sure it survives even if localStorage is unavailable/cleared
+    // between this page and the next. ──────────────────────────────
     (function () {
       var params = new URLSearchParams(window.location.search);
       var pairs = [];
@@ -1467,28 +1565,84 @@
       document.querySelectorAll('[data-cp-cta]').forEach(function (a) { a.href = a.href + suffix; });
     })();
 
-    // ── Live pricing: replace the static $29 / "first 25" fallback
-    // copy with the real founding/standard tier from the same RPC
-    // portal-stable.js uses, so this page never shows fake scarcity. ─
+    // ── Early Access countdown + live pricing ──────────────────────
+    // Real deadline: Aug 31, 2026, 11:59 PM America/New_York, written
+    // as its fixed UTC instant (EDT/UTC-4 is in effect on this date --
+    // 2026 DST runs Mar 8-Nov 1) so no browser ever has to parse a
+    // zone-name string. Recomputed fresh from this one constant on
+    // every check -- never stored, never derived from a first-visit
+    // timestamp, so refresh/cookies/return visits can't move it and it
+    // can't become visitor-specific.
+    //
+    // supabase-portal-schema-v66.sql's get_checkride_prep_pricing() is
+    // the actual source of truth (same RPC that sets Stripe's real
+    // price), and is authoritative here once it resolves. This
+    // constant exists for two display-only purposes: rendering the
+    // DAYS/HRS/MIN digits, and as a safety-net default (in case the RPC
+    // never resolves at all -- offline, ad blocker, apexSupabase not
+    // loaded) so this page can never show stale $29 Early Access
+    // messaging indefinitely just because a network call failed.
     (function () {
-      if (!window.apexSupabase) return;
-      apexSupabase.rpc('get_checkride_prep_pricing', { p_profile_id: null }).then(function (res) {
-        var row = res.data && res.data[0];
-        if (res.error || !row) return;
-        var price = '$' + Math.round(row.amount_cents / 100);
-        document.querySelectorAll('[data-cp-price]').forEach(function (el) { el.textContent = price; });
-        var urgency = row.tier === 'founding'
-          ? row.founding_seats_remaining + ' of 25 launch spots left at ' + price + ' — then $49'
-          : 'Launch pricing has ended — $49 for full access';
-        document.querySelectorAll('[data-cp-urgency]').forEach(function (el) { el.textContent = urgency; });
+      var DEADLINE = new Date('2026-09-01T03:59:00Z');
+      var rpcResolved = false;
 
-        // Hero's clean pricing card has no scarcity copy — once launch
-        // pricing ends, $29 becomes $49 via data-cp-price above, so the
-        // separate "Regular Price $49" line would be redundant; hide it.
-        if (row.tier !== 'founding') {
-          document.querySelectorAll('[data-cp-regular-price]').forEach(function (el) { el.style.display = 'none'; });
+      function pad(n) { return n < 10 ? '0' + n : String(n); }
+
+      function applyState(active, price, urgencyText) {
+        window.cpEarlyAccessActive = active;
+        document.querySelectorAll('[data-cp-price]').forEach(function (el) { el.textContent = price; });
+        document.querySelectorAll('[data-cp-early-access]').forEach(function (el) { el.style.display = active ? '' : 'none'; });
+        document.querySelectorAll('[data-cp-regular-price]').forEach(function (el) { el.style.display = active ? '' : 'none'; });
+        document.querySelectorAll('[data-cp-urgency]').forEach(function (el) { el.textContent = urgencyText; });
+        document.querySelectorAll('[data-cp-cta-label]').forEach(function (el) { el.textContent = 'UNLOCK CHECKRIDE PREP — ' + price; });
+      }
+
+      function renderCountdown() {
+        var remainingMs = DEADLINE.getTime() - Date.now();
+        var nodes = document.querySelectorAll('[data-cp-countdown]');
+        if (remainingMs <= 0) {
+          nodes.forEach(function (el) { el.textContent = 'Early Access has ended'; });
+          // Fallback only, for the visitor's own clock -- if the RPC
+          // below has already resolved (or resolves later, via its own
+          // 5-minute refresh), that result wins; this just prevents
+          // stale $29 copy from sitting indefinitely if the RPC call
+          // never completes at all.
+          if (!rpcResolved) applyState(false, '$49', 'Regular pricing — $49');
+          return;
         }
-      }).catch(function () {});
+        var totalMinutes = Math.floor(remainingMs / 60000);
+        var days = Math.floor(totalMinutes / 1440);
+        var hours = Math.floor((totalMinutes % 1440) / 60);
+        var minutes = totalMinutes % 60;
+        nodes.forEach(function (el) { el.textContent = pad(days) + ' DAYS : ' + pad(hours) + ' HRS : ' + pad(minutes) + ' MIN'; });
+      }
+
+      renderCountdown();
+      setInterval(renderCountdown, 30000);
+
+      function fetchPricing() {
+        if (!window.apexSupabase) return;
+        apexSupabase.rpc('get_checkride_prep_pricing', { p_profile_id: null }).then(function (res) {
+          var row = res.data && res.data[0];
+          if (res.error || !row) return;
+          rpcResolved = true;
+          var price = '$' + Math.round(row.amount_cents / 100);
+          var active = row.tier !== 'standard';
+          var urgency = row.tier === 'founding'
+            ? row.founding_seats_remaining + ' of 25 founding spots left at ' + price + ' — Early Access ends August 31'
+            : row.tier === 'launch'
+              ? 'Early Access pricing ends August 31 — then $49'
+              : 'Regular pricing — $49';
+          applyState(active, price, urgency);
+        }).catch(function () {});
+      }
+
+      fetchPricing();
+      // Re-poll periodically (not just once on load) so a tab left open
+      // across the exact Aug 31 -> Sep 1 transition still picks up the
+      // real server-side change instead of being stuck with whatever
+      // tier it saw on page load.
+      setInterval(fetchPricing, 300000);
     })();
 
     // ── FAQ accordion (kept local to this page instead of pulling in

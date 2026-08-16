@@ -28,7 +28,10 @@
     // Step dashboard card + conversion-state work) -- real triggers only,
     // wired up alongside this allowlist addition, not speculative.
     'ai_dpe_started', 'ground_school_calendar_viewed', 'ground_school_class_viewed',
-    'ground_school_class_purchased', 'ground_school_full_pack_viewed', 'checkride_prep_viewed'
+    'ground_school_class_purchased', 'ground_school_full_pack_viewed', 'checkride_prep_viewed',
+    // Checkride Prep retargeting campaign (Aug 2026 Early Access push) --
+    // real trigger in site/checkride-prep.html's CTA click handler.
+    'early_access_cta_click'
   ];
 
   function anonId() {
