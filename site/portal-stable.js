@@ -108,7 +108,29 @@
   var accessToken = null;
   var authReady = apexSupabase.auth.getSession().then(function (res) {
     var session = res.data.session;
-    if (!session) { window.location.href = 'portal-login.html'; return Promise.reject('no-session'); }
+    if (!session) {
+      // Preserve ?upgrade=checkride-prep intent (from the member-upgrade
+      // email/retargeting deep link) through the login round-trip.
+      // portal-login.html's existing dest= param already maps a bare
+      // slug to a #hash on return (portalDestUrl()), and #checkride-prep
+      // already bounces a locked member into the unlock modal via the
+      // GATED_SECTIONS check in showSection() below -- so reusing dest
+      // here needs no changes to the login page at all. UTMs are
+      // forwarded too, so analytics-events.js's capture (already loaded
+      // on portal-login.html) sees them before this member ever reaches
+      // checkout.
+      var deepLinkParams = new URLSearchParams(window.location.search);
+      var loginUrl = 'portal-login.html';
+      if (deepLinkParams.get('upgrade') === 'checkride-prep') {
+        var loginQs = ['dest=checkride-prep'];
+        ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (k) {
+          if (deepLinkParams.has(k)) loginQs.push(k + '=' + encodeURIComponent(deepLinkParams.get(k)));
+        });
+        loginUrl += '?' + loginQs.join('&');
+      }
+      window.location.href = loginUrl;
+      return Promise.reject('no-session');
+    }
     accessToken = session.access_token;
     return apexSupabase.from('profiles').select('*').eq('id', session.user.id).single().then(function (profRes) {
       var profile = profRes.data;
@@ -387,11 +409,17 @@
      get_checkride_prep_pricing() mirrors the same server-side rule
      create-checkout-session uses to decide the real charge, so what a
      member sees here always matches what they're about to pay. ──────── */
-  function launchCountdownLabel(expiresAt) {
-    var msLeft = new Date(expiresAt).getTime() - Date.now();
-    if (msLeft <= 0) return 'expiring any moment';
-    var hoursLeft = Math.max(1, Math.ceil(msLeft / 3600000));
-    return hoursLeft + ' hour' + (hoursLeft === 1 ? '' : 's') + ' left';
+  // Aug 31, 2026 Early Access campaign (supabase-portal-schema-v66.sql):
+  // get_checkride_prep_pricing() now returns the same real calendar
+  // deadline in launch_expires_at for both the founding and launch
+  // tiers (previously null for founding, since that tier used to be
+  // purely seat-capped) -- so both get one consistent date-based label
+  // here instead of the old "X founding spots left"/"X hours left"
+  // copy, which no longer matches how the deadline actually works.
+  function earlyAccessDeadlineLabel(expiresAt) {
+    var d = expiresAt ? new Date(expiresAt) : null;
+    if (!d || isNaN(d.getTime())) return 'soon';
+    return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'America/New_York' });
   }
 
   function applyUnlockPricing() {
@@ -407,22 +435,16 @@
       var modalNote = document.getElementById('unlockModalPriceNote');
       if (modalPrice) modalPrice.textContent = priceLabel;
       if (modalNote) {
-        if (row.tier === 'founding') {
-          modalNote.textContent = row.founding_seats_remaining + ' founding spot' + (row.founding_seats_remaining === 1 ? '' : 's') + ' left at $29, then $49';
-        } else if (row.tier === 'launch') {
-          modalNote.textContent = 'New-member pricing — ' + launchCountdownLabel(row.launch_expires_at) + ' at $29, then $49';
-        } else {
-          modalNote.textContent = 'Founding pricing has ended — $49 for full access';
-        }
+        modalNote.textContent = row.tier === 'standard'
+          ? 'Early Access pricing has ended — $49 for full access'
+          : 'Early Access pricing — ends ' + earlyAccessDeadlineLabel(row.launch_expires_at) + ', then $49';
       }
       // Every "Unlock the Complete Prep Pack" CTA across the free guide
       // pages and the Free Resources hub (site/portal.html) mirrors the
       // same live price/urgency rather than a static "$29" hardcoded per
       // copy of the button.
       document.querySelectorAll('.portal-live-price').forEach(function (el) {
-        el.textContent = row.tier === 'launch'
-          ? priceLabel + ' — ' + launchCountdownLabel(row.launch_expires_at)
-          : priceLabel;
+        el.textContent = row.tier === 'standard' ? priceLabel : priceLabel + ' — Early Access';
       });
     }).catch(function (e) { console.error('applyUnlockPricing failed', e); });
   }
@@ -3585,6 +3607,52 @@
     if (activeId === 'ask-andrew' && (!member || member.role !== 'admin')) showSection('dashboard');
   }
 
+  /* ── Checkride Prep member-upgrade deep link (?upgrade=checkride-prep) ──
+     For the email/retargeting conversion flow -- lets a link skip
+     straight to the existing unlock modal instead of a member having to
+     find a locked feature to tap first. The query param NEVER grants
+     access on its own; it only decides whether to call the same
+     openUnlockModal()/showSection() this page already uses everywhere
+     else. Real entitlement is still exactly what applyUnlockState() and
+     get-premium-content's server-side check already enforce.
+
+     Runs once, from initPortalData() (member state is guaranteed
+     populated by then), and strips the param via replaceState right
+     after acting on it -- refresh, back-button, or closing the modal
+     must not repeatedly reopen it, only a fresh click on the email link
+     should. UTM params are left in the URL (useful for anything reading
+     them from the address bar later, e.g. a support screenshot); they're
+     already captured into localStorage by analytics-events.js
+     regardless of when/whether this URL gets cleaned. ─────────────── */
+  function enforceUpgradeDeepLink() {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('upgrade') !== 'checkride-prep') return;
+
+    params.delete('upgrade');
+    var cleanedSearch = params.toString();
+    var cleanedUrl = window.location.pathname + (cleanedSearch ? '?' + cleanedSearch : '') + window.location.hash;
+
+    if (member && member.checkridePrepUnlocked) {
+      // Already owns it -- take them to the section itself rather than
+      // showing an "unlock" pitch for something they already have.
+      showSection('checkride-prep');
+      if (history.replaceState) history.replaceState(null, '', cleanedUrl);
+      return;
+    }
+
+    if (window.apexTrack) {
+      apexTrack('checkride_prep_upgrade_deeplink_viewed', {
+        source: params.get('utm_source') || null,
+        campaign: params.get('utm_campaign') || null,
+        content: params.get('utm_content') || null,
+        member_state: member ? (member.role || 'student') : 'unknown'
+      });
+    }
+    openUnlockModal();
+    if (window.apexTrack) apexTrack('checkride_prep_upgrade_modal_opened', { trigger: 'deeplink' });
+    if (history.replaceState) history.replaceState(null, '', cleanedUrl);
+  }
+
   /* ══════════════════════════════════════════════════════════════
      GUIDED NOTES — admin-only feature preview.
 
@@ -5424,6 +5492,7 @@
       renderAdminIfApplicable();
       enforceGuidedNotesAccess();
       enforceAskAndrewAccess();
+      enforceUpgradeDeepLink();
       renderCheckrideCountdown();
       renderMembership();
       renderMembershipSubscription();

@@ -31,7 +31,10 @@
     'ground_school_class_purchased', 'ground_school_full_pack_viewed', 'checkride_prep_viewed',
     // Checkride Prep retargeting campaign (Aug 2026 Early Access push) --
     // real trigger in site/checkride-prep.html's CTA click handler.
-    'early_access_cta_click'
+    'early_access_cta_click',
+    // Member-upgrade deep link (?upgrade=checkride-prep) -- real triggers
+    // in site/portal-stable.js's enforceUpgradeDeepLink().
+    'checkride_prep_upgrade_deeplink_viewed', 'checkride_prep_upgrade_modal_opened'
   ];
 
   function anonId() {
