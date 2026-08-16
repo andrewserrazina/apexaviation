@@ -16,7 +16,7 @@ const navGroups = [
   {
     label: 'Training',
     items: [
-      { to: '/students',        label: 'Students',        roles: ['admin'] },
+      { to: '/students',        label: 'Students',        roles: ['admin', 'office_manager'] },
       { to: '/instructors',     label: 'Instructors',     roles: ['admin', 'instructor', 'student'] },
       { to: '/aircraft',        label: 'Fleet',           roles: ['admin', 'instructor', 'student'] },
       { to: '/syllabi',         label: 'Syllabi',         roles: ['admin', 'instructor', 'student'] },
@@ -25,7 +25,7 @@ const navGroups = [
       { to: '/logbook',         label: 'Logbook',         roles: ['admin', 'instructor', 'student'] },
       { to: '/endorsements',    label: 'Endorsements',    roles: ['admin', 'instructor', 'student'] },
       { to: '/ground-schedule', label: 'Ground School',   roles: ['admin', 'instructor', 'student'] },
-      { to: '/admin/ground-school-schedule', label: 'Class Scheduler', roles: ['admin'] },
+      { to: '/admin/ground-school-schedule', label: 'Class Scheduler', roles: ['admin', 'office_manager'] },
       { to: '/ground-school-bidding', label: 'Ground School Bidding', roles: ['admin', 'instructor'] },
       { to: '/instructor-hub',  label: 'Instructor Hub',  roles: ['admin', 'instructor'] },
     ],
@@ -33,7 +33,7 @@ const navGroups = [
   {
     label: 'Business',
     items: [
-      { to: '/crm',      label: 'CRM',      roles: ['admin', 'instructor'] },
+      { to: '/crm',      label: 'CRM',      roles: ['admin', 'instructor', 'office_manager'] },
       { to: '/billing',  label: 'Billing',  roles: ['admin', 'instructor', 'student'] },
       { to: '/documents', label: 'Documents', roles: ['admin', 'instructor', 'student'] },
       { to: '/reports',  label: 'Reports',  roles: ['admin'] },
@@ -56,8 +56,8 @@ const navGroups = [
   {
     label: 'Operations',
     items: [
-      { to: '/operations/dashboard', label: 'Overview',    roles: ['admin', 'instructor'] },
-      { to: '/operations/schedule',  label: 'Schedule',    roles: ['admin', 'instructor'] },
+      { to: '/operations/dashboard', label: 'Overview',    roles: ['admin', 'instructor', 'office_manager'] },
+      { to: '/operations/schedule',  label: 'Schedule',    roles: ['admin', 'instructor', 'office_manager'] },
       { to: '/operations/simulator', label: 'Simulator',   roles: ['admin', 'instructor'] },
       { to: '/operations/settings',  label: 'Settings',    roles: ['admin'] },
     ],

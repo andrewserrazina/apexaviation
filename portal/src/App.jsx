@@ -55,14 +55,14 @@ export default function App() {
               <Route path="/portal-select" element={<ProtectedRoute><PortalSelector /></ProtectedRoute>} />
               <Route path="/dashboard"   element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/flight-dashboard" element={<ProtectedRoute roles={['student']}><FlightStudentDashboard /></ProtectedRoute>} />
-              <Route path="/operations" element={<ProtectedRoute roles={['admin', 'instructor']}><Navigate to="/operations/dashboard" replace /></ProtectedRoute>} />
-              <Route path="/operations/dashboard" element={<ProtectedRoute roles={['admin', 'instructor']}><OperationsDashboard /></ProtectedRoute>} />
-              <Route path="/operations/schedule" element={<ProtectedRoute roles={['admin', 'instructor']}><OperationsSchedule /></ProtectedRoute>} />
+              <Route path="/operations" element={<ProtectedRoute roles={['admin', 'instructor', 'office_manager']}><Navigate to="/operations/dashboard" replace /></ProtectedRoute>} />
+              <Route path="/operations/dashboard" element={<ProtectedRoute roles={['admin', 'instructor', 'office_manager']}><OperationsDashboard /></ProtectedRoute>} />
+              <Route path="/operations/schedule" element={<ProtectedRoute roles={['admin', 'instructor', 'office_manager']}><OperationsSchedule /></ProtectedRoute>} />
               <Route path="/operations/simulator" element={<ProtectedRoute roles={['admin', 'instructor']}><OperationsSimulator /></ProtectedRoute>} />
               <Route path="/operations/settings" element={<ProtectedRoute adminOnly><OperationsSettings /></ProtectedRoute>} />
-              <Route path="/admin/ground-school-schedule" element={<ProtectedRoute adminOnly><AdminGroundSchoolSchedule /></ProtectedRoute>} />
+              <Route path="/admin/ground-school-schedule" element={<ProtectedRoute roles={['admin', 'office_manager']}><AdminGroundSchoolSchedule /></ProtectedRoute>} />
               <Route path="/ground-school-bidding" element={<ProtectedRoute roles={['admin', 'instructor']}><GroundSchoolBidding /></ProtectedRoute>} />
-              <Route path="/students"    element={<ProtectedRoute adminOnly><Students /></ProtectedRoute>} />
+              <Route path="/students"    element={<ProtectedRoute roles={['admin', 'office_manager']}><Students /></ProtectedRoute>} />
               <Route path="/instructors" element={<ProtectedRoute><Instructors /></ProtectedRoute>} />
               <Route path="/aircraft"    element={<ProtectedRoute><Aircraft /></ProtectedRoute>} />
               <Route path="/analytics"   element={<ProtectedRoute adminOnly><Analytics /></ProtectedRoute>} />
