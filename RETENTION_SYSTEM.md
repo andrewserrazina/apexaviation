@@ -196,6 +196,77 @@ deploying, to avoid double-sends).
 
 ---
 
+---
+
+## Phase 4 — Recovery Sortie notification + deployment blocker fix (this session)
+
+This phase started from a direct product ask: get more members actively
+using the portal and protect their study streaks. Two findings shaped the
+work:
+
+1. **`send-lifecycle-emails` was never deployable.** `portal/supabase/
+   config.toml` had entries for every other scheduled/webhook-driven
+   function (`stripe-webhook`, `andrewos-metrics`, …) but was missing
+   `[functions.send-lifecycle-emails]`. Without it, `supabase functions
+   deploy send-lifecycle-emails` would deploy with the platform default
+   (`verify_jwt = true`), and every scheduled `pg_net` call — which
+   carries no Supabase session, only the `LIFECYCLE_CRON_SECRET` header
+   this function checks in its own code — would 401 before any of the
+   function's code ran. **Fixed**: added the missing block with
+   `verify_jwt = false`, matching the `andrewos-metrics` pattern.
+2. **The Recovery Sortie system (schema v48) had zero notification
+   path.** `run_streak_maintenance()` offers a same-day "answer 3
+   questions before midnight to save your streak" Sortie the moment a
+   member's streak breaks and they have no banked freeze left — but
+   nothing ever told the member it existed. It was pure DB state,
+   invisible unless they happened to open the portal that exact day.
+   This is the single most direct, time-boxed lever for "preserve their
+   study streaks" the codebase had — and it was silently doing nothing.
+
+### `portal/supabase/functions/send-lifecycle-emails/index.ts`
+
+- **`emailTemplateRecoverySortie(firstName)`** — new template, same
+  visual style as the existing templates.
+- **`processRecoverySortieNotifications(supabase, results)`** — new
+  batch processor, run once per cron tick immediately after the
+  `run_streak_maintenance` RPC call (so a Sortie offered in that same
+  run is emailed immediately, not on the next day's tick). Queries
+  `recovery_sorties` for rows that are unused and unexpired, dedupes via
+  `portal_email_log` keyed on the sortie's own id (`recovery_sortie_
+  <sortie.id>` — same one-time-per-instance pattern as
+  `ground_followup_<registration_id>`), and sends the email.
+- New `results.recovery_sortie_notified` counter in the JSON response.
+
+### `portal/supabase/config.toml`
+
+- Added `[functions.send-lifecycle-emails]` with `verify_jwt = false`.
+
+Verified by bundling the function with esbuild (no live Deno/Supabase
+runtime available in this sandbox) — confirms the TypeScript is
+syntactically valid and the new function/template wire in correctly, not
+that it behaves correctly against a live database.
+
+### Still required before this goes live (cannot be done from this sandbox)
+
+All of the original "Action required" steps above still apply and have
+**not** been completed — this phase did not deploy or schedule anything,
+only fixed the code and the config that were blocking deployment. In
+particular:
+
+- Deploy the function: `supabase functions deploy send-lifecycle-emails`
+  (from inside `portal/`) — this also picks up the `config.toml` fix.
+- Schedule it — `portal/supabase/functions/send-lifecycle-emails/
+  schedule.sql` has the exact, ready-to-run `pg_cron`/`pg_net` script
+  (via Supabase Vault, not a hardcoded secret) once the placeholders are
+  filled in.
+- Manually trigger one run after deploying and check the JSON response's
+  `recovery_sortie_notified` count and `errors` array before trusting
+  the schedule — there is currently no test data anywhere confirming a
+  real `recovery_sorties` row + `profiles` join returns what this code
+  expects.
+
+---
+
 ## Known limitations / deliberate approximations
 
 - **Streak "today" reference**: `computeReadiness()`'s current-streak
