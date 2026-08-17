@@ -215,6 +215,18 @@ function emailTemplateCountdown(daysUntil: number) {
     '<a href="https://advantage.apexaviationtx.com/portal.html#progress" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Review Your Progress →</a>'
 }
 
+// Recovery Sortie offer -- run_streak_maintenance() (see
+// supabase-portal-schema-v48.sql) offers one of these the moment a
+// member's streak breaks and they have no banked freeze left. The
+// sortie is otherwise invisible DB state until they happen to open the
+// portal that same day -- this is the only notification path that
+// tells them it exists before it expires at midnight, member-local.
+function emailTemplateRecoverySortie(firstName: string) {
+  return `<h2 style="color:#F4B400;margin:0 0 4px;">${firstName}, your streak is on the line tonight</h2>` +
+    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">You missed a day and you\'re out of banked freezes — but your streak isn\'t broken yet. Answer 3 questions before midnight tonight and it carries forward like nothing happened.</p>' +
+    '<a href="https://advantage.apexaviationtx.com/portal.html#dpe-library" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Save My Streak →</a>'
+}
+
 // Ground school is live, instructor-led, in-person -- there is no
 // recording/replay system anywhere in this codebase, so this
 // deliberately does not promise a "replay link" the way the original
@@ -823,6 +835,38 @@ async function processAbandonedCheckouts(supabase: any, results: any) {
   }
 }
 
+// Recovery Sortie notification -- must run AFTER run_streak_maintenance()
+// in serve() below, since that RPC is what creates the recovery_sorties
+// rows this queries; a sortie offered by this same run is picked up
+// immediately rather than waiting for the next cron tick. Dedup via
+// portal_email_log keyed on the sortie's own id (not just profile_id),
+// same pattern as ground_followup_<registration_id> above -- each sortie
+// is a distinct, one-time, expiring offer, not a recurring milestone.
+async function processRecoverySortieNotifications(supabase: any, results: any) {
+  const { data: sorties } = await supabase
+    .from('recovery_sorties')
+    .select('id, profile_id, profile:profiles(email, full_name)')
+    .is('used_at', null)
+    .gt('expires_at', new Date().toISOString())
+
+  for (const sortie of sorties ?? []) {
+    const email = sortie.profile?.email
+    if (!email) continue
+    const emailType = 'recovery_sortie_' + sortie.id
+    try {
+      const { data: already } = await supabase.from('portal_email_log').select('id').eq('email_type', emailType).limit(1)
+      if (already && already.length) continue
+
+      const firstName = (sortie.profile?.full_name || 'there').split(' ')[0]
+      await sendEmail(supabase, email, 'Your streak is on the line tonight', emailTemplateRecoverySortie(firstName))
+      await supabase.from('portal_email_log').insert({ profile_id: sortie.profile_id, email_type: emailType })
+      results.recovery_sortie_notified++
+    } catch (err) {
+      results.errors.push(`recovery_sortie ${sortie.id}: ${err}`)
+    }
+  }
+}
+
 serve(async (req) => {
   if (CRON_SECRET) {
     const authHeader = req.headers.get('Authorization') || ''
@@ -832,7 +876,7 @@ serve(async (req) => {
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
-  const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, checkride_upsell: 0, ground_followup: 0, abandoned_checkout: 0, seven_day_active: 0, readiness_assessment_followup: 0, errors: [] as string[] }
+  const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, checkride_upsell: 0, ground_followup: 0, abandoned_checkout: 0, seven_day_active: 0, readiness_assessment_followup: 0, recovery_sortie_notified: 0, errors: [] as string[] }
 
   // exam_type hard-coded to 'private_pilot' — see get-premium-content
   // for why instrument content must never be reachable this way yet.
@@ -873,6 +917,7 @@ serve(async (req) => {
   // profile with study history server-side.
   const { error: streakError } = await supabase.rpc('run_streak_maintenance')
   if (streakError) results.errors.push(`run_streak_maintenance: ${streakError.message}`)
+  else await processRecoverySortieNotifications(supabase, results)
 
   // Mission progress (v50) -- recomputed from real activity every cron
   // run rather than incrementally, so a mission's progress is always

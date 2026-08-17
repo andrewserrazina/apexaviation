@@ -38,3 +38,14 @@ verify_jwt = false
 # Supabase session exists, so platform-level JWT verification must be
 # off; auth is instead enforced in code via ANDREWOS_CRON_SECRET.
 verify_jwt = false
+
+[functions.send-lifecycle-emails]
+# Called on a schedule by pg_cron/pg_net (see
+# functions/send-lifecycle-emails/schedule.sql), not by a signed-in
+# user -- no Supabase session exists, so platform-level JWT verification
+# must be off; auth is instead enforced in code via LIFECYCLE_CRON_SECRET
+# when that env var is set. This entry was missing, which meant `supabase
+# functions deploy send-lifecycle-emails` would deploy the function with
+# the platform default (verify_jwt = true) and every scheduled invocation
+# would 401 before the function's own code ever ran.
+verify_jwt = false
