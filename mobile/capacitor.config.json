@@ -3,7 +3,7 @@
   "appName": "Apex Advantage",
   "webDir": "www",
   "server": {
-    "url": "https://advantage.apexaviationtx.com/portal-login.html",
+    "url": "https://apexaviationtx.com/portal.html",
     "cleartext": false,
     "allowNavigation": ["*.stripe.com"]
   }
