@@ -501,9 +501,26 @@
       display: grid; grid-template-columns: 1fr 400px; gap: 48px; align-items: center;
       max-width: 1100px; margin: 0 auto; position: relative; z-index: 1;
     }
-    /* Tuned so "Stop watching ground school." reliably holds one line
-       on desktop instead of an awkward mid-phrase 3rd-line wrap. */
+    /* Tuned so the headline reliably holds one line per row on desktop
+       instead of an awkward mid-phrase 3rd-line wrap. */
     .gs-hero-headline { font-size: clamp(28px, 3.4vw, 44px) !important; max-width: 660px !important; }
+
+    /* Cinematic hero background -- scoped to this page only (.page-hero
+       is shared across every inner page, so this never touches other
+       pages' hero treatment). Layers the same real aviation photo
+       already used on home.html's/checkride-prep.html's hero
+       (images/IMG_0224.JPG) underneath the existing .page-hero texture/
+       gradient, for the same restrained depth those pages already have,
+       without fabricating any new imagery. */
+    .gs-hero { overflow: hidden; }
+    .gs-hero__bg {
+      position: absolute; inset: 0; z-index: 0;
+      background:
+        linear-gradient(180deg, rgba(8,15,30,0.88) 0%, rgba(8,15,30,0.82) 55%, rgba(8,15,30,0.96) 100%),
+        radial-gradient(ellipse at 75% 30%, rgba(244,180,0,0.10) 0%, transparent 60%),
+        url('images/IMG_0224.JPG') center 30%/cover no-repeat;
+      opacity: 0.55;
+    }
     .gs-benefit-strip {
       display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 22px 0 0; padding: 0; list-style: none;
     }
@@ -677,7 +694,8 @@
        dpe-questions.html .cp-hero-grid). Single primary CTA ($25),
        $400 kept as a small secondary link, no fabricated scarcity.
   ════════════════════════════════════════════════════════════ -->
-  <section class="page-hero" style="padding-top:92px;padding-bottom:64px">
+  <section class="page-hero gs-hero" style="padding-top:92px;padding-bottom:64px">
+    <div class="gs-hero__bg" aria-hidden="true"></div>
     <div class="page-hero__bg-text">GROUND SCHOOL</div>
     <div class="container page-hero__inner">
       <div class="gs-hero-grid">
@@ -688,14 +706,14 @@
             Live · Instructor-Led · $25 Per Class
           </div>
           <div class="section__eyebrow">Apex Advantage · Private Pilot Ground School</div>
-          <h1 class="page-hero__title gs-hero-headline" id="gsHeroHeadline">Stop watching ground school.<br /><span>Start participating.</span></h1>
-          <p class="page-hero__sub" id="gsHeroSub" style="max-width:520px">Finally understand the aviation concepts you've been trying to memorize. Join a live, instructor-led Private Pilot Ground School class built around real explanations, practical scenarios, and time to ask questions.</p>
+          <h1 class="page-hero__title gs-hero-headline" id="gsHeroHeadline">STOP MEMORIZING.<br /><span>START UNDERSTANDING.</span></h1>
+          <p class="page-hero__sub" id="gsHeroSub" style="max-width:520px">Build the kind of understanding you can actually use in the airplane, on the written, and when your instructor asks &ldquo;why?&rdquo; Join live, instructor-led classes built around real explanations, practical scenarios, and time to ask questions.</p>
 
           <ul class="gs-benefit-strip">
             <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Live Online</li>
             <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Instructor-Led</li>
             <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Scenario-Based</li>
-            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>$25 Per Class</li>
+            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Ask Questions in Real Time</li>
           </ul>
 
           <div class="gs-topic-hero-callout" id="gsHeroTopicCallout"></div>
@@ -774,6 +792,38 @@
       </blockquote>
     </div>
   </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       THE PROBLEM — short, high-impact, sets up the hero's transformation
+       claim before the class schedule/offer. Kept tight on purpose: one
+       headline, one line of framing, four short application points.
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--light" style="padding:52px 0">
+    <div class="container">
+      <div style="max-width:720px;margin:0 auto;text-align:center">
+        <h2 class="section__title" style="margin-bottom:14px">You can memorize the answer<br/><em class="accent">and still not understand it.</em></h2>
+        <p style="color:rgba(255,255,255,0.65);font-size:16px;line-height:1.8;margin:0 0 32px">Traditional ground school can make it easy to remember acronyms and definitions without learning how to actually apply them. Apex Ground School is built to help you understand:</p>
+      </div>
+      <div class="feature-rows" style="max-width:680px;margin:0 auto">
+        <div class="feature-row">
+          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><h3>Why the Answer Is Correct</h3></div>
+        </div>
+        <div class="feature-row">
+          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><h3>How It Applies in Flight</h3></div>
+        </div>
+        <div class="feature-row">
+          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><h3>How to Explain It Out Loud</h3></div>
+        </div>
+        <div class="feature-row">
+          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><h3>What Happens When Conditions Change</h3></div>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- ═══════════════════════════════════════════════════════════
        UPCOMING LIVE CLASSES — real data, no fabricated seat counts.
@@ -1306,6 +1356,13 @@
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
+            Is this online?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>Yes — every class is entirely online and live. You just need a device and an internet connection to join.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
             Do I have to start with Module 1?
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
@@ -1324,13 +1381,6 @@
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
           <div class="faq-item__answer"><p>No. Individual classes are $25 each — attend as many or as few as you want.</p></div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-item__question">
-            Is this online?
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-          <div class="faq-item__answer"><p>Yes — every class is entirely online and live. You just need a device and an internet connection to join.</p></div>
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
@@ -1376,17 +1426,17 @@
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
-            Is Ground School part of the free Apex Advantage account?
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-          <div class="faq-item__answer"><p>A free Apex Advantage account lets you browse the class calendar, but live classes themselves are paid — $25 per class or $400 for the complete program. A single $25 class doesn't even require creating an account first.</p></div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-item__question">
             How do I register?
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
           <div class="faq-item__answer"><p>Pick a class above and reserve your seat — you'll pay securely via Stripe and get a confirmation with the class link. For the complete program, use the Enroll button, which creates your free portal account in the same step.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            Do I need an Apex Advantage account?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>A free Apex Advantage account lets you browse the class calendar, but live classes themselves are paid — $25 per class or $400 for the complete program. A single $25 class doesn't even require creating an account first.</p></div>
         </div>
       </div>
     </div>
@@ -1478,7 +1528,7 @@
 
   <!-- Sticky mobile CTA -->
   <div class="gs-sticky-cta">
-    <a href="#upcoming-classes" class="btn btn--primary" data-apx-cta data-apx-cta-location="sticky_mobile">View Classes · From $25</a>
+    <a href="#upcoming-classes" class="btn btn--primary" data-apx-cta data-apx-cta-location="sticky_mobile">View Live Classes · $25</a>
   </div>
 
   <script>
