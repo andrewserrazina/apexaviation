@@ -439,6 +439,14 @@
     .gs-calendar__cell {
       min-height: 92px; padding: 8px; border-right: 1px solid rgba(255,255,255,0.08);
       border-bottom: 1px solid rgba(255,255,255,0.08);
+      /* CSS Grid items default to min-width: auto, which lets a
+         nowrap-text descendant (.gs-cal-event span:last-child below)
+         force this column wider than its 1fr track -- the whole grid
+         then overflows/clips past the card's rounded edge on narrow
+         viewports instead of the event title ellipsis-truncating like
+         it's supposed to. min-width: 0 makes the cell actually respect
+         its track width, so the ellipsis rule can do its job. */
+      min-width: 0;
     }
     .gs-calendar__cell:nth-child(7n) { border-right: none; }
     .gs-calendar__cell--empty { background: rgba(0,0,0,0.12); }
