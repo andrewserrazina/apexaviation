@@ -314,6 +314,24 @@
     if (history.replaceState) history.replaceState(null, '', '#' + id);
     closeSidebar();
     if (!member) return;
+    runSectionEnterEffects(id);
+  }
+  window.apexShowSection = showSection;
+
+  // The per-section on-enter side effects (data loads + analytics), split
+  // out of showSection() so initPortalData() can replay them below.
+  // showSection(initial) at script init (further down) always runs
+  // synchronously, before authReady's .then() has had a chance to run even
+  // one microtask -- so `member` is unconditionally undefined on that very
+  // first call, for every section, every load. Landing directly on a
+  // non-dashboard hash (a reload, a bookmark, a shared link -- anything
+  // that isn't a fresh in-app nav click) always hit the `!member` guard
+  // above and silently skipped this block, e.g. Ground School staying on
+  // "Loading sessions..." forever with no retry. initPortalData() runs
+  // once member is actually loaded, so replaying this there for whatever
+  // section the URL hash says is active is the real first execution --
+  // never a duplicate, since the guarded call above never got this far.
+  function runSectionEnterEffects(id) {
     if (id === 'admin' && member.role === 'admin') loadAdminDashboard();
     if (id === 'guided-notes' && member.role === 'admin') loadGuidedNotes();
     if (id === 'success-wall') renderSuccessWall();
@@ -330,7 +348,6 @@
     if (id === 'ai-dpe-practice' && window.apexTrack) apexTrack('first_lesson_started', { profile_id: member.id, feature: 'ai_dpe_practice' });
     if (id === 'ask-andrew') loadAskAndrewHistory();
   }
-  window.apexShowSection = showSection;
 
   function openSidebar() { sidebar.classList.add('open'); overlay.classList.add('show'); }
   function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
@@ -5503,6 +5520,19 @@
       renderPassedBanner();
       renderSuccessWall();
       checkWeakAreaEmail();
+      // Replays showSection() for whatever section the URL hash says is
+      // active. The very first showSection(initial) call (script init,
+      // below) always runs before authReady's .then() gets a single
+      // microtask, so `member` is unconditionally unset that first time --
+      // every per-section on-enter effect in showSection()/
+      // runSectionEnterEffects() (data loads like loadGroundSchool(),
+      // gating checks, analytics) silently no-ops on any load that lands
+      // directly on a non-dashboard hash (reload, bookmark, shared link),
+      // e.g. Ground School staying on "Loading sessions..." forever with
+      // no retry. member and myGroundRegistrations/myScheduledEnrollments
+      // (set just above by loadProgress()) are both guaranteed ready by
+      // this point, so this is the real first execution, not a duplicate.
+      showSection((window.location.hash || '#dashboard').replace('#', ''));
     });
   }
 })();

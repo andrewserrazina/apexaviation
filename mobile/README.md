@@ -7,8 +7,10 @@ A thin native shell (via [Capacitor](https://capacitorjs.com)) around the existi
 This is **not** a separate app to build and maintain — `capacitor.config.json`'s `server.url` points the native shell directly at the live production site:
 
 ```
-https://advantage.apexaviationtx.com/portal-login.html
+https://apexaviationtx.com/portal.html
 ```
+
+This intentionally points at the bare `apexaviationtx.com` host, not the `advantage.` subdomain, even though `advantage.apexaviationtx.com` is the member-facing URL used in marketing/emails. `advantage.*` is a Cloudflare Page Rule that 301s to `apexaviationtx.com/portal.html` — a cross-origin redirect. Capacitor's WKWebView only loads content within the app's configured origin (plus anything in `allowNavigation`); a cross-origin redirect gets treated as external navigation and kicked out to the system browser instead of loading in-app. Pointing `server.url` straight at the real destination avoids that entirely. `portal.html`'s own client-side auth check already redirects logged-out visitors to `portal-login.html` via a same-origin relative URL, so this works for both signed-in and signed-out members without ever leaving the app.
 
 Every screen a member sees is loaded remotely, exactly like opening that URL in mobile Safari/Chrome, just inside a native app chrome with a home-screen icon. This means:
 
