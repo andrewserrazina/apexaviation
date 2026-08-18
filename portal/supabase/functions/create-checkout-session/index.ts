@@ -123,6 +123,17 @@ function jsonError(message: string, status: number) {
   })
 }
 
+// Escapes ilike's own wildcard characters so a case-insensitive *exact*
+// match on unauthenticated, client-supplied email actually only matches
+// that literal email -- without this, a caller submitting `%` or `_` in
+// the email field turns the duplicate-registration check below into a
+// SQL LIKE pattern, letting them match (and get wrongly blocked as
+// "already registered" against) an unrelated existing row instead of
+// their own literal address.
+function escapeIlike(value: string): string {
+  return value.replace(/[\\%_]/g, (c) => '\\' + c)
+}
+
 // Latest-touch UTM as of this specific checkout attempt
 // (supabase-portal-schema-v58.sql) -- untrusted client input (the
 // browser's own localStorage, forwarded in the request body), so it's
@@ -471,13 +482,20 @@ serve(async (req) => {
         return jsonError('The Private Pilot Ground School pack is already unlocked on this account', 400)
       }
 
+      // enroll_in_ground_school_via_pack() (v57.sql) only ever unlocks the
+      // PPL pack for a PPL class -- this credit calculation has to match
+      // that same PPL-only scope, or a paid enrollment in a future
+      // non-PPL course (Commercial/Instrument) would count as credit
+      // toward a pack that has nothing to do with it.
       const { data: paidEnrollments } = await supabase
         .from('scheduled_ground_class_enrollments')
-        .select('amount_cents')
+        .select('amount_cents, scheduled_ground_class:scheduled_ground_classes(course_id)')
         .eq('profile_id', profileId)
         .eq('payment_status', 'paid')
 
-      const creditedCents = (paidEnrollments || []).reduce((sum: number, row: any) => sum + (row.amount_cents || 0), 0)
+      const creditedCents = (paidEnrollments || [])
+        .filter((row: any) => row.scheduled_ground_class?.course_id === 'PPL')
+        .reduce((sum: number, row: any) => sum + (row.amount_cents || 0), 0)
       if (creditedCents <= 0) {
         return jsonError('No prior paid Ground School class found on this account to credit toward the upgrade', 400)
       }
@@ -655,7 +673,7 @@ serve(async (req) => {
           .from('scheduled_ground_class_enrollments')
           .select('id')
           .eq('scheduled_ground_class_id', scheduledClassId)
-          .ilike('email', email)
+          .ilike('email', escapeIlike(email))
           .eq('payment_status', 'paid')
           .maybeSingle()
         if (existingEnrollment) return jsonError('This email is already registered for this class', 409)
@@ -704,7 +722,7 @@ serve(async (req) => {
         .from('ground_registrations')
         .select('id')
         .eq('session_id', sessionId)
-        .ilike('email', email)
+        .ilike('email', escapeIlike(email))
         .eq('payment_status', 'paid')
         .maybeSingle()
       if (existingRegistration) return jsonError('This email is already registered for this session', 409)
