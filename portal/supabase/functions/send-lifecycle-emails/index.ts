@@ -99,6 +99,23 @@ const COUNTDOWN_DAYS = [30, 14, 7, 3, 1]
 const WEAK_AREA_THROTTLE_DAYS = 14
 const INACTIVITY_THROTTLE_DAYS = 30
 const INACTIVITY_TRIGGER_DAYS = 7
+// Retention Sprint Tier 3 reactivation tier -- distinct from the
+// inactivity_7day nudge above. That existing email is login-based
+// (portal_last_active_at) and already deployed/verified against real
+// data; changing its trigger to a stricter activity-based signal risks
+// regressing something already working, so it's left untouched and
+// keeps serving as the "AT_RISK" tier in spirit (7+ days, general
+// nudge). This new tier is a genuinely distinct, stronger signal for
+// members whose real training has gone properly stale -- 14+ days
+// since real work (not just a login), matching the sprint brief's
+// ACTIVE/AT_RISK/INACTIVE definitions. The two aren't mutually
+// exclusive/boundary-clean (a member inactive 45 days could still get
+// both independently, on their own schedules) -- a real limitation,
+// documented rather than papered over with a false "clean 3-tier"
+// claim.
+const REACTIVATION_INACTIVE_TRIGGER_DAYS = 14
+const REACTIVATION_INACTIVE_THROTTLE_DAYS = 14
+const WEEKLY_PROGRESS_THROTTLE_DAYS = 7
 const STUDY_SECONDS_TARGET = 5 * 3600
 // Checkride-timing-aware upsell cadence -- schedule (days since signup)
 // gets more compressed the closer profiles.checkride_timing says the
@@ -177,6 +194,94 @@ async function daysSinceLastEmail(supabase: any, profileId: string, type: string
     .limit(1)
   if (!data || !data.length) return Infinity
   return (Date.now() - new Date(data[0].sent_at).getTime()) / 86400000
+}
+
+// Same "meaningful activity" definition as get_retention_kpis()
+// (supabase-portal-schema-v69.sql) -- answering/completing a DPE
+// question, completing a scenario, a practice-set attempt, or an AI DPE
+// session -- deliberately not portal_last_active_at (mere login/visit).
+async function daysSinceLastMeaningfulActivity(supabase: any, profileId: string): Promise<number> {
+  const [q, s, p, a] = await Promise.all([
+    supabase.from('portal_question_progress').select('updated_at').eq('profile_id', profileId).or('answered_count.gt.0,completed.eq.true').order('updated_at', { ascending: false }).limit(1),
+    supabase.from('portal_scenario_progress').select('updated_at').eq('profile_id', profileId).eq('completed', true).order('updated_at', { ascending: false }).limit(1),
+    supabase.from('portal_practice_attempts').select('started_at').eq('profile_id', profileId).order('started_at', { ascending: false }).limit(1),
+    supabase.from('ai_dpe_sessions').select('started_at').eq('profile_id', profileId).order('started_at', { ascending: false }).limit(1),
+  ])
+  const timestamps = [q.data?.[0]?.updated_at, s.data?.[0]?.updated_at, p.data?.[0]?.started_at, a.data?.[0]?.started_at]
+    .filter(Boolean).map((t: string) => new Date(t).getTime())
+  if (!timestamps.length) return Infinity
+  return (Date.now() - Math.max(...timestamps)) / 86400000
+}
+
+function emailTemplateReactivationInactive(firstName: string) {
+  return `<h2 style="color:#F4B400;margin:0 0 4px;">Pick up where you left off, ${firstName}.</h2>` +
+    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Start with one DPE question — it only takes a minute, and today\'s question is free for every member.</p>' +
+    '<a href="https://advantage.apexaviationtx.com/portal.html" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Answer Today\'s Question →</a>'
+}
+
+async function processReactivationInactive(supabase: any, profile: any, results: any) {
+  const daysInactive = await daysSinceLastMeaningfulActivity(supabase, profile.id)
+  if (daysInactive < REACTIVATION_INACTIVE_TRIGGER_DAYS) return
+  if ((await daysSinceLastEmail(supabase, profile.id, 'reactivation_inactive')) < REACTIVATION_INACTIVE_THROTTLE_DAYS) return
+
+  await sendEmail(supabase, profile.email, 'Pick up where you left off', emailTemplateReactivationInactive((profile.full_name || 'there').split(' ')[0]))
+  await supabase.from('portal_email_log').insert({ profile_id: profile.id, email_type: 'reactivation_inactive' })
+  results.reactivation_inactive++
+}
+
+// Weekly progress summary -- Retention Sprint Tier 3. Positive
+// reinforcement for members who actually trained this week (the
+// reactivation emails above/below cover the opposite case), so this
+// only sends when there's real activity to report -- no "you did
+// nothing this week" email exists or should exist.
+function emailTemplateWeeklyProgress(stats: {
+  questions: number; days: number; scenarios: number; aiDpe: number;
+  strongest: string | null; weakest: string | null;
+}) {
+  const topicLine = stats.strongest
+    ? `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Strongest: <strong style="color:#fff">${stats.strongest}</strong>` +
+      (stats.weakest && stats.weakest !== stats.strongest ? ` &nbsp;·&nbsp; Focus next: <strong style="color:#fff">${stats.weakest}</strong>` : '') + '</p>'
+    : ''
+  return '<h2 style="color:#F4B400;margin:0 0 4px;">Your Apex Weekly Training Report</h2>' +
+    `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">${stats.questions} question${stats.questions === 1 ? '' : 's'} answered · ${stats.days} training day${stats.days === 1 ? '' : 's'} · ${stats.scenarios} scenario${stats.scenarios === 1 ? '' : 's'} · ${stats.aiDpe} AI DPE session${stats.aiDpe === 1 ? '' : 's'}</p>` +
+    topicLine +
+    '<a href="https://advantage.apexaviationtx.com/portal.html" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Continue Training →</a>'
+}
+
+async function processWeeklyProgress(supabase: any, profile: any, allQuestions: Question[], categoryIds: string[], results: any) {
+  if ((await daysSinceLastEmail(supabase, profile.id, 'weekly_progress')) < WEEKLY_PROGRESS_THROTTLE_DAYS) return
+
+  const weekAgoIso = new Date(Date.now() - 6 * 86400000).toISOString()
+  const [qRes, sRes, pRes, aRes] = await Promise.all([
+    supabase.from('portal_question_progress').select('updated_at').eq('profile_id', profile.id).or('answered_count.gt.0,completed.eq.true').gte('updated_at', weekAgoIso),
+    supabase.from('portal_scenario_progress').select('updated_at').eq('profile_id', profile.id).eq('completed', true).gte('updated_at', weekAgoIso),
+    supabase.from('portal_practice_attempts').select('started_at').eq('profile_id', profile.id).gte('started_at', weekAgoIso),
+    supabase.from('ai_dpe_sessions').select('started_at').eq('profile_id', profile.id).gte('started_at', weekAgoIso),
+  ])
+  const [studyRes] = await Promise.all([
+    supabase.from('portal_study_activity').select('activity_date,seconds').eq('profile_id', profile.id).gte('activity_date', weekAgoIso.slice(0, 10)),
+  ])
+
+  const questions = (qRes.data ?? []).length
+  const scenarios = (sRes.data ?? []).length
+  const aiDpe = (aRes.data ?? []).length
+  const days = new Set((studyRes.data ?? []).filter((r: any) => (r.seconds || 0) > 0).map((r: any) => r.activity_date)).size
+
+  if (questions === 0 && scenarios === 0 && aiDpe === 0 && days === 0) return
+
+  let strongest: string | null = null
+  let weakest: string | null = null
+  if (profile.checkride_prep_unlocked) {
+    const sorted = await categoryCompletion(supabase, profile.id, allQuestions, categoryIds)
+    if (sorted.length) {
+      weakest = CATEGORY_LABELS[sorted[0].cat] || sorted[0].cat
+      strongest = CATEGORY_LABELS[sorted[sorted.length - 1].cat] || sorted[sorted.length - 1].cat
+    }
+  }
+
+  await sendEmail(supabase, profile.email, 'Your Apex Weekly Training Report', emailTemplateWeeklyProgress({ questions, days, scenarios, aiDpe, strongest, weakest }))
+  await supabase.from('portal_email_log').insert({ profile_id: profile.id, email_type: 'weekly_progress' })
+  results.weekly_progress++
 }
 
 function emailTemplate1FirstQuestion() {
@@ -876,7 +981,7 @@ serve(async (req) => {
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
-  const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, checkride_upsell: 0, ground_followup: 0, abandoned_checkout: 0, seven_day_active: 0, readiness_assessment_followup: 0, recovery_sortie_notified: 0, errors: [] as string[] }
+  const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, checkride_upsell: 0, ground_followup: 0, abandoned_checkout: 0, seven_day_active: 0, readiness_assessment_followup: 0, recovery_sortie_notified: 0, reactivation_inactive: 0, weekly_progress: 0, errors: [] as string[] }
 
   // exam_type hard-coded to 'private_pilot' — see get-premium-content
   // for why instrument content must never be reachable this way yet.
@@ -894,6 +999,8 @@ serve(async (req) => {
     try {
       await processInactivity(supabase, profile, results)
       await processSevenDayActive(supabase, profile, results)
+      await processReactivationInactive(supabase, profile, results)
+      await processWeeklyProgress(supabase, profile, allQuestions, categoryIds, results)
       if (profile.checkride_prep_unlocked) {
         await processMilestones(supabase, profile, allQuestions, categoryIds, results)
         await processWeakArea(supabase, profile, allQuestions, categoryIds, results)

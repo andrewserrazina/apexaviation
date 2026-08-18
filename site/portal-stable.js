@@ -4257,6 +4257,14 @@
   // actions, no purchase CTA -- a brand-new free member should get
   // oriented before any contextual conversion logic (getMemberConversionState
   // below) starts recommending paid products.
+  // Two quick questions (training_stage, primary_focus_area --
+  // supabase-portal-schema-v70.sql), then a real, completable first task
+  // -- not the old 3 static buttons, which asked nothing and fed no
+  // signal into any recommendation. Same isFirstLogin gate as before, so
+  // this can never reappear on a later login; each step's answer is
+  // saved to profiles the moment it's picked (not batched at the end),
+  // so a member who dismisses mid-flow still keeps whatever they already
+  // answered. No purchase CTA anywhere in this flow.
   function showWelcomeOnboarding() {
     var card = document.getElementById('welcomeOnboardingCard');
     if (!card) return;
@@ -4265,20 +4273,45 @@
     document.getElementById('welcomeOnboardingDismiss').addEventListener('click', function () {
       card.hidden = true;
     });
-    document.getElementById('welcomeOnboardingPractice').addEventListener('click', function () {
-      card.hidden = true;
-      var countdownCard = document.getElementById('checkrideCountdownCard');
-      if (countdownCard) countdownCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      var dateInput = document.getElementById('checkrideDateInput');
-      if (dateInput) dateInput.focus();
+
+    var step1 = document.getElementById('welcomeOnboardingStep1');
+    var step2 = document.getElementById('welcomeOnboardingStep2');
+    var step3 = document.getElementById('welcomeOnboardingStep3');
+
+    document.querySelectorAll('[data-onboarding-stage] [data-value]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var value = btn.dataset.value;
+        apexSupabase.from('profiles').update({ training_stage: value }).eq('id', member.id);
+        if (window.apexTrack) apexTrack('onboarding_training_goal_saved', { training_stage: value });
+        step1.hidden = true;
+        step2.hidden = false;
+      });
     });
-    document.getElementById('welcomeOnboardingStudy').addEventListener('click', function () {
-      card.hidden = true;
-      showSection('free-resources');
-    });
-    document.getElementById('welcomeOnboardingTrainLive').addEventListener('click', function () {
-      card.hidden = true;
-      showSection('ground-school');
+
+    document.querySelectorAll('[data-onboarding-focus] [data-value]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var value = btn.dataset.value;
+        apexSupabase.from('profiles').update({ primary_focus_area: value }).eq('id', member.id);
+        if (window.apexTrack) apexTrack('onboarding_focus_area_saved', { primary_focus_area: value });
+        step2.hidden = true;
+        step3.hidden = false;
+
+        var plan = computeTrainingPlan();
+        var firstTask = plan.tasks.filter(function (t) { return !t.done; })[0] || plan.tasks[0];
+        var labelEl = document.getElementById('welcomeOnboardingFirstTaskLabel');
+        if (labelEl) labelEl.textContent = firstTask ? firstTask.label : 'Explore your dashboard';
+        var goFn = firstTask ? firstTask.go : function () { showSection('dashboard'); };
+
+        var startFirstTask = function () {
+          card.hidden = true;
+          if (window.apexTrack) apexTrack('onboarding_first_training_started', { task: firstTask ? firstTask.label : null });
+          goFn();
+        };
+        var taskBtn = document.getElementById('welcomeOnboardingFirstTask');
+        var startBtn = document.getElementById('welcomeOnboardingStartBtn');
+        if (taskBtn) taskBtn.onclick = startFirstTask;
+        if (startBtn) startBtn.onclick = startFirstTask;
+      });
     });
   }
 
@@ -5323,19 +5356,15 @@
       });
     }
 
-    if (!unlocked) {
-      tasks.push({ label: 'Unlock the Checkride Prep System', done: false, go: function () { openUnlockModal(); } });
-      tasks.push({ label: 'Answer your first oral exam question', done: false, go: function () { openUnlockModal(); } });
-      tasks.push({ label: 'Try your first training scenario', done: false, go: function () { openUnlockModal(); } });
-      return {
-        unlocked: false, checkrideDays: checkrideDays, readinessPct: 0, primaryFocus: null,
-        nextClass: next, classImminent: classImminent, tasks: tasks,
-        whyText: classImminent ? null : "You haven't unlocked Checkride Prep yet — every recommendation below depends on real study data, so start there."
-      };
-    }
-
-    // Today's oral-exam question -- a real daily-habit signal, kept from
-    // the original Next Best Action logic.
+    // Today's oral-exam question is free for every member (Retention
+    // Sprint Tier 1 -- computeQotdQuestion() now populates qotdQuestion
+    // for locked members too, via get_daily_question()), so this is
+    // pushed before the locked/unlocked split below: a free member's
+    // first Training Plan task should be something they can actually do,
+    // not a paywall dressed up as a task ("Answer your first oral exam
+    // question" used to route straight to openUnlockModal() here, which
+    // stopped being true the moment QOTD was unlocked -- fixed as part
+    // of Tier 3, since the new onboarding flow surfaces this task first).
     if (qotdQuestion) {
       tasks.push({
         label: "Answer today's oral exam question",
@@ -5346,6 +5375,16 @@
           if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       });
+    }
+
+    if (!unlocked) {
+      tasks.push({ label: 'Unlock the Checkride Prep System', done: false, go: function () { openUnlockModal(); } });
+      tasks.push({ label: 'Try your first training scenario', done: false, go: function () { openUnlockModal(); } });
+      return {
+        unlocked: false, checkrideDays: checkrideDays, readinessPct: 0, primaryFocus: null,
+        nextClass: next, classImminent: classImminent, tasks: tasks,
+        whyText: classImminent ? null : "You haven't unlocked Checkride Prep yet — every recommendation below depends on real study data, so start there."
+      };
     }
 
     if (weakest) {

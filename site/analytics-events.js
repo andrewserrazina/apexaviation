@@ -34,7 +34,10 @@
     'early_access_cta_click',
     // Member-upgrade deep link (?upgrade=checkride-prep) -- real triggers
     // in site/portal-stable.js's enforceUpgradeDeepLink().
-    'checkride_prep_upgrade_deeplink_viewed', 'checkride_prep_upgrade_modal_opened'
+    'checkride_prep_upgrade_deeplink_viewed', 'checkride_prep_upgrade_modal_opened',
+    // Retention Sprint Tier 3 onboarding redesign -- real triggers in
+    // site/portal-stable.js's showWelcomeOnboarding().
+    'onboarding_training_goal_saved', 'onboarding_focus_area_saved', 'onboarding_first_training_started'
   ];
 
   function anonId() {

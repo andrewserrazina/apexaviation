@@ -196,31 +196,52 @@
           <a href="#" class="btn btn--primary" id="continueTrainingBtn" data-goto="scenarios">Continue Training</a>
         </div>
 
-        <!-- First-session welcome -- shown once, dismissible, no purchase CTA -->
+        <!-- First-session onboarding -- shown once, dismissible, no
+             purchase CTA anywhere in it (Retention Sprint Tier 3). Two
+             quick questions, then a real free first task -- not the
+             old 3-static-button card, which never asked anything and
+             never fed member.trainingStage/primaryFocusArea into any
+             recommendation. -->
         <div class="portal-card" id="welcomeOnboardingCard" hidden style="margin-bottom:24px;border-color:rgba(244,180,0,0.25)">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px">
-            <div>
-              <h3 style="color:#fff;font-size:18px;font-weight:800;margin-bottom:4px">Welcome to Apex Advantage, <span id="welcomeOnboardingName">Pilot</span>.</h3>
-              <p style="color:rgba(255,255,255,0.55);font-size:14px">Three easy ways to get started — no purchase required for any of them.</p>
+          <button type="button" id="welcomeOnboardingDismiss" aria-label="Dismiss" style="float:right;background:none;border:none;color:rgba(255,255,255,0.4);font-size:20px;line-height:1;cursor:pointer;padding:4px">&times;</button>
+
+          <div id="welcomeOnboardingStep1">
+            <h3 style="color:#fff;font-size:18px;font-weight:800;margin-bottom:4px">Welcome to Apex Advantage, <span id="welcomeOnboardingName">Pilot</span>.</h3>
+            <p style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:18px">Two quick questions, then we'll build your training plan. No purchase required for any of this.</p>
+            <p class="portal-header__eyebrow" style="margin-bottom:10px">Where are you in training?</p>
+            <div class="portal-grid portal-grid--3" data-onboarding-stage>
+              <button type="button" class="portal-card" data-value="just_starting" style="text-align:left;cursor:pointer;padding:14px 16px">Just starting</button>
+              <button type="button" class="portal-card" data-value="pre_solo" style="text-align:left;cursor:pointer;padding:14px 16px">Pre-solo</button>
+              <button type="button" class="portal-card" data-value="cross_country" style="text-align:left;cursor:pointer;padding:14px 16px">Cross-country</button>
+              <button type="button" class="portal-card" data-value="preparing_for_written" style="text-align:left;cursor:pointer;padding:14px 16px">Preparing for written</button>
+              <button type="button" class="portal-card" data-value="written_passed" style="text-align:left;cursor:pointer;padding:14px 16px">Written passed</button>
+              <button type="button" class="portal-card" data-value="checkride_preparation" style="text-align:left;cursor:pointer;padding:14px 16px">Checkride preparation</button>
             </div>
-            <button type="button" id="welcomeOnboardingDismiss" aria-label="Dismiss" style="background:none;border:none;color:rgba(255,255,255,0.4);font-size:20px;line-height:1;cursor:pointer;padding:4px">&times;</button>
           </div>
-          <div class="portal-grid portal-grid--3">
-            <button type="button" class="portal-card" id="welcomeOnboardingPractice" style="text-align:left;cursor:pointer">
-              <div class="portal-header__eyebrow" style="margin-bottom:8px">Plan</div>
-              <h4 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">Set Your Checkride Date</h4>
-              <p style="color:rgba(255,255,255,0.5);font-size:13px">Get a live countdown and a training plan built around your real timeline.</p>
+
+          <div id="welcomeOnboardingStep2" hidden>
+            <p class="portal-header__eyebrow" style="margin-bottom:10px">What do you want the most help with?</p>
+            <div class="portal-grid portal-grid--3" data-onboarding-focus>
+              <button type="button" class="portal-card" data-value="airspace" style="text-align:left;cursor:pointer;padding:14px 16px">Airspace</button>
+              <button type="button" class="portal-card" data-value="weather" style="text-align:left;cursor:pointer;padding:14px 16px">Weather</button>
+              <button type="button" class="portal-card" data-value="aircraft_systems" style="text-align:left;cursor:pointer;padding:14px 16px">Aircraft Systems</button>
+              <button type="button" class="portal-card" data-value="regulations" style="text-align:left;cursor:pointer;padding:14px 16px">Regulations</button>
+              <button type="button" class="portal-card" data-value="performance" style="text-align:left;cursor:pointer;padding:14px 16px">Performance</button>
+              <button type="button" class="portal-card" data-value="weight_balance" style="text-align:left;cursor:pointer;padding:14px 16px">Weight &amp; Balance</button>
+              <button type="button" class="portal-card" data-value="navigation" style="text-align:left;cursor:pointer;padding:14px 16px">Navigation</button>
+              <button type="button" class="portal-card" data-value="adm" style="text-align:left;cursor:pointer;padding:14px 16px">Aeronautical Decision-Making</button>
+              <button type="button" class="portal-card" data-value="not_sure" style="text-align:left;cursor:pointer;padding:14px 16px">Not sure yet</button>
+            </div>
+          </div>
+
+          <div id="welcomeOnboardingStep3" hidden>
+            <h3 style="color:#fff;font-size:18px;font-weight:800;margin-bottom:4px">Your training plan is ready.</h3>
+            <p style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:16px">Here's your first mission.</p>
+            <button type="button" class="portal-card" id="welcomeOnboardingFirstTask" style="text-align:left;cursor:pointer;width:100%;padding:16px 18px">
+              <div class="portal-header__eyebrow" style="margin-bottom:6px">First Mission</div>
+              <h4 id="welcomeOnboardingFirstTaskLabel" style="color:#fff;font-size:15px;font-weight:700">—</h4>
             </button>
-            <button type="button" class="portal-card" id="welcomeOnboardingStudy" style="text-align:left;cursor:pointer">
-              <div class="portal-header__eyebrow" style="margin-bottom:8px">Study</div>
-              <h4 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">Explore Free Resources</h4>
-              <p style="color:rgba(255,255,255,0.5);font-size:13px">Radio calls, spin awareness, and checkride guides — free, no unlock needed.</p>
-            </button>
-            <button type="button" class="portal-card" id="welcomeOnboardingTrainLive" style="text-align:left;cursor:pointer">
-              <div class="portal-header__eyebrow" style="margin-bottom:8px">Train Live</div>
-              <h4 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">View Ground School</h4>
-              <p style="color:rgba(255,255,255,0.5);font-size:13px">See upcoming live, instructor-led classes — $25 per session, or $400 for the full course.</p>
-            </button>
+            <button type="button" class="btn btn--primary" id="welcomeOnboardingStartBtn" style="margin-top:16px">Start Training</button>
           </div>
         </div>
 
