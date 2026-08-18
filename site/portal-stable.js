@@ -103,31 +103,64 @@
     }
   })();
 
+  /* ── New Member Activation email click tracking ───────────────
+     activation_email_N_sent is logged server-side (create-free-account
+     and send-lifecycle-emails' processNewMemberActivation both write
+     directly to analytics_events, same pattern as checkout_abandoned).
+     This is the _clicked half of that funnel -- fires once per page load
+     whenever the arriving URL still carries the utm_campaign=
+     new_member_activation marker, whether that's a direct hit (member
+     already had a session) or the tail end of a logged-out round trip
+     through portal-login.html/portal-reset-password.html, both of which
+     now forward these same UTM params rather than dropping them (see
+     portalDestUrl() and portal-reset-password.html's reset handler).
+     Independent of the auth guard below, same reasoning as the Purchase-
+     tracking IIFEs above: this only needs the URL, not a signed-in
+     session, and must still fire even if this exact load is the one that
+     gets bounced to login. */
+  (function () {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('utm_campaign') !== 'new_member_activation') return;
+    var content = params.get('utm_content') || '';
+    var match = /^welcome_([1-4])$/.exec(content);
+    if (!match || !window.apexTrack) return;
+    apexTrack('activation_email_' + match[1] + '_clicked', {});
+  })();
+
   /* ── Auth guard — real Supabase session + profile ────────────── */
   var member = null;
   var accessToken = null;
   var authReady = apexSupabase.auth.getSession().then(function (res) {
     var session = res.data.session;
     if (!session) {
-      // Preserve ?upgrade=checkride-prep intent (from the member-upgrade
-      // email/retargeting deep link) through the login round-trip.
-      // portal-login.html's existing dest= param already maps a bare
-      // slug to a #hash on return (portalDestUrl()), and #checkride-prep
-      // already bounces a locked member into the unlock modal via the
-      // GATED_SECTIONS check in showSection() below -- so reusing dest
-      // here needs no changes to the login page at all. UTMs are
-      // forwarded too, so analytics-events.js's capture (already loaded
-      // on portal-login.html) sees them before this member ever reaches
-      // checkout.
+      // Preserve intended destination through the login round-trip, for
+      // two cases: ?upgrade=checkride-prep (the member-upgrade email/
+      // retargeting deep link) and a plain #hash (every other lifecycle/
+      // activation email links straight to portal.html#<section>, e.g.
+      // #dpe-library, #ground-school -- previously dropped entirely on a
+      // logged-out visit, silently bouncing to a bare login form with no
+      // memory of what the visitor actually clicked). portal-login.html's
+      // existing dest= param already maps a bare slug to a #hash on
+      // return (portalDestUrl()), and #checkride-prep already bounces a
+      // locked member into the unlock modal via the GATED_SECTIONS check
+      // in showSection() below -- so reusing dest here needs no changes
+      // to the login page itself. UTMs are forwarded too (portalDestUrl()
+      // carries them the rest of the way back), so an email click's
+      // attribution survives even when the recipient wasn't already
+      // signed in.
       var deepLinkParams = new URLSearchParams(window.location.search);
       var loginUrl = 'portal-login.html';
+      var loginQs = [];
       if (deepLinkParams.get('upgrade') === 'checkride-prep') {
-        var loginQs = ['dest=checkride-prep'];
-        ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (k) {
-          if (deepLinkParams.has(k)) loginQs.push(k + '=' + encodeURIComponent(deepLinkParams.get(k)));
-        });
-        loginUrl += '?' + loginQs.join('&');
+        loginQs.push('dest=checkride-prep');
+      } else if (window.location.hash) {
+        var hashDest = window.location.hash.slice(1);
+        if (/^[a-z0-9-]{1,60}$/.test(hashDest)) loginQs.push('dest=' + hashDest);
       }
+      ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (k) {
+        if (deepLinkParams.has(k)) loginQs.push(k + '=' + encodeURIComponent(deepLinkParams.get(k)));
+      });
+      if (loginQs.length) loginUrl += '?' + loginQs.join('&');
       window.location.href = loginUrl;
       return Promise.reject('no-session');
     }

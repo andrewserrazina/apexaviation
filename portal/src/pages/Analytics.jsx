@@ -60,6 +60,8 @@ export default function Analytics() {
   const [dpeLeastStudied, setDpeLeastStudied] = useState([])
   const [retentionKpis, setRetentionKpis] = useState(null)
   const [retentionError, setRetentionError] = useState(null)
+  const [activationKpis, setActivationKpis] = useState(null)
+  const [activationError, setActivationError] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -67,7 +69,7 @@ export default function Analytics() {
       const months = last12Months()
       const firstMonth = `${months[0].year}-${String(months[0].month + 1).padStart(2, '0')}-01`
 
-      const [invoicesRes, logbookRes, studentsRes, activeRes, instrRes, dpeCatRes, dpeQRes, dpeProgressRes, retentionRes] = await Promise.all([
+      const [invoicesRes, logbookRes, studentsRes, activeRes, instrRes, dpeCatRes, dpeQRes, dpeProgressRes, retentionRes, activationRes] = await Promise.all([
         supabase.from('invoices').select('amount_cents, status, issued_at').gte('issued_at', firstMonth),
         supabase.from('logbook_entries').select('duration_hours, date').gte('date', firstMonth),
         supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'student'),
@@ -79,10 +81,17 @@ export default function Analytics() {
         // supabase-portal-schema-v69.sql -- one batched RPC for every
         // retention/activation KPI, rather than 10 separate round trips.
         supabase.rpc('get_retention_kpis'),
+        // supabase-portal-schema-v72.sql -- the new-member activation
+        // EMAIL sequence's own funnel (distinct from get_retention_kpis()
+        // above, which covers general retention, not this specific
+        // sequence). Default 30-day window.
+        supabase.rpc('get_activation_email_kpis'),
       ])
 
       if (retentionRes.error) setRetentionError(retentionRes.error.message)
       else setRetentionKpis(retentionRes.data)
+      if (activationRes.error) setActivationError(activationRes.error.message)
+      else setActivationKpis(activationRes.data)
 
       // ── DPE Question Bank engagement ──
       // "Engaged" = completed (explicit "Mark as Studied") OR answered_count
@@ -336,6 +345,89 @@ export default function Analytics() {
       <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
         "Meaningful activity" = answering/completing a DPE question, completing a scenario, a practice-set attempt, or an AI DPE session — not just a page view. Ground School attendance isn't included yet (see v69.sql). Signup-day cohorts use UTC calendar dates, not per-member timezone.
       </p>
+
+      <div className="page-header" style={{ marginTop: 40 }}>
+        <div>
+          <h2 className="page-title" style={{ fontSize: 22 }}>New Member Activation</h2>
+          <p className="page-sub">get_activation_email_kpis() (supabase-portal-schema-v72.sql) — signups in the last {activationKpis?.window_days ?? 30} days</p>
+        </div>
+      </div>
+
+      {activationError ? (
+        <p className="empty-state" style={{ padding: '12px 0' }}>Data not available ({activationError})</p>
+      ) : (
+        <>
+          <div className="stat-grid">
+            <div className="stat-card">
+              <p className="stat-card__label">New Signups</p>
+              <p className="stat-card__value">{fmtKpi(activationKpis?.new_signups, '')}</p>
+            </div>
+            <div className="stat-card">
+              <p className="stat-card__label">Welcome Email Sent</p>
+              <p className="stat-card__value">{fmtKpi(activationKpis?.welcome_email_sent, '')}</p>
+            </div>
+            <div className="stat-card">
+              <p className="stat-card__label">Welcome CTA Click Rate</p>
+              <p className="stat-card__value">{fmtKpi(activationKpis?.welcome_cta_click_rate_pct, '%')}</p>
+            </div>
+            <div className="stat-card">
+              <p className="stat-card__label">Email-Assisted Activation</p>
+              <p className="stat-card__value">{fmtKpi(activationKpis?.email_assisted_activation_rate_pct, '%')}</p>
+            </div>
+          </div>
+          <div className="stat-grid" style={{ marginTop: 16 }}>
+            <div className="stat-card">
+              <p className="stat-card__label">24h Activation Rate</p>
+              <p className="stat-card__value">{fmtKpi(activationKpis?.activation_rate_24h_pct, '%')}</p>
+            </div>
+            <div className="stat-card">
+              <p className="stat-card__label">7d Activation Rate</p>
+              <p className="stat-card__value">{fmtKpi(activationKpis?.activation_rate_7d_pct, '%')}</p>
+            </div>
+          </div>
+          {(activationKpis?.activation_by_training_stage?.length > 0 || activationKpis?.activation_by_focus_area?.length > 0) && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 20 }}>
+              {activationKpis?.activation_by_training_stage?.length > 0 && (
+                <div>
+                  <p className="stat-card__label" style={{ marginBottom: 8 }}>Activation by Training Stage</p>
+                  <table className="data-table">
+                    <thead><tr><th>Stage</th><th>n</th><th>Activated</th></tr></thead>
+                    <tbody>
+                      {activationKpis.activation_by_training_stage.map(row => (
+                        <tr key={row.training_stage}>
+                          <td>{row.training_stage}</td>
+                          <td>{row.total}</td>
+                          <td>{fmtKpi(row.activation_rate_pct, '%')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {activationKpis?.activation_by_focus_area?.length > 0 && (
+                <div>
+                  <p className="stat-card__label" style={{ marginBottom: 8 }}>Activation by Focus Area</p>
+                  <table className="data-table">
+                    <thead><tr><th>Focus Area</th><th>n</th><th>Activated</th></tr></thead>
+                    <tbody>
+                      {activationKpis.activation_by_focus_area.map(row => (
+                        <tr key={row.focus_area}>
+                          <td>{row.focus_area}</td>
+                          <td>{row.total}</td>
+                          <td>{fmtKpi(row.activation_rate_pct, '%')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+          <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
+            "n" below 10-15 in any row means treat that row's rate as directional, not precise — small-sample noise, not a real trend.
+          </p>
+        </>
+      )}
 
       <div className="page-header" style={{ marginTop: 40 }}>
         <div>
