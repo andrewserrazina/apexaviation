@@ -23,6 +23,20 @@ function BarChart({ data, valueKey, labelKey, color = 'var(--gold)', unit = '' }
   )
 }
 
+// get_retention_kpis() (v69.sql) returns null for any ratio whose
+// denominator is 0 (e.g. no profiles old enough yet for D30) -- shown as
+// "N/A" rather than a misleading 0%, per this sprint's own guidance
+// against false precision.
+function fmtKpi(value, suffix) {
+  return value === null || value === undefined ? 'N/A' : `${value}${suffix}`
+}
+function fmtMinutes(minutes) {
+  if (minutes === null || minutes === undefined) return 'N/A'
+  if (minutes < 60) return `${Math.round(minutes)}m`
+  if (minutes < 1440) return `${(minutes / 60).toFixed(1)}h`
+  return `${(minutes / 1440).toFixed(1)}d`
+}
+
 const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
 function last12Months() {
@@ -40,10 +54,12 @@ export default function Analytics() {
   const [hours, setHours] = useState([])
   const [students, setStudents] = useState({ total: 0, active: 0 })
   const [instructorStats, setInstructorStats] = useState([])
-  const [dpeOverall, setDpeOverall] = useState({ totalQuestions: 0, activeStudents: 0, totalCompletions: 0, avgPerStudent: 0 })
+  const [dpeOverall, setDpeOverall] = useState({ totalQuestions: 0, activeStudents: 0, totalCompletions: 0, totalMarkedStudied: 0, avgPerStudent: 0 })
   const [dpeCategoryStats, setDpeCategoryStats] = useState([])
   const [dpeMostStudied, setDpeMostStudied] = useState([])
   const [dpeLeastStudied, setDpeLeastStudied] = useState([])
+  const [retentionKpis, setRetentionKpis] = useState(null)
+  const [retentionError, setRetentionError] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -51,7 +67,7 @@ export default function Analytics() {
       const months = last12Months()
       const firstMonth = `${months[0].year}-${String(months[0].month + 1).padStart(2, '0')}-01`
 
-      const [invoicesRes, logbookRes, studentsRes, activeRes, instrRes, dpeCatRes, dpeQRes, dpeProgressRes] = await Promise.all([
+      const [invoicesRes, logbookRes, studentsRes, activeRes, instrRes, dpeCatRes, dpeQRes, dpeProgressRes, retentionRes] = await Promise.all([
         supabase.from('invoices').select('amount_cents, status, issued_at').gte('issued_at', firstMonth),
         supabase.from('logbook_entries').select('duration_hours, date').gte('date', firstMonth),
         supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'student'),
@@ -59,10 +75,26 @@ export default function Analytics() {
         supabase.from('profiles').select('id, full_name').eq('role', 'instructor'),
         supabase.from('dpe_categories').select('id, label, sort_order').order('sort_order'),
         supabase.from('dpe_questions').select('id, category, question'),
-        supabase.from('portal_question_progress').select('profile_id, question_id, completed'),
+        supabase.from('portal_question_progress').select('profile_id, question_id, completed, answered_count'),
+        // supabase-portal-schema-v69.sql -- one batched RPC for every
+        // retention/activation KPI, rather than 10 separate round trips.
+        supabase.rpc('get_retention_kpis'),
       ])
 
+      if (retentionRes.error) setRetentionError(retentionRes.error.message)
+      else setRetentionKpis(retentionRes.data)
+
       // ── DPE Question Bank engagement ──
+      // "Engaged" = completed (explicit "Mark as Studied") OR answered_count
+      // > 0 (the student revealed/answered the question at least once) --
+      // NOT completed alone. completed is a separate, much rarer explicit
+      // action (toggleStudied(), site/portal-stable.js) that most real
+      // activity (viewing a question, revealing the QOTD answer -- see
+      // touchLastViewed()/qotdRevealBtn, same file) never touches, which is
+      // why this stat previously showed near-0 despite real usage: it was
+      // counting only the checkbox click, not the actual studying.
+      // "Marked as Fully Studied" below keeps the old, stricter signal as
+      // its own distinct stat rather than discarding it.
       const dpeCategories = dpeCatRes.data ?? []
       const dpeQuestions = dpeQRes.data ?? []
       const dpeProgress = dpeProgressRes.data ?? []
@@ -71,18 +103,19 @@ export default function Analytics() {
       dpeQuestions.forEach(q => { categoryOf[q.id] = q.category })
 
       const activeStudentIds = new Set(dpeProgress.map(p => p.profile_id))
-      const completions = dpeProgress.filter(p => p.completed)
-      const totalCompletions = completions.length
+      const engaged = dpeProgress.filter(p => p.completed || (p.answered_count ?? 0) > 0)
+      const totalEngaged = engaged.length
+      const totalMarkedStudied = dpeProgress.filter(p => p.completed).length
 
-      const completionCountByQuestion = {}
-      completions.forEach(p => {
-        completionCountByQuestion[p.question_id] = (completionCountByQuestion[p.question_id] ?? 0) + 1
+      const engagedCountByQuestion = {}
+      engaged.forEach(p => {
+        engagedCountByQuestion[p.question_id] = (engagedCountByQuestion[p.question_id] ?? 0) + 1
       })
-      const completionCountByCategory = {}
-      completions.forEach(p => {
+      const engagedCountByCategory = {}
+      engaged.forEach(p => {
         const cat = categoryOf[p.question_id]
         if (!cat) return
-        completionCountByCategory[cat] = (completionCountByCategory[cat] ?? 0) + 1
+        engagedCountByCategory[cat] = (engagedCountByCategory[cat] ?? 0) + 1
       })
       const questionCountByCategory = {}
       dpeQuestions.forEach(q => {
@@ -92,20 +125,21 @@ export default function Analytics() {
       setDpeOverall({
         totalQuestions: dpeQuestions.length,
         activeStudents: activeStudentIds.size,
-        totalCompletions,
-        avgPerStudent: activeStudentIds.size > 0 ? Math.round((totalCompletions / activeStudentIds.size) * 10) / 10 : 0,
+        totalCompletions: totalEngaged,
+        totalMarkedStudied,
+        avgPerStudent: activeStudentIds.size > 0 ? Math.round((totalEngaged / activeStudentIds.size) * 10) / 10 : 0,
       })
 
       setDpeCategoryStats(dpeCategories.map(cat => {
         const totalQ = questionCountByCategory[cat.id] ?? 0
-        const catCompletions = completionCountByCategory[cat.id] ?? 0
+        const catEngaged = engagedCountByCategory[cat.id] ?? 0
         const possible = totalQ * activeStudentIds.size
-        const rate = possible > 0 ? Math.round((catCompletions / possible) * 100) : 0
-        return { label: cat.label, totalQ, completions: catCompletions, rate }
+        const rate = possible > 0 ? Math.round((catEngaged / possible) * 100) : 0
+        return { label: cat.label, totalQ, completions: catEngaged, rate }
       }))
 
       const questionRanking = dpeQuestions
-        .map(q => ({ id: q.id, question: q.question, category: categoryOf[q.id], count: completionCountByQuestion[q.id] ?? 0 }))
+        .map(q => ({ id: q.id, question: q.question, category: categoryOf[q.id], count: engagedCountByQuestion[q.id] ?? 0 }))
         .sort((a, b) => b.count - a.count)
       setDpeMostStudied(questionRanking.slice(0, 5))
       setDpeLeastStudied(questionRanking.slice(-5).reverse())
@@ -231,6 +265,80 @@ export default function Analytics() {
 
       <div className="page-header" style={{ marginTop: 40 }}>
         <div>
+          <h2 className="page-title" style={{ fontSize: 22 }}>Retention &amp; Activation</h2>
+          <p className="page-sub">get_retention_kpis() (supabase-portal-schema-v69.sql) — see that file for exact definitions</p>
+        </div>
+      </div>
+
+      {retentionError ? (
+        <p className="empty-state" style={{ padding: '12px 0' }}>Data not available ({retentionError})</p>
+      ) : (
+        <div className="stat-grid">
+          <div className="stat-card">
+            <p className="stat-card__label">Active Users (7d)</p>
+            <p className="stat-card__value">{fmtKpi(retentionKpis?.active_users_7d, '')}</p>
+          </div>
+          <div className="stat-card">
+            <p className="stat-card__label">Active Users (30d)</p>
+            <p className="stat-card__value">{fmtKpi(retentionKpis?.active_users_30d, '')}</p>
+          </div>
+          <div className="stat-card">
+            <p className="stat-card__label">Activation Rate (24h)</p>
+            <p className="stat-card__value">{fmtKpi(retentionKpis?.activation_rate_24h_pct, '%')}</p>
+          </div>
+          <div className="stat-card">
+            <p className="stat-card__label">Time to First Value</p>
+            <p className="stat-card__value">{fmtMinutes(retentionKpis?.time_to_first_value_median_minutes)}</p>
+          </div>
+        </div>
+      )}
+
+      {!retentionError && (
+        <div className="stat-grid" style={{ marginTop: 16 }}>
+          <div className="stat-card">
+            <p className="stat-card__label">D1 Retention</p>
+            <p className="stat-card__value">{fmtKpi(retentionKpis?.d1_retention_pct, '%')}</p>
+            <p className="stat-card__sub">n={retentionKpis?.d1_retention_eligible_cohort_size ?? 0}</p>
+          </div>
+          <div className="stat-card">
+            <p className="stat-card__label">D7 Retention</p>
+            <p className="stat-card__value">{fmtKpi(retentionKpis?.d7_retention_pct, '%')}</p>
+            <p className="stat-card__sub">n={retentionKpis?.d7_retention_eligible_cohort_size ?? 0}</p>
+          </div>
+          <div className="stat-card">
+            <p className="stat-card__label">D30 Retention</p>
+            <p className="stat-card__value">{fmtKpi(retentionKpis?.d30_retention_pct, '%')}</p>
+            <p className="stat-card__sub">n={retentionKpis?.d30_retention_eligible_cohort_size ?? 0}</p>
+          </div>
+        </div>
+      )}
+
+      {!retentionError && (
+        <div className="stat-grid" style={{ marginTop: 16 }}>
+          <div className="stat-card">
+            <p className="stat-card__label">Questions / Active User (7d)</p>
+            <p className="stat-card__value">{fmtKpi(retentionKpis?.questions_per_active_user_7d, '')}</p>
+          </div>
+          <div className="stat-card">
+            <p className="stat-card__label">Scenarios / Active User (7d)</p>
+            <p className="stat-card__value">{fmtKpi(retentionKpis?.scenarios_per_active_user_7d, '')}</p>
+          </div>
+          <div className="stat-card">
+            <p className="stat-card__label">AI DPE Sessions / Active User (7d)</p>
+            <p className="stat-card__value">{fmtKpi(retentionKpis?.ai_dpe_sessions_per_active_user_7d, '')}</p>
+          </div>
+          <div className="stat-card">
+            <p className="stat-card__label">Active Days / WAU (7d)</p>
+            <p className="stat-card__value">{fmtKpi(retentionKpis?.avg_active_days_per_wau_7d, '')}</p>
+          </div>
+        </div>
+      )}
+      <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
+        "Meaningful activity" = answering/completing a DPE question, completing a scenario, a practice-set attempt, or an AI DPE session — not just a page view. Ground School attendance isn't included yet (see v69.sql). Signup-day cohorts use UTC calendar dates, not per-member timezone.
+      </p>
+
+      <div className="page-header" style={{ marginTop: 40 }}>
+        <div>
           <h2 className="page-title" style={{ fontSize: 22 }}>DPE Question Bank Engagement</h2>
           <p className="page-sub">All time</p>
         </div>
@@ -246,27 +354,31 @@ export default function Analytics() {
           <p className="stat-card__value">{dpeOverall.activeStudents}</p>
         </div>
         <div className="stat-card">
-          <p className="stat-card__label">Total Questions Marked Studied</p>
+          <p className="stat-card__label">Total Questions Engaged</p>
           <p className="stat-card__value">{dpeOverall.totalCompletions}</p>
         </div>
         <div className="stat-card">
-          <p className="stat-card__label">Avg. Studied per Active Student</p>
+          <p className="stat-card__label">Avg. Engaged per Active Student</p>
           <p className="stat-card__value">{dpeOverall.avgPerStudent}</p>
+        </div>
+        <div className="stat-card">
+          <p className="stat-card__label">Marked as Fully Studied</p>
+          <p className="stat-card__value">{dpeOverall.totalMarkedStudied}</p>
         </div>
       </div>
 
       {dpeCategoryStats.length > 0 && (
         <section className="card" style={{ marginTop: 24 }}>
-          <h3 className="card__title">Completion Rate by Category</h3>
+          <h3 className="card__title">Engagement Rate by Category</h3>
           <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: -4, marginBottom: 4 }}>
-            % of (questions × students who've started) marked studied — normalizes for category size
+            % of (questions × students who've started) answered or marked studied — normalizes for category size
           </p>
           <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
             {dpeCategoryStats.map(cat => (
               <div key={cat.label}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                   <span style={{ fontSize: 13, color: 'var(--text)' }}>{cat.label}</span>
-                  <span style={{ fontSize: 12, color: 'var(--muted)' }}>{cat.completions} studied · {cat.totalQ} questions</span>
+                  <span style={{ fontSize: 12, color: 'var(--muted)' }}>{cat.completions} engaged · {cat.totalQ} questions</span>
                   <span className="badge badge--yellow">{cat.rate}%</span>
                 </div>
                 <div className="progress-bar"><div className="progress-bar__fill" style={{ width: `${cat.rate}%` }} /></div>
@@ -278,7 +390,7 @@ export default function Analytics() {
 
       <div className="analytics-grid" style={{ marginTop: 24 }}>
         <section className="card">
-          <h3 className="card__title">Most-Studied Questions</h3>
+          <h3 className="card__title">Most-Engaged Questions</h3>
           {dpeMostStudied.length === 0 ? <p className="empty-state" style={{ padding: '12px 0' }}>No activity yet.</p> : (
             <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {dpeMostStudied.map(q => (
@@ -295,7 +407,7 @@ export default function Analytics() {
         </section>
 
         <section className="card">
-          <h3 className="card__title">Least-Studied Questions</h3>
+          <h3 className="card__title">Least-Engaged Questions</h3>
           {dpeLeastStudied.length === 0 ? <p className="empty-state" style={{ padding: '12px 0' }}>No activity yet.</p> : (
             <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {dpeLeastStudied.map(q => (
