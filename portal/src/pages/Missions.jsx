@@ -8,6 +8,12 @@ const REQUIREMENT_TYPES = [
   { value: 'questions_answered', label: 'Answer N questions in the window', targetLabel: 'Questions required' },
   { value: 'practice_sets_completed', label: 'Complete N practice sets in the window', targetLabel: 'Sets required' },
   { value: 'score_threshold', label: 'Score at or above N% on any practice set', targetLabel: 'Score % required' },
+  // Broader than questions_answered (which requires the strict "Mark as
+  // Studied" flag) -- also counts answering/revealing a question,
+  // completing a scenario, a practice attempt, or an AI DPE session.
+  // Meant for a Daily-cadence "did something meaningful" mission, e.g.
+  // target 1, window = today.
+  { value: 'meaningful_activity', label: 'Do any N meaningful activities in the window (question, scenario, practice set, or AI DPE)', targetLabel: 'Activities required' },
 ]
 
 const BLANK = {
@@ -199,10 +205,18 @@ export default function Missions() {
             <div className="form-group">
               <label>Cadence</label>
               <select value={form.cadence} onChange={e => setForm(f => ({ ...f, cadence: e.target.value }))}>
+                <option value="daily">Daily</option>
                 <option value="weekly">Weekly</option>
                 <option value="monthly">Monthly</option>
                 <option value="seasonal">Seasonal</option>
               </select>
+              {form.cadence === 'daily' && (
+                <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>
+                  A daily mission still needs its own Starts On / Ends On window (e.g. both set to today) --
+                  there's no automatic "recreate this every day" job yet. Create a fresh one each day, or set a
+                  longer window if the goal is "N total this month," not "today specifically."
+                </p>
+              )}
             </div>
             <div className="form-group">
               <label>Requirement</label>
