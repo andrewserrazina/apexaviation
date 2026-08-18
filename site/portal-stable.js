@@ -5160,7 +5160,7 @@
       var errorEl = document.getElementById('gsRegistrationSuccessUpgradeError');
       errorEl.classList.remove('show');
       apexSupabase.functions.invoke('create-checkout-session', {
-        body: { purpose: 'upgrade-ground-school-pack', origin: window.location.origin },
+        body: { purpose: 'upgrade-ground-school-pack', origin: window.location.origin, utm: window.apexGetUtm ? apexGetUtm() : undefined },
         headers: { Authorization: 'Bearer ' + accessToken }
       }).then(function (res) {
         if (res.error || !res.data || !res.data.url) {

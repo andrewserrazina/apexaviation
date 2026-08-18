@@ -186,14 +186,20 @@ async function handleUpgradeGroundSchoolPack(supabase: any, session: Stripe.Chec
 
   if (!profileId) throw new Error('No profile_id on checkout session metadata')
 
+  // Scoped to PPL the same way create-checkout-session's own check is --
+  // enroll_in_ground_school_via_pack() (v57.sql) only ever unlocks the
+  // PPL pack for a PPL class, so a paid enrollment in a future non-PPL
+  // course shouldn't count as the "prior paid enrollment" this defense-
+  // in-depth check exists to verify.
   const { data: paidEnrollments } = await supabase
     .from('scheduled_ground_class_enrollments')
-    .select('id')
+    .select('id, scheduled_ground_class:scheduled_ground_classes(course_id)')
     .eq('profile_id', profileId)
     .eq('payment_status', 'paid')
-    .limit(1)
 
-  if (!paidEnrollments?.length) {
+  const pplPaidEnrollments = (paidEnrollments || []).filter((row: any) => row.scheduled_ground_class?.course_id === 'PPL')
+
+  if (!pplPaidEnrollments.length) {
     await sendEmail(supabase, ADMIN_NOTIFICATION_EMAIL, 'ACTION NEEDED: Ground School upgrade paid with no prior enrollment on file',
       template(`
         <h2 style="color:#F4B400;margin:0 0 4px;">Review this manually</h2>
