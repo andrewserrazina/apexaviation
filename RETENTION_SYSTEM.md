@@ -328,3 +328,301 @@ section is just the deployment checklist.
   cases. Not verified: an actual Resend send with `reply_to` set, an
   actual `auth.admin.generateLink` recovery-link round trip, or the
   cron picking this up in production.
+
+## Activation sequence — pre-deployment hardening pass (this session)
+
+Three things fixed before this goes live, none of them a redesign:
+
+**1. Account creation could be delayed/failed by an email-provider
+problem.** Before this pass, `create-free-account` awaited the
+`send-email` invocation directly, inline, with no timeout and no
+try/catch isolating it from the outer request handler. Two real risks:
+a slow/hung Resend call held up the whole signup response (the account
+was already created, but the client just... waited), and an actual
+thrown exception from `supabase.functions.invoke()` (a network-level
+failure, not a Resend error response) would have propagated to the
+top-level `catch` and returned a `500` to the client — even though the
+account genuinely existed. After: the send is wrapped in its own
+never-throws function, raced against a 5-second timeout so the common
+case (Resend responds in under a second) still reports an accurate
+`emailSent` value synchronously, and a slow/hung call falls back to an
+optimistic response while the real send keeps running via
+`EdgeRuntime.waitUntil()` where the runtime supports it (checked at
+runtime, not assumed). Account creation itself was never gated on the
+email either way, before or after — this fix is entirely about
+signup *latency* and the exception-escape bug, not account durability,
+which was already correct.
+
+**2. Email #1 had no cron catch-up.** If the synchronous attempt at
+signup never got confirmed (Resend down, response timed out, container
+torn down mid-`waitUntil`), nothing would ever retry it — the member's
+account would exist with no way in beyond "Forgot Password," and no
+signal anywhere that this had happened for that member specifically
+(beyond a `console.error` log line). `processActivationEmail1CatchUp`
+(`send-lifecycle-emails/index.ts`) now runs every cron cycle, sends the
+same email with a freshly generated magic link to anyone eligible whose
+`activation_email_1` milestone was never confirmed, and stays silent
+for anyone it already was. One known, documented tradeoff: a lead-magnet
+signup's specific `?dest=` (e.g. `checkride-prep.html`'s own link)
+wasn't persisted anywhere, so a catch-up send always routes to the
+dashboard rather than the original resource — acceptable for a rare
+recovery path, not worth a new column. Building this also surfaced a
+real bug in the idempotency flag itself: the first draft only marked
+`activation_email_1` as confirmed-delivered for the generic
+activation-copy branch, not the lead-magnet welcome-email branch — so a
+*successful* lead-magnet send would still have looked unconfirmed to
+the catch-up path, which would then have wrongly layered a second,
+differently-worded welcome email on top of a perfectly fine first one.
+Fixed by marking the flag for both branches, while keeping the
+`analytics_events` funnel-tracking insert restricted to the generic
+copy only (so the activation funnel's own numbers stay uncontaminated
+by the structurally different lead-magnet emails).
+
+**3. Activation analytics used only-ever-first activity, but had no
+guard against activity that predates signup.** `get_activation_email_
+kpis()`'s `first_activity` CTE already computed a genuine `min()` (first,
+never most recent) — that part was correct from the start. What it
+lacked was a check that a candidate "first activity" row actually
+occurred on or after `profiles.created_at`. A data artifact (bad
+backfill, re-used id, historical import) producing an activity row
+dated before signup would have silently produced a negative Time to
+First Value and a false `activated_24h = true`. Fixed by joining
+`first_activity` against the cohort and filtering `occurred_at >=
+created_at`. Verified against local Postgres with a synthetic profile
+carrying exactly this shape (a stale pre-signup row plus a real
+post-signup one) — the stale row was correctly ignored and the real one
+correctly used, so `activated_24h` came out `false` as it should have
+(the real activity was 30 hours out, past the 24h window) rather than
+trivially `true` off the negative interval.
+
+Also split the single `email_assisted_activation_rate_pct` into two
+separate numbers — `email_clicked_before_activation_rate_pct` (the
+member clicked an activation email before their first meaningful
+activity) and `email_sent_before_activation_rate_pct` (the email was
+merely sent before, no click required) — so a reader can't mistake the
+weaker "it was sent first" fact for the stronger "they actually engaged
+with it first" one. Both compare event timestamps to `first_activity_at`
+directly; neither implies causation on its own.
+
+**Known related gap, not fixed in this pass (out of this pass's file
+scope):** `get_retention_kpis()` (`supabase-portal-schema-v69.sql`) has
+the identical missing guard in its own `first_activity` CTE — its
+`time_to_first_value_median_minutes` and D1/D7/D30 retention figures
+could theoretically be skewed by the same kind of stale pre-signup
+activity row. Worth the same fix in a future pass; not touched here
+since v69.sql wasn't part of this hardening pass's listed files and
+changing it wasn't requested.
+
+### Activation analytics — definitions
+
+Documented explicitly per this pass's own request not to leave any of
+these ambiguous:
+
+- **`first_meaningful_activity_at`** — not a stored column, computed
+  fresh each query: the earliest timestamp among a profile's qualifying
+  activity rows (`portal_question_progress` answered/completed,
+  `portal_scenario_progress` completed, any `portal_practice_attempts`
+  row, any `ai_dpe_sessions` row — the retention sprint's own
+  established "meaningful activity" definition, unchanged) that occurred
+  on or after `profiles.created_at`.
+- **Time to First Value** = `first_meaningful_activity_at -
+  profiles.created_at`, median across the cohort. Uses the FIRST
+  qualifying activity, never the most recent — `daysSinceLastMeaningfulActivity()`
+  (used operationally, to gate whether the activation *email sequence*
+  should keep running for a given profile) is a different, deliberately
+  simpler question ("has this person ever done anything meaningful,
+  as of right now") and is never used for this analytics calculation.
+- **24h Activation Rate** = (profiles whose `first_meaningful_activity_at`
+  falls within 24 hours of `created_at`) / (profiles in the cohort),
+  as a percentage.
+- **7d Activation Rate** = same, within 7 days.
+- **D1 / D7 / D30 Retention** (`get_retention_kpis()`, v69.sql) is a
+  **separate concept from activation**, not a synonym: retention checks
+  whether a profile has a qualifying activity day *exactly* on
+  signup-date + N (calendar-day granularity, requires still being active
+  N days out), while activation checks whether *any* qualifying activity
+  happened *within* a continuous window starting at signup (time-based,
+  about how fast the first value moment happens, not whether it recurs
+  later). A profile can activate on day 0 and never register a D7
+  retention day; a profile can miss the 24h/7d activation window and
+  still show up for D30 retention later. The two numbers are allowed to
+  disagree — that's not a bug, they're measuring different things.
+- **Email-sent-before-activation** / **email-clicked-before-activation**
+  — both defined above. Neither implies the email *caused* the
+  activation; they describe event ordering only. Report them separately,
+  never blended into one "email-assisted" number.
+
+## Lifecycle email preferences — required next infrastructure task
+
+No consent/unsubscribe system exists anywhere in this codebase, for any
+lifecycle email — not something introduced by the activation sequence,
+a pre-existing gap across the whole lifecycle system that this pass
+surfaces rather than fixes (implementing one is explicitly out of scope
+here; this section exists so it isn't lost).
+
+**Every lifecycle/transactional email type currently sent**, and a
+rough transactional-vs-marketing read (not a legal classification — this
+product has none on record, and this document isn't creating one):
+
+| Email | Source | Character |
+|---|---|---|
+| Account welcome / password-set | `create-free-account` | Transactional — required for account access |
+| New Member Activation #1-4 | `create-free-account`, `send-lifecycle-emails` | Mixed — #1 doubles as account access; #2-4 are engagement nudges |
+| `inactivity_7day` | `send-lifecycle-emails` | Marketing-like — re-engagement |
+| `reactivation_inactive` | `send-lifecycle-emails` | Marketing-like — re-engagement |
+| `weekly_progress` | `send-lifecycle-emails` | Informational/engagement |
+| First-question / readiness-milestone / Checkride-Mode-complete | `send-lifecycle-emails`, client-side | Engagement/congratulatory |
+| `weak_area_<category>` | `send-lifecycle-emails` | Marketing-like — content recommendation |
+| `checkride_countdown_<N>` | `send-lifecycle-emails` | Transactional-ish — tied to a date the member set |
+| `checkride_upsell_day<N>` | `send-lifecycle-emails` | **Marketing — direct sales pitch** |
+| `ground_followup_<id>` | `send-lifecycle-emails` | Marketing-like — soft upsell |
+| `abandoned_checkout_<id>` | `send-lifecycle-emails` | Marketing — cart recovery |
+| Readiness Assessment day1/3/6 | `send-lifecycle-emails` | **Marketing — lead-nurture sales sequence** |
+| `recovery_sortie_<id>` | `send-lifecycle-emails` | Transactional-ish — tied to the member's own account state |
+| Stripe purchase confirmations | `stripe-webhook` | Transactional |
+
+**Current suppression mechanisms** — all of them are *deduplication*
+(never send the exact same milestone/day twice) or *throttling* (don't
+re-send this type more than once every N days), via `portal_email_log`
+and `portal_events`. None of them are *consent* mechanisms — there is
+no way for a member to say "stop sending me X" and have it respected.
+The only thing close to an opt-out anywhere in this system is simply
+not having an email on file, which isn't a real mechanism.
+
+**Why this needs addressing before lifecycle email volume grows
+further:** several of the types above (`checkride_upsell_day<N>`,
+Readiness Assessment day1/3/6, `abandoned_checkout`) are genuinely
+promotional in substance, sent automatically, with no user-facing way
+to reduce or stop them short of the member emailing in and asking a
+human to intervene manually. This is a legal/trust exposure that scales
+with send volume and email-type count — both of which have grown this
+session (the activation sequence adds up to 4 more touchpoints per new
+member) and will keep growing with any future lifecycle work. The
+recommended next infrastructure task is a real preferences/unsubscribe
+system: a durable per-profile suppression flag (or per-category flags,
+if the product wants granularity), a one-click unsubscribe link on
+every non-strictly-transactional send, and every `sendEmail()` call
+site in `send-lifecycle-emails/index.ts` (plus `create-free-account`'s
+own) checking it before sending. Not built here — this section is the
+handoff.
+
+## Production deployment plan — New Member Activation sequence
+
+Ordered by actual dependency, not "deploy normally":
+
+1. **SQL migration** — run `supabase-portal-schema-v72.sql` in the
+   Supabase SQL editor (after v71, if not already applied). Idempotent:
+   it's a single `create or replace function` plus one `grant`, safe to
+   re-run. Verify immediately after: `select get_activation_email_kpis();`
+   as an admin user should return a JSON object with `new_signups`,
+   `activation_rate_24h_pct`, etc. — not an error.
+2. **Edge Functions** — deploy in this order (each is independent of
+   the others at deploy time, but `send-email` should land first since
+   the other two invoke it):
+   - `supabase functions deploy send-email`
+   - `supabase functions deploy create-free-account`
+   - `supabase functions deploy send-lifecycle-emails`
+3. **Environment variables** — set before (or immediately after) step 2,
+   but Emails #2-4 and the Email #1 catch-up are inert until this is
+   done:
+
+   | Variable | Required? | Format | Example |
+   |---|---|---|---|
+   | `NEW_MEMBER_ACTIVATION_SINCE` | **Required** for Emails #2-4 and Email #1 catch-up | ISO 8601 timestamp | `2026-08-18T00:00:00Z` |
+   | `NEW_MEMBER_ACTIVATION_BACKFILL_DAYS` | Optional (default `0`) | integer, days | `2` |
+   | `RESEND_API_KEY` | Required (pre-existing) | secret, not printed here | — |
+   | `FROM_EMAIL` | Optional (pre-existing, defaults to `Apex Advantage <noreply@apexaviationtx.com>`) | `Name <email>` | — |
+   | `SITE_ORIGIN` | Optional (pre-existing, defaults to `https://apexaviationtx.com`) | URL, no trailing slash | — |
+   | `LIFECYCLE_CRON_SECRET` | Recommended (pre-existing) | secret, not printed here | — |
+
+   `NEW_MEMBER_ACTIVATION_SINCE` unset means the sequence is **entirely
+   disabled** for Emails #2-4 and the catch-up path (verified in code —
+   `isEligibleForActivationSequence()` returns `false` unconditionally
+   when this is unset). Recommended production value: the actual
+   deployment timestamp, set at deploy time, so only genuinely new
+   signups from that moment forward ever enter the sequence.
+4. **Static frontend files** — `portal-login.html`, `portal-reset-
+   password.html`, `portal-stable.js`, `analytics-events.js` need to be
+   live on the actual site (not just committed) for the deep-link/
+   click-tracking fixes to take effect. No build step for these — they
+   ship the moment the static files are deployed.
+5. **Cron verification** — `send-lifecycle-emails` needs to already be on
+   its daily schedule (see "Action required" above from the earlier
+   phase in this document — `pg_cron`/`pg_net`, or whatever scheduler is
+   actually wired up in the live project; this session has never had
+   access to a live Supabase project to confirm the schedule is actually
+   installed). Confirm the schedule invokes `send-lifecycle-emails` with
+   `Authorization: Bearer <LIFECYCLE_CRON_SECRET>` if that secret is set,
+   and check the function's logs after the next scheduled run for the
+   `new_member_activation`, `activation_email_1_catchup`, and
+   `checkride_upsell` counters in its JSON response — a non-zero
+   `errors` array there is the first thing to check if anything looks
+   wrong.
+6. **Production smoke tests** — see below.
+
+### Cron catch-up test strategy (no waiting days, no touching real users)
+
+Do not backdate a real member's `created_at`. Instead: create one
+disposable test profile, then directly `update profiles set created_at
+= now() - interval '2 days' where id = '<test-profile-id>'` — same
+effect as time actually passing, isolated to a throwaway account. Invoke
+`send-lifecycle-emails` manually (with the cron secret header) and
+confirm in its JSON response that the relevant counter increments for
+that run, then check the test inbox.
+
+### New-signup smoke test
+
+1. Create one real, disposable test account through the actual signup
+   form (not the admin panel).
+2. Confirm the signup response returns quickly (should be well under
+   the 5-second timeout in the common case) and shows success.
+3. Confirm Email #1 arrives (check the test inbox).
+4. Query `portal_events`/`portal_email_log` for that profile — an
+   `activation_email_1` row should exist.
+5. Click the email's CTA link and confirm the URL it lands on matches
+   what was promised, including the `utm_campaign=new_member_activation`
+   /`utm_content=welcome_1` params.
+6. Sign out, then click the same link (or a Day-1/3/7 email's link, once
+   reachable) again while logged out — confirm it round-trips through
+   sign-in and lands back on the intended destination, not a bare
+   dashboard.
+7. Complete one qualifying meaningful action (e.g. answer the daily
+   question) and confirm `daysSinceLastMeaningfulActivity()` (or,
+   indirectly, a subsequent cron run) treats the profile as activated —
+   no further activation emails should send for it afterward.
+
+### Resend-failure smoke test (staging/local only — never production credentials)
+
+Point `RESEND_API_KEY` at an invalid value in a non-production
+environment, or otherwise force `send-email` to fail, then run through
+the new-signup smoke test above. Confirm: the account is still created,
+the signup response still returns successfully, `emailSent` in the
+response is `false` (or the optimistic `true` if it hit the 5s timeout —
+both are acceptable outcomes per the design above), and the next cron
+run's `activation_email_1_catchup` counter picks it up once the API key
+is restored (or a working key is reintroduced), with no duplicate send
+once it succeeds.
+
+### KPI smoke test
+
+Using the same local-Postgres approach already used to verify
+`get_activation_email_kpis()` during development (see the file's own
+verification note above), the four scenarios below were run — not
+against production, against a synthetic dataset:
+
+- **Signup → Email #1 → activity 10 minutes later**: `activated_24h =
+  true`, `email_sent_before_activation = true`, positive Time to First
+  Value of ~10 minutes. Confirmed.
+- **Signup → activity immediately → Email #1 afterward**: `activated =
+  true`, but `email_clicked_before_activation = false` (no click at all
+  in this scenario) and — this is the case worth calling out —
+  `email_sent_before_activation` would read `false` too if the send
+  timestamp is genuinely after the activity timestamp; the query
+  compares real timestamps either way and does not assume Email #1
+  always precedes activity just because it usually does.
+- **Signup → no activity at all**: `activated = false`, excluded from
+  both the 24h and 7d activation counts' numerators, correctly still
+  counted in `new_signups`.
+- **Signup → activity at 25 hours**: `activated_24h = false`,
+  `activated_7d = true`. Confirmed (this is exactly profile C's shape
+  in the verification dataset above, at a slightly different offset).
