@@ -1721,11 +1721,36 @@
         return trimmed;
       }
 
+      // ── Topic matching: word-set comparison, not exact substring.
+      // An exact-substring match breaks the moment ad copy and the real
+      // stored class/module title phrase a topic differently -- e.g. an
+      // ad's ?topic=Weight%20%26%20Balance against a title actually
+      // saved as "Weight and Balance" ("&" vs "and") wouldn't share a
+      // contiguous substring even though they mean the same thing.
+      // Normalizing "&"/hyphens/underscores to spaces and requiring
+      // every significant topic word to appear somewhere in the row's
+      // title text (order-independent) survives that kind of wording
+      // drift. Deliberately still keyed off ?topic= (author-controlled,
+      // clean text) rather than utm_content/utm_campaign, which ad
+      // platforms populate with ad/adset slugs -- those often carry
+      // extra tracking tokens ("weight-balance-ad2") that would never
+      // appear in a real title and would make an "every word must
+      // match" rule fail for no reason. ──
+      var TOPIC_STOPWORDS = { and: 1, the: 1, a: 1, of: 1, for: 1, to: 1 };
+      function normalizeTopicWords(text) {
+        return (text || '')
+          .toLowerCase()
+          .replace(/&/g, ' and ')
+          .replace(/[^a-z0-9]+/g, ' ')
+          .trim()
+          .split(/\s+/)
+          .filter(function (w) { return w && !TOPIC_STOPWORDS[w]; });
+      }
       function matchesTopic(row, topic) {
-        if (!topic) return false;
-        var needle = topic.toLowerCase();
-        return (row.module_title || '').toLowerCase().indexOf(needle) !== -1 ||
-          (row.title || '').toLowerCase().indexOf(needle) !== -1;
+        var topicWords = normalizeTopicWords(topic);
+        if (!topicWords.length) return false;
+        var haystack = normalizeTopicWords((row.module_title || '') + ' ' + (row.title || ''));
+        return topicWords.every(function (w) { return haystack.indexOf(w) !== -1; });
       }
 
       function reserveSeat(row, formEl) {
