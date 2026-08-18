@@ -240,8 +240,9 @@
         target.meta = l.meta;
         target.parts = l.parts;
       });
-
-      computeQotdQuestion();
+      // computeQotdQuestion() now runs once, in initPortalData() below,
+      // after this and loadMembershipCapability() have both resolved --
+      // no need to pre-populate it here too.
     }).catch(function (err) { console.error('loadPremiumContent error', err); });
   }
 
@@ -2426,6 +2427,28 @@
     el.querySelectorAll('[data-cat]').forEach(function (row) {
       row.addEventListener('click', function () { goToCategory(row.dataset.cat); });
     });
+
+    // Supplementary, not blended: the ACS categories above are 100%
+    // coverage-based ("% marked studied"), the only weak-area signal that
+    // currently exists. ai_dpe_sessions.debrief.perDomain does carry a
+    // real accuracy-based "weak" verdict per domain (dpe-chat/index.ts),
+    // but its domain names are free text the AI generates per session
+    // ("ACS areas you actually asked about") -- not guaranteed to match
+    // CATEGORY_META's fixed category ids/casing, so folding it into the
+    // scoring above risks a wrong or missed match with no way to verify
+    // against real AI-generated output from this sandbox. Shown here as
+    // its own distinct, clearly-labeled line instead.
+    var aiDpeNote = document.getElementById('weakAreasAiDpeNote');
+    if (aiDpeNote) {
+      var latestDebrief = myAiDpeSessions.filter(function (s) { return s.status === 'completed' && s.debrief; })[0];
+      var weakDomains = latestDebrief ? (latestDebrief.debrief.perDomain || []).filter(function (d) { return d.verdict === 'weak'; }).map(function (d) { return d.domain; }) : [];
+      if (weakDomains.length) {
+        aiDpeNote.textContent = 'Your last AI DPE session also flagged: ' + weakDomains.join(', ');
+        aiDpeNote.hidden = false;
+      } else {
+        aiDpeNote.hidden = true;
+      }
+    }
   }
 
   /* Maps our 11 topic categories onto the REAL FAA Private Pilot ACS
@@ -2584,10 +2607,30 @@
     return Math.floor((now - start) / 86400000);
   }
   var qotdQuestion = null;
+  // Question of the Day is deliberately free for every member (Retention
+  // Sprint Tier 1) -- but DPE_DATA only ever gets populated for unlocked
+  // members (loadPremiumContent() is a premium-only fetch, see get-
+  // premium-content), so an unlocked member's question comes from the
+  // already-loaded full bank client-side (no extra request), while a
+  // locked member's comes from get_daily_question() (v68.sql), a
+  // security-definer RPC that returns just today's single question
+  // server-side without ever exposing the rest of the gated bank. Both
+  // paths pick the exact same question for the exact same calendar day
+  // (dayOfYear() % count here, extract(doy)::int % count server-side).
   function computeQotdQuestion() {
-    qotdQuestion = DPE_DATA.length ? DPE_DATA[dayOfYear() % DPE_DATA.length] : null;
+    if (DPE_DATA.length) {
+      qotdQuestion = DPE_DATA[dayOfYear() % DPE_DATA.length];
+      return Promise.resolve();
+    }
+    return apexSupabase.rpc('get_daily_question', { p_exam_type: 'private_pilot' }).then(function (res) {
+      var row = res.data && res.data[0];
+      qotdQuestion = row ? {
+        id: row.id, sectionLabel: row.category_label,
+        q: row.question, model: row.model_answer,
+        evaluating: row.dpe_evaluating, application: row.real_world_application
+      } : null;
+    }).catch(function (err) { console.error('get_daily_question failed', err); qotdQuestion = null; });
   }
-  computeQotdQuestion();
 
   function updateQotdButtons() {
     if (!qotdQuestion) return;
@@ -5478,6 +5521,77 @@
     });
   }
 
+  // Your Week -- Retention Sprint Tier 2. Pure client-side aggregation of
+  // data loadProgress() already fetched (studied/answeredCounts/lastViewed
+  // from portal_question_progress + portal_scenario_progress, studyDays
+  // from portal_study_activity, myAiDpeSessions) -- no new network calls.
+  // "This week" = the 7 calendar days ending today, browser-local, same
+  // basis computeStreaks() already uses (see that function's own note on
+  // why -- consistent, not necessarily member-timezone-exact).
+  // Strongest/weakest topic reuses categoryPct() (coverage-based, the
+  // same signal weakestCategory()/renderWeakAreas() already use) rather
+  // than introducing a second, different definition of "weak" -- and is
+  // only shown for unlocked members, since CATEGORY_META is empty for a
+  // free member (loadPremiumContent() is a premium-only fetch).
+  function renderWeeklyProgress() {
+    var emptyEl = document.getElementById('weeklyProgressEmpty');
+    var statsEl = document.getElementById('weeklyProgressStats');
+    if (!emptyEl || !statsEl) return;
+
+    var weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 6);
+    weekAgo.setHours(0, 0, 0, 0);
+
+    var questionsThisWeek = Object.keys(answeredCounts).filter(function (id) {
+      return answeredCounts[id] > 0 && lastViewed[id] && lastViewed[id] >= weekAgo.getTime();
+    }).length;
+
+    var trainingDaysThisWeek = Object.keys(studyDays).filter(function (dateStr) {
+      return new Date(dateStr + 'T00:00:00') >= weekAgo && (studyDays[dateStr] || 0) > 0;
+    }).length;
+
+    var scenariosThisWeek = SCENARIOS.filter(function (s) {
+      return studied[s.id] && lastViewed[s.id] && lastViewed[s.id] >= weekAgo.getTime();
+    }).length;
+
+    var aiDpeThisWeek = myAiDpeSessions.filter(function (s) {
+      return new Date(s.started_at) >= weekAgo;
+    }).length;
+
+    var hasActivity = questionsThisWeek > 0 || trainingDaysThisWeek > 0 || scenariosThisWeek > 0 || aiDpeThisWeek > 0;
+
+    if (!hasActivity) {
+      emptyEl.style.display = 'block';
+      statsEl.style.display = 'none';
+      return;
+    }
+
+    emptyEl.style.display = 'none';
+    statsEl.style.display = 'block';
+    document.getElementById('weeklyQuestions').textContent = questionsThisWeek;
+    document.getElementById('weeklyDays').textContent = trainingDaysThisWeek;
+    document.getElementById('weeklyScenarios').textContent = scenariosThisWeek;
+    document.getElementById('weeklyAiDpe').textContent = aiDpeThisWeek;
+
+    var topicLine = document.getElementById('weeklyTopicLine');
+    var cats = Object.keys(CATEGORY_META).map(function (cat) {
+      return { label: CATEGORY_META[cat].label, pct: categoryPct(cat) };
+    });
+    if (!cats.length) {
+      topicLine.textContent = '';
+    } else {
+      var strongest = cats.slice().sort(function (a, b) { return b.pct - a.pct; })[0];
+      var weakest = cats.slice().sort(function (a, b) { return a.pct - b.pct; })[0];
+      topicLine.textContent = 'Strongest: ' + strongest.label + (weakest.pct < 1 ? ' · Focus next: ' + weakest.label : '');
+    }
+  }
+  var weeklyProgressStartBtn = document.getElementById('weeklyProgressStartBtn');
+  if (weeklyProgressStartBtn) weeklyProgressStartBtn.addEventListener('click', function () {
+    var plan = computeTrainingPlan();
+    var firstIncomplete = plan.tasks.filter(function (t) { return !t.done; })[0];
+    if (firstIncomplete) firstIncomplete.go(); else showSection('dpe-library');
+  });
+
   /* ── Init — waits for the real Supabase session + profile ────── */
   function initPortalData() {
     applyUnlockState();
@@ -5493,8 +5607,9 @@
       renderXpRank();
       renderWeakAreas();
       renderAcsCoverage();
-      renderQotd();
+      computeQotdQuestion().then(renderQotd);
       renderMyTraining();
+      renderWeeklyProgress();
       renderAiDpeHistory();
       renderRecommendedNextStep();
       renderGroundSchoolProgress();

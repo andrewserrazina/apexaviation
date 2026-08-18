@@ -275,6 +275,7 @@
             <div class="portal-locked-widget__content">
               <div class="portal-header__eyebrow" style="margin-bottom:14px">Areas to Focus On</div>
               <div id="weakAreasList"><p style="color:rgba(255,255,255,0.4);font-size:13px">Keep studying — we'll surface your weakest ACS areas here.</p></div>
+              <p id="weakAreasAiDpeNote" style="color:rgba(255,255,255,0.4);font-size:12px;margin-top:10px" hidden></p>
             </div>
             <div class="portal-locked-widget__overlay" data-unlock-trigger style="display:none">
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="#F4B400" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round"/></svg>
@@ -354,6 +355,26 @@
           </div>
         </div>
 
+        <!-- Your Week -- Retention Sprint Tier 2. Real activity only, no
+             new RPC calls: aggregated client-side from data already
+             loaded by loadProgress() (site/portal-stable.js). -->
+        <div class="portal-card" id="weeklyProgressCard" style="margin-bottom:24px">
+          <div class="portal-header__eyebrow" style="margin-bottom:8px">Your Week</div>
+          <div id="weeklyProgressEmpty" style="display:none">
+            <p style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:14px">No training logged yet this week.</p>
+            <button class="btn btn--primary" id="weeklyProgressStartBtn">Start Today's Training</button>
+          </div>
+          <div id="weeklyProgressStats" style="display:none">
+            <div class="portal-grid portal-grid--4" style="margin-bottom:14px">
+              <div class="portal-my-training__panel"><p class="portal-my-training__label">Questions</p><h3 id="weeklyQuestions">0</h3></div>
+              <div class="portal-my-training__panel"><p class="portal-my-training__label">Training Days</p><h3 id="weeklyDays">0</h3></div>
+              <div class="portal-my-training__panel"><p class="portal-my-training__label">Scenarios</p><h3 id="weeklyScenarios">0</h3></div>
+              <div class="portal-my-training__panel"><p class="portal-my-training__label">AI DPE</p><h3 id="weeklyAiDpe">0</h3></div>
+            </div>
+            <p style="color:rgba(255,255,255,0.55);font-size:13px" id="weeklyTopicLine"></p>
+          </div>
+        </div>
+
         <!-- Checkride Countdown + Mock Oral Booking -->
         <div class="portal-grid portal-grid--2" style="margin-bottom:24px">
           <div class="portal-card portal-countdown" id="checkrideCountdownCard">
@@ -391,32 +412,30 @@
           </div>
         </div>
 
-        <!-- Question of the Day -->
-        <div class="portal-card portal-qotd portal-locked-widget" data-locked-widget data-widget="qotd" style="margin-bottom:24px">
-          <div class="portal-locked-widget__content">
-            <div class="portal-qotd__head">
-              <div class="portal-header__eyebrow" style="margin-bottom:0">📅 Today's Oral Exam Question</div>
-              <span class="portal-qotd__cat" id="qotdCategory">—</span>
-            </div>
-            <h3 id="qotdQuestion" style="color:#fff;font-size:19px;font-weight:700;margin:14px 0 18px;line-height:1.5">Loading…</h3>
-            <div id="qotdPrompt">
-              <p style="color:rgba(255,255,255,0.45);font-size:13px;margin-bottom:14px">Think through your answer out loud before revealing — that's what actually builds recall.</p>
-              <button class="btn btn--primary" id="qotdRevealBtn">Reveal Answer</button>
-            </div>
-            <div id="qotdAnswer" style="display:none">
-              <div class="portal-qitem__field"><div class="portal-qitem__field-label">Model Answer</div><p id="qotdModel"></p></div>
-              <div class="portal-qitem__field"><div class="portal-qitem__field-label">DPE Insight</div><p id="qotdEvaluating"></p></div>
-              <div class="portal-qitem__field"><div class="portal-qitem__field-label">Apex Pro Tip</div><p id="qotdApplication"></p></div>
-              <div class="portal-qotd__actions">
-                <button class="btn btn--ghost" id="qotdStudiedBtn">Mark as Studied</button>
-                <button class="btn btn--ghost" id="qotdFavBtn">☆ Star for review</button>
-              </div>
-            </div>
+        <!-- Question of the Day -- free for every member (Retention Sprint
+             Tier 1): the daily habit-forming mechanic only works if it's
+             not gated behind the same paywall it's meant to build trust
+             toward. Was previously wrapped in [data-locked-widget], which
+             applyUnlockState() (portal-stable.js) blurs/disables for
+             anyone without checkride_prep_unlocked. -->
+        <div class="portal-card portal-qotd" style="margin-bottom:24px">
+          <div class="portal-qotd__head">
+            <div class="portal-header__eyebrow" style="margin-bottom:0">📅 Today's Oral Exam Question</div>
+            <span class="portal-qotd__cat" id="qotdCategory">—</span>
           </div>
-          <div class="portal-locked-widget__overlay" data-unlock-trigger style="display:none">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="#F4B400" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round"/></svg>
-            <span>Unlock Today's Question</span>
-            <small>$29 · Tap to unlock</small>
+          <h3 id="qotdQuestion" style="color:#fff;font-size:19px;font-weight:700;margin:14px 0 18px;line-height:1.5">Loading…</h3>
+          <div id="qotdPrompt">
+            <p style="color:rgba(255,255,255,0.45);font-size:13px;margin-bottom:14px">Think through your answer out loud before revealing — that's what actually builds recall.</p>
+            <button class="btn btn--primary" id="qotdRevealBtn">Reveal Answer</button>
+          </div>
+          <div id="qotdAnswer" style="display:none">
+            <div class="portal-qitem__field"><div class="portal-qitem__field-label">Model Answer</div><p id="qotdModel"></p></div>
+            <div class="portal-qitem__field"><div class="portal-qitem__field-label">DPE Insight</div><p id="qotdEvaluating"></p></div>
+            <div class="portal-qitem__field"><div class="portal-qitem__field-label">Apex Pro Tip</div><p id="qotdApplication"></p></div>
+            <div class="portal-qotd__actions">
+              <button class="btn btn--ghost" id="qotdStudiedBtn">Mark as Studied</button>
+              <button class="btn btn--ghost" id="qotdFavBtn">☆ Star for review</button>
+            </div>
           </div>
         </div>
 
