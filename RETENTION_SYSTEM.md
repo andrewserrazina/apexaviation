@@ -287,3 +287,44 @@ particular:
   `send-lifecycle-emails/index.ts` (no shared module between the two
   runtimes today). If the copy ever changes, both need updating — flagged
   in a comment at the top of each.
+
+## New Member Activation sequence (this session)
+
+Personalized activation emails on signup — Email #1 (immediate, personal
+note from Andrew) plus Emails #2/#3/#4 (~24h/~72h/~7d, only while the
+member hasn't done anything meaningful yet). Full design reasoning is in
+each file's own comments (`create-free-account/index.ts`,
+`send-lifecycle-emails/index.ts`'s `processNewMemberActivation`); this
+section is just the deployment checklist.
+
+### Action required before this is live
+
+- **`NEW_MEMBER_ACTIVATION_SINCE` must be set** (Supabase Edge Function
+  secret on `send-lifecycle-emails`, an ISO timestamp) or Emails #2-4
+  never send to anyone — this is the deliberate guard against backfilling
+  every historical member into a "new signup" sequence. Set it to the
+  actual deploy date/time. Email #1 has no such gate (it only ever fires
+  inline at genuine signup, in `create-free-account`), so it starts
+  working the moment that function is redeployed.
+- Optional: `NEW_MEMBER_ACTIVATION_BACKFILL_DAYS` (integer, default `0`)
+  to also catch signups from just before the cutover.
+- Deploy `send-email`, `create-free-account`, and `send-lifecycle-emails`
+  (`supabase functions deploy <name>` from inside `portal/`) — all three
+  changed this session.
+- Run `supabase-portal-schema-v72.sql` (admin activation-funnel KPIs) in
+  the SQL editor, after v71.
+- Same manual cron/schedule requirement as every other lifecycle email in
+  this file — nothing new here, just riding the existing daily job.
+- **Not verified against a live Supabase project** — same caveat as every
+  other phase in this file. Verified: all three edge functions bundle
+  cleanly (`esbuild`), the new admin RPC (`get_activation_email_kpis`)
+  against a local Postgres 16 instance with hand-checked synthetic data
+  (5 profiles covering the 24h/7d/email-assisted/window-boundary cases,
+  every returned number matched the independently hand-computed
+  expectation), and the full deep-link URL chain (activation email →
+  `portal-login.html` → sign-in → `portal.html#hash`, and the
+  logged-out-click-through-login path) with a standalone Node script
+  replicating each file's exact string-building logic against 9 test
+  cases. Not verified: an actual Resend send with `reply_to` set, an
+  actual `auth.admin.generateLink` recovery-link round trip, or the
+  cron picking this up in production.

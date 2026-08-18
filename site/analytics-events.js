@@ -37,7 +37,14 @@
     'checkride_prep_upgrade_deeplink_viewed', 'checkride_prep_upgrade_modal_opened',
     // Retention Sprint Tier 3 onboarding redesign -- real triggers in
     // site/portal-stable.js's showWelcomeOnboarding().
-    'onboarding_training_goal_saved', 'onboarding_focus_area_saved', 'onboarding_first_training_started'
+    'onboarding_training_goal_saved', 'onboarding_focus_area_saved', 'onboarding_first_training_started',
+    // New Member Activation sequence -- real trigger in
+    // site/portal-stable.js's activation-email click-tracking IIFE.
+    // The _sent half of this funnel is logged server-side directly to
+    // analytics_events (create-free-account/index.ts and
+    // send-lifecycle-emails/index.ts's processNewMemberActivation), so
+    // it deliberately isn't in this client-side allowlist.
+    'activation_email_1_clicked', 'activation_email_2_clicked', 'activation_email_3_clicked', 'activation_email_4_clicked'
   ];
 
   function anonId() {

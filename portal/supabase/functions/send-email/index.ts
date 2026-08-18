@@ -14,7 +14,7 @@ serve(async (req) => {
   }
 
   try {
-    const { to, subject, html } = await req.json()
+    const { to, subject, html, replyTo } = await req.json()
 
     if (!to || !subject || !html) {
       return new Response(JSON.stringify({ error: 'Missing required fields: to, subject, html' }), {
@@ -34,6 +34,13 @@ serve(async (req) => {
         to: Array.isArray(to) ? to : [to],
         subject,
         html,
+        // Optional -- callers only pass this for emails that genuinely
+        // want replies read by a real person (see the new-member
+        // activation sequence). Omitted entirely otherwise, so Resend
+        // falls back to its default (replies go to FROM_ADDRESS, an
+        // unmonitored noreply@ mailbox) rather than this function
+        // silently inventing a reply-to nobody asked for.
+        ...(replyTo ? { reply_to: replyTo } : {}),
       }),
     })
 

@@ -145,6 +145,63 @@ const DEFAULT_UPSELL_TIMING_BUCKET = 'within_60_days'
 const ABANDONED_CHECKOUT_MIN_HOURS = 1
 const ABANDONED_CHECKOUT_MAX_DAYS = 7
 
+// New Member Activation sequence -- Emails #2/#3/#4 from the activation
+// brief (Email #1 fires synchronously at signup, in create-free-account/
+// index.ts, since training_stage/focus_area aren't known yet at that
+// point -- see that file's own comment). Same day-schedule/catch-up/
+// backfill shape as processCheckrideUpsell below: at most one stage per
+// run, picking the latest reached-but-unsent day, backfilling earlier
+// dedup keys so a profile that skipped a cron run doesn't get every
+// earlier stage back-to-back. 1/3/7 = ~24h/~72h/~7 days, per the brief.
+const NEW_MEMBER_ACTIVATION_SCHEDULE = [1, 3, 7]
+// Unset by default -- this sequence enrolls NO profiles at all until an
+// operator explicitly sets this Supabase Edge Function secret to an ISO
+// timestamp (e.g. the deploy date). This is the deliberate guard against
+// the brief's own explicit warning: "Do not backfill 104 historical
+// users into a new-member sequence." A profile is only ever eligible if
+// created_at >= this timestamp.
+const NEW_MEMBER_ACTIVATION_SINCE = Deno.env.get('NEW_MEMBER_ACTIVATION_SINCE')
+// Optional, additive window (days) to also catch very recent signups
+// from just before that cutover -- e.g. profiles created in the day or
+// two before this feature was actually deployed. Configurable per the
+// brief's own suggestion (section 22); defaults to 0 (no backfill at
+// all beyond the exact cutover instant).
+const NEW_MEMBER_ACTIVATION_BACKFILL_DAYS = Number(Deno.env.get('NEW_MEMBER_ACTIVATION_BACKFILL_DAYS') ?? '0')
+
+// profiles.training_stage values, set by showWelcomeOnboarding() (site/
+// portal-stable.js) on the member's first portal login -- supabase-
+// portal-schema-v70.sql. Maps each stage to the single free action this
+// brief calls the best first step for that stage (section 3), as a
+// portal.html hash + button label. Every stage still routes to a real,
+// audited section -- no fabricated route (dpe-library doesn't have a
+// per-stage view, so "the free oral-exam question" is deliberately
+// 'dashboard', where QOTD already lives front-and-center, for every
+// stage except just_starting).
+const TRAINING_STAGE_ACTION: Record<string, { hash: string; label: string; contextPhrase: string }> = {
+  just_starting: { hash: 'ground-school', label: 'View Live Ground School', contextPhrase: "just getting started" },
+  pre_solo: { hash: 'dashboard', label: "Answer Today's DPE Question", contextPhrase: "in pre-solo training" },
+  cross_country: { hash: 'dashboard', label: "Answer Today's DPE Question", contextPhrase: "working on cross-country" },
+  preparing_for_written: { hash: 'dashboard', label: "Answer Today's DPE Question", contextPhrase: "preparing for your written exam" },
+  written_passed: { hash: 'dashboard', label: "Answer Today's DPE Question", contextPhrase: "past your written and moving toward your checkride" },
+  checkride_preparation: { hash: 'dashboard', label: "Answer Today's DPE Question", contextPhrase: "getting into checkride prep" },
+}
+// Fallback for a still-missing training_stage (member set up their
+// account but hasn't reached showWelcomeOnboarding() yet) -- same
+// generic recommendation Email #1 uses, per the brief's section 26.
+const DEFAULT_ACTIVATION_ACTION = { hash: 'dashboard', label: "Answer Today's DPE Question", contextPhrase: '' }
+
+// profiles.primary_focus_area values, same source as training_stage
+// above. 'not_sure' is deliberately absent -- treated exactly like a
+// missing value (no focus sentence), not a real topic.
+const FOCUS_AREA_LABEL: Record<string, string> = {
+  airspace: 'Airspace', weather: 'Weather', aircraft_systems: 'Aircraft Systems', regulations: 'Regulations',
+  performance: 'Performance', weight_balance: 'Weight & Balance', navigation: 'Navigation', adm: 'Aeronautical Decision-Making',
+}
+
+function activationCtaUrl(hash: string, emailNumber: number): string {
+  return `${PORTAL_LOGIN_URL}?dest=${hash}&utm_source=email&utm_medium=email&utm_campaign=new_member_activation&utm_content=welcome_${emailNumber}`
+}
+
 // Verbatim from site/portal.js's WEAK_AREA_CONTENT -- keep these two in
 // sync if the copy ever changes; duplicated rather than shared because
 // this function and the client bundle have no common module today.
@@ -674,6 +731,32 @@ async function processCheckrideUpsell(supabase: any, profile: any, results: any)
   if (profile.checkride_prep_unlocked) return
   const daysSinceSignup = (Date.now() - new Date(profile.created_at).getTime()) / 86400000
 
+  // Defer to the New Member Activation sequence (Emails #2-4, above)
+  // while it's actively "in charge" of this member's inbox -- both
+  // sequences are keyed off days-since-signup and would otherwise fire
+  // on the same days (e.g. checkride_upsell's within_14_days schedule is
+  // [1,3,6], activation's is [1,3,7]) for the exact profiles most likely
+  // to be in both: a brand-new, not-yet-unlocked signup. That's a real
+  // "two emails same day" collision, and directly against the brief's
+  // own instruction not to aggressively pitch Checkride Prep in the
+  // first-week activation window (section 14: SIGNUP -> EXPERIENCE VALUE
+  // -> RETURN -> THEN UPGRADE). Deferred only through day 7 and only
+  // while genuinely unactivated -- the instant this profile activates
+  // (real value experienced) or ages past the activation window, this
+  // resumes on its own normal schedule (including catching up on any
+  // stage it missed, via its own existing backfill logic below). A no-op
+  // when the activation sequence itself is disabled (NEW_MEMBER_
+  // ACTIVATION_SINCE unset), so this never changes behavior for anyone
+  // unless that feature is actually turned on.
+  if (NEW_MEMBER_ACTIVATION_SINCE) {
+    const cutover = new Date(NEW_MEMBER_ACTIVATION_SINCE).getTime() - NEW_MEMBER_ACTIVATION_BACKFILL_DAYS * 86400000
+    const inActivationScope = new Date(profile.created_at).getTime() >= cutover
+    if (inActivationScope && daysSinceSignup < 7) {
+      const stillUnactivated = (await daysSinceLastMeaningfulActivity(supabase, profile.id)) === Infinity
+      if (stillUnactivated) return
+    }
+  }
+
   // profiles.checkride_timing (collected at signup, supabase-portal-
   // schema-v39.sql) drives which schedule this profile walks -- a tight
   // timeline gets a compressed, more urgent cadence; a distant or unset
@@ -972,6 +1055,151 @@ async function processRecoverySortieNotifications(supabase: any, results: any) {
   }
 }
 
+// ── New Member Activation, Emails #2-4 ──
+// Email #1 (immediate, personal welcome note) lives in create-free-
+// account/index.ts -- it fires synchronously at signup, before any of
+// this ever runs. These three are the "still haven't done anything
+// meaningful" follow-ups, gated entirely on daysSinceLastMeaningfulActivity
+// (the exact same "meaningful activity" definition as get_retention_kpis(),
+// supabase-portal-schema-v69.sql, and processReactivationInactive above --
+// one definition, reused everywhere, not three slightly different ones).
+
+// Email #2 (~24h) -- brief section 11's literal template: short, single
+// QOTD nudge, no stage/focus personalization (training_stage may not
+// even be set yet this early -- the member's first portal login, where
+// showWelcomeOnboarding() asks, might not have happened yet either).
+function emailTemplateActivationDay1(firstName: string): string {
+  return `<h2 style="color:#F4B400;margin:0 0 4px;">Quick one, ${firstName}</h2>` +
+    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Have you tried today\'s DPE question yet?</p>' +
+    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">It takes about two minutes, and it\'s probably the easiest way to get value from Apex Advantage right away.</p>' +
+    `<a href="${activationCtaUrl('dashboard', 2)}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Answer Today's Question →</a>` +
+    '<p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">That\'s it.</p>' +
+    '<p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">— Andrew</p>'
+}
+
+// Email #3 (~72h) -- stage/focus-aware, per brief section 12's examples.
+// action comes from TRAINING_STAGE_ACTION (or DEFAULT_ACTIVATION_ACTION
+// if training_stage still isn't set); focusLabel is only mentioned when
+// primary_focus_area is set to a real topic (not null, not 'not_sure').
+// upsellSentence: brief section 14's subtle-secondary-sentence carve-out
+// (never the main CTA) -- passed in already-resolved from
+// processNewMemberActivation, which is the one place that actually knows
+// both training_stage and checkride_prep_unlocked together.
+function emailTemplateActivationDay3(firstName: string, action: { hash: string; label: string; contextPhrase: string }, focusLabel: string | null, upsellSentence: string): string {
+  const stageLine = action.contextPhrase
+    ? `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">You mentioned you're ${action.contextPhrase}.</p>`
+    : ''
+  const focusLine = focusLabel
+    ? `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">You also told us ${focusLabel} is one of the areas you want to work on — that's worth starting with.</p>`
+    : ''
+  const upsellLine = upsellSentence ? `<p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">${upsellSentence}</p>` : ''
+  return `<h2 style="color:#F4B400;margin:0 0 4px;">This might be useful for where you are in training</h2>` +
+    `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Hi ${firstName}, Andrew here again.</p>` +
+    stageLine + focusLine +
+    `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">I'd start here:</p>` +
+    `<a href="${activationCtaUrl(action.hash, 3)}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">${action.label} →</a>` +
+    upsellLine
+}
+
+// Email #4 (~7d) -- re-engagement, not a hard sell, per brief section 13.
+// Terminal email of the sequence -- NEW_MEMBER_ACTIVATION_SCHEDULE ends
+// at day 7, so a profile that reaches this with no activity simply stops
+// hearing from this sequence afterward (falls to the normal reactivation_
+// inactive / checkride_upsell cadence like any other member from then on).
+function emailTemplateActivationDay7(firstName: string, action: { hash: string; label: string; contextPhrase: string }, upsellSentence: string): string {
+  const upsellLine = upsellSentence ? `<p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">${upsellSentence}</p>` : ''
+  return `<h2 style="color:#F4B400;margin:0 0 4px;">Hi ${firstName}</h2>` +
+    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">You\'ve got an Apex Advantage account, but it looks like you haven\'t had a chance to use it yet.</p>' +
+    `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">If you want the easiest place to start, I'd do this:</p>` +
+    `<a href="${activationCtaUrl(action.hash, 4)}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">${action.label} →</a>` +
+    upsellLine +
+    '<p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">It\'ll take about 5 minutes.</p>' +
+    '<p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">— Andrew</p>'
+}
+
+async function processNewMemberActivation(supabase: any, profile: any, results: any) {
+  if (!NEW_MEMBER_ACTIVATION_SINCE) return // sequence not enabled -- see the constant's own comment
+  const cutover = new Date(NEW_MEMBER_ACTIVATION_SINCE).getTime() - NEW_MEMBER_ACTIVATION_BACKFILL_DAYS * 86400000
+  if (new Date(profile.created_at).getTime() < cutover) return
+
+  // STOP CONDITION: this is the entire "activated" gate for the whole
+  // sequence, recomputed fresh every run (never a cached/client-reported
+  // flag, per the brief's section 10) -- the moment a profile has ANY
+  // meaningful activity, ever, every future run of this function is a
+  // no-op for them. Deliberately does not distinguish "activated before
+  // vs. after which email" here; that attribution (activation_source)
+  // is reconstructed at read time by admin analytics from portal_email_log
+  // + the meaningful-activity timestamp, not stored on the profile.
+  const daysInactive = await daysSinceLastMeaningfulActivity(supabase, profile.id)
+  if (daysInactive < Infinity) return
+
+  const daysSinceSignup = (Date.now() - new Date(profile.created_at).getTime()) / 86400000
+  const action = (profile.training_stage && TRAINING_STAGE_ACTION[profile.training_stage]) || DEFAULT_ACTIVATION_ACTION
+  const focusLabel = profile.primary_focus_area ? FOCUS_AREA_LABEL[profile.primary_focus_area] || null : null
+  const firstName = (profile.full_name || 'there').split(' ')[0]
+  // Brief section 14's subtle-secondary-sentence carve-out -- here,
+  // training_stage genuinely is known (unlike Email #1's own version of
+  // this in create-free-account/index.ts), so this uses the real signal
+  // instead of the checkride_timing proxy.
+  const upsellSentence = profile.training_stage === 'checkride_preparation' && !profile.checkride_prep_unlocked
+    ? "If your checkride is coming up, the full Checkride Prep System is there when you're ready."
+    : ''
+
+  for (const day of [...NEW_MEMBER_ACTIVATION_SCHEDULE].reverse()) {
+    if (daysSinceSignup < day) continue
+    const emailType = 'new_member_activation_day' + day
+    if (await hasMilestoneFired(supabase, profile.id, emailType)) continue
+
+    const emailNumber = NEW_MEMBER_ACTIVATION_SCHEDULE.indexOf(day) + 2 // day1=email#2, day3=email#3, day7=email#4
+    let subject: string
+    let html: string
+    let replyTo: string | undefined
+    if (day === 1) {
+      subject = 'Quick question — have you tried this yet?'
+      html = emailTemplateActivationDay1(firstName)
+      replyTo = ACTIVATION_REPLY_TO
+    } else if (day === 3) {
+      subject = 'This might be useful for where you are in training'
+      html = emailTemplateActivationDay3(firstName, action, focusLabel, upsellSentence)
+    } else {
+      subject = "Still there? Here's an easy place to start"
+      html = emailTemplateActivationDay7(firstName, action, upsellSentence)
+    }
+
+    await supabase.functions.invoke('send-email', { body: { to: profile.email, subject, html: template(html), ...(replyTo ? { replyTo } : {}) } })
+    await markMilestoneSent(supabase, profile.id, emailType)
+    await supabase.from('analytics_events').insert({
+      event_name: `activation_email_${emailNumber}_sent`, profile_id: profile.id,
+      properties: { training_stage: profile.training_stage || null, primary_focus_area: profile.primary_focus_area || null },
+    })
+
+    // Same "exhaust the whole sequence up to this stage" backfill as
+    // processCheckrideUpsell -- a profile that skipped a cron run and is
+    // now past day 7 gets only the day-7 email, not day1+day3+day7 all in
+    // the same run. Back-fills portal_events only, never portal_email_log
+    // or an analytics_events _sent row, since those earlier stages were
+    // never actually sent.
+    for (const earlierDay of NEW_MEMBER_ACTIVATION_SCHEDULE) {
+      if (earlierDay >= day) continue
+      const earlierType = 'new_member_activation_day' + earlierDay
+      if (!(await hasMilestoneFired(supabase, profile.id, earlierType))) {
+        await supabase.from('portal_events').insert({ profile_id: profile.id, event_type: earlierType })
+      }
+    }
+
+    results.new_member_activation++
+    return
+  }
+}
+
+// Real, monitored inbox -- same address create-free-account/index.ts
+// uses for Email #1, and the same one members are already told to use
+// elsewhere in the product (checkride-prep.html's refund-policy FAQ
+// answer). Duplicated rather than imported -- these two functions have
+// no shared module today, same reasoning as WEAK_AREA_CONTENT's own
+// "keep these in sync" comment above.
+const ACTIVATION_REPLY_TO = 'info@apexaviationtx.com'
+
 serve(async (req) => {
   if (CRON_SECRET) {
     const authHeader = req.headers.get('Authorization') || ''
@@ -981,14 +1209,14 @@ serve(async (req) => {
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
-  const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, checkride_upsell: 0, ground_followup: 0, abandoned_checkout: 0, seven_day_active: 0, readiness_assessment_followup: 0, recovery_sortie_notified: 0, reactivation_inactive: 0, weekly_progress: 0, errors: [] as string[] }
+  const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, checkride_upsell: 0, ground_followup: 0, abandoned_checkout: 0, seven_day_active: 0, readiness_assessment_followup: 0, recovery_sortie_notified: 0, reactivation_inactive: 0, weekly_progress: 0, new_member_activation: 0, errors: [] as string[] }
 
   // exam_type hard-coded to 'private_pilot' — see get-premium-content
   // for why instrument content must never be reachable this way yet.
   const [{ data: categories }, { data: questions }, { data: profiles }] = await Promise.all([
     supabase.from('dpe_categories').select('id').eq('exam_type', 'private_pilot'),
     supabase.from('dpe_questions').select('id,category,is_scenario').eq('exam_type', 'private_pilot'),
-    supabase.from('profiles').select('id,email,full_name,checkride_prep_unlocked,created_at,portal_last_active_at,checkride_timing'),
+    supabase.from('profiles').select('id,email,full_name,checkride_prep_unlocked,created_at,portal_last_active_at,checkride_timing,training_stage,primary_focus_area'),
   ])
 
   const categoryIds: string[] = (categories ?? []).map((c: any) => c.id)
@@ -1001,6 +1229,13 @@ serve(async (req) => {
       await processSevenDayActive(supabase, profile, results)
       await processReactivationInactive(supabase, profile, results)
       await processWeeklyProgress(supabase, profile, allQuestions, categoryIds, results)
+      // Runs regardless of checkride_prep_unlocked -- a member who paid
+      // for instant access still needs to actually USE it (brief section
+      // 32, Case 9: "Already premium user -> activation recommendation
+      // still useful, no inappropriate purchase pitch"). The function's
+      // own stop condition (daysSinceLastMeaningfulActivity) already
+      // applies identically either way.
+      await processNewMemberActivation(supabase, profile, results)
       if (profile.checkride_prep_unlocked) {
         await processMilestones(supabase, profile, allQuestions, categoryIds, results)
         await processWeakArea(supabase, profile, allQuestions, categoryIds, results)

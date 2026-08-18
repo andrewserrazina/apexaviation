@@ -27,6 +27,40 @@ const corsHeaders = {
 // (supabase-portal-schema-v39.sql).
 const CHECKRIDE_TIMINGS = ['within_14_days', 'within_30_days', 'within_60_days', 'more_than_60_days', 'not_scheduled']
 
+// New Member Activation, Email #1 -- checkride_timing is the ONLY
+// training-context signal that actually exists at the moment of
+// signup. profiles.training_stage / primary_focus_area (the richer
+// fields the activation-sequence brief assumed would drive Email #1)
+// aren't collected until showWelcomeOnboarding() runs on the member's
+// FIRST portal login (site/portal-stable.js, supabase-portal-schema-
+// v70.sql) -- there's no way to know them yet here. Rather than
+// guessing, Email #1 uses the brief's own explicit "missing training
+// stage" fallback (section 26): a generic, always-correct recommendation
+// (today's free oral-exam question) plus one optional personalization
+// clause built from whatever checkride_timing they did just pick on the
+// signup form. Emails #2-4 (send-lifecycle-emails/index.ts,
+// processNewMemberActivation) run 24h+ after signup, by which point
+// training_stage/primary_focus_area are realistically known -- that's
+// where the richer per-stage CTA mapping from the brief actually applies.
+const CHECKRIDE_TIMING_CLAUSE: Record<string, string> = {
+  within_14_days: " and that your checkride's coming up fast",
+  within_30_days: " and that your checkride's coming up soon",
+  within_60_days: " and that you're working toward your checkride",
+  more_than_60_days: " and that you've got some runway before your checkride",
+  // not_scheduled: intentionally no clause -- nothing meaningful to say
+  // yet, and forcing one risks the exact "I saw you're currently null"
+  // failure mode the brief explicitly warns against (section 26).
+}
+
+// Real, monitored inbox -- already the support contact members are told
+// to use elsewhere in the product (see the "Is there a refund policy?"
+// FAQ answer on checkride-prep.html: "reach out to info@apexaviationtx.com
+// and we'll work it out with you directly"). Reused here rather than
+// inventing a new address, and only wired up because it's genuinely
+// monitored -- an unmonitored noreply@ reply-to would make the email's
+// own "reply to this email" line a lie.
+const ACTIVATION_REPLY_TO = 'info@apexaviationtx.com'
+
 // First-touch UTM capture (supabase-portal-schema-v58.sql) -- these
 // values come from the visitor's browser (analytics-events.js reading
 // its own first-visit-only localStorage keys), so they're treated as
@@ -109,8 +143,25 @@ serve(async (req) => {
     // portal-reset-password.html untouched. Restricted to a plain
     // lowercase-alphanumeric-and-hyphen id since it ends up in a URL and
     // eventually a location.hash on the portal.
-    const safeDest = typeof dest === 'string' && /^[a-z0-9-]{1,60}$/.test(dest) ? dest : ''
-    const redirectTo = `${SITE_ORIGIN}/portal-reset-password.html${safeDest ? `?dest=${safeDest}` : ''}`
+    // A caller-supplied dest (a lead-magnet page's own ?dest=, e.g.
+    // checkride-prep.html's signup link) always wins -- that's a real,
+    // deliberate routing decision already driving conversions elsewhere
+    // and must not be silently overridden by the activation sequence's
+    // own default. Only when nothing was supplied does this fall back to
+    // the dashboard, where today's free oral-exam question already lives
+    // front-and-center (see the "missing training stage" reasoning above)
+    // -- an explicit 'dashboard' dest rather than leaving it blank, so
+    // the welcome email's own copy/CTA and the actual landing page always
+    // agree on what "get started" means.
+    const requestedDest = typeof dest === 'string' && /^[a-z0-9-]{1,60}$/.test(dest) ? dest : ''
+    const safeDest = requestedDest || 'dashboard'
+    // Activation-email click attribution (activation_email_1_clicked,
+    // fired client-side once these UTMs reach portal.html -- see
+    // site/portal-stable.js) only applies to the generic activation
+    // copy, not the lead-magnet variant, matching timingClause/subject/
+    // bodyHtml's own requestedDest branch below.
+    const activationUtm = requestedDest ? '' : '&utm_source=email&utm_medium=email&utm_campaign=new_member_activation&utm_content=welcome_1'
+    const redirectTo = `${SITE_ORIGIN}/portal-reset-password.html?dest=${safeDest}${activationUtm}`
     const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
       type: 'recovery',
       email,
@@ -134,21 +185,64 @@ serve(async (req) => {
     // was already created successfully above, so a failed send here
     // isn't fatal to the request -- but it must be visible to the
     // caller (see emailSent below) rather than swallowed.
-    const emailResult = await supabase.functions.invoke('send-email', {
-      body: {
-        to: email,
-        subject: 'Welcome to Apex Advantage — set your password',
-        html: emailTemplate(`
-          <h2 style="color:#F4B400;margin:0 0 4px;">Welcome to Apex Advantage, ${name.split(' ')[0]}!</h2>
+    const firstName = name.split(' ')[0]
+    // Only added when caller didn't already route this signup somewhere
+    // specific (see safeDest above) -- a lead-magnet signup already has
+    // its own reason for existing, and doesn't need the generic
+    // activation framing layered on top of it.
+    const timingClause = !requestedDest && safeCheckrideTiming ? (CHECKRIDE_TIMING_CLAUSE[safeCheckrideTiming] || '') : ''
+    // Brief section 14's explicit carve-out: a subtle SECONDARY sentence
+    // (never the main CTA) mentioning the paid system, only when
+    // onboarding state is "clearly" checkride preparation. training_stage
+    // itself doesn't exist yet at signup (see the CHECKRIDE_TIMING_CLAUSE
+    // comment above) -- within_14_days is the closest real, known-at-
+    // signup proxy for "clearly" close to the checkride, not a guess.
+    const upsellClause = !requestedDest && safeCheckrideTiming === 'within_14_days'
+      ? '<p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">If your checkride is coming up, the full Checkride Prep System is there when you\'re ready.</p>'
+      : ''
+    const subject = requestedDest ? 'Welcome to Apex Advantage — set your password' : `A good place to start, ${firstName}`
+    const bodyHtml = requestedDest
+      // Lead-magnet signup: the CTA IS the resource they signed up for --
+      // don't compete with it by also recommending QOTD.
+      ? `
+          <h2 style="color:#F4B400;margin:0 0 4px;">Welcome to Apex Advantage, ${firstName}!</h2>
           <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your free member portal account is ready. Set your password to get in:</p>
           <a href="${actionLink}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Set Your Password →</a>
           <p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">Once that's done, sign in any time at advantage.apexaviationtx.com/portal-login.html. From your dashboard you can register for live ground school sessions right away — and unlock the full Checkride Prep System (DPE question bank, scenario training, progress tracking) whenever you're ready.</p>
-        `),
+        `
+      // New Member Activation, Email #1 -- personal note, one
+      // recommended action, one CTA. See CHECKRIDE_TIMING_CLAUSE above
+      // for why this can't yet be training_stage/focus_area-personalized.
+      : `
+          <h2 style="color:#F4B400;margin:0 0 4px;">Andrew here.</h2>
+          <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">I saw you just joined Apex Advantage${timingClause}.</p>
+          <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">I'd start here: set your password, then answer today's oral exam question. It's free for every member and only takes a couple of minutes — the best way to start actually using the portal instead of just looking around.</p>
+          <a href="${actionLink}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Set Up My Account & Get Started →</a>
+          ${upsellClause}
+          <p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">If you get stuck on anything, reply to this email.</p>
+          <p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">Blue skies,<br>Andrew</p>
+        `
+    const emailResult = await supabase.functions.invoke('send-email', {
+      body: {
+        to: email,
+        subject,
+        html: emailTemplate(bodyHtml),
+        ...(requestedDest ? {} : { replyTo: ACTIVATION_REPLY_TO }),
       },
     })
     const emailSent = !emailResult.error
     if (emailResult.error) {
       console.error('create-free-account: send-email failed for', email, emailResult.error)
+    } else if (!requestedDest) {
+      // Server-side send record for the activation funnel (signup ->
+      // email sent -> CTA click -> first meaningful activity) --
+      // same analytics_events table and shape as checkout_abandoned in
+      // send-lifecycle-emails/index.ts. Only logged for the actual
+      // activation-sequence copy, not the lead-magnet variant, so the
+      // funnel isn't diluted by a structurally different email.
+      await supabase.from('analytics_events').insert({
+        event_name: 'activation_email_1_sent', profile_id: created.user.id, properties: { checkride_timing: safeCheckrideTiming },
+      })
     }
 
     return new Response(JSON.stringify({ ok: true, id: created.user.id, emailSent }), {

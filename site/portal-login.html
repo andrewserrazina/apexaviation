@@ -441,11 +441,22 @@
     // Carries a requested portal section through login the same way
     // signup already carries it through create-free-account -- an
     // existing member clicking a "dest=" link (e.g. Book a Mock Oral)
-    // should land on that section too, not just the dashboard.
+    // should land on that section too, not just the dashboard. Also
+    // forwards UTM params so a lifecycle/activation email's click
+    // attribution survives a logged-out round trip through this page
+    // (e.g. new-member activation emails, which link straight here --
+    // see processNewMemberActivation in send-lifecycle-emails/index.ts)
+    // instead of silently dropping at the login form.
     function portalDestUrl() {
-      var dest = (new URLSearchParams(window.location.search)).get('dest') || '';
+      var params = new URLSearchParams(window.location.search);
+      var dest = params.get('dest') || '';
       var safeDest = /^[a-z0-9-]{1,60}$/.test(dest) ? dest : '';
-      return 'portal.html' + (safeDest ? '#' + safeDest : '');
+      var utmPairs = [];
+      ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (k) {
+        if (params.has(k)) utmPairs.push(k + '=' + encodeURIComponent(params.get(k)));
+      });
+      // Query string comes before the hash fragment in a URL.
+      return 'portal.html' + (utmPairs.length ? '?' + utmPairs.join('&') : '') + (safeDest ? '#' + safeDest : '');
     }
 
     // Already signed in? Skip straight to the portal.
