@@ -245,13 +245,21 @@ document.querySelectorAll('.faq-item__question').forEach(btn => {
     overlay.classList.add('active');
   });
 
-  // Trigger: mobile — user scrolls back up significantly after engaging
+  // Trigger: mobile — user scrolls back up to the very top after engaging
+  // deeply with the page. Previously fired on ANY 300px scroll-up after
+  // passing 600px down (cur < maxScroll - 300) -- on any page long enough
+  // to pass 600px in one swipe (most of them), that's indistinguishable
+  // from someone just scrolling up to re-read something, so it was
+  // ambushing normal readers with a full-screen modal, not catching real
+  // exit intent. Requiring a real return to near the top is the standard
+  // mobile proxy for "about to leave" (reaching for the tab bar / back
+  // button), not "scrolled up a bit."
   let maxScroll = 0;
   let mobileTriggered = false;
   window.addEventListener('scroll', () => {
     const cur = window.scrollY;
     if (cur > maxScroll) maxScroll = cur;
-    if (!mobileTriggered && maxScroll > 600 && cur < maxScroll - 300) {
+    if (!mobileTriggered && maxScroll > 800 && cur < 150) {
       mobileTriggered = true;
       triggered = true;
       overlay.classList.add('active');
