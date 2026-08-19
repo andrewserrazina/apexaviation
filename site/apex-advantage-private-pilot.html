@@ -1693,6 +1693,14 @@
       var utmContent = params.get('utm_content') || '';
       var stripped = utmContent.replace(/^gs\d+_/i, '');
       if (!stripped || stripped === utmContent) return ''; // no recognized gsNN_ prefix -- don't guess
+      // Real ad naming also appends a per-instance date stamp, e.g.
+      // gs03_airspace_sep11 -- without stripping it, the derived topic
+      // becomes "Airspace Sep11", which then fails to match ANY class
+      // (matchesTopic() requires every derived word to appear in the
+      // class title, and no title contains "sep11"), silently falling
+      // back to generic hero copy for that entire ad. Confirmed against
+      // a real production ad URL.
+      stripped = stripped.replace(/_(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\d{1,2}$/i, '');
       return stripped.replace(/[_-]+/g, ' ').trim().replace(/\w\S*/g, function (w) {
         return w.charAt(0).toUpperCase() + w.slice(1);
       });
