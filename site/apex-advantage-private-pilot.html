@@ -1664,12 +1664,40 @@
       });
     });
 
-    // ── Hero topic callout (?topic=<text>) — shows a generic message
-    // immediately (no fabricated date), then upgrades to the real
-    // date/time once get_upcoming_ground_school_classes resolves and a
-    // match is found, reusing that same result set below. ──
+    // Derives a topic-matching hint from utm_content when no explicit
+    // ?topic= is present. This account's ad campaigns already follow a
+    // gsNN_<topic-slug> utm_content convention (see the GS02 badge-tweak
+    // block below, and real production ads e.g.
+    // utm_content=gs06_weight_balance) -- without this fallback, every
+    // ad built the normal way (UTMs only, no dedicated ?topic= someone
+    // has to remember to also add) silently loses the deep-linked hero/
+    // highlight experience and falls back to the generic "next class"
+    // instead, which is exactly the bug this was built to fix. Feeds
+    // into the same matchesTopic() word-set fuzzy matching either way
+    // (see that function below), so exact capitalization/spacing here
+    // doesn't need to be perfect -- title-cased purely for callout/
+    // headline display, since ?topic= values are already
+    // author-written and properly cased but a raw utm_content slug
+    // isn't.
+    function getEffectiveTopicParam() {
+      var params = new URLSearchParams(window.location.search);
+      var explicit = params.get('topic');
+      if (explicit) return explicit;
+      var utmContent = params.get('utm_content') || '';
+      var stripped = utmContent.replace(/^gs\d+_/i, '');
+      if (!stripped || stripped === utmContent) return ''; // no recognized gsNN_ prefix -- don't guess
+      return stripped.replace(/[_-]+/g, ' ').trim().replace(/\w\S*/g, function (w) {
+        return w.charAt(0).toUpperCase() + w.slice(1);
+      });
+    }
+
+    // ── Hero topic callout (?topic=<text> or a derived gsNN_ utm_content)
+    // — shows a generic message immediately (no fabricated date), then
+    // upgrades to the real date/time once get_upcoming_ground_school_
+    // classes resolves and a match is found, reusing that same result
+    // set below. ──
     (function () {
-      var topicParam = new URLSearchParams(window.location.search).get('topic');
+      var topicParam = getEffectiveTopicParam();
       var callout = document.getElementById('gsHeroTopicCallout');
       if (!topicParam || !callout) return;
       callout.textContent = 'Looking for ' + topicParam + '? Your next class is highlighted below.';
@@ -1698,7 +1726,7 @@
       var emptyEl = document.getElementById('gsClassesEmpty');
       var errorEl = document.getElementById('gsClassesError');
       var topicBanner = document.getElementById('gsTopicBanner');
-      var topicParam = new URLSearchParams(window.location.search).get('topic');
+      var topicParam = getEffectiveTopicParam();
 
       // Admin scheduling only offers these IANA zones (AdminGroundSchoolSchedule.jsx
       // TIME_ZONES) -- database values stay IANA, this is customer-facing display only.
