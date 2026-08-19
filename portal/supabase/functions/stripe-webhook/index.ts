@@ -417,11 +417,44 @@ async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Che
       ? `<a href="${scheduledClass.meeting_url}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Join the Class →</a>`
       : ''
 
+    // GS -> Portal Growth Funnel, section 5 -- portal-activation section
+    // added below the class confirmation, not replacing it. matchingProfile
+    // (looked up above, before the enrollment insert) tells us whether this
+    // is a genuinely new visitor or someone who already has a portal
+    // account -- an existing member gets sent straight into the portal,
+    // never back through signup. A new visitor gets the exact same
+    // activation URL create-checkout-session's success_url already sends
+    // them to (class_title/class_when/email/name prefill + the
+    // registered=1 copy on portal-login.html), so clicking this email
+    // later has identical behavior to finishing the redirect right after
+    // paying. utm_source/medium/campaign here identify THIS email as the
+    // attribution source for that signup, distinct from whatever ad
+    // originally brought them to the landing page.
+    const activationUrl = matchingProfile
+      ? 'https://advantage.apexaviationtx.com/portal.html#ground-school'
+      : 'https://advantage.apexaviationtx.com/portal-login.html?view=signup&dest=ground-school&registered=1' +
+        `&class_title=${encodeURIComponent(title)}&class_when=${encodeURIComponent(when)}` +
+        `&email=${encodeURIComponent(email)}&name=${encodeURIComponent(fullName)}` +
+        '&utm_source=email&utm_medium=confirmation&utm_campaign=ground_school_registration'
+    const activationCtaText = matchingProfile ? 'Open Apex Advantage →' : 'Activate Your Free Student Portal →'
+
     await sendEmail(supabase, email, `You're registered — ${title}`,
       template(`
         <h2 style="color:#F4B400;margin:0 0 4px;">You're confirmed, ${fullName.split(' ')[0]}!</h2>
         <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">You're registered for <strong style="color:#fff">${title}</strong> on ${when}. See you there.</p>
         ${joinLinkHtml}
+        <hr style="border:none;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0;" />
+        <h3 style="color:#fff;margin:0 0 8px;font-size:17px;">Your Free Student Portal</h3>
+        <p style="color:rgba(255,255,255,0.6);font-size:14px;line-height:1.7;">Your class is reserved. Use Apex Advantage to keep track of your Ground School training and continue studying between classes.</p>
+        <p style="color:rgba(255,255,255,0.6);font-size:14px;line-height:1.7;margin:12px 0 4px;">Inside your free account:</p>
+        <ul style="color:rgba(255,255,255,0.6);font-size:14px;line-height:1.9;margin:0 0 16px;padding-left:20px;">
+          <li>Question of the Day</li>
+          <li>Free DPE practice</li>
+          <li>Your Ground School schedule</li>
+          <li>Training recommendations</li>
+          <li>Pilot resources</li>
+        </ul>
+        <a href="${activationUrl}" style="display:inline-block;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">${activationCtaText}</a>
       `))
     return
   }
