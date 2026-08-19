@@ -177,6 +177,9 @@
         checkridePrepUnlocked: !!(profile && profile.checkride_prep_unlocked),
         groundSchoolPackUnlocked: !!(profile && profile.private_pilot_ground_school_pack_unlocked),
         checkrideTiming: profile && profile.checkride_timing,
+        trainingStage: profile && profile.training_stage,
+        currentRating: (profile && profile.current_rating) || 'private',
+        nextRatingInterest: profile && profile.next_rating_interest,
         totalXp: (profile && profile.total_xp) || 0,
         currentRank: (profile && profile.current_rank) || 'student_pilot',
         streakFreezesBanked: (profile && profile.streak_freezes_banked) || 0,
@@ -5490,12 +5493,27 @@
     }
 
     if (!unlocked) {
+      // Growth Sprint section 15 -- an early-stage member (not yet solo,
+      // no checkride in sight) got the same two-paywall-CTA task list as
+      // someone actively checkride-prepping, making the whole product
+      // read as "only for people already scheduled." training_stage is
+      // real, self-reported data (the onboarding survey at line ~4380),
+      // not a guess -- when it says the member is early, the second task
+      // points at something free and actually useful for that stage
+      // (Ground School) instead of a second unlock pitch.
+      var earlyStage = member && (member.trainingStage === 'just_starting' || member.trainingStage === 'pre_solo');
       tasks.push({ label: 'Unlock the Checkride Prep System', done: false, go: function () { openUnlockModal(); } });
-      tasks.push({ label: 'Try your first training scenario', done: false, go: function () { openUnlockModal(); } });
+      if (earlyStage) {
+        tasks.push({ label: 'Browse upcoming Ground School classes', done: false, go: function () { showSection('ground-school'); } });
+      } else {
+        tasks.push({ label: 'Try your first training scenario', done: false, go: function () { openUnlockModal(); } });
+      }
       return {
         unlocked: false, checkrideDays: checkrideDays, readinessPct: 0, primaryFocus: null,
         nextClass: next, classImminent: classImminent, tasks: tasks,
-        whyText: classImminent ? null : "You haven't unlocked Checkride Prep yet — every recommendation below depends on real study data, so start there."
+        whyText: classImminent ? null : (earlyStage
+          ? "You're early in training — Ground School and free daily questions are the best use of Apex Advantage right now."
+          : "You haven't unlocked Checkride Prep yet — every recommendation below depends on real study data, so start there.")
       };
     }
 
