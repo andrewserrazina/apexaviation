@@ -147,6 +147,24 @@ serve(async (req) => {
       console.error('create-free-account: record_referral_signup threw', err)
     }
 
+    // Growth Sprint section 17 -- CFI/instructor distribution prep.
+    // record_referral_signup() above only records attribution when
+    // p_ref_code matches an existing member's portal_referral_codes row,
+    // so a CFI who shares ?ref=<their own code> without ever having
+    // created a portal account gets silently dropped today. Rather than
+    // building a commission/payout system this sprint (explicitly out of
+    // scope), this just makes every ref code that showed up on a signup
+    // visible to admins -- matched or not -- via the same portal_events
+    // table already used for GS cross-sell/challenge KPIs, so which
+    // codes are actually driving signups is queryable immediately.
+    if (safeRef) {
+      await supabase.from('portal_events').insert({
+        profile_id: created.user.id, event_type: 'signup_ref_code_used', metadata: { ref_code: safeRef },
+      }).then((res: { error: unknown }) => {
+        if (res.error) console.error('create-free-account: signup_ref_code_used log failed', res.error)
+      })
+    }
+
     // Without an explicit redirectTo, generateLink falls back to whatever
     // the project's Auth "Site URL" is set to -- which defaults to
     // http://localhost:3000 on a fresh Supabase project until someone

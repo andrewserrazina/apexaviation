@@ -93,9 +93,14 @@ export default function Analytics() {
         // and the Ground School weak-area cross-sell. Both are new/low-volume
         // touchpoints, so a direct select is enough -- no RPC needed yet.
         supabase.from('portal_referrals').select('status, created_at').gte('created_at', thirtyDaysAgoIso),
-        supabase.from('portal_events').select('event_type, profile_id, created_at').in('event_type', [
+        supabase.from('portal_events').select('event_type, profile_id, metadata, created_at').in('event_type', [
           'gs_cross_sell_shown', 'gs_cross_sell_clicked',
           'challenge_started', 'challenge_completed', 'challenge_upgrade_cta_clicked',
+          // Growth Sprint section 17 -- CFI/instructor ref-code
+          // attribution, logged unconditionally on signup regardless of
+          // whether the code matched an existing member (create-free-
+          // account/index.ts), since most CFI codes won't.
+          'signup_ref_code_used',
         ]).gte('created_at', thirtyDaysAgoIso),
       ])
 
@@ -114,6 +119,15 @@ export default function Analytics() {
       const challengeStarted = new Set(gsCrossSellRows.filter(r => r.event_type === 'challenge_started').map(r => r.profile_id)).size
       const challengeCompleted = new Set(gsCrossSellRows.filter(r => r.event_type === 'challenge_completed').map(r => r.profile_id)).size
       const challengeUpgradeClicks = new Set(gsCrossSellRows.filter(r => r.event_type === 'challenge_upgrade_cta_clicked').map(r => r.profile_id)).size
+
+      const refCodeCounts = {}
+      gsCrossSellRows.filter(r => r.event_type === 'signup_ref_code_used').forEach(r => {
+        const code = r.metadata?.ref_code
+        if (!code) return
+        refCodeCounts[code] = (refCodeCounts[code] ?? 0) + 1
+      })
+      const refCodeBreakdown = Object.entries(refCodeCounts).map(([code, count]) => ({ code, count })).sort((a, b) => b.count - a.count)
+
       setGrowthKpis({
         referralsTotal: referralRows.length,
         referralsSignedUp: referralRows.filter(r => r.status === 'signed_up' || r.status === 'redeemed').length,
@@ -124,6 +138,7 @@ export default function Analytics() {
         challengeCompleted,
         challengeCompletionRatePct: challengeStarted > 0 ? Math.round((challengeCompleted / challengeStarted) * 1000) / 10 : null,
         challengeUpgradeClicks,
+        refCodeBreakdown,
       })
 
       // ── DPE Question Bank engagement ──
@@ -515,6 +530,25 @@ export default function Analytics() {
           <p className="stat-card__sub">clicked "Unlock Full Checkride Prep" after Day 7</p>
         </div>
       </div>
+
+      {growthKpis?.refCodeBreakdown?.length > 0 && (
+        <section className="card" style={{ marginTop: 24 }}>
+          <h3 className="card__title">Referral / CFI Codes Used at Signup</h3>
+          <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: -4, marginBottom: 4 }}>
+            Every ?ref= code seen at signup, whether or not it matched an existing member's referral code — a code with signups here but 0 in Referral Signups above is likely a CFI/instructor code with no portal account of their own.
+          </p>
+          <div className="table-wrap" style={{ marginTop: 12 }}>
+            <table className="data-table">
+              <thead><tr><th>Code</th><th>Signups (30d)</th></tr></thead>
+              <tbody>
+                {growthKpis.refCodeBreakdown.map(row => (
+                  <tr key={row.code}><td><strong>{row.code}</strong></td><td>{row.count}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       <div className="page-header" style={{ marginTop: 40 }}>
         <div>

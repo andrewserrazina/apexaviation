@@ -455,6 +455,14 @@
       ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (k) {
         if (params.has(k)) utmPairs.push(k + '=' + encodeURIComponent(params.get(k)));
       });
+      // Growth Sprint section 18 -- content deep links (e.g. a Weather
+      // video linking to ?topic=weather). Forwarded the same way as the
+      // UTM params above so it survives the login redirect and reaches
+      // portal.html's own enforceTopicDeepLink(), which does the real
+      // (bounded-length, letters/numbers/spaces/&/- only) validation
+      // before ever using it to look up a category.
+      var topic = params.get('topic') || '';
+      if (topic && topic.length <= 60 && /^[A-Za-z0-9 &-]+$/.test(topic)) utmPairs.push('topic=' + encodeURIComponent(topic));
       // Query string comes before the hash fragment in a URL.
       return 'portal.html' + (utmPairs.length ? '?' + utmPairs.join('&') : '') + (safeDest ? '#' + safeDest : '');
     }

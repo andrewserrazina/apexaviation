@@ -3783,6 +3783,34 @@
      them from the address bar later, e.g. a support screenshot); they're
      already captured into localStorage by analytics-events.js
      regardless of when/whether this URL gets cleaned. ─────────────── */
+  // Growth Sprint section 18 -- content deep links. Reuses the exact
+  // normalize+word-subset matcher already built for the Ground School
+  // weak-area cross-sell (findGsClassForWeakArea/normalizeGsMatchWords)
+  // to resolve a real ?topic= param (e.g. a Weather video's link) to a
+  // real dpe_categories row, then hands off to the existing
+  // goToCategory()/showSection() routing -- no new navigation mechanism.
+  // No-ops for locked members rather than forcing an unlock pitch:
+  // CATEGORY_META is empty until checkridePrepUnlocked anyway, and
+  // enforceUpgradeDeepLink() below already owns the "sell the unlock"
+  // deep-link path via ?upgrade=checkride-prep.
+  function enforceTopicDeepLink() {
+    var params = new URLSearchParams(window.location.search);
+    var topic = params.get('topic');
+    if (!topic || !member || !member.checkridePrepUnlocked) return;
+    var topicWords = normalizeGsMatchWords(topic);
+    if (!topicWords.length) return;
+    var cat = Object.keys(CATEGORY_META).filter(function (c) {
+      var haystack = normalizeGsMatchWords(CATEGORY_META[c].label);
+      return topicWords.every(function (w) { return haystack.indexOf(w) !== -1; });
+    })[0];
+    if (!cat) return;
+    goToCategory(cat);
+    params.delete('topic');
+    var cleanedSearch = params.toString();
+    if (history.replaceState) history.replaceState(null, '', window.location.pathname + (cleanedSearch ? '?' + cleanedSearch : '') + window.location.hash);
+    if (window.apexTrack) apexTrack('content_deeplink_topic_matched', { topic: topic, category: cat });
+  }
+
   function enforceUpgradeDeepLink() {
     var params = new URLSearchParams(window.location.search);
     if (params.get('upgrade') !== 'checkride-prep') return;
@@ -5996,6 +6024,7 @@
       enforceGuidedNotesAccess();
       enforceAskAndrewAccess();
       enforceUpgradeDeepLink();
+      enforceTopicDeepLink();
       renderCheckrideCountdown();
       renderMembership();
       renderMembershipSubscription();
