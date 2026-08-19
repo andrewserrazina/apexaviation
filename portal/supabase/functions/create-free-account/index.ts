@@ -165,6 +165,25 @@ serve(async (req) => {
       })
     }
 
+    // GS -> Portal Growth Funnel, section 4 -- Purchase to Account
+    // Attribution. handleGroundSchoolRegistration (stripe-webhook)
+    // already links a $25 class purchase to an existing profile by email
+    // at checkout time; this covers the other direction, someone who
+    // bought anonymously (checkout never requires an account) and is
+    // only now creating one. Without this, get_my_ground_school_
+    // enrollments() (v65.sql, strictly profile_id = auth.uid()) would
+    // never surface a class they already paid for. Same non-fatal
+    // pattern as record_referral_signup above -- a reconciliation miss
+    // is not a reason to fail account creation.
+    try {
+      const { error: gsClaimError } = await supabase.rpc('claim_ground_school_enrollments_by_email', {
+        p_profile_id: created.user.id, p_email: email,
+      })
+      if (gsClaimError) console.error('create-free-account: claim_ground_school_enrollments_by_email failed', gsClaimError)
+    } catch (err) {
+      console.error('create-free-account: claim_ground_school_enrollments_by_email threw', err)
+    }
+
     // Without an explicit redirectTo, generateLink falls back to whatever
     // the project's Auth "Site URL" is set to -- which defaults to
     // http://localhost:3000 on a fresh Supabase project until someone

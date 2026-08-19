@@ -299,7 +299,16 @@
     document.getElementById('forgotToggle').addEventListener('click', function () { showView('forgot'); });
     document.getElementById('backToSignIn').addEventListener('click', function () { showView('signin'); });
     document.getElementById('goToSignup').addEventListener('click', function () { showView('signup'); });
-    document.getElementById('backToSignInFromSignup').addEventListener('click', function () { showView('signin'); });
+    document.getElementById('backToSignInFromSignup').addEventListener('click', function () {
+      // Carries the email over for the common case this link exists for:
+      // create-free-account already replies "An account with this email
+      // already exists. Try signing in instead." (see the signup error
+      // handler below) -- no reason to make them retype it right after
+      // being told it's already theirs.
+      var typedEmail = document.getElementById('signupEmail').value.trim();
+      if (typedEmail) document.getElementById('email').value = typedEmail;
+      showView('signin');
+    });
     document.getElementById('backToSignInFromSuccess').addEventListener('click', function () { showView('signin'); });
 
     // Deep link support: portal-login.html?view=signup or #signup
@@ -347,15 +356,41 @@
       document.getElementById('signupSub').textContent = FREE_GUIDE_COPY[signupDest].sub;
     }
 
+    // GS -> Portal Growth Funnel, section 3 -- a Ground School purchaser
+    // (checkout never requires an account) with no session lands here via
+    // portal.html's no-session redirect, which forwards registered=1 plus
+    // the real class_title/class_when/email/name from the completed
+    // purchase (create-checkout-session -> portal-stable.js). Shows real
+    // "you're booked" copy instead of the generic signup pitch, and jumps
+    // straight to the signup view (view=signup isn't set by that redirect,
+    // only dest=ground-school -- a portal *section*, not a login *view*).
+    (function () {
+      var gsParams = new URLSearchParams(window.location.search);
+      if (gsParams.get('registered') !== '1') return;
+      showView('signup');
+      var classTitle = gsParams.get('class_title');
+      var classWhen = gsParams.get('class_when');
+      document.getElementById('signupHeadline').textContent = 'Your class is booked.';
+      document.getElementById('signupBadge').textContent = (classTitle && classWhen)
+        ? '✓ Registered — ' + classTitle + ', ' + classWhen
+        : '✓ Your Ground School registration is confirmed';
+      document.getElementById('signupSub').textContent = 'Now set up your free Apex Advantage student portal to keep your Ground School schedule in one place, prepare before class, answer your daily DPE question, and continue training between sessions.';
+      document.getElementById('signupSubmit').textContent = 'Activate My Free Student Portal';
+    })();
+
     // Prefills from the free Readiness Assessment (site/readiness-assessment.html)
     // -- ?email=... and ?timing=... carry forward what the visitor already
     // gave the quiz, so they don't have to re-enter their email or re-pick
-    // their checkride timing a second time right after providing it.
+    // their checkride timing a second time right after providing it. Also
+    // covers ?name=..., forwarded the same way from the Ground School
+    // purchase-activation redirect above.
     (function () {
       var params = new URLSearchParams(window.location.search);
       var prefillEmail = params.get('email');
+      var prefillName = params.get('name');
       var prefillTiming = params.get('timing');
       if (prefillEmail) document.getElementById('signupEmail').value = prefillEmail;
+      if (prefillName) document.getElementById('signupName').value = prefillName;
       var timingSelect = document.getElementById('signupCheckrideTiming');
       if (prefillTiming && timingSelect && Array.prototype.some.call(timingSelect.options, function (o) { return o.value === prefillTiming; })) {
         timingSelect.value = prefillTiming;
@@ -561,9 +596,14 @@
         // Supabase's own reset endpoint, not this same email) instead of
         // promising an email that may never arrive.
         var resetBtn = document.getElementById('signupSuccessResetBtn');
+        // Same "class is booked" context as the signup-form copy above --
+        // avoids the generic post-signup copy telling a purchaser who
+        // just paid for a class that they're "ready to book ground school
+        // sessions", which reads as if the purchase didn't register.
+        var wasGsRegistration = (new URLSearchParams(window.location.search)).get('registered') === '1';
         if (res.data.emailSent === false) {
           document.getElementById('signupSuccessHeading').textContent = 'Account created.';
-          document.getElementById('signupSuccessSub').textContent = "Your account is ready, but we couldn't send the welcome email just now. Reset your password below to get in.";
+          document.getElementById('signupSuccessSub').textContent = "Your account is ready, but we couldn't send the welcome email just now. Reset your password below to get in" + (wasGsRegistration ? ' and see your class.' : '.');
           resetBtn.style.display = 'block';
           resetBtn.onclick = function () {
             showView('forgot');
@@ -571,7 +611,9 @@
           };
         } else {
           document.getElementById('signupSuccessHeading').textContent = 'Check your email.';
-          document.getElementById('signupSuccessSub').textContent = "We sent you a link to set your password. Once that's done, sign in and you're ready to book ground school sessions — or unlock the Checkride Prep System whenever you're ready.";
+          document.getElementById('signupSuccessSub').textContent = wasGsRegistration
+            ? "We sent you a link to set your password. Once that's done, sign in and your class will be waiting for you — plus your daily DPE question and free training resources."
+            : "We sent you a link to set your password. Once that's done, sign in and you're ready to book ground school sessions — or unlock the Checkride Prep System whenever you're ready.";
           resetBtn.style.display = 'none';
         }
         showView('signup-success');

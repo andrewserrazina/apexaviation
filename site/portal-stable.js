@@ -153,6 +153,19 @@
       var loginQs = [];
       if (deepLinkParams.get('upgrade') === 'checkride-prep') {
         loginQs.push('dest=checkride-prep');
+      } else if (deepLinkParams.get('registered') === '1') {
+        // GS -> Portal Growth Funnel, section 3 -- an anonymous $25 Ground
+        // School purchaser (checkout never requires an account) landing
+        // here with no session used to lose every bit of purchase context
+        // right at this point: only dest/UTMs forwarded below, silently
+        // dropping registered=1, amount_cents, class_title/class_when,
+        // email, and name. Forwarding them lets portal-login.html show
+        // real "You're booked for X on Y" copy and a prefilled signup
+        // form instead of a bare, contextless login screen.
+        loginQs.push('dest=ground-school', 'registered=1');
+        ['amount_cents', 'class_title', 'class_when', 'email', 'name'].forEach(function (k) {
+          if (deepLinkParams.has(k)) loginQs.push(k + '=' + encodeURIComponent(deepLinkParams.get(k)));
+        });
       } else if (window.location.hash) {
         var hashDest = window.location.hash.slice(1);
         if (/^[a-z0-9-]{1,60}$/.test(hashDest)) loginQs.push('dest=' + hashDest);
