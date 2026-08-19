@@ -468,6 +468,13 @@
       .gs-calendar__cell { min-height: 64px; padding: 4px; }
       .gs-calendar__day-label { padding: 6px 2px; font-size: 9px; }
       .gs-cal-event { font-size: 9px; padding: 2px 4px; }
+      /* A ~45px-wide cell has no room for any part of a class title --
+         it was always truncating to a meaningless word fragment (e.g.
+         "Mod...") rather than anything a visitor could act on. List
+         view is the default on mobile now (see setView() call above),
+         but if someone taps back into Calendar manually, showing just
+         the time is honest; a random truncated fragment isn't. */
+      .gs-cal-event span:last-child { display: none; }
     }
 
     /* Sticky mobile CTA */
@@ -2100,7 +2107,15 @@
         calMonth = new Date(rows[0].class_date + 'T00:00:00');
         calMonth.setDate(1);
         renderCalendar(rows);
-        setView('calendar');
+        // Calendar's 7-column grid has no room for a real class time +
+        // title inside each cell on a phone (390-430px) -- every event
+        // collapses to "7:00 PM Mod..." no matter how many classes are
+        // actually scheduled, since the cell itself is only ~45px wide,
+        // not because of clipping (that's already fixed above via
+        // min-width:0). List view already renders every class as a
+        // normal, fully-readable card, so mobile defaults there;
+        // desktop/tablet keep Calendar, where the grid has real room.
+        setView(window.innerWidth < 640 ? 'list' : 'calendar');
 
         if (topicParam && matchedRow) {
           topicBanner.textContent = 'You came for ' + topicParam + ' — highlighted below.';
