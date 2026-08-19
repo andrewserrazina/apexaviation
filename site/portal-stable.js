@@ -914,11 +914,11 @@
   })();
 
   function loadGroundSchool() {
-    if (groundSchoolLoaded) return;
+    if (groundSchoolLoaded) return Promise.resolve();
     groundSchoolLoaded = true;
     var today = new Date().toISOString().slice(0, 10);
 
-    Promise.all([
+    return Promise.all([
       apexSupabase.from('ground_sessions')
         .select('*')
         .gte('scheduled_at', new Date().toISOString())
@@ -995,6 +995,32 @@
       emptyEl.style.display = 'none';
       renderGroundSchoolView(groundSchoolView);
     });
+  }
+
+  // Growth Sprint section 12 -- reuses the exact normalize+word-subset
+  // matching approach as matchesTopic()/normalizeTopicWords() in
+  // site/apex-advantage-private-pilot.html (duplicated per this codebase's
+  // established cross-file convention, since that page has no shared
+  // module to import from) to find a real upcoming class whose title or
+  // module_title covers a member's weakest ACS category.
+  var GS_MATCH_STOPWORDS = { and: 1, the: 1, a: 1, of: 1, for: 1, to: 1 };
+  function normalizeGsMatchWords(text) {
+    return (text || '')
+      .toLowerCase()
+      .replace(/&/g, ' and ')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim()
+      .split(/\s+/)
+      .filter(function (w) { return w && !GS_MATCH_STOPWORDS[w]; });
+  }
+  function findGsClassForWeakArea(label) {
+    var topicWords = normalizeGsMatchWords(label);
+    if (!topicWords.length) return null;
+    return groundSchoolSessions.filter(function (s) {
+      if (s.alreadyRegistered) return false;
+      var haystack = normalizeGsMatchWords((s.category || '') + ' ' + (s.title || ''));
+      return topicWords.every(function (w) { return haystack.indexOf(w) !== -1; });
+    })[0] || null;
   }
 
   function renderGroundSchoolView(mode) {
@@ -2675,6 +2701,28 @@
     favBtn.classList.toggle('active', !!favorites[qotdQuestion.id]);
   }
 
+  // Hours until the next UTC calendar day -- matches get_daily_question()'s
+  // own extract(doy from now()) rotation (supabase-portal-schema-v68.sql)
+  // and the client-side dayOfYear() fallback above, so "new question in
+  // X hours" is never off from when the question actually changes.
+  // Informational only, no countdown-timer urgency styling -- brief
+  // explicitly says not to manufacture urgency here.
+  function hoursUntilNextQotd() {
+    var now = new Date();
+    var nextUtcMidnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0);
+    return Math.max(1, Math.round((nextUtcMidnight - now.getTime()) / 3600000));
+  }
+
+  function renderQotdStreakNote() {
+    var el = document.getElementById('qotdStreakNote');
+    if (!el) return;
+    var s = computeStreaks();
+    var streakLine = s.current >= 2
+      ? "You're on a " + s.current + "-day streak. "
+      : (s.current === 1 ? "Streak started today. " : '');
+    el.textContent = streakLine + 'New DPE question every day — come back tomorrow (unlocks in about ' + hoursUntilNextQotd() + 'h).';
+  }
+
   function renderQotd() {
     if (!qotdQuestion) return;
     document.getElementById('qotdCategory').textContent = qotdQuestion.sectionLabel;
@@ -2687,6 +2735,7 @@
     document.getElementById('qotdPrompt').style.display = alreadyRevealed ? 'none' : '';
     document.getElementById('qotdAnswer').style.display = alreadyRevealed ? 'block' : 'none';
     updateQotdButtons();
+    if (alreadyRevealed) renderQotdStreakNote();
   }
 
   document.getElementById('qotdRevealBtn').addEventListener('click', function () {
@@ -2696,6 +2745,9 @@
     touchLastViewed(qotdQuestion.id);
     answeredCounts[qotdQuestion.id] = (answeredCounts[qotdQuestion.id] || 0) + 1;
     upsertRow('portal_question_progress', 'question_id', qotdQuestion.id, { answered_count: answeredCounts[qotdQuestion.id] });
+    // touchLastViewed() above already bumped today's study day, so the
+    // streak count here already reflects this reveal.
+    renderQotdStreakNote();
   });
   document.getElementById('qotdStudiedBtn').addEventListener('click', function () {
     if (!qotdQuestion) return;
@@ -4399,6 +4451,16 @@
   /* ══════════════════════════════════════════════════════════════
      CHECKRIDE DATE + COUNTDOWN
      ══════════════════════════════════════════════════════════════ */
+  // Growth Sprint section 13 -- personalizes the unset-date prompt using
+  // the checkride_timing bucket the member already picked at signup
+  // (create-free-account), rather than inventing a new onboarding step.
+  // Real signal, not fabricated urgency.
+  var CHECKRIDE_TIMING_PROMPT_COPY = {
+    within_14_days: 'You mentioned your checkride is within 14 days — add the exact date to unlock a live countdown and your pre-checkride plan.',
+    within_30_days: 'You mentioned your checkride is within 30 days — add the exact date to unlock a live countdown and your pre-checkride plan.',
+    within_60_days: 'You mentioned your checkride is within 60 days — add the exact date to unlock a live countdown and your pre-checkride plan.'
+  };
+
   function renderCheckrideCountdown() {
     var setEl = document.getElementById('checkrideCountdownSet');
     var unsetEl = document.getElementById('checkrideCountdownUnset');
@@ -4407,6 +4469,11 @@
       setEl.style.display = 'none';
       unsetEl.style.display = 'block';
       card.className = 'portal-card portal-countdown';
+      var copyEl = document.getElementById('checkrideCountdownUnsetCopy');
+      if (copyEl) {
+        copyEl.textContent = (member && CHECKRIDE_TIMING_PROMPT_COPY[member.checkrideTiming]) ||
+          'Add your expected checkride date to see a live countdown and get more urgency-aware reminders.';
+      }
       return;
     }
     unsetEl.style.display = 'none';
@@ -4432,6 +4499,7 @@
       if (res.error) { toast('Could not save date: ' + res.error.message); return; }
       checkrideDate = val;
       renderCheckrideCountdown();
+      renderMyTraining();
       toast('Checkride date saved.');
     });
   });
@@ -5555,6 +5623,36 @@
       preclassEl.hidden = true;
     }
 
+    // Growth Sprint section 12 -- "Want help with this live?" cross-sell,
+    // real scheduled-class data only. Skipped if the same class is already
+    // the imminent-class banner above, or if the member has no weak area
+    // yet (locked, or already 100% across the board).
+    var crossSellEl = document.getElementById('trainingPlanGsCrossSell');
+    if (crossSellEl) {
+      var gsMatch = plan.unlocked && plan.primaryFocus ? findGsClassForWeakArea(plan.primaryFocus.label) : null;
+      if (gsMatch && !(plan.classImminent && plan.nextClass && String(plan.nextClass.id) === String(gsMatch.id))) {
+        crossSellEl.hidden = false;
+        var gsWhen = new Date(gsMatch.scheduled_at);
+        var gsPriceLabel = gsMatch.packCovers ? 'Included in Your Pack' : '$25';
+        crossSellEl.innerHTML =
+          '<div><div class="portal-header__eyebrow">Want Help With This Live?</div><h3>' + escapeHtmlSafe(gsMatch.title) + '</h3><p>' +
+          gsWhen.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' · ' + gsPriceLabel +
+          (typeof gsMatch.spotsLeft === 'number' ? ' · ' + Math.max(gsMatch.spotsLeft, 0) + ' seat' + (gsMatch.spotsLeft === 1 ? '' : 's') + ' left' : '') +
+          '</p></div>' +
+          '<div class="portal-my-training__preclass-actions">' +
+          '<button type="button" class="btn btn--primary" id="trainingPlanGsCrossSellBtn">View Live Class →</button>' +
+          '</div>';
+        var crossSellBtn = document.getElementById('trainingPlanGsCrossSellBtn');
+        if (crossSellBtn) crossSellBtn.addEventListener('click', function () {
+          apexSupabase.from('portal_events').insert({ profile_id: member.id, event_type: 'gs_cross_sell_clicked', metadata: { category: plan.primaryFocus.cat, class_id: gsMatch.id } });
+          showSection('ground-school');
+        });
+        logEventOnce('gs_cross_sell_shown', { category: plan.primaryFocus.cat, class_id: gsMatch.id });
+      } else {
+        crossSellEl.hidden = true;
+      }
+    }
+
     var checkrideEl = document.getElementById('trainingPlanCheckride');
     checkrideEl.querySelector('h3').textContent = plan.checkrideDays === null ? 'Not set'
       : plan.checkrideDays < 0 ? 'Passed'
@@ -5681,6 +5779,12 @@
       renderAcsCoverage();
       computeQotdQuestion().then(renderQotd);
       renderMyTraining();
+      // Growth Sprint section 12 -- loadGroundSchool() is normally lazy
+      // (only triggered on Ground School section entry), but the weak-area
+      // cross-sell needs real class data on the very first dashboard
+      // render too. Reuses the same loader/data the Ground School section
+      // itself renders from rather than a second parallel fetch.
+      loadGroundSchool().then(renderMyTraining);
       renderWeeklyProgress();
       renderAiDpeHistory();
       renderRecommendedNextStep();

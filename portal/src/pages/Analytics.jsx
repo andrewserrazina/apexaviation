@@ -62,6 +62,7 @@ export default function Analytics() {
   const [retentionError, setRetentionError] = useState(null)
   const [activationKpis, setActivationKpis] = useState(null)
   const [activationError, setActivationError] = useState(null)
+  const [growthKpis, setGrowthKpis] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -69,7 +70,9 @@ export default function Analytics() {
       const months = last12Months()
       const firstMonth = `${months[0].year}-${String(months[0].month + 1).padStart(2, '0')}-01`
 
-      const [invoicesRes, logbookRes, studentsRes, activeRes, instrRes, dpeCatRes, dpeQRes, dpeProgressRes, retentionRes, activationRes] = await Promise.all([
+      const thirtyDaysAgoIso = new Date(Date.now() - 30 * 86400000).toISOString()
+
+      const [invoicesRes, logbookRes, studentsRes, activeRes, instrRes, dpeCatRes, dpeQRes, dpeProgressRes, retentionRes, activationRes, referralsRes, gsCrossSellRes] = await Promise.all([
         supabase.from('invoices').select('amount_cents, status, issued_at').gte('issued_at', firstMonth),
         supabase.from('logbook_entries').select('duration_hours, date').gte('date', firstMonth),
         supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'student'),
@@ -86,12 +89,29 @@ export default function Analytics() {
         // above, which covers general retention, not this specific
         // sequence). Default 30-day window.
         supabase.rpc('get_activation_email_kpis'),
+        // Growth Sprint Tier 1 -- referral fix (supabase-portal-schema-v73.sql)
+        // and the Ground School weak-area cross-sell. Both are new/low-volume
+        // touchpoints, so a direct select is enough -- no RPC needed yet.
+        supabase.from('portal_referrals').select('status, created_at').gte('created_at', thirtyDaysAgoIso),
+        supabase.from('portal_events').select('event_type, created_at').in('event_type', ['gs_cross_sell_shown', 'gs_cross_sell_clicked']).gte('created_at', thirtyDaysAgoIso),
       ])
 
       if (retentionRes.error) setRetentionError(retentionRes.error.message)
       else setRetentionKpis(retentionRes.data)
       if (activationRes.error) setActivationError(activationRes.error.message)
       else setActivationKpis(activationRes.data)
+
+      const referralRows = referralsRes.data ?? []
+      const gsCrossSellRows = gsCrossSellRes.data ?? []
+      const gsShown = gsCrossSellRows.filter(r => r.event_type === 'gs_cross_sell_shown').length
+      const gsClicked = gsCrossSellRows.filter(r => r.event_type === 'gs_cross_sell_clicked').length
+      setGrowthKpis({
+        referralsTotal: referralRows.length,
+        referralsSignedUp: referralRows.filter(r => r.status === 'signed_up' || r.status === 'redeemed').length,
+        gsCrossSellShown: gsShown,
+        gsCrossSellClicked: gsClicked,
+        gsCrossSellClickRatePct: gsShown > 0 ? Math.round((gsClicked / gsShown) * 1000) / 10 : null,
+      })
 
       // ── DPE Question Bank engagement ──
       // "Engaged" = completed (explicit "Mark as Studied") OR answered_count
@@ -436,6 +456,33 @@ export default function Analytics() {
           </p>
         </>
       )}
+
+      <div className="page-header" style={{ marginTop: 40 }}>
+        <div>
+          <h2 className="page-title" style={{ fontSize: 22 }}>Growth &amp; Habit Loop</h2>
+          <p className="page-sub">Referrals (portal_referrals) and Ground School weak-area cross-sell (portal_events) — last 30 days</p>
+        </div>
+      </div>
+      <div className="stat-grid">
+        <div className="stat-card">
+          <p className="stat-card__label">Referral Signups</p>
+          <p className="stat-card__value">{growthKpis?.referralsSignedUp ?? 0}</p>
+          <p className="stat-card__sub">of {growthKpis?.referralsTotal ?? 0} referrals recorded</p>
+        </div>
+        <div className="stat-card">
+          <p className="stat-card__label">GS Cross-Sell Shown</p>
+          <p className="stat-card__value">{growthKpis?.gsCrossSellShown ?? 0}</p>
+          <p className="stat-card__sub">members with a matching weak-area class</p>
+        </div>
+        <div className="stat-card">
+          <p className="stat-card__label">GS Cross-Sell Clicked</p>
+          <p className="stat-card__value">{growthKpis?.gsCrossSellClicked ?? 0}</p>
+        </div>
+        <div className="stat-card">
+          <p className="stat-card__label">GS Cross-Sell Click Rate</p>
+          <p className="stat-card__value">{fmtKpi(growthKpis?.gsCrossSellClickRatePct, '%')}</p>
+        </div>
+      </div>
 
       <div className="page-header" style={{ marginTop: 40 }}>
         <div>
