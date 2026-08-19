@@ -374,6 +374,12 @@
               <p>Come back tomorrow to keep your streak alive.</p>
             </div>
           </div>
+
+          <!-- Growth Sprint section 12: weak-area -> upcoming live class
+               cross-sell. Real scheduled-class data only (loadGroundSchool()
+               in portal-stable.js, same source the Ground School section
+               itself renders from) -- never fabricated availability. -->
+          <div class="portal-my-training__preclass" id="trainingPlanGsCrossSell" style="margin-top:16px" hidden></div>
         </div>
 
         <!-- Your Week -- Retention Sprint Tier 2. Real activity only, no
@@ -396,6 +402,21 @@
           </div>
         </div>
 
+        <!-- 7-Day Checkride Challenge -- Growth Sprint Tier 2. Free-tier
+             feature: pulls a small per-category slice of the DPE bank via
+             get_challenge_day_questions() (supabase-portal-schema-v74.sql),
+             which -- like get_daily_question() before it -- is granted to
+             every authenticated member regardless of checkride_prep_
+             unlocked, since DPE_DATA/CATEGORY_META are empty client-side
+             for locked members. Progress is tracked via existing
+             portal_events rows (challenge_day_N_completed), reusing
+             loggedEventTypes rather than a new table. -->
+        <div class="portal-card" id="challengeCard" style="margin-bottom:24px">
+          <div class="portal-header__eyebrow" style="margin-bottom:8px">7-Day Checkride Challenge</div>
+          <div id="challengeDots" style="display:flex;gap:8px;margin-bottom:16px"></div>
+          <div id="challengeBody"></div>
+        </div>
+
         <!-- Checkride Countdown + Mock Oral Booking -->
         <div class="portal-grid portal-grid--2" style="margin-bottom:24px">
           <div class="portal-card portal-countdown" id="checkrideCountdownCard">
@@ -406,7 +427,7 @@
             </div>
             <div id="checkrideCountdownUnset">
               <div class="portal-header__eyebrow" style="margin-bottom:8px">Checkride Countdown</div>
-              <p style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:14px">Add your expected checkride date to see a live countdown and get more urgency-aware reminders.</p>
+              <p id="checkrideCountdownUnsetCopy" style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:14px">Add your expected checkride date to see a live countdown and get more urgency-aware reminders.</p>
               <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
                 <input type="date" id="checkrideDateInput" style="padding:11px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none" />
                 <button class="btn btn--primary" id="checkrideDateSaveBtn">Save Date</button>
@@ -457,6 +478,13 @@
               <button class="btn btn--ghost" id="qotdStudiedBtn">Mark as Studied</button>
               <button class="btn btn--ghost" id="qotdFavBtn">☆ Star for review</button>
             </div>
+            <!-- Habit-loop reinforcement, shown once the member has
+                 actually revealed today's question -- see renderQotd()/
+                 the reveal click handler in portal-stable.js. Streak
+                 count reuses computeStreaks() (the same function driving
+                 the streak card elsewhere on this dashboard), not a
+                 separate/invented number. -->
+            <div id="qotdStreakNote" style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08);font-size:13px;color:rgba(255,255,255,0.5)"></div>
           </div>
         </div>
 
@@ -595,6 +623,17 @@
           <p style="color:rgba(255,255,255,0.65);line-height:1.7;font-size:14px;margin-bottom:14px">Every private pilot applicant eventually asks the same question: "what is my DPE actually going to ask me?" There's no official list — and there shouldn't be, since a real oral exam is a scenario-based conversation, not a fixed script. But after years of training pilots and talking with examiners, certain questions come up again and again, because they sit at the center of what a DPE is genuinely trying to find out: are you the kind of pilot who can be trusted to make good decisions alone in an airplane?</p>
           <p style="color:rgba(255,255,255,0.65);line-height:1.7;font-size:14px;margin-bottom:14px">This guide walks through ten of those questions — not just the "correct answer," but why DPEs ask each one, and a specific tip for how to actually land it on exam day. We've also included a set of harder "Apex Challenge" questions to test how deep your understanding really goes, plus a practical Checkride Success Checklist you can use the week of your exam.</p>
           <p style="color:rgba(255,255,255,0.65);line-height:1.7;font-size:14px">This is a preview, not the whole picture. It's built from the same question style, format, and standard used in our complete Private Pilot Checkride Prep Pack — 300+ fully developed questions across every ACS domain. If these ten feel useful, the full guide is a natural next step, and we'll tell you more about it at the end.</p>
+        </div>
+
+        <!-- Growth sprint: the lead magnet and QOTD were built at
+             different times and never once referenced each other, even
+             though QOTD is free for everyone and the whole point of
+             this guide's own last sentence above is "this is a preview,
+             not the whole picture." This is that connection. -->
+        <div class="portal-card" style="margin-bottom:24px;border-left:3px solid var(--gold);background:rgba(244,180,0,0.05)">
+          <h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:8px">These 10 questions are here to stay — and there's a new one every day, too</h3>
+          <p style="color:rgba(255,255,255,0.65);line-height:1.7;font-size:14px;margin-bottom:14px">Beyond this guide, your Dashboard has a free Question of the Day, every day, for every member — no unlock required. It's the fastest way to keep building recall between now and checkride day.</p>
+          <button type="button" class="btn btn--ghost" data-goto="dashboard">See Today's Question →</button>
         </div>
 
         <div class="portal-card" style="margin-bottom:32px;border-left:3px solid var(--gold)">

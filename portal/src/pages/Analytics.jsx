@@ -62,6 +62,7 @@ export default function Analytics() {
   const [retentionError, setRetentionError] = useState(null)
   const [activationKpis, setActivationKpis] = useState(null)
   const [activationError, setActivationError] = useState(null)
+  const [growthKpis, setGrowthKpis] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -69,7 +70,9 @@ export default function Analytics() {
       const months = last12Months()
       const firstMonth = `${months[0].year}-${String(months[0].month + 1).padStart(2, '0')}-01`
 
-      const [invoicesRes, logbookRes, studentsRes, activeRes, instrRes, dpeCatRes, dpeQRes, dpeProgressRes, retentionRes, activationRes] = await Promise.all([
+      const thirtyDaysAgoIso = new Date(Date.now() - 30 * 86400000).toISOString()
+
+      const [invoicesRes, logbookRes, studentsRes, activeRes, instrRes, dpeCatRes, dpeQRes, dpeProgressRes, retentionRes, activationRes, referralsRes, gsCrossSellRes] = await Promise.all([
         supabase.from('invoices').select('amount_cents, status, issued_at').gte('issued_at', firstMonth),
         supabase.from('logbook_entries').select('duration_hours, date').gte('date', firstMonth),
         supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'student'),
@@ -86,12 +89,57 @@ export default function Analytics() {
         // above, which covers general retention, not this specific
         // sequence). Default 30-day window.
         supabase.rpc('get_activation_email_kpis'),
+        // Growth Sprint Tier 1 -- referral fix (supabase-portal-schema-v73.sql)
+        // and the Ground School weak-area cross-sell. Both are new/low-volume
+        // touchpoints, so a direct select is enough -- no RPC needed yet.
+        supabase.from('portal_referrals').select('status, created_at').gte('created_at', thirtyDaysAgoIso),
+        supabase.from('portal_events').select('event_type, profile_id, metadata, created_at').in('event_type', [
+          'gs_cross_sell_shown', 'gs_cross_sell_clicked',
+          'challenge_started', 'challenge_completed', 'challenge_upgrade_cta_clicked',
+          // Growth Sprint section 17 -- CFI/instructor ref-code
+          // attribution, logged unconditionally on signup regardless of
+          // whether the code matched an existing member (create-free-
+          // account/index.ts), since most CFI codes won't.
+          'signup_ref_code_used',
+        ]).gte('created_at', thirtyDaysAgoIso),
       ])
 
       if (retentionRes.error) setRetentionError(retentionRes.error.message)
       else setRetentionKpis(retentionRes.data)
       if (activationRes.error) setActivationError(activationRes.error.message)
       else setActivationKpis(activationRes.data)
+
+      const referralRows = referralsRes.data ?? []
+      const gsCrossSellRows = gsCrossSellRes.data ?? []
+      const gsShown = gsCrossSellRows.filter(r => r.event_type === 'gs_cross_sell_shown').length
+      const gsClicked = gsCrossSellRows.filter(r => r.event_type === 'gs_cross_sell_clicked').length
+      // Distinct profiles, not row counts -- logEventOnce writes each event
+      // type at most once per member, but de-duping here too keeps this
+      // correct even if that ever changes.
+      const challengeStarted = new Set(gsCrossSellRows.filter(r => r.event_type === 'challenge_started').map(r => r.profile_id)).size
+      const challengeCompleted = new Set(gsCrossSellRows.filter(r => r.event_type === 'challenge_completed').map(r => r.profile_id)).size
+      const challengeUpgradeClicks = new Set(gsCrossSellRows.filter(r => r.event_type === 'challenge_upgrade_cta_clicked').map(r => r.profile_id)).size
+
+      const refCodeCounts = {}
+      gsCrossSellRows.filter(r => r.event_type === 'signup_ref_code_used').forEach(r => {
+        const code = r.metadata?.ref_code
+        if (!code) return
+        refCodeCounts[code] = (refCodeCounts[code] ?? 0) + 1
+      })
+      const refCodeBreakdown = Object.entries(refCodeCounts).map(([code, count]) => ({ code, count })).sort((a, b) => b.count - a.count)
+
+      setGrowthKpis({
+        referralsTotal: referralRows.length,
+        referralsSignedUp: referralRows.filter(r => r.status === 'signed_up' || r.status === 'redeemed').length,
+        gsCrossSellShown: gsShown,
+        gsCrossSellClicked: gsClicked,
+        gsCrossSellClickRatePct: gsShown > 0 ? Math.round((gsClicked / gsShown) * 1000) / 10 : null,
+        challengeStarted,
+        challengeCompleted,
+        challengeCompletionRatePct: challengeStarted > 0 ? Math.round((challengeCompleted / challengeStarted) * 1000) / 10 : null,
+        challengeUpgradeClicks,
+        refCodeBreakdown,
+      })
 
       // ── DPE Question Bank engagement ──
       // "Engaged" = completed (explicit "Mark as Studied") OR answered_count
@@ -435,6 +483,71 @@ export default function Analytics() {
             "n" below 10-15 in any row means treat that row's rate as directional, not precise — small-sample noise, not a real trend. Time to First Value is shown in the Retention &amp; Activation card above — same underlying metric, not repeated here. All rates here use FIRST meaningful activity relative to signup, never most recent activity (see get_activation_email_kpis(), supabase-portal-schema-v72.sql).
           </p>
         </>
+      )}
+
+      <div className="page-header" style={{ marginTop: 40 }}>
+        <div>
+          <h2 className="page-title" style={{ fontSize: 22 }}>Growth &amp; Habit Loop</h2>
+          <p className="page-sub">Referrals (portal_referrals) and Ground School weak-area cross-sell (portal_events) — last 30 days</p>
+        </div>
+      </div>
+      <div className="stat-grid">
+        <div className="stat-card">
+          <p className="stat-card__label">Referral Signups</p>
+          <p className="stat-card__value">{growthKpis?.referralsSignedUp ?? 0}</p>
+          <p className="stat-card__sub">of {growthKpis?.referralsTotal ?? 0} referrals recorded</p>
+        </div>
+        <div className="stat-card">
+          <p className="stat-card__label">GS Cross-Sell Shown</p>
+          <p className="stat-card__value">{growthKpis?.gsCrossSellShown ?? 0}</p>
+          <p className="stat-card__sub">members with a matching weak-area class</p>
+        </div>
+        <div className="stat-card">
+          <p className="stat-card__label">GS Cross-Sell Clicked</p>
+          <p className="stat-card__value">{growthKpis?.gsCrossSellClicked ?? 0}</p>
+        </div>
+        <div className="stat-card">
+          <p className="stat-card__label">GS Cross-Sell Click Rate</p>
+          <p className="stat-card__value">{fmtKpi(growthKpis?.gsCrossSellClickRatePct, '%')}</p>
+        </div>
+      </div>
+      <div className="stat-grid" style={{ marginTop: 16 }}>
+        <div className="stat-card">
+          <p className="stat-card__label">7-Day Challenge Started</p>
+          <p className="stat-card__value">{growthKpis?.challengeStarted ?? 0}</p>
+        </div>
+        <div className="stat-card">
+          <p className="stat-card__label">7-Day Challenge Completed</p>
+          <p className="stat-card__value">{growthKpis?.challengeCompleted ?? 0}</p>
+        </div>
+        <div className="stat-card">
+          <p className="stat-card__label">Challenge Completion Rate</p>
+          <p className="stat-card__value">{fmtKpi(growthKpis?.challengeCompletionRatePct, '%')}</p>
+        </div>
+        <div className="stat-card">
+          <p className="stat-card__label">Free Mock Oral → Upgrade Click</p>
+          <p className="stat-card__value">{growthKpis?.challengeUpgradeClicks ?? 0}</p>
+          <p className="stat-card__sub">clicked "Unlock Full Checkride Prep" after Day 7</p>
+        </div>
+      </div>
+
+      {growthKpis?.refCodeBreakdown?.length > 0 && (
+        <section className="card" style={{ marginTop: 24 }}>
+          <h3 className="card__title">Referral / CFI Codes Used at Signup</h3>
+          <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: -4, marginBottom: 4 }}>
+            Every ?ref= code seen at signup, whether or not it matched an existing member's referral code — a code with signups here but 0 in Referral Signups above is likely a CFI/instructor code with no portal account of their own.
+          </p>
+          <div className="table-wrap" style={{ marginTop: 12 }}>
+            <table className="data-table">
+              <thead><tr><th>Code</th><th>Signups (30d)</th></tr></thead>
+              <tbody>
+                {growthKpis.refCodeBreakdown.map(row => (
+                  <tr key={row.code}><td><strong>{row.code}</strong></td><td>{row.count}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
       )}
 
       <div className="page-header" style={{ marginTop: 40 }}>

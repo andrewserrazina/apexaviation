@@ -79,7 +79,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    const { name, email, dest, checkride_timing, utm_first } = await req.json()
+    const { name, email, dest, checkride_timing, utm_first, ref } = await req.json()
     if (!name || !email) {
       return new Response(JSON.stringify({ error: 'Missing required fields: name, email' }), {
         status: 400,
@@ -129,6 +129,40 @@ serve(async (req) => {
           signup_utm_term: safeUtm.term,
         } : {}),
       }).eq('id', created.user.id)
+    }
+
+    // Closes the referral attribution loop (supabase-portal-schema-
+    // v73.sql) -- matches this signup against either a pending
+    // email-invite referral or a ?ref=<code> link, whichever applies.
+    // Never allowed to fail the signup itself: a referral bookkeeping
+    // problem is not a reason to tell a real new member their account
+    // creation failed.
+    const safeRef = typeof ref === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(ref) ? ref : null
+    try {
+      const { error: referralError } = await supabase.rpc('record_referral_signup', {
+        p_new_profile_id: created.user.id, p_email: email, p_ref_code: safeRef,
+      })
+      if (referralError) console.error('create-free-account: record_referral_signup failed', referralError)
+    } catch (err) {
+      console.error('create-free-account: record_referral_signup threw', err)
+    }
+
+    // Growth Sprint section 17 -- CFI/instructor distribution prep.
+    // record_referral_signup() above only records attribution when
+    // p_ref_code matches an existing member's portal_referral_codes row,
+    // so a CFI who shares ?ref=<their own code> without ever having
+    // created a portal account gets silently dropped today. Rather than
+    // building a commission/payout system this sprint (explicitly out of
+    // scope), this just makes every ref code that showed up on a signup
+    // visible to admins -- matched or not -- via the same portal_events
+    // table already used for GS cross-sell/challenge KPIs, so which
+    // codes are actually driving signups is queryable immediately.
+    if (safeRef) {
+      await supabase.from('portal_events').insert({
+        profile_id: created.user.id, event_type: 'signup_ref_code_used', metadata: { ref_code: safeRef },
+      }).then((res: { error: unknown }) => {
+        if (res.error) console.error('create-free-account: signup_ref_code_used log failed', res.error)
+      })
     }
 
     // Without an explicit redirectTo, generateLink falls back to whatever

@@ -177,6 +177,9 @@
         checkridePrepUnlocked: !!(profile && profile.checkride_prep_unlocked),
         groundSchoolPackUnlocked: !!(profile && profile.private_pilot_ground_school_pack_unlocked),
         checkrideTiming: profile && profile.checkride_timing,
+        trainingStage: profile && profile.training_stage,
+        currentRating: (profile && profile.current_rating) || 'private',
+        nextRatingInterest: profile && profile.next_rating_interest,
         totalXp: (profile && profile.total_xp) || 0,
         currentRank: (profile && profile.current_rank) || 'student_pilot',
         streakFreezesBanked: (profile && profile.streak_freezes_banked) || 0,
@@ -914,11 +917,11 @@
   })();
 
   function loadGroundSchool() {
-    if (groundSchoolLoaded) return;
+    if (groundSchoolLoaded) return Promise.resolve();
     groundSchoolLoaded = true;
     var today = new Date().toISOString().slice(0, 10);
 
-    Promise.all([
+    return Promise.all([
       apexSupabase.from('ground_sessions')
         .select('*')
         .gte('scheduled_at', new Date().toISOString())
@@ -995,6 +998,32 @@
       emptyEl.style.display = 'none';
       renderGroundSchoolView(groundSchoolView);
     });
+  }
+
+  // Growth Sprint section 12 -- reuses the exact normalize+word-subset
+  // matching approach as matchesTopic()/normalizeTopicWords() in
+  // site/apex-advantage-private-pilot.html (duplicated per this codebase's
+  // established cross-file convention, since that page has no shared
+  // module to import from) to find a real upcoming class whose title or
+  // module_title covers a member's weakest ACS category.
+  var GS_MATCH_STOPWORDS = { and: 1, the: 1, a: 1, of: 1, for: 1, to: 1 };
+  function normalizeGsMatchWords(text) {
+    return (text || '')
+      .toLowerCase()
+      .replace(/&/g, ' and ')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim()
+      .split(/\s+/)
+      .filter(function (w) { return w && !GS_MATCH_STOPWORDS[w]; });
+  }
+  function findGsClassForWeakArea(label) {
+    var topicWords = normalizeGsMatchWords(label);
+    if (!topicWords.length) return null;
+    return groundSchoolSessions.filter(function (s) {
+      if (s.alreadyRegistered) return false;
+      var haystack = normalizeGsMatchWords((s.category || '') + ' ' + (s.title || ''));
+      return topicWords.every(function (w) { return haystack.indexOf(w) !== -1; });
+    })[0] || null;
   }
 
   function renderGroundSchoolView(mode) {
@@ -2675,6 +2704,39 @@
     favBtn.classList.toggle('active', !!favorites[qotdQuestion.id]);
   }
 
+  // Hours until the next UTC calendar day -- matches get_daily_question()'s
+  // own extract(doy from now()) rotation (supabase-portal-schema-v68.sql)
+  // and the client-side dayOfYear() fallback above, so "new question in
+  // X hours" is never off from when the question actually changes.
+  // Informational only, no countdown-timer urgency styling -- brief
+  // explicitly says not to manufacture urgency here.
+  function hoursUntilNextQotd() {
+    var now = new Date();
+    var nextUtcMidnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0);
+    return Math.max(1, Math.round((nextUtcMidnight - now.getTime()) / 3600000));
+  }
+
+  function renderQotdStreakNote() {
+    var el = document.getElementById('qotdStreakNote');
+    if (!el) return;
+    var s = computeStreaks();
+    var streakLine = s.current >= 2
+      ? "You're on a " + s.current + "-day streak. "
+      : (s.current === 1 ? "Streak started today. " : '');
+    el.innerHTML = escapeHtmlSafe(streakLine + 'New DPE question every day — come back tomorrow (unlocks in about ' + hoursUntilNextQotd() + 'h).') +
+      // Growth Sprint section 6 -- a single, dismissable-by-ignoring nudge
+      // toward the 7-Day Challenge, only shown before it's been started
+      // (never after, so this doesn't compete with the challenge's own
+      // dashboard card once a member is already using it).
+      (loggedEventTypes['challenge_started'] ? '' :
+        '<div style="margin-top:10px"><button type="button" id="qotdChallengeNudge" style="background:none;border:none;padding:0;color:var(--gold-light);font-size:13px;font-weight:600;cursor:pointer;text-decoration:underline">Want a structured plan? Start the 7-Day Checkride Challenge →</button></div>');
+    var nudgeBtn = document.getElementById('qotdChallengeNudge');
+    if (nudgeBtn) nudgeBtn.addEventListener('click', function () {
+      var card = document.getElementById('challengeCard');
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }
+
   function renderQotd() {
     if (!qotdQuestion) return;
     document.getElementById('qotdCategory').textContent = qotdQuestion.sectionLabel;
@@ -2687,6 +2749,7 @@
     document.getElementById('qotdPrompt').style.display = alreadyRevealed ? 'none' : '';
     document.getElementById('qotdAnswer').style.display = alreadyRevealed ? 'block' : 'none';
     updateQotdButtons();
+    if (alreadyRevealed) renderQotdStreakNote();
   }
 
   document.getElementById('qotdRevealBtn').addEventListener('click', function () {
@@ -2696,6 +2759,9 @@
     touchLastViewed(qotdQuestion.id);
     answeredCounts[qotdQuestion.id] = (answeredCounts[qotdQuestion.id] || 0) + 1;
     upsertRow('portal_question_progress', 'question_id', qotdQuestion.id, { answered_count: answeredCounts[qotdQuestion.id] });
+    // touchLastViewed() above already bumped today's study day, so the
+    // streak count here already reflects this reveal.
+    renderQotdStreakNote();
   });
   document.getElementById('qotdStudiedBtn').addEventListener('click', function () {
     if (!qotdQuestion) return;
@@ -3717,6 +3783,34 @@
      them from the address bar later, e.g. a support screenshot); they're
      already captured into localStorage by analytics-events.js
      regardless of when/whether this URL gets cleaned. ─────────────── */
+  // Growth Sprint section 18 -- content deep links. Reuses the exact
+  // normalize+word-subset matcher already built for the Ground School
+  // weak-area cross-sell (findGsClassForWeakArea/normalizeGsMatchWords)
+  // to resolve a real ?topic= param (e.g. a Weather video's link) to a
+  // real dpe_categories row, then hands off to the existing
+  // goToCategory()/showSection() routing -- no new navigation mechanism.
+  // No-ops for locked members rather than forcing an unlock pitch:
+  // CATEGORY_META is empty until checkridePrepUnlocked anyway, and
+  // enforceUpgradeDeepLink() below already owns the "sell the unlock"
+  // deep-link path via ?upgrade=checkride-prep.
+  function enforceTopicDeepLink() {
+    var params = new URLSearchParams(window.location.search);
+    var topic = params.get('topic');
+    if (!topic || !member || !member.checkridePrepUnlocked) return;
+    var topicWords = normalizeGsMatchWords(topic);
+    if (!topicWords.length) return;
+    var cat = Object.keys(CATEGORY_META).filter(function (c) {
+      var haystack = normalizeGsMatchWords(CATEGORY_META[c].label);
+      return topicWords.every(function (w) { return haystack.indexOf(w) !== -1; });
+    })[0];
+    if (!cat) return;
+    goToCategory(cat);
+    params.delete('topic');
+    var cleanedSearch = params.toString();
+    if (history.replaceState) history.replaceState(null, '', window.location.pathname + (cleanedSearch ? '?' + cleanedSearch : '') + window.location.hash);
+    if (window.apexTrack) apexTrack('content_deeplink_topic_matched', { topic: topic, category: cat });
+  }
+
   function enforceUpgradeDeepLink() {
     var params = new URLSearchParams(window.location.search);
     if (params.get('upgrade') !== 'checkride-prep') return;
@@ -4399,6 +4493,16 @@
   /* ══════════════════════════════════════════════════════════════
      CHECKRIDE DATE + COUNTDOWN
      ══════════════════════════════════════════════════════════════ */
+  // Growth Sprint section 13 -- personalizes the unset-date prompt using
+  // the checkride_timing bucket the member already picked at signup
+  // (create-free-account), rather than inventing a new onboarding step.
+  // Real signal, not fabricated urgency.
+  var CHECKRIDE_TIMING_PROMPT_COPY = {
+    within_14_days: 'You mentioned your checkride is within 14 days — add the exact date to unlock a live countdown and your pre-checkride plan.',
+    within_30_days: 'You mentioned your checkride is within 30 days — add the exact date to unlock a live countdown and your pre-checkride plan.',
+    within_60_days: 'You mentioned your checkride is within 60 days — add the exact date to unlock a live countdown and your pre-checkride plan.'
+  };
+
   function renderCheckrideCountdown() {
     var setEl = document.getElementById('checkrideCountdownSet');
     var unsetEl = document.getElementById('checkrideCountdownUnset');
@@ -4407,6 +4511,11 @@
       setEl.style.display = 'none';
       unsetEl.style.display = 'block';
       card.className = 'portal-card portal-countdown';
+      var copyEl = document.getElementById('checkrideCountdownUnsetCopy');
+      if (copyEl) {
+        copyEl.textContent = (member && CHECKRIDE_TIMING_PROMPT_COPY[member.checkrideTiming]) ||
+          'Add your expected checkride date to see a live countdown and get more urgency-aware reminders.';
+      }
       return;
     }
     unsetEl.style.display = 'none';
@@ -4432,6 +4541,7 @@
       if (res.error) { toast('Could not save date: ' + res.error.message); return; }
       checkrideDate = val;
       renderCheckrideCountdown();
+      renderMyTraining();
       toast('Checkride date saved.');
     });
   });
@@ -5411,12 +5521,27 @@
     }
 
     if (!unlocked) {
+      // Growth Sprint section 15 -- an early-stage member (not yet solo,
+      // no checkride in sight) got the same two-paywall-CTA task list as
+      // someone actively checkride-prepping, making the whole product
+      // read as "only for people already scheduled." training_stage is
+      // real, self-reported data (the onboarding survey at line ~4380),
+      // not a guess -- when it says the member is early, the second task
+      // points at something free and actually useful for that stage
+      // (Ground School) instead of a second unlock pitch.
+      var earlyStage = member && (member.trainingStage === 'just_starting' || member.trainingStage === 'pre_solo');
       tasks.push({ label: 'Unlock the Checkride Prep System', done: false, go: function () { openUnlockModal(); } });
-      tasks.push({ label: 'Try your first training scenario', done: false, go: function () { openUnlockModal(); } });
+      if (earlyStage) {
+        tasks.push({ label: 'Browse upcoming Ground School classes', done: false, go: function () { showSection('ground-school'); } });
+      } else {
+        tasks.push({ label: 'Try your first training scenario', done: false, go: function () { openUnlockModal(); } });
+      }
       return {
         unlocked: false, checkrideDays: checkrideDays, readinessPct: 0, primaryFocus: null,
         nextClass: next, classImminent: classImminent, tasks: tasks,
-        whyText: classImminent ? null : "You haven't unlocked Checkride Prep yet — every recommendation below depends on real study data, so start there."
+        whyText: classImminent ? null : (earlyStage
+          ? "You're early in training — Ground School and free daily questions are the best use of Apex Advantage right now."
+          : "You haven't unlocked Checkride Prep yet — every recommendation below depends on real study data, so start there.")
       };
     }
 
@@ -5555,6 +5680,36 @@
       preclassEl.hidden = true;
     }
 
+    // Growth Sprint section 12 -- "Want help with this live?" cross-sell,
+    // real scheduled-class data only. Skipped if the same class is already
+    // the imminent-class banner above, or if the member has no weak area
+    // yet (locked, or already 100% across the board).
+    var crossSellEl = document.getElementById('trainingPlanGsCrossSell');
+    if (crossSellEl) {
+      var gsMatch = plan.unlocked && plan.primaryFocus ? findGsClassForWeakArea(plan.primaryFocus.label) : null;
+      if (gsMatch && !(plan.classImminent && plan.nextClass && String(plan.nextClass.id) === String(gsMatch.id))) {
+        crossSellEl.hidden = false;
+        var gsWhen = new Date(gsMatch.scheduled_at);
+        var gsPriceLabel = gsMatch.packCovers ? 'Included in Your Pack' : '$25';
+        crossSellEl.innerHTML =
+          '<div><div class="portal-header__eyebrow">Want Help With This Live?</div><h3>' + escapeHtmlSafe(gsMatch.title) + '</h3><p>' +
+          gsWhen.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' · ' + gsPriceLabel +
+          (typeof gsMatch.spotsLeft === 'number' ? ' · ' + Math.max(gsMatch.spotsLeft, 0) + ' seat' + (gsMatch.spotsLeft === 1 ? '' : 's') + ' left' : '') +
+          '</p></div>' +
+          '<div class="portal-my-training__preclass-actions">' +
+          '<button type="button" class="btn btn--primary" id="trainingPlanGsCrossSellBtn">View Live Class →</button>' +
+          '</div>';
+        var crossSellBtn = document.getElementById('trainingPlanGsCrossSellBtn');
+        if (crossSellBtn) crossSellBtn.addEventListener('click', function () {
+          apexSupabase.from('portal_events').insert({ profile_id: member.id, event_type: 'gs_cross_sell_clicked', metadata: { category: plan.primaryFocus.cat, class_id: gsMatch.id } });
+          showSection('ground-school');
+        });
+        logEventOnce('gs_cross_sell_shown', { category: plan.primaryFocus.cat, class_id: gsMatch.id });
+      } else {
+        crossSellEl.hidden = true;
+      }
+    }
+
     var checkrideEl = document.getElementById('trainingPlanCheckride');
     checkrideEl.querySelector('h3').textContent = plan.checkrideDays === null ? 'Not set'
       : plan.checkrideDays < 0 ? 'Passed'
@@ -5590,6 +5745,171 @@
     }).join('');
     planEl.querySelectorAll('[data-plan-idx]').forEach(function (row, i) {
       row.addEventListener('click', function () { plan.tasks[i].go(); });
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     7-DAY CHECKRIDE CHALLENGE -- Growth Sprint Tier 2
+     Free-tier feature: content comes from get_challenge_day_questions()
+     (supabase-portal-schema-v74.sql), a small SECURITY DEFINER slice of
+     the DPE bank granted to every authenticated member -- DPE_DATA/
+     CATEGORY_META are empty client-side for locked members, so this
+     can't reuse those arrays. Progress is tracked entirely through
+     existing portal_events rows (challenge_started, challenge_day_N_
+     completed) via logEventOnce/loggedEventTypes -- no new table.
+     Days 1-6 map to real dpe_categories ids (verified against the
+     actual seeded set in supabase-portal-schema-v5.sql); 9 real
+     categories exist but only 6 are used here by design, since a 7-day
+     on-ramp is meant to be a fast, representative preview, not full
+     coverage -- the remaining categories are still fully covered in the
+     DPE Library after unlock. Day 7 pulls one question from each of the
+     six to form a "mixed mock oral" review.
+     ══════════════════════════════════════════════════════════════ */
+  var CHALLENGE_DAYS = [
+    { day: 1, title: 'Documents & Eligibility', category: 'eligibility' },
+    { day: 2, title: 'Airworthiness & Aircraft Systems', category: 'airworthiness' },
+    { day: 3, title: 'Weather', category: 'weather' },
+    { day: 4, title: 'Airspace', category: 'airspace' },
+    { day: 5, title: 'Performance & Weight/Balance', category: 'performance' },
+    { day: 6, title: 'ADM & Emergency Scenarios', category: 'emergency' },
+    { day: 7, title: 'Mock Oral — Mixed Review', category: null }
+  ];
+  var challengeQuestionsCache = {};
+  var challengeRevealed = {};
+
+  function challengeCurrentDay() {
+    for (var i = 0; i < CHALLENGE_DAYS.length; i++) {
+      if (!loggedEventTypes['challenge_day_' + CHALLENGE_DAYS[i].day + '_completed']) return CHALLENGE_DAYS[i].day;
+    }
+    return null;
+  }
+
+  function fetchChallengeDayQuestions(dayInfo) {
+    if (challengeQuestionsCache[dayInfo.day]) return Promise.resolve(challengeQuestionsCache[dayInfo.day]);
+    var req = dayInfo.category
+      ? apexSupabase.rpc('get_challenge_day_questions', { p_category: dayInfo.category, p_limit: 3 })
+      : Promise.all(CHALLENGE_DAYS.filter(function (d) { return d.category; }).map(function (d) {
+          return apexSupabase.rpc('get_challenge_day_questions', { p_category: d.category, p_limit: 1 });
+        })).then(function (results) {
+          return { data: results.reduce(function (acc, r) { return acc.concat((r && r.data) || []); }, []) };
+        });
+    return Promise.resolve(req).then(function (res) {
+      var qs = (res && res.data) || [];
+      challengeQuestionsCache[dayInfo.day] = qs;
+      return qs;
+    });
+  }
+
+  function renderChallengeDots() {
+    var dotsEl = document.getElementById('challengeDots');
+    if (!dotsEl) return;
+    var current = challengeCurrentDay();
+    dotsEl.innerHTML = CHALLENGE_DAYS.map(function (d) {
+      var done = !!loggedEventTypes['challenge_day_' + d.day + '_completed'];
+      var isCurrent = d.day === current;
+      var bg = done ? 'var(--gold)' : (isCurrent ? 'rgba(244,180,0,0.25)' : 'rgba(255,255,255,0.08)');
+      var border = isCurrent ? '1.5px solid var(--gold)' : '1.5px solid transparent';
+      var color = done ? '#0b1f3a' : '#fff';
+      return '<div title="Day ' + d.day + ': ' + d.title + '" style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:' + color + ';background:' + bg + ';border:' + border + '">' + (done ? '✓' : d.day) + '</div>';
+    }).join('');
+  }
+
+  function renderChallengeQuestionsList(questions) {
+    return questions.map(function (q) {
+      var revealed = !!challengeRevealed[q.id];
+      return '<div style="background:rgba(11,31,58,0.4);border-radius:10px;margin-bottom:10px;padding:14px 16px">' +
+        '<p style="color:#fff;font-size:14px;font-weight:600;margin-bottom:8px">' + escapeHtmlSafe(q.question) + '</p>' +
+        (revealed
+          ? '<p style="color:rgba(255,255,255,0.65);font-size:13px;line-height:1.6">' + escapeHtmlSafe(q.model_answer) + '</p>'
+          : '<button type="button" class="btn btn--ghost" data-challenge-reveal="' + escapeHtmlSafe(q.id) + '" style="font-size:12px;padding:8px 14px">Reveal Answer</button>') +
+      '</div>';
+    }).join('');
+  }
+
+  function renderChallenge() {
+    var card = document.getElementById('challengeCard');
+    var bodyEl = document.getElementById('challengeBody');
+    if (!card || !bodyEl) return;
+    renderChallengeDots();
+
+    var current = challengeCurrentDay();
+    if (current === null) {
+      // Growth Sprint section 10 -- Day 7 doubles as the free "mock oral"
+      // premium preview: lowest-complexity option that reuses this same
+      // challenge infrastructure rather than exposing free members to
+      // the paid, per-call-billed AI DPE Chat (dpe-chat edge function).
+      // No fabricated readiness/weak-area precision for locked members --
+      // this app has never scored oral answers (studied/not-studied only,
+      // same as the DPE Library everywhere else), so "strongest/weakest"
+      // is only ever shown when it's the member's real, unlocked
+      // readiness data (computeTrainingPlan()), never invented from the
+      // 6-question preview alone.
+      logEventOnce('challenge_completed', {});
+      var totalCovered = CHALLENGE_DAYS.reduce(function (sum, d) { return sum + ((challengeQuestionsCache[d.day] || []).length); }, 0);
+      var resultsPlan = computeTrainingPlan();
+      bodyEl.innerHTML =
+        '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:4px">Mock Oral Results</h3>' +
+        '<p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:14px">7-Day Checkride Challenge complete.</p>' +
+        '<div class="portal-grid portal-grid--3" style="margin-bottom:14px">' +
+          '<div class="portal-my-training__panel"><p class="portal-my-training__label">Questions Covered</p><h3>' + totalCovered + '</h3></div>' +
+          '<div class="portal-my-training__panel"><p class="portal-my-training__label">Weakest Area</p><h3>' + (resultsPlan.unlocked && resultsPlan.primaryFocus ? escapeHtmlSafe(resultsPlan.primaryFocus.label) : '—') + '</h3></div>' +
+          '<div class="portal-my-training__panel"><p class="portal-my-training__label">Readiness</p><h3>' + (resultsPlan.unlocked ? resultsPlan.readinessPct + '%' : '—') + '</h3></div>' +
+        '</div>' +
+        (resultsPlan.unlocked ? '' :
+          '<p style="color:rgba(255,255,255,0.55);font-size:13px;line-height:1.6;margin-bottom:14px">This preview covered 6 real exam areas — documents, airworthiness, weather, airspace, performance, and emergency judgment. Unlock the full 328-question bank for a true readiness score with weak-area tracking, Scenario Training, and AI Oral Practice.</p>') +
+        '<button type="button" class="btn btn--primary" id="challengeUnlockBtn">' + (resultsPlan.unlocked ? 'Go to Checkride Prep →' : 'Unlock Full Checkride Prep →') + '</button>';
+      var unlockBtn = document.getElementById('challengeUnlockBtn');
+      if (unlockBtn) unlockBtn.addEventListener('click', function () {
+        logEventOnce('challenge_upgrade_cta_clicked', {});
+        if (resultsPlan.unlocked) showSection('dpe-library'); else openUnlockModal();
+      });
+      return;
+    }
+
+    var dayInfo = CHALLENGE_DAYS[current - 1];
+    var started = !!loggedEventTypes['challenge_started'];
+
+    if (!started && current === 1) {
+      bodyEl.innerHTML =
+        '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">7 days, 5-10 minutes a day.</h3>' +
+        '<p style="color:rgba(255,255,255,0.6);font-size:14px;line-height:1.6;margin-bottom:14px">A short daily walk through the exam areas that matter most: documents, airworthiness, weather, airspace, performance, and emergency judgment — capped off with a mixed mock-oral review.</p>' +
+        '<button type="button" class="btn btn--primary" id="challengeStartBtn">Start Day 1: ' + dayInfo.title + '</button>';
+      var startBtn = document.getElementById('challengeStartBtn');
+      if (startBtn) startBtn.addEventListener('click', function () {
+        logEventOnce('challenge_started', { start_date: getTodayStr() });
+        renderChallenge();
+      });
+      return;
+    }
+
+    bodyEl.innerHTML = '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:4px">Day ' + current + ': ' + dayInfo.title + '</h3><p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:14px">Loading today’s questions…</p>';
+
+    fetchChallengeDayQuestions(dayInfo).then(function (questions) {
+      if (challengeCurrentDay() !== current) return;
+      if (!questions.length) {
+        bodyEl.innerHTML = '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Day ' + current + ': ' + dayInfo.title + '</h3><p style="color:rgba(255,255,255,0.5);font-size:13px">No questions available for this day yet — check back soon.</p>';
+        return;
+      }
+      bodyEl.innerHTML =
+        '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:4px">Day ' + current + ': ' + dayInfo.title + '</h3>' +
+        '<p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:14px">' + questions.length + ' question' + (questions.length === 1 ? '' : 's') + ' — about 5-10 minutes.</p>' +
+        renderChallengeQuestionsList(questions) +
+        '<button type="button" class="btn btn--primary" id="challengeCompleteBtn" style="margin-top:6px">Mark Day ' + current + ' Complete →</button>';
+
+      questions.forEach(function (q) { touchLastViewed(q.id); });
+
+      bodyEl.querySelectorAll('[data-challenge-reveal]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          challengeRevealed[btn.dataset.challengeReveal] = true;
+          renderChallenge();
+        });
+      });
+      var completeBtn = document.getElementById('challengeCompleteBtn');
+      if (completeBtn) completeBtn.addEventListener('click', function () {
+        logEventOnce('challenge_day_' + current + '_completed', { category: dayInfo.category });
+        renderChallenge();
+        renderMyTraining();
+      });
     });
   }
 
@@ -5681,7 +6001,14 @@
       renderAcsCoverage();
       computeQotdQuestion().then(renderQotd);
       renderMyTraining();
+      // Growth Sprint section 12 -- loadGroundSchool() is normally lazy
+      // (only triggered on Ground School section entry), but the weak-area
+      // cross-sell needs real class data on the very first dashboard
+      // render too. Reuses the same loader/data the Ground School section
+      // itself renders from rather than a second parallel fetch.
+      loadGroundSchool().then(renderMyTraining);
       renderWeeklyProgress();
+      renderChallenge();
       renderAiDpeHistory();
       renderRecommendedNextStep();
       renderGroundSchoolProgress();
@@ -5697,6 +6024,7 @@
       enforceGuidedNotesAccess();
       enforceAskAndrewAccess();
       enforceUpgradeDeepLink();
+      enforceTopicDeepLink();
       renderCheckrideCountdown();
       renderMembership();
       renderMembershipSubscription();
