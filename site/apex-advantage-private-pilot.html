@@ -2122,8 +2122,14 @@
           topicBanner.style.display = 'block';
           upgradeHeroForTopic(matchedRow, topicParam);
           setView('list');
-          var el = document.getElementById('gs-class-' + matchedRow.id);
-          if (el) setTimeout(function () { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 400);
+          // Previously auto-scrolled here 400ms after load, which yanked
+          // every matched ad-click visitor straight past the hero/headline
+          // before they'd seen anything -- the gold highlight on the
+          // matched card (upgradeHeroForTopic) plus this banner text are
+          // enough to draw the eye once they scroll on their own; forcing
+          // the page to move for them isn't necessary and reads as pushy
+          // on the exact traffic (ad clicks) this page most needs to land
+          // a good first impression with.
         }
       }).catch(function () {
         loadingEl.style.display = 'none';
