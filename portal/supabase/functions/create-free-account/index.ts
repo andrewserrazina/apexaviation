@@ -197,10 +197,24 @@ serve(async (req) => {
     // pattern as record_referral_signup above -- a reconciliation miss
     // is not a reason to fail account creation.
     try {
-      const { error: gsClaimError } = await supabase.rpc('claim_ground_school_enrollments_by_email', {
+      const { data: gsClaimedCount, error: gsClaimError } = await supabase.rpc('claim_ground_school_enrollments_by_email', {
         p_profile_id: created.user.id, p_email: email,
       })
-      if (gsClaimError) console.error('create-free-account: claim_ground_school_enrollments_by_email failed', gsClaimError)
+      if (gsClaimError) {
+        console.error('create-free-account: claim_ground_school_enrollments_by_email failed', gsClaimError)
+      } else if ((gsClaimedCount ?? 0) > 0) {
+        // Section 19's "portal activations from purchasers" admin metric
+        // needs a countable signal that this specific signup was a GS
+        // purchaser activating, not just that reconciliation ran (it runs
+        // for every signup, most of the time claiming nothing).
+        // claim_ground_school_enrollments_by_email returning >0 (v77.sql)
+        // is that signal.
+        await supabase.from('portal_events').insert({
+          profile_id: created.user.id, event_type: 'ground_school_purchaser_activated', metadata: { enrollments_claimed: gsClaimedCount },
+        }).then((res: { error: unknown }) => {
+          if (res.error) console.error('create-free-account: ground_school_purchaser_activated log failed', res.error)
+        })
+      }
     } catch (err) {
       console.error('create-free-account: claim_ground_school_enrollments_by_email threw', err)
     }

@@ -1508,8 +1508,11 @@
         </div>
       </div>
 
-      <!-- Checkride Prep Pack upsell -->
-      <a href="checkride-prep.html" style="display:flex;align-items:center;gap:20px;max-width:720px;margin:24px auto 0;padding:20px 28px;background:rgba(244,180,0,0.06);border:1px solid rgba(244,180,0,0.2);border-radius:14px;text-decoration:none;flex-wrap:wrap">
+      <!-- Checkride Prep Pack upsell. data-apx-cta gets this the same
+           UTM auto-append + ground_school_cta_click tracking every other
+           CTA on this page already has (section 18's checkride_prep_view
+           funnel step) -- it had neither before. -->
+      <a href="checkride-prep.html" data-apx-cta data-apx-cta-location="checkride_prep_crosssell" style="display:flex;align-items:center;gap:20px;max-width:720px;margin:24px auto 0;padding:20px 28px;background:rgba(244,180,0,0.06);border:1px solid rgba(244,180,0,0.2);border-radius:14px;text-decoration:none;flex-wrap:wrap">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <div style="flex:1;min-width:200px">
           <div style="font-size:11px;font-weight:700;color:var(--gold);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px">Closer to Checkride Day?</div>

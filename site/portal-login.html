@@ -376,6 +376,7 @@
         : '✓ Your Ground School registration is confirmed';
       document.getElementById('signupSub').textContent = 'Now set up your free Apex Advantage student portal to keep your Ground School schedule in one place, prepare before class, answer your daily DPE question, and continue training between sessions.';
       document.getElementById('signupSubmit').textContent = 'Activate My Free Student Portal';
+      if (window.apexTrack) apexTrack('portal_activation_cta_viewed', { source: 'ground_school_purchase' });
     })();
 
     // Prefills from the free Readiness Assessment (site/readiness-assessment.html)
@@ -558,6 +559,10 @@
       var email = document.getElementById('signupEmail').value.trim();
       var checkrideTiming = document.getElementById('signupCheckrideTiming').value;
       if (!name || !email) return;
+
+      if (window.apexTrack && (new URLSearchParams(window.location.search)).get('registered') === '1') {
+        apexTrack('portal_activation_cta_clicked', { source: 'ground_school_purchase' });
+      }
 
       signupSubmit.disabled = true;
       signupSubmit.textContent = 'Creating your account…';
