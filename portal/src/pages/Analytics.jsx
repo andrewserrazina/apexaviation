@@ -371,18 +371,26 @@ export default function Analytics() {
               <p className="stat-card__value">{fmtKpi(activationKpis?.welcome_cta_click_rate_pct, '%')}</p>
             </div>
             <div className="stat-card">
-              <p className="stat-card__label">Email-Assisted Activation</p>
-              <p className="stat-card__value">{fmtKpi(activationKpis?.email_assisted_activation_rate_pct, '%')}</p>
+              <p className="stat-card__label">24h Activation Rate</p>
+              <p className="stat-card__value">{fmtKpi(activationKpis?.activation_rate_24h_pct, '%')}</p>
+              <p className="stat-card__sub">of signups activated within 24h of signup</p>
             </div>
           </div>
           <div className="stat-grid" style={{ marginTop: 16 }}>
             <div className="stat-card">
-              <p className="stat-card__label">24h Activation Rate</p>
-              <p className="stat-card__value">{fmtKpi(activationKpis?.activation_rate_24h_pct, '%')}</p>
-            </div>
-            <div className="stat-card">
               <p className="stat-card__label">7d Activation Rate</p>
               <p className="stat-card__value">{fmtKpi(activationKpis?.activation_rate_7d_pct, '%')}</p>
+              <p className="stat-card__sub">of signups activated within 7 days of signup</p>
+            </div>
+            <div className="stat-card">
+              <p className="stat-card__label">Clicked Email Before Activating</p>
+              <p className="stat-card__value">{fmtKpi(activationKpis?.email_clicked_before_activation_rate_pct, '%')}</p>
+              <p className="stat-card__sub">of activated members — suggestive, not proof of causation</p>
+            </div>
+            <div className="stat-card">
+              <p className="stat-card__label">Sent Email Before Activating</p>
+              <p className="stat-card__value">{fmtKpi(activationKpis?.email_sent_before_activation_rate_pct, '%')}</p>
+              <p className="stat-card__sub">of activated members — expect this high by default, since Email #1 sends at signup</p>
             </div>
           </div>
           {(activationKpis?.activation_by_training_stage?.length > 0 || activationKpis?.activation_by_focus_area?.length > 0) && (
@@ -424,7 +432,7 @@ export default function Analytics() {
             </div>
           )}
           <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
-            "n" below 10-15 in any row means treat that row's rate as directional, not precise — small-sample noise, not a real trend.
+            "n" below 10-15 in any row means treat that row's rate as directional, not precise — small-sample noise, not a real trend. Time to First Value is shown in the Retention &amp; Activation card above — same underlying metric, not repeated here. All rates here use FIRST meaningful activity relative to signup, never most recent activity (see get_activation_email_kpis(), supabase-portal-schema-v72.sql).
           </p>
         </>
       )}

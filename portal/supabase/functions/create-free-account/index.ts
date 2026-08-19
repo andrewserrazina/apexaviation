@@ -222,27 +222,115 @@ serve(async (req) => {
           <p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">If you get stuck on anything, reply to this email.</p>
           <p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">Blue skies,<br>Andrew</p>
         `
-    const emailResult = await supabase.functions.invoke('send-email', {
-      body: {
-        to: email,
-        subject,
-        html: emailTemplate(bodyHtml),
-        ...(requestedDest ? {} : { replyTo: ACTIVATION_REPLY_TO }),
-      },
-    })
-    const emailSent = !emailResult.error
-    if (emailResult.error) {
-      console.error('create-free-account: send-email failed for', email, emailResult.error)
-    } else if (!requestedDest) {
-      // Server-side send record for the activation funnel (signup ->
-      // email sent -> CTA click -> first meaningful activity) --
-      // same analytics_events table and shape as checkout_abandoned in
-      // send-lifecycle-emails/index.ts. Only logged for the actual
-      // activation-sequence copy, not the lead-magnet variant, so the
-      // funnel isn't diluted by a structurally different email.
-      await supabase.from('analytics_events').insert({
-        event_name: 'activation_email_1_sent', profile_id: created.user.id, properties: { checkride_timing: safeCheckrideTiming },
-      })
+
+    // ── Send the welcome email without letting it hold up (or fail) the
+    // signup response ──
+    // ACCOUNT CREATION MUST WIN: everything above this point (auth user,
+    // profile updates) is already durably committed, so nothing below can
+    // undo it. This block's only job is to attempt the email reliably and
+    // report what it can, never to threaten the { ok: true } response.
+    //
+    // sendWelcomeEmail() itself can never throw (own try/catch) and never
+    // resolves to anything but a boolean, so awaiting or backgrounding it
+    // is equally safe either way -- the only difference is response
+    // latency. It marks portal_events('activation_email_1') AFTER a
+    // confirmed successful send, not before -- the inverse of the
+    // "mark-before-send" convention used elsewhere in this codebase
+    // (processWeakArea, processAbandonedCheckouts in send-lifecycle-
+    // emails/index.ts). Those have no catch-up mechanism and optimize for
+    // "never double-send" above all else; this one specifically needs the
+    // opposite property -- a failed or not-yet-finished send must stay
+    // eligible for processActivationEmail1CatchUp's cron retry (same
+    // file, "Email #1 catch-up" section), so the flag can only mean
+    // "confirmed delivered," never "attempted."
+    const sendWelcomeEmail = async (): Promise<boolean> => {
+      try {
+        const emailResult = await supabase.functions.invoke('send-email', {
+          body: {
+            to: email,
+            subject,
+            html: emailTemplate(bodyHtml),
+            ...(requestedDest ? {} : { replyTo: ACTIVATION_REPLY_TO }),
+          },
+        })
+        if (emailResult.error) {
+          console.error('create-free-account: send-email failed', {
+            profile_id: created.user.id, email_type: 'activation_email_1', at: new Date().toISOString(),
+            provider_error: emailResult.error?.message || String(emailResult.error), retry_eligible: !requestedDest,
+          })
+          return false
+        }
+        if (!requestedDest) {
+          // Server-side send record for the activation funnel (signup ->
+          // email sent -> CTA click -> first meaningful activity) --
+          // same analytics_events table and shape as checkout_abandoned
+          // in send-lifecycle-emails/index.ts. Only logged for the
+          // actual activation-sequence copy, not the lead-magnet
+          // variant, so the funnel isn't diluted by a structurally
+          // different email.
+          await supabase.from('analytics_events').insert({
+            event_name: 'activation_email_1_sent', profile_id: created.user.id, properties: { checkride_timing: safeCheckrideTiming, via: 'signup' },
+          })
+        }
+        // Idempotency flag for processActivationEmail1CatchUp (send-
+        // lifecycle-emails/index.ts) -- set for BOTH branches (generic
+        // activation copy AND the lead-magnet welcome variant), unlike
+        // the analytics_events insert above. This one's job is purely
+        // "was SOME welcome email confirmed delivered to this profile,"
+        // so the cron catch-up knows not to layer a second, different
+        // welcome email on top of an already-successful lead-magnet
+        // send. The one accepted tradeoff: if a lead-magnet send is the
+        // one that actually fails, catch-up still can't reproduce its
+        // specific dest (never persisted) and falls back to the generic
+        // copy -- documented in RETENTION_SYSTEM.md, not worth a new
+        // column for a rare recovery path.
+        // Deliberately NOT portal_email_log for this specific check
+        // (that table is the immutable per-send audit trail); this
+        // profile_id+event_type row is the "confirmed delivered" flag,
+        // same shape as every hasMilestoneFired()/markMilestoneSent()
+        // milestone in send-lifecycle-emails/index.ts, duplicated here
+        // since these two functions share no module today.
+        await supabase.from('portal_events').insert({ profile_id: created.user.id, event_type: 'activation_email_1' })
+        await supabase.from('portal_email_log').insert({ profile_id: created.user.id, email_type: 'activation_email_1' })
+        return true
+      } catch (err) {
+        console.error('create-free-account: send-email threw', {
+          profile_id: created.user.id, email_type: 'activation_email_1', at: new Date().toISOString(),
+          error: String(err), retry_eligible: !requestedDest,
+        })
+        return false
+      }
+    }
+
+    // Bounded race, not an unconditional background dispatch: Resend
+    // typically responds in well under a second, so the common case still
+    // gets an accurate, synchronous emailSent value in the response (the
+    // exact behavior signupSuccessResetBtn's fallback UI already depends
+    // on in portal-login.html). Only a genuinely slow or hung provider
+    // call falls back to the optimistic path below -- and even then, the
+    // real send keeps running via EdgeRuntime.waitUntil() where the
+    // runtime supports it, so its outcome still gets marked/logged
+    // correctly once it actually finishes.
+    const EMAIL_SEND_TIMEOUT_MS = 5000
+    const sendPromise = sendWelcomeEmail()
+    let settledInTime = false
+    const trackedSendPromise = sendPromise.then((v) => { settledInTime = true; return v })
+    const emailSent = await Promise.race([
+      trackedSendPromise,
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(true), EMAIL_SEND_TIMEOUT_MS)),
+    ])
+    if (!settledInTime) {
+      // Do not assume the promise survives past this point unless the
+      // runtime explicitly says it will -- EdgeRuntime is a real Supabase
+      // Edge Functions global for exactly this case, but only used when
+      // actually present. With no such guarantee, the in-flight send may
+      // or may not finish before the container tears down; if it doesn't,
+      // the cron catch-up path (send-lifecycle-emails/index.ts) is the
+      // safety net, since portal_events('activation_email_1') was never
+      // marked.
+      if (typeof EdgeRuntime !== 'undefined' && typeof (EdgeRuntime as any).waitUntil === 'function') {
+        ;(EdgeRuntime as any).waitUntil(trackedSendPromise)
+      }
     }
 
     return new Response(JSON.stringify({ ok: true, id: created.user.id, emailSent }), {

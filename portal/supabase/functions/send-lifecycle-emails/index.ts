@@ -93,6 +93,9 @@ import { emailTemplate as template } from '../_shared/emailTemplate.ts'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const CRON_SECRET = Deno.env.get('LIFECYCLE_CRON_SECRET')
+// Same default as create-free-account/index.ts's own SITE_ORIGIN --
+// needed here only for processActivationEmail1CatchUp's generateLink call.
+const SITE_ORIGIN = Deno.env.get('SITE_ORIGIN') ?? 'https://apexaviationtx.com'
 
 const READINESS_THRESHOLDS = [25, 50, 75, 90]
 const COUNTDOWN_DAYS = [30, 14, 7, 3, 1]
@@ -200,6 +203,27 @@ const FOCUS_AREA_LABEL: Record<string, string> = {
 
 function activationCtaUrl(hash: string, emailNumber: number): string {
   return `${PORTAL_LOGIN_URL}?dest=${hash}&utm_source=email&utm_medium=email&utm_campaign=new_member_activation&utm_content=welcome_${emailNumber}`
+}
+
+// Shared cutover check -- was duplicated inline in processNewMemberActivation
+// and processCheckrideUpsell's defer guard; extracted once both needed the
+// exact same math, so it can't drift between the two.
+function isEligibleForActivationSequence(profile: any): boolean {
+  if (!NEW_MEMBER_ACTIVATION_SINCE) return false
+  const cutover = new Date(NEW_MEMBER_ACTIVATION_SINCE).getTime() - NEW_MEMBER_ACTIVATION_BACKFILL_DAYS * 86400000
+  return new Date(profile.created_at).getTime() >= cutover
+}
+
+// Same table as CHECKRIDE_TIMING_CLAUSE in create-free-account/index.ts --
+// duplicated rather than imported (no shared module between these two
+// functions today, same reasoning as WEAK_AREA_CONTENT above). Used only
+// by processActivationEmail1CatchUp, which re-sends Email #1's own copy
+// when the synchronous attempt at signup never got a confirmed success.
+const CHECKRIDE_TIMING_CLAUSE: Record<string, string> = {
+  within_14_days: " and that your checkride's coming up fast",
+  within_30_days: " and that your checkride's coming up soon",
+  within_60_days: " and that you're working toward your checkride",
+  more_than_60_days: " and that you've got some runway before your checkride",
 }
 
 // Verbatim from site/portal.js's WEAK_AREA_CONTENT -- keep these two in
@@ -748,13 +772,9 @@ async function processCheckrideUpsell(supabase: any, profile: any, results: any)
   // when the activation sequence itself is disabled (NEW_MEMBER_
   // ACTIVATION_SINCE unset), so this never changes behavior for anyone
   // unless that feature is actually turned on.
-  if (NEW_MEMBER_ACTIVATION_SINCE) {
-    const cutover = new Date(NEW_MEMBER_ACTIVATION_SINCE).getTime() - NEW_MEMBER_ACTIVATION_BACKFILL_DAYS * 86400000
-    const inActivationScope = new Date(profile.created_at).getTime() >= cutover
-    if (inActivationScope && daysSinceSignup < 7) {
-      const stillUnactivated = (await daysSinceLastMeaningfulActivity(supabase, profile.id)) === Infinity
-      if (stillUnactivated) return
-    }
+  if (isEligibleForActivationSequence(profile) && daysSinceSignup < 7) {
+    const stillUnactivated = (await daysSinceLastMeaningfulActivity(supabase, profile.id)) === Infinity
+    if (stillUnactivated) return
   }
 
   // profiles.checkride_timing (collected at signup, supabase-portal-
@@ -1117,10 +1137,92 @@ function emailTemplateActivationDay7(firstName: string, action: { hash: string; 
     '<p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">— Andrew</p>'
 }
 
+// ── Email #1 catch-up ──
+// create-free-account/index.ts attempts Email #1 synchronously at signup
+// and marks portal_events('activation_email_1') only on a CONFIRMED
+// successful send (see that file's own comment on why this diverges from
+// the mark-before-send convention used elsewhere). If that attempt never
+// got confirmed -- Resend was down, the request timed out, the container
+// was torn down mid-background-send -- this is the safety net: same
+// email, same content, a freshly generated magic link (auth.admin.
+// generateLink tokens are single-purpose and time-limited, so the
+// original link can't just be re-sent; a new one is the only option).
+//
+// Deliberately loses one piece of context the synchronous path had: a
+// lead-magnet signup's specific ?dest= (e.g. checkride-prep.html's own
+// signup link). That request-time value was never persisted anywhere,
+// and adding a column/table just to carry it through this rare recovery
+// path isn't justified -- documented here rather than silently dropped.
+// Every catch-up send routes to the dashboard, same as an organic signup.
+//
+// GRACE_PERIOD_MINUTES exists purely to avoid racing the synchronous
+// path's own EdgeRuntime.waitUntil()-backgrounded attempt, which should
+// finish within seconds, not minutes -- this cron only runs once daily
+// regardless, so the buffer costs nothing.
+const EMAIL1_CATCHUP_GRACE_PERIOD_MINUTES = 10
+
+// Returns true if this run just sent the catch-up -- processNewMemberActivation
+// checks this and skips its own send for the same profile on the same run,
+// so a very-delayed catch-up (Resend down for a couple of days, say) can't
+// stack Email #1 and a backlogged #2/#3/#4 into the same run. Only defers
+// by one run (~a day), not the whole sequence -- everything still resumes
+// normally next time.
+async function processActivationEmail1CatchUp(supabase: any, profile: any, results: any): Promise<boolean> {
+  if (!isEligibleForActivationSequence(profile)) return false
+  if (await hasMilestoneFired(supabase, profile.id, 'activation_email_1')) return false
+
+  const minutesSinceSignup = (Date.now() - new Date(profile.created_at).getTime()) / 60000
+  if (minutesSinceSignup < EMAIL1_CATCHUP_GRACE_PERIOD_MINUTES) return false
+
+  // Same "already found their own way in" reasoning as processNewMemberActivation's
+  // stop condition -- if they're already activated, they already have
+  // working portal access, so a stale "set your password" catch-up would
+  // be redundant at best.
+  if ((await daysSinceLastMeaningfulActivity(supabase, profile.id)) < Infinity) return false
+
+  const firstName = (profile.full_name || 'there').split(' ')[0]
+  const timingClause = profile.checkride_timing ? (CHECKRIDE_TIMING_CLAUSE[profile.checkride_timing] || '') : ''
+  const upsellClause = profile.checkride_timing === 'within_14_days'
+    ? '<p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">If your checkride is coming up, the full Checkride Prep System is there when you\'re ready.</p>'
+    : ''
+
+  const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+    type: 'recovery',
+    email: profile.email,
+    options: { redirectTo: `${SITE_ORIGIN}/portal-reset-password.html?dest=dashboard&utm_source=email&utm_medium=email&utm_campaign=new_member_activation&utm_content=welcome_1` },
+  })
+  const actionLink = linkData?.properties?.action_link
+  if (linkError || !actionLink) {
+    results.errors.push(`activation_email_1_catchup:${profile.id}: ${linkError?.message || 'no action_link'}`)
+    return false
+  }
+
+  const html = `<h2 style="color:#F4B400;margin:0 0 4px;">Andrew here.</h2>` +
+    `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">I saw you just joined Apex Advantage${timingClause}.</p>` +
+    `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">I'd start here: set your password, then answer today's oral exam question. It's free for every member and only takes a couple of minutes — the best way to start actually using the portal instead of just looking around.</p>` +
+    `<a href="${actionLink}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Set Up My Account & Get Started →</a>` +
+    upsellClause +
+    '<p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">If you get stuck on anything, reply to this email.</p>' +
+    '<p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">Blue skies,<br>Andrew</p>'
+
+  const emailResult = await supabase.functions.invoke('send-email', {
+    body: { to: profile.email, subject: `A good place to start, ${firstName}`, html: template(html), replyTo: ACTIVATION_REPLY_TO },
+  })
+  if (emailResult.error) {
+    results.errors.push(`activation_email_1_catchup:${profile.id}: ${emailResult.error?.message || emailResult.error}`)
+    return false // stays eligible for the next run -- no milestone marked
+  }
+
+  await markMilestoneSent(supabase, profile.id, 'activation_email_1')
+  await supabase.from('analytics_events').insert({
+    event_name: 'activation_email_1_sent', profile_id: profile.id, properties: { checkride_timing: profile.checkride_timing || null, via: 'cron_catchup' },
+  })
+  results.activation_email_1_catchup++
+  return true
+}
+
 async function processNewMemberActivation(supabase: any, profile: any, results: any) {
-  if (!NEW_MEMBER_ACTIVATION_SINCE) return // sequence not enabled -- see the constant's own comment
-  const cutover = new Date(NEW_MEMBER_ACTIVATION_SINCE).getTime() - NEW_MEMBER_ACTIVATION_BACKFILL_DAYS * 86400000
-  if (new Date(profile.created_at).getTime() < cutover) return
+  if (!isEligibleForActivationSequence(profile)) return
 
   // STOP CONDITION: this is the entire "activated" gate for the whole
   // sequence, recomputed fresh every run (never a cached/client-reported
@@ -1209,7 +1311,7 @@ serve(async (req) => {
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
-  const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, checkride_upsell: 0, ground_followup: 0, abandoned_checkout: 0, seven_day_active: 0, readiness_assessment_followup: 0, recovery_sortie_notified: 0, reactivation_inactive: 0, weekly_progress: 0, new_member_activation: 0, errors: [] as string[] }
+  const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, checkride_upsell: 0, ground_followup: 0, abandoned_checkout: 0, seven_day_active: 0, readiness_assessment_followup: 0, recovery_sortie_notified: 0, reactivation_inactive: 0, weekly_progress: 0, new_member_activation: 0, activation_email_1_catchup: 0, errors: [] as string[] }
 
   // exam_type hard-coded to 'private_pilot' — see get-premium-content
   // for why instrument content must never be reachable this way yet.
@@ -1235,7 +1337,8 @@ serve(async (req) => {
       // still useful, no inappropriate purchase pitch"). The function's
       // own stop condition (daysSinceLastMeaningfulActivity) already
       // applies identically either way.
-      await processNewMemberActivation(supabase, profile, results)
+      const justCaughtUpEmail1 = await processActivationEmail1CatchUp(supabase, profile, results)
+      if (!justCaughtUpEmail1) await processNewMemberActivation(supabase, profile, results)
       if (profile.checkride_prep_unlocked) {
         await processMilestones(supabase, profile, allQuestions, categoryIds, results)
         await processWeakArea(supabase, profile, allQuestions, categoryIds, results)

@@ -23,6 +23,21 @@
 -- sometime during an already-active member's history. A profile with no
 -- click at all is never counted here, regardless of whether they
 -- activated some other way (organic portal use, a different email, etc).
+-- Reported alongside a looser sibling metric, welcome_sent_before_
+-- activation_rate_pct (sent, not necessarily clicked, before activation)
+-- -- these are deliberately two separate numbers, not one blended one, so
+-- a reader can't mistake "the email was sent before they activated" for
+-- "the email caused it" (weaker claim) vs. "they actually clicked it
+-- first" (stronger claim). Neither implies causation on its own; see the
+-- hardening-pass audit note below.
+--
+-- first_activity_at is computed only from activity_events rows that
+-- occurred ON OR AFTER the profile's own created_at -- guards against a
+-- boundary case a hardening-pass audit specifically asked to be tested:
+-- old/historical activity somehow attached to a profile (a data-import
+-- artifact, a re-used id, etc.) producing a negative "time to first
+-- value" and a false activated_24h=true. Activity strictly before signup
+-- can't be this signup's first real value, by definition.
 --
 -- p_days controls how far back "new signups" looks (default 30) --
 -- doesn't affect training_stage/focus_area breakdowns below, which
@@ -59,10 +74,15 @@ begin
     union all
     select profile_id, started_at from public.ai_dpe_sessions
   ),
+  -- Joined against cohort so "activity before this profile's own
+  -- created_at" can never count as first_activity_at -- see the header
+  -- comment above.
   first_activity as (
-    select profile_id, min(occurred_at) as first_activity_at
-    from activity_events
-    group by profile_id
+    select ae.profile_id, min(ae.occurred_at) as first_activity_at
+    from activity_events ae
+    join cohort c on c.profile_id = ae.profile_id
+    where ae.occurred_at >= c.created_at
+    group by ae.profile_id
   ),
   first_click as (
     select profile_id, min(created_at) as first_click_at
@@ -70,18 +90,27 @@ begin
     where event_name in ('activation_email_1_clicked', 'activation_email_2_clicked', 'activation_email_3_clicked', 'activation_email_4_clicked')
     group by profile_id
   ),
+  first_welcome_sent as (
+    select profile_id, min(created_at) as first_sent_at
+    from public.analytics_events
+    where event_name = 'activation_email_1_sent'
+    group by profile_id
+  ),
   cohort_stats as (
     select
       c.profile_id, c.created_at, c.training_stage, c.primary_focus_area,
       fa.first_activity_at,
       fc.first_click_at,
+      fs.first_sent_at,
       (fa.first_activity_at is not null) as activated,
       (fa.first_activity_at is not null and fa.first_activity_at - c.created_at <= interval '24 hours') as activated_24h,
       (fa.first_activity_at is not null and fa.first_activity_at - c.created_at <= interval '7 days') as activated_7d,
-      (fc.first_click_at is not null and fa.first_activity_at is not null and fc.first_click_at <= fa.first_activity_at) as email_assisted
+      (fc.first_click_at is not null and fa.first_activity_at is not null and fc.first_click_at <= fa.first_activity_at) as email_clicked_before_activation,
+      (fs.first_sent_at is not null and fa.first_activity_at is not null and fs.first_sent_at <= fa.first_activity_at) as email_sent_before_activation
     from cohort c
     left join first_activity fa on fa.profile_id = c.profile_id
     left join first_click fc on fc.profile_id = c.profile_id
+    left join first_welcome_sent fs on fs.profile_id = c.profile_id
   ),
   welcome_sent as (
     select count(distinct profile_id) as n
@@ -118,8 +147,19 @@ begin
       then round((select count(*) filter (where activated_24h) from cohort_stats)::numeric / (select count(*) from cohort_stats) * 100, 1) else null end,
     'activation_rate_7d_pct', case when (select count(*) from cohort_stats) > 0
       then round((select count(*) filter (where activated_7d) from cohort_stats)::numeric / (select count(*) from cohort_stats) * 100, 1) else null end,
-    'email_assisted_activation_rate_pct', case when (select count(*) filter (where activated) from cohort_stats) > 0
-      then round((select count(*) filter (where email_assisted) from cohort_stats)::numeric / (select count(*) filter (where activated) from cohort_stats) * 100, 1) else null end,
+    -- The stronger, causally-suggestive claim: they clicked an activation
+    -- email before their first meaningful activity.
+    'email_clicked_before_activation_rate_pct', case when (select count(*) filter (where activated) from cohort_stats) > 0
+      then round((select count(*) filter (where email_clicked_before_activation) from cohort_stats)::numeric / (select count(*) filter (where activated) from cohort_stats) * 100, 1) else null end,
+    -- The weaker claim: the welcome email was merely sent before they
+    -- activated (no click required) -- most new signups will satisfy
+    -- this by default, since Email #1 sends immediately at signup, so a
+    -- high number here is expected and does NOT by itself mean the email
+    -- drove activation. Kept separate from the click-based rate above
+    -- rather than blended into one number, per the hardening-pass audit's
+    -- explicit instruction not to imply causation from a send alone.
+    'email_sent_before_activation_rate_pct', case when (select count(*) filter (where activated) from cohort_stats) > 0
+      then round((select count(*) filter (where email_sent_before_activation) from cohort_stats)::numeric / (select count(*) filter (where activated) from cohort_stats) * 100, 1) else null end,
     'activation_by_training_stage', (
       select coalesce(jsonb_agg(jsonb_build_object(
         'training_stage', training_stage, 'total', total, 'activated', activated,
