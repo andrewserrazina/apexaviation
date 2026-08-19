@@ -93,7 +93,10 @@ export default function Analytics() {
         // and the Ground School weak-area cross-sell. Both are new/low-volume
         // touchpoints, so a direct select is enough -- no RPC needed yet.
         supabase.from('portal_referrals').select('status, created_at').gte('created_at', thirtyDaysAgoIso),
-        supabase.from('portal_events').select('event_type, created_at').in('event_type', ['gs_cross_sell_shown', 'gs_cross_sell_clicked']).gte('created_at', thirtyDaysAgoIso),
+        supabase.from('portal_events').select('event_type, profile_id, created_at').in('event_type', [
+          'gs_cross_sell_shown', 'gs_cross_sell_clicked',
+          'challenge_started', 'challenge_completed', 'challenge_upgrade_cta_clicked',
+        ]).gte('created_at', thirtyDaysAgoIso),
       ])
 
       if (retentionRes.error) setRetentionError(retentionRes.error.message)
@@ -105,12 +108,22 @@ export default function Analytics() {
       const gsCrossSellRows = gsCrossSellRes.data ?? []
       const gsShown = gsCrossSellRows.filter(r => r.event_type === 'gs_cross_sell_shown').length
       const gsClicked = gsCrossSellRows.filter(r => r.event_type === 'gs_cross_sell_clicked').length
+      // Distinct profiles, not row counts -- logEventOnce writes each event
+      // type at most once per member, but de-duping here too keeps this
+      // correct even if that ever changes.
+      const challengeStarted = new Set(gsCrossSellRows.filter(r => r.event_type === 'challenge_started').map(r => r.profile_id)).size
+      const challengeCompleted = new Set(gsCrossSellRows.filter(r => r.event_type === 'challenge_completed').map(r => r.profile_id)).size
+      const challengeUpgradeClicks = new Set(gsCrossSellRows.filter(r => r.event_type === 'challenge_upgrade_cta_clicked').map(r => r.profile_id)).size
       setGrowthKpis({
         referralsTotal: referralRows.length,
         referralsSignedUp: referralRows.filter(r => r.status === 'signed_up' || r.status === 'redeemed').length,
         gsCrossSellShown: gsShown,
         gsCrossSellClicked: gsClicked,
         gsCrossSellClickRatePct: gsShown > 0 ? Math.round((gsClicked / gsShown) * 1000) / 10 : null,
+        challengeStarted,
+        challengeCompleted,
+        challengeCompletionRatePct: challengeStarted > 0 ? Math.round((challengeCompleted / challengeStarted) * 1000) / 10 : null,
+        challengeUpgradeClicks,
       })
 
       // ── DPE Question Bank engagement ──
@@ -481,6 +494,25 @@ export default function Analytics() {
         <div className="stat-card">
           <p className="stat-card__label">GS Cross-Sell Click Rate</p>
           <p className="stat-card__value">{fmtKpi(growthKpis?.gsCrossSellClickRatePct, '%')}</p>
+        </div>
+      </div>
+      <div className="stat-grid" style={{ marginTop: 16 }}>
+        <div className="stat-card">
+          <p className="stat-card__label">7-Day Challenge Started</p>
+          <p className="stat-card__value">{growthKpis?.challengeStarted ?? 0}</p>
+        </div>
+        <div className="stat-card">
+          <p className="stat-card__label">7-Day Challenge Completed</p>
+          <p className="stat-card__value">{growthKpis?.challengeCompleted ?? 0}</p>
+        </div>
+        <div className="stat-card">
+          <p className="stat-card__label">Challenge Completion Rate</p>
+          <p className="stat-card__value">{fmtKpi(growthKpis?.challengeCompletionRatePct, '%')}</p>
+        </div>
+        <div className="stat-card">
+          <p className="stat-card__label">Free Mock Oral → Upgrade Click</p>
+          <p className="stat-card__value">{growthKpis?.challengeUpgradeClicks ?? 0}</p>
+          <p className="stat-card__sub">clicked "Unlock Full Checkride Prep" after Day 7</p>
         </div>
       </div>
 

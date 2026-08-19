@@ -2720,7 +2720,18 @@
     var streakLine = s.current >= 2
       ? "You're on a " + s.current + "-day streak. "
       : (s.current === 1 ? "Streak started today. " : '');
-    el.textContent = streakLine + 'New DPE question every day — come back tomorrow (unlocks in about ' + hoursUntilNextQotd() + 'h).';
+    el.innerHTML = escapeHtmlSafe(streakLine + 'New DPE question every day — come back tomorrow (unlocks in about ' + hoursUntilNextQotd() + 'h).') +
+      // Growth Sprint section 6 -- a single, dismissable-by-ignoring nudge
+      // toward the 7-Day Challenge, only shown before it's been started
+      // (never after, so this doesn't compete with the challenge's own
+      // dashboard card once a member is already using it).
+      (loggedEventTypes['challenge_started'] ? '' :
+        '<div style="margin-top:10px"><button type="button" id="qotdChallengeNudge" style="background:none;border:none;padding:0;color:var(--gold-light);font-size:13px;font-weight:600;cursor:pointer;text-decoration:underline">Want a structured plan? Start the 7-Day Checkride Challenge →</button></div>');
+    var nudgeBtn = document.getElementById('qotdChallengeNudge');
+    if (nudgeBtn) nudgeBtn.addEventListener('click', function () {
+      var card = document.getElementById('challengeCard');
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
   }
 
   function renderQotd() {
@@ -5777,13 +5788,34 @@
 
     var current = challengeCurrentDay();
     if (current === null) {
+      // Growth Sprint section 10 -- Day 7 doubles as the free "mock oral"
+      // premium preview: lowest-complexity option that reuses this same
+      // challenge infrastructure rather than exposing free members to
+      // the paid, per-call-billed AI DPE Chat (dpe-chat edge function).
+      // No fabricated readiness/weak-area precision for locked members --
+      // this app has never scored oral answers (studied/not-studied only,
+      // same as the DPE Library everywhere else), so "strongest/weakest"
+      // is only ever shown when it's the member's real, unlocked
+      // readiness data (computeTrainingPlan()), never invented from the
+      // 6-question preview alone.
+      logEventOnce('challenge_completed', {});
+      var totalCovered = CHALLENGE_DAYS.reduce(function (sum, d) { return sum + ((challengeQuestionsCache[d.day] || []).length); }, 0);
+      var resultsPlan = computeTrainingPlan();
       bodyEl.innerHTML =
-        '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Challenge complete — nice work.</h3>' +
-        '<p style="color:rgba(255,255,255,0.6);font-size:14px;line-height:1.6;margin-bottom:14px">You covered all 7 days. The full DPE Question Bank has hundreds more questions across every ACS area, plus AI DPE Practice and Scenario Training.</p>' +
-        '<button type="button" class="btn btn--primary" id="challengeUnlockBtn">' + (member && member.checkridePrepUnlocked ? 'Go to Checkride Prep →' : 'Unlock the Full Question Bank →') + '</button>';
+        '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:4px">Mock Oral Results</h3>' +
+        '<p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:14px">7-Day Checkride Challenge complete.</p>' +
+        '<div class="portal-grid portal-grid--3" style="margin-bottom:14px">' +
+          '<div class="portal-my-training__panel"><p class="portal-my-training__label">Questions Covered</p><h3>' + totalCovered + '</h3></div>' +
+          '<div class="portal-my-training__panel"><p class="portal-my-training__label">Weakest Area</p><h3>' + (resultsPlan.unlocked && resultsPlan.primaryFocus ? escapeHtmlSafe(resultsPlan.primaryFocus.label) : '—') + '</h3></div>' +
+          '<div class="portal-my-training__panel"><p class="portal-my-training__label">Readiness</p><h3>' + (resultsPlan.unlocked ? resultsPlan.readinessPct + '%' : '—') + '</h3></div>' +
+        '</div>' +
+        (resultsPlan.unlocked ? '' :
+          '<p style="color:rgba(255,255,255,0.55);font-size:13px;line-height:1.6;margin-bottom:14px">This preview covered 6 real exam areas — documents, airworthiness, weather, airspace, performance, and emergency judgment. Unlock the full 328-question bank for a true readiness score with weak-area tracking, Scenario Training, and AI Oral Practice.</p>') +
+        '<button type="button" class="btn btn--primary" id="challengeUnlockBtn">' + (resultsPlan.unlocked ? 'Go to Checkride Prep →' : 'Unlock Full Checkride Prep →') + '</button>';
       var unlockBtn = document.getElementById('challengeUnlockBtn');
       if (unlockBtn) unlockBtn.addEventListener('click', function () {
-        if (member && member.checkridePrepUnlocked) showSection('dpe-library'); else openUnlockModal();
+        logEventOnce('challenge_upgrade_cta_clicked', {});
+        if (resultsPlan.unlocked) showSection('dpe-library'); else openUnlockModal();
       });
       return;
     }
