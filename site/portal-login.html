@@ -570,9 +570,17 @@
       // page (see create-free-account/index.ts and
       // portal-reset-password.html for the rest of the chain).
       var dest = (new URLSearchParams(window.location.search)).get('dest') || '';
+      // GS -> Portal Growth Funnel, section 8 -- source=ground_school&
+      // intent=free_training on the Ground School landing page's
+      // secondary free-account CTA. Read directly off this page's own
+      // URL (not first-touch storage) since it specifically identifies
+      // THIS visit's entry point, not whatever page a visitor first
+      // touched the site on.
+      var entrySource = (new URLSearchParams(window.location.search)).get('source') || '';
+      var entryIntent = (new URLSearchParams(window.location.search)).get('intent') || '';
 
       apexSupabase.functions.invoke('create-free-account', {
-        body: { name: name, email: email, dest: dest, checkride_timing: checkrideTiming || null, utm_first: window.apexGetFirstTouchUtm ? apexGetFirstTouchUtm() : undefined, ref: window.apexGetFirstTouchRef ? apexGetFirstTouchRef() : undefined }
+        body: { name: name, email: email, dest: dest, checkride_timing: checkrideTiming || null, utm_first: window.apexGetFirstTouchUtm ? apexGetFirstTouchUtm() : undefined, ref: window.apexGetFirstTouchRef ? apexGetFirstTouchRef() : undefined, source: entrySource || undefined, intent: entryIntent || undefined }
       }).then(function (res) {
         signupSubmit.disabled = false;
         signupSubmit.textContent = 'Create Free Account';

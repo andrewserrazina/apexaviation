@@ -79,7 +79,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    const { name, email, dest, checkride_timing, utm_first, ref } = await req.json()
+    const { name, email, dest, checkride_timing, utm_first, ref, source, intent } = await req.json()
     if (!name || !email) {
       return new Response(JSON.stringify({ error: 'Missing required fields: name, email' }), {
         status: 400,
@@ -162,6 +162,27 @@ serve(async (req) => {
         profile_id: created.user.id, event_type: 'signup_ref_code_used', metadata: { ref_code: safeRef },
       }).then((res: { error: unknown }) => {
         if (res.error) console.error('create-free-account: signup_ref_code_used log failed', res.error)
+      })
+    }
+
+    // GS -> Portal Growth Funnel, section 8/18/19 -- source=ground_school&
+    // intent=free_training identifies the Ground School landing page's
+    // secondary free-account CTA as this signup's entry point, for the
+    // "GS non-buyers -> portal" admin funnel metric (accounts created from
+    // that specific CTA). Deliberately a distinct event, not the brief's
+    // generic "portal_account_created" step -- that one already exists
+    // and fires for every signup unconditionally (the 'signup' portal_
+    // events row, supabase-portal-schema-v2.sql's handle_new_profile_
+    // portal_event trigger); reusing that name here for a conditional,
+    // source-specific event would be a second, confusingly-named event
+    // for the same underlying thing.
+    const safeSource = typeof source === 'string' && /^[a-z_]{1,40}$/.test(source) ? source : null
+    const safeIntent = typeof intent === 'string' && /^[a-z_]{1,40}$/.test(intent) ? intent : null
+    if (safeSource || safeIntent) {
+      await supabase.from('portal_events').insert({
+        profile_id: created.user.id, event_type: 'signup_entry_source', metadata: { source: safeSource, intent: safeIntent },
+      }).then((res: { error: unknown }) => {
+        if (res.error) console.error('create-free-account: signup_entry_source log failed', res.error)
       })
     }
 
