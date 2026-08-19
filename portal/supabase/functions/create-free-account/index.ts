@@ -79,7 +79,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    const { name, email, dest, checkride_timing, utm_first } = await req.json()
+    const { name, email, dest, checkride_timing, utm_first, ref } = await req.json()
     if (!name || !email) {
       return new Response(JSON.stringify({ error: 'Missing required fields: name, email' }), {
         status: 400,
@@ -129,6 +129,22 @@ serve(async (req) => {
           signup_utm_term: safeUtm.term,
         } : {}),
       }).eq('id', created.user.id)
+    }
+
+    // Closes the referral attribution loop (supabase-portal-schema-
+    // v73.sql) -- matches this signup against either a pending
+    // email-invite referral or a ?ref=<code> link, whichever applies.
+    // Never allowed to fail the signup itself: a referral bookkeeping
+    // problem is not a reason to tell a real new member their account
+    // creation failed.
+    const safeRef = typeof ref === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(ref) ? ref : null
+    try {
+      const { error: referralError } = await supabase.rpc('record_referral_signup', {
+        p_new_profile_id: created.user.id, p_email: email, p_ref_code: safeRef,
+      })
+      if (referralError) console.error('create-free-account: record_referral_signup failed', referralError)
+    } catch (err) {
+      console.error('create-free-account: record_referral_signup threw', err)
     }
 
     // Without an explicit redirectTo, generateLink falls back to whatever

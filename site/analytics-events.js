@@ -129,6 +129,34 @@
     return out;
   }
 
+  // ── Referral (?ref=<code>) capture ──
+  // The portal's "Refer a Friend" panel (site/portal-stable.js) already
+  // generates shareable links like contact.html?ref=<CODE>, but nothing
+  // in the codebase ever read that param -- referral attribution was
+  // silently dead on arrival, for every referral ever shared, since the
+  // feature shipped. Captured unconditionally the moment this script
+  // loads (not tucked inside track(), unlike the UTM capture above,
+  // which only runs as a side effect of an apexTrack() call happening to
+  // fire on this exact page -- contact.html, where referral links
+  // currently point, has no such call and would otherwise still lose it)
+  // so it survives via localStorage to whatever page the visitor
+  // eventually signs up on, same first-touch/never-overwritten pattern
+  // as the UTM keys. Forwarded by portal-login.html's signup handler
+  // into create-free-account, which calls record_referral_signup() --
+  // see supabase-portal-schema-v73.sql.
+  (function captureRef() {
+    try {
+      var ref = new URLSearchParams(window.location.search).get('ref');
+      if (ref && /^[A-Za-z0-9_-]{1,40}$/.test(ref) && !localStorage.getItem('apex_ref_first')) {
+        localStorage.setItem('apex_ref_first', ref);
+      }
+    } catch (e) { /* localStorage unavailable -- omit */ }
+  })();
+
+  function getFirstTouchRef() {
+    try { return localStorage.getItem('apex_ref_first') || null; } catch (e) { return null; }
+  }
+
   // apexTrack() is called inline in the middle of real signup/checkout
   // handlers (see portal-login.html) -- an uncaught throw here (a stray
   // mock without .from() in a test, a network hiccup, anything) would
@@ -192,4 +220,5 @@
   window.apexTrackStandard = trackStandard;
   window.apexGetUtm = getUtm;
   window.apexGetFirstTouchUtm = getFirstTouchUtm;
+  window.apexGetFirstTouchRef = getFirstTouchRef;
 })();

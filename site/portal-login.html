@@ -529,7 +529,7 @@
       var dest = (new URLSearchParams(window.location.search)).get('dest') || '';
 
       apexSupabase.functions.invoke('create-free-account', {
-        body: { name: name, email: email, dest: dest, checkride_timing: checkrideTiming || null, utm_first: window.apexGetFirstTouchUtm ? apexGetFirstTouchUtm() : undefined }
+        body: { name: name, email: email, dest: dest, checkride_timing: checkrideTiming || null, utm_first: window.apexGetFirstTouchUtm ? apexGetFirstTouchUtm() : undefined, ref: window.apexGetFirstTouchRef ? apexGetFirstTouchRef() : undefined }
       }).then(function (res) {
         signupSubmit.disabled = false;
         signupSubmit.textContent = 'Create Free Account';

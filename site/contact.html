@@ -270,5 +270,12 @@
   </footer>
 
   <script src="script.js"></script>
+  <!-- Captures ?ref=<code> (referral links, e.g. from the portal's
+       "Refer a Friend" panel) into localStorage so it survives to
+       wherever the visitor eventually signs up -- this page has no
+       direct signup flow of its own. See analytics-events.js's ref
+       capture and portal-login.html's signup handler, which forwards
+       it into create-free-account. -->
+  <script src="analytics-events.js"></script>
 </body>
 </html>
