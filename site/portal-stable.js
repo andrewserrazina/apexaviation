@@ -5691,6 +5691,150 @@
     });
   }
 
+  /* ══════════════════════════════════════════════════════════════
+     7-DAY CHECKRIDE CHALLENGE -- Growth Sprint Tier 2
+     Free-tier feature: content comes from get_challenge_day_questions()
+     (supabase-portal-schema-v74.sql), a small SECURITY DEFINER slice of
+     the DPE bank granted to every authenticated member -- DPE_DATA/
+     CATEGORY_META are empty client-side for locked members, so this
+     can't reuse those arrays. Progress is tracked entirely through
+     existing portal_events rows (challenge_started, challenge_day_N_
+     completed) via logEventOnce/loggedEventTypes -- no new table.
+     Days 1-6 map to real dpe_categories ids (verified against the
+     actual seeded set in supabase-portal-schema-v5.sql); 9 real
+     categories exist but only 6 are used here by design, since a 7-day
+     on-ramp is meant to be a fast, representative preview, not full
+     coverage -- the remaining categories are still fully covered in the
+     DPE Library after unlock. Day 7 pulls one question from each of the
+     six to form a "mixed mock oral" review.
+     ══════════════════════════════════════════════════════════════ */
+  var CHALLENGE_DAYS = [
+    { day: 1, title: 'Documents & Eligibility', category: 'eligibility' },
+    { day: 2, title: 'Airworthiness & Aircraft Systems', category: 'airworthiness' },
+    { day: 3, title: 'Weather', category: 'weather' },
+    { day: 4, title: 'Airspace', category: 'airspace' },
+    { day: 5, title: 'Performance & Weight/Balance', category: 'performance' },
+    { day: 6, title: 'ADM & Emergency Scenarios', category: 'emergency' },
+    { day: 7, title: 'Mock Oral — Mixed Review', category: null }
+  ];
+  var challengeQuestionsCache = {};
+  var challengeRevealed = {};
+
+  function challengeCurrentDay() {
+    for (var i = 0; i < CHALLENGE_DAYS.length; i++) {
+      if (!loggedEventTypes['challenge_day_' + CHALLENGE_DAYS[i].day + '_completed']) return CHALLENGE_DAYS[i].day;
+    }
+    return null;
+  }
+
+  function fetchChallengeDayQuestions(dayInfo) {
+    if (challengeQuestionsCache[dayInfo.day]) return Promise.resolve(challengeQuestionsCache[dayInfo.day]);
+    var req = dayInfo.category
+      ? apexSupabase.rpc('get_challenge_day_questions', { p_category: dayInfo.category, p_limit: 3 })
+      : Promise.all(CHALLENGE_DAYS.filter(function (d) { return d.category; }).map(function (d) {
+          return apexSupabase.rpc('get_challenge_day_questions', { p_category: d.category, p_limit: 1 });
+        })).then(function (results) {
+          return { data: results.reduce(function (acc, r) { return acc.concat((r && r.data) || []); }, []) };
+        });
+    return Promise.resolve(req).then(function (res) {
+      var qs = (res && res.data) || [];
+      challengeQuestionsCache[dayInfo.day] = qs;
+      return qs;
+    });
+  }
+
+  function renderChallengeDots() {
+    var dotsEl = document.getElementById('challengeDots');
+    if (!dotsEl) return;
+    var current = challengeCurrentDay();
+    dotsEl.innerHTML = CHALLENGE_DAYS.map(function (d) {
+      var done = !!loggedEventTypes['challenge_day_' + d.day + '_completed'];
+      var isCurrent = d.day === current;
+      var bg = done ? 'var(--gold)' : (isCurrent ? 'rgba(244,180,0,0.25)' : 'rgba(255,255,255,0.08)');
+      var border = isCurrent ? '1.5px solid var(--gold)' : '1.5px solid transparent';
+      var color = done ? '#0b1f3a' : '#fff';
+      return '<div title="Day ' + d.day + ': ' + d.title + '" style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:' + color + ';background:' + bg + ';border:' + border + '">' + (done ? '✓' : d.day) + '</div>';
+    }).join('');
+  }
+
+  function renderChallengeQuestionsList(questions) {
+    return questions.map(function (q) {
+      var revealed = !!challengeRevealed[q.id];
+      return '<div style="background:rgba(11,31,58,0.4);border-radius:10px;margin-bottom:10px;padding:14px 16px">' +
+        '<p style="color:#fff;font-size:14px;font-weight:600;margin-bottom:8px">' + escapeHtmlSafe(q.question) + '</p>' +
+        (revealed
+          ? '<p style="color:rgba(255,255,255,0.65);font-size:13px;line-height:1.6">' + escapeHtmlSafe(q.model_answer) + '</p>'
+          : '<button type="button" class="btn btn--ghost" data-challenge-reveal="' + escapeHtmlSafe(q.id) + '" style="font-size:12px;padding:8px 14px">Reveal Answer</button>') +
+      '</div>';
+    }).join('');
+  }
+
+  function renderChallenge() {
+    var card = document.getElementById('challengeCard');
+    var bodyEl = document.getElementById('challengeBody');
+    if (!card || !bodyEl) return;
+    renderChallengeDots();
+
+    var current = challengeCurrentDay();
+    if (current === null) {
+      bodyEl.innerHTML =
+        '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Challenge complete — nice work.</h3>' +
+        '<p style="color:rgba(255,255,255,0.6);font-size:14px;line-height:1.6;margin-bottom:14px">You covered all 7 days. The full DPE Question Bank has hundreds more questions across every ACS area, plus AI DPE Practice and Scenario Training.</p>' +
+        '<button type="button" class="btn btn--primary" id="challengeUnlockBtn">' + (member && member.checkridePrepUnlocked ? 'Go to Checkride Prep →' : 'Unlock the Full Question Bank →') + '</button>';
+      var unlockBtn = document.getElementById('challengeUnlockBtn');
+      if (unlockBtn) unlockBtn.addEventListener('click', function () {
+        if (member && member.checkridePrepUnlocked) showSection('dpe-library'); else openUnlockModal();
+      });
+      return;
+    }
+
+    var dayInfo = CHALLENGE_DAYS[current - 1];
+    var started = !!loggedEventTypes['challenge_started'];
+
+    if (!started && current === 1) {
+      bodyEl.innerHTML =
+        '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">7 days, 5-10 minutes a day.</h3>' +
+        '<p style="color:rgba(255,255,255,0.6);font-size:14px;line-height:1.6;margin-bottom:14px">A short daily walk through the exam areas that matter most: documents, airworthiness, weather, airspace, performance, and emergency judgment — capped off with a mixed mock-oral review.</p>' +
+        '<button type="button" class="btn btn--primary" id="challengeStartBtn">Start Day 1: ' + dayInfo.title + '</button>';
+      var startBtn = document.getElementById('challengeStartBtn');
+      if (startBtn) startBtn.addEventListener('click', function () {
+        logEventOnce('challenge_started', { start_date: getTodayStr() });
+        renderChallenge();
+      });
+      return;
+    }
+
+    bodyEl.innerHTML = '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:4px">Day ' + current + ': ' + dayInfo.title + '</h3><p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:14px">Loading today’s questions…</p>';
+
+    fetchChallengeDayQuestions(dayInfo).then(function (questions) {
+      if (challengeCurrentDay() !== current) return;
+      if (!questions.length) {
+        bodyEl.innerHTML = '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Day ' + current + ': ' + dayInfo.title + '</h3><p style="color:rgba(255,255,255,0.5);font-size:13px">No questions available for this day yet — check back soon.</p>';
+        return;
+      }
+      bodyEl.innerHTML =
+        '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:4px">Day ' + current + ': ' + dayInfo.title + '</h3>' +
+        '<p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:14px">' + questions.length + ' question' + (questions.length === 1 ? '' : 's') + ' — about 5-10 minutes.</p>' +
+        renderChallengeQuestionsList(questions) +
+        '<button type="button" class="btn btn--primary" id="challengeCompleteBtn" style="margin-top:6px">Mark Day ' + current + ' Complete →</button>';
+
+      questions.forEach(function (q) { touchLastViewed(q.id); });
+
+      bodyEl.querySelectorAll('[data-challenge-reveal]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          challengeRevealed[btn.dataset.challengeReveal] = true;
+          renderChallenge();
+        });
+      });
+      var completeBtn = document.getElementById('challengeCompleteBtn');
+      if (completeBtn) completeBtn.addEventListener('click', function () {
+        logEventOnce('challenge_day_' + current + '_completed', { category: dayInfo.category });
+        renderChallenge();
+        renderMyTraining();
+      });
+    });
+  }
+
   // Your Week -- Retention Sprint Tier 2. Pure client-side aggregation of
   // data loadProgress() already fetched (studied/answeredCounts/lastViewed
   // from portal_question_progress + portal_scenario_progress, studyDays
@@ -5786,6 +5930,7 @@
       // itself renders from rather than a second parallel fetch.
       loadGroundSchool().then(renderMyTraining);
       renderWeeklyProgress();
+      renderChallenge();
       renderAiDpeHistory();
       renderRecommendedNextStep();
       renderGroundSchoolProgress();

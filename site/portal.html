@@ -402,6 +402,21 @@
           </div>
         </div>
 
+        <!-- 7-Day Checkride Challenge -- Growth Sprint Tier 2. Free-tier
+             feature: pulls a small per-category slice of the DPE bank via
+             get_challenge_day_questions() (supabase-portal-schema-v74.sql),
+             which -- like get_daily_question() before it -- is granted to
+             every authenticated member regardless of checkride_prep_
+             unlocked, since DPE_DATA/CATEGORY_META are empty client-side
+             for locked members. Progress is tracked via existing
+             portal_events rows (challenge_day_N_completed), reusing
+             loggedEventTypes rather than a new table. -->
+        <div class="portal-card" id="challengeCard" style="margin-bottom:24px">
+          <div class="portal-header__eyebrow" style="margin-bottom:8px">7-Day Checkride Challenge</div>
+          <div id="challengeDots" style="display:flex;gap:8px;margin-bottom:16px"></div>
+          <div id="challengeBody"></div>
+        </div>
+
         <!-- Checkride Countdown + Mock Oral Booking -->
         <div class="portal-grid portal-grid--2" style="margin-bottom:24px">
           <div class="portal-card portal-countdown" id="checkrideCountdownCard">
