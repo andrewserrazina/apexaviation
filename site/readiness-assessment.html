@@ -88,14 +88,26 @@
       font-size: 12px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
       color: var(--gold); margin-bottom: 14px;
     }
-    .ra-hero h1 { font-size: clamp(28px, 4vw, 44px); font-weight: 800; color: #fff; max-width: 780px; margin: 0 auto 18px; line-height: 1.15; }
-    .ra-hero p { font-size: 16px; color: rgba(255,255,255,0.6); max-width: 600px; margin: 0 auto 28px; line-height: 1.6; }
-    .ra-benefits { list-style: none; padding: 0; margin: 0 auto 32px; max-width: 460px; text-align: left; display: flex; flex-direction: column; gap: 10px; }
-    .ra-benefits li { display: flex; align-items: flex-start; gap: 10px; color: rgba(255,255,255,0.75); font-size: 14.5px; line-height: 1.5; }
+    .ra-hero h1 { font-size: clamp(28px, 4vw, 44px); font-weight: 800; color: #fff; max-width: 780px; margin: 0 auto 14px; line-height: 1.15; }
+    /* Lede sells the outcome; subline is the smaller mechanic underneath it -- kept as two
+       separate sizes/weights on purpose, per the conversion-copy brief. */
+    .ra-hero__lede { font-size: 16px; color: rgba(255,255,255,0.68); max-width: 600px; margin: 0 auto 8px; line-height: 1.6; }
+    .ra-hero__subline { font-size: 13.5px; color: rgba(255,255,255,0.45); max-width: 520px; margin: 0 auto 24px; line-height: 1.55; }
+    .ra-benefits { list-style: none; padding: 0; margin: 0 auto 22px; max-width: 460px; text-align: left; display: flex; flex-direction: column; gap: 10px; }
+    .ra-benefits li { display: flex; align-items: flex-start; gap: 10px; color: rgba(255,255,255,0.8); font-size: 14.5px; font-weight: 600; line-height: 1.5; }
     .ra-benefits li svg { flex-shrink: 0; margin-top: 2px; color: var(--gold); }
+    /* Scannable metadata line, not a headline -- plain text, no pill/border, restrained tracking. */
+    .ra-hero__valuestrip {
+      font-size: 12.5px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase;
+      color: rgba(255,255,255,0.55); margin: 0 auto 20px;
+    }
     .ra-hero .btn--cta-primary { max-width: 340px; margin: 0 auto; }
-    .ra-hero__meta { margin-top: 16px; font-size: 13px; color: rgba(255,255,255,0.4); }
-    .ra-hero__disclaimer { margin-top: 28px; font-size: 12px; color: rgba(255,255,255,0.3); max-width: 520px; margin-left: auto; margin-right: auto; line-height: 1.6; }
+    .ra-hero__meta { margin-top: 14px; font-size: 13px; color: rgba(255,255,255,0.55); }
+    /* Deliberately the smallest, lowest-weight text in the hero -- but rgba(255,255,255,0.3)
+       (the old value) is only a 2.7:1 contrast ratio against #0B1F3A, below WCAG AA's 4.5:1
+       floor for body-sized text. 0.5 clears AA (~5:1); size/spacing/order carry the "secondary"
+       feel instead of contrast. */
+    .ra-hero__disclaimer { margin-top: 22px; font-size: 11.5px; color: rgba(255,255,255,0.5); max-width: 480px; margin-left: auto; margin-right: auto; line-height: 1.6; }
 
     .ra-quiz { padding: 40px 0 88px; }
     .ra-quiz__container { max-width: 640px; margin: 0 auto; }
@@ -184,7 +196,12 @@
     .ra-share { text-align: center; margin-bottom: 8px; }
 
     @media (max-width: 640px) {
-      .ra-hero { padding: 72px 0 40px; }
+      .ra-hero { padding: 52px 0 32px; }
+      .ra-hero h1 { margin-bottom: 10px; }
+      .ra-hero__lede { margin-bottom: 6px; }
+      .ra-hero__subline { margin-bottom: 16px; }
+      .ra-benefits { margin-bottom: 16px; gap: 8px; }
+      .ra-hero__valuestrip { margin-bottom: 14px; font-size: 11.5px; letter-spacing: 0.05em; }
       .ra-step__question { font-size: 18px; }
       .ra-results__score { font-size: 42px; }
       .ra-gate, .ra-convert { padding: 24px 20px; }
@@ -246,17 +263,17 @@
     <div class="container">
       <div class="ra-eyebrow">Free Private Pilot Checkride Assessment</div>
       <h1>Would You Pass Your Oral Tomorrow?</h1>
-      <p>Take a free 5-minute Private Pilot Checkride Readiness Assessment built around DPE-style questions, regulatory interpretation, and real-world scenarios.</p>
-      <ul class="ra-benefits">
-        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>20 DPE-style questions across every ACS oral-exam area</li>
-        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Instant readiness score</li>
-        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Category-by-category breakdown</li>
-        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Identify your weakest areas</li>
-        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Personalized study recommendations</li>
+      <p class="ra-hero__lede ra-hero__fade">Find out where you're strong, where you're weak, and what you should review before your Private Pilot checkride.</p>
+      <p class="ra-hero__subline ra-hero__fade">20 DPE-style questions built around the areas you'll face during your oral.</p>
+      <ul class="ra-benefits ra-hero__fade">
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>DPE-style questions across the ACS</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Instant Checkride Readiness Score</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Personalized weak-area analysis</li>
       </ul>
-      <button type="button" class="btn--cta-primary" id="raStartBtn">Start My Free Assessment</button>
-      <div class="ra-hero__meta">No credit card required · Takes about 5 minutes</div>
-      <p class="ra-hero__disclaimer">The Apex Checkride Readiness Score is a study diagnostic and does not predict or guarantee practical test performance.</p>
+      <div class="ra-hero__valuestrip ra-hero__fade">20 Questions&nbsp;&nbsp;•&nbsp;&nbsp;~5 Minutes&nbsp;&nbsp;•&nbsp;&nbsp;Instant Results</div>
+      <button type="button" class="btn--cta-primary" id="raStartBtn">Get My Readiness Score →</button>
+      <div class="ra-hero__meta ra-hero__fade">No credit card required · Takes about 5 minutes</div>
+      <p class="ra-hero__disclaimer ra-hero__fade">The Apex Checkride Readiness Score is a study diagnostic and does not predict or guarantee practical test performance.</p>
     </div>
   </section>
 
@@ -982,7 +999,7 @@
     startBtn.addEventListener('click', function () {
       startBtn.parentElement.querySelector('h1').style.display = 'none';
       startBtn.closest('.ra-hero').style.paddingBottom = '24px';
-      startBtn.closest('.ra-hero').querySelectorAll('p, ul').forEach(function (el) { el.style.display = 'none'; });
+      startBtn.closest('.ra-hero').querySelectorAll('.ra-hero__fade').forEach(function (el) { el.style.display = 'none'; });
       startBtn.style.display = 'none';
       quizSection.hidden = false;
       if (window.apexTrack) apexTrack('readiness_assessment_started', { product: 'checkride_prep' });
