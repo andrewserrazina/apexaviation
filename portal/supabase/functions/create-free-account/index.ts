@@ -219,6 +219,31 @@ serve(async (req) => {
       console.error('create-free-account: claim_ground_school_enrollments_by_email threw', err)
     }
 
+    // Checkride Readiness Assessment V1 -- same reconciliation pattern as
+    // the GS enrollment claim just above: someone who took the free
+    // assessment anonymously (readiness-assessment.html never requires
+    // an account to see their score) and is only now creating one gets
+    // every prior attempt attached to their new profile, not just the
+    // one that triggered this signup. claim_readiness_assessment_by_email
+    // (v78.sql) returns the count claimed for the same "countable signal"
+    // reason as the GS claim.
+    try {
+      const { data: raClaimedCount, error: raClaimError } = await supabase.rpc('claim_readiness_assessment_by_email', {
+        p_profile_id: created.user.id, p_email: email,
+      })
+      if (raClaimError) {
+        console.error('create-free-account: claim_readiness_assessment_by_email failed', raClaimError)
+      } else if ((raClaimedCount ?? 0) > 0) {
+        await supabase.from('portal_events').insert({
+          profile_id: created.user.id, event_type: 'readiness_assessment_claimed', metadata: { attempts_claimed: raClaimedCount },
+        }).then((res: { error: unknown }) => {
+          if (res.error) console.error('create-free-account: readiness_assessment_claimed log failed', res.error)
+        })
+      }
+    } catch (err) {
+      console.error('create-free-account: claim_readiness_assessment_by_email threw', err)
+    }
+
     // Without an explicit redirectTo, generateLink falls back to whatever
     // the project's Auth "Site URL" is set to -- which defaults to
     // http://localhost:3000 on a fresh Supabase project until someone

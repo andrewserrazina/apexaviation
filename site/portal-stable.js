@@ -4504,6 +4504,46 @@
   }
 
   /* ══════════════════════════════════════════════════════════════
+     CHECKRIDE READINESS ASSESSMENT V1 -- baseline card
+     Reads the member's own readiness_assessment_leads rows (RLS: auth.uid()
+     = profile_id, v78.sql). Baseline is the first-ever attempt (by
+     created_at); if a later retake exists, its score and the delta from
+     baseline are also shown -- no full historical chart, per the brief's
+     own "not unless trivial" guidance.
+     ══════════════════════════════════════════════════════════════ */
+  function renderReadinessBaseline() {
+    var rowEl = document.getElementById('readinessBaselineRow');
+    if (!rowEl || !member) return;
+    apexSupabase.from('readiness_assessment_leads')
+      .select('score, readiness_level, created_at')
+      .eq('profile_id', member.id)
+      .order('created_at', { ascending: true })
+      .then(function (res) {
+        var attempts = (res && res.data) || [];
+        if (!attempts.length) { rowEl.style.display = 'none'; return; }
+        rowEl.style.display = 'grid';
+
+        var baseline = attempts[0];
+        var latest = attempts[attempts.length - 1];
+        document.getElementById('readinessBaselineScore').textContent = baseline.score + '%';
+        document.getElementById('readinessBaselineDate').textContent =
+          'Completed ' + new Date(baseline.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' · ' + baseline.readiness_level;
+
+        var latestCard = document.getElementById('readinessLatestCard');
+        if (attempts.length > 1 && latest !== baseline) {
+          latestCard.style.display = 'block';
+          document.getElementById('readinessLatestScore').textContent = latest.score + '%';
+          var delta = latest.score - baseline.score;
+          var deltaText = (delta > 0 ? '+' : '') + delta + ' point' + (Math.abs(delta) === 1 ? '' : 's') + ' vs. baseline';
+          document.getElementById('readinessLatestDelta').textContent =
+            new Date(latest.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' · ' + deltaText;
+        } else {
+          latestCard.style.display = 'none';
+        }
+      });
+  }
+
+  /* ══════════════════════════════════════════════════════════════
      CHECKRIDE DATE + COUNTDOWN
      ══════════════════════════════════════════════════════════════ */
   // Growth Sprint section 13 -- personalizes the unset-date prompt using
@@ -6039,6 +6079,7 @@
       enforceUpgradeDeepLink();
       enforceTopicDeepLink();
       renderCheckrideCountdown();
+      renderReadinessBaseline();
       renderMembership();
       renderMembershipSubscription();
       renderGroundSchoolPackCard();
