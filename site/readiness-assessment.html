@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Free Checkride Readiness Assessment | Apex Advantage</title>
-  <meta name="description" content="8 quick questions across real ACS knowledge areas. Find out which topics need work before your private pilot checkride — free, no account required." />
-  <meta property="og:title" content="Free Checkride Readiness Assessment | Apex Advantage" />
-  <meta property="og:description" content="See exactly which ACS areas need work before your private pilot oral exam. Free 2-minute assessment, real feedback, no card required." />
+  <title>Free Private Pilot Checkride Readiness Assessment | Apex Advantage</title>
+  <meta name="description" content="Take the free Apex Advantage Private Pilot Checkride Readiness Assessment. Answer DPE-style questions, get your readiness score, and identify the areas you should review before your oral exam." />
+  <meta property="og:title" content="Free Private Pilot Checkride Readiness Assessment | Apex Advantage" />
+  <meta property="og:description" content="20 DPE-style questions across every ACS oral-exam area. Get an instant readiness score, your strongest area, and where to focus next — free, no account required to start." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://apexaviationtx.com/readiness-assessment.html" />
   <meta property="og:image" content="https://apexaviationtx.com/ApexPrivate.png" />
   <meta property="og:site_name" content="Apex Aviation" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Free Checkride Readiness Assessment | Apex Advantage" />
-  <meta name="twitter:description" content="8 quick questions across real ACS knowledge areas — see what needs work before your checkride." />
+  <meta name="twitter:title" content="Free Private Pilot Checkride Readiness Assessment | Apex Advantage" />
+  <meta name="twitter:description" content="20 DPE-style questions across every ACS oral-exam area — get your readiness score and know exactly where to focus." />
   <meta name="twitter:image" content="https://apexaviationtx.com/ApexPrivate.png" />
   <link rel="canonical" href="https://apexaviationtx.com/readiness-assessment.html" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
@@ -56,14 +56,15 @@
     })(window,document,'clarity','script','x95g0qe0g6');
   </script>
   <style>
-    /* ── Readiness Assessment — page-specific styles, same "cp-"
-       visual language (dark navy + gold) already used on
-       checkride-prep.html / radio-calls.html, kept local to this page. ── */
-
-    /* .btn--cta-primary / .btn--outline-gold aren't in styles.css or
-       pages.css -- every page that uses them (checkride-prep.html,
-       radio-calls.html) defines its own local copy. Same rule here,
-       copied from radio-calls.html for visual consistency. */
+    /* ── Checkride Readiness Assessment V1 ──────────────────────────
+       Same "ra-" visual language as the page this replaces, kept:
+       dark navy + gold, rounded corners, gradient CTA/progress fill.
+       Deliberately NOT switched to a square-corner/no-gradient look --
+       every other Apex Advantage page (checkride-prep.html, radio-
+       calls.html, apex-advantage-private-pilot.html) shares this exact
+       rounded/gradient gold language, and a one-page departure from it
+       would read as visually inconsistent with the rest of the site,
+       not more premium. ── */
     .btn--cta-primary {
       display: inline-flex; align-items: center; justify-content: center; gap: 10px;
       background: var(--gold); color: #080f1e; font-weight: 800; font-size: 17px; letter-spacing: 0.02em;
@@ -80,31 +81,37 @@
       transition: background 0.2s, color 0.2s;
     }
     .btn--outline-gold:hover { background: var(--gold); color: #080f1e; }
+    .btn--outline-gold:focus-visible, .btn--cta-primary:focus-visible, .ra-option:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
-    .ra-section { padding: 72px 0; background: #080f1e; }
-    .ra-hero { padding: 96px 0 64px; text-align: center; }
+    .ra-hero { padding: 96px 0 48px; text-align: center; }
     .ra-eyebrow {
       font-size: 12px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
       color: var(--gold); margin-bottom: 14px;
     }
     .ra-hero h1 { font-size: clamp(28px, 4vw, 44px); font-weight: 800; color: #fff; max-width: 780px; margin: 0 auto 18px; line-height: 1.15; }
-    .ra-hero p { font-size: 16px; color: rgba(255,255,255,0.6); max-width: 600px; margin: 0 auto 32px; line-height: 1.6; }
-    .ra-hero .btn--cta-primary { max-width: 320px; margin: 0 auto; }
+    .ra-hero p { font-size: 16px; color: rgba(255,255,255,0.6); max-width: 600px; margin: 0 auto 28px; line-height: 1.6; }
+    .ra-benefits { list-style: none; padding: 0; margin: 0 auto 32px; max-width: 460px; text-align: left; display: flex; flex-direction: column; gap: 10px; }
+    .ra-benefits li { display: flex; align-items: flex-start; gap: 10px; color: rgba(255,255,255,0.75); font-size: 14.5px; line-height: 1.5; }
+    .ra-benefits li svg { flex-shrink: 0; margin-top: 2px; color: var(--gold); }
+    .ra-hero .btn--cta-primary { max-width: 340px; margin: 0 auto; }
     .ra-hero__meta { margin-top: 16px; font-size: 13px; color: rgba(255,255,255,0.4); }
+    .ra-hero__disclaimer { margin-top: 28px; font-size: 12px; color: rgba(255,255,255,0.3); max-width: 520px; margin-left: auto; margin-right: auto; line-height: 1.6; }
 
-    .ra-quiz { padding: 56px 0 88px; }
+    .ra-quiz { padding: 40px 0 88px; }
     .ra-quiz__container { max-width: 640px; margin: 0 auto; }
-    .ra-progress { height: 6px; border-radius: 100px; background: rgba(255,255,255,0.08); overflow: hidden; margin-bottom: 32px; }
+    .ra-progress { height: 6px; border-radius: 100px; background: rgba(255,255,255,0.08); overflow: hidden; margin-bottom: 12px; }
     .ra-progress__fill { height: 100%; background: linear-gradient(90deg, var(--gold-2), var(--gold-light)); border-radius: 100px; transition: width 0.3s ease; width: 0%; }
+    .ra-progress__label { font-size: 12.5px; color: rgba(255,255,255,0.4); margin-bottom: 24px; font-weight: 600; }
 
     .ra-step__category { font-size: 11.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); margin-bottom: 10px; }
-    .ra-step__question { font-size: 21px; font-weight: 700; color: #fff; line-height: 1.4; margin-bottom: 24px; }
+    .ra-step__question { font-size: 20px; font-weight: 700; color: #fff; line-height: 1.4; margin-bottom: 24px; }
     .ra-options { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
     .ra-option {
       display: block; width: 100%; text-align: left; padding: 16px 18px;
       background: #101f38; border: 1.5px solid rgba(255,255,255,0.1); border-radius: 10px;
       color: #E5E7EB; font-family: inherit; font-size: 14.5px; font-weight: 500; line-height: 1.5;
       cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease;
+      min-height: 48px;
     }
     .ra-option:hover { border-color: rgba(244,180,0,0.35); background: #142544; }
     .ra-option.selected { border-color: var(--gold); background: rgba(244,180,0,0.1); color: #fff; }
@@ -120,31 +127,68 @@
     .ra-field-group input:focus, .ra-field-group select:focus { border-color: var(--gold); }
     .ra-field-group select option { background: #0B1F3A; }
 
-    .ra-results__score-row { display: flex; align-items: baseline; gap: 16px; justify-content: center; margin-bottom: 6px; }
-    .ra-results__score { font-size: 52px; font-weight: 800; color: var(--gold); line-height: 1; }
-    .ra-results__level { font-size: 20px; font-weight: 700; color: #fff; }
-    .ra-results__sub { text-align: center; color: rgba(255,255,255,0.5); font-size: 14px; margin-bottom: 40px; max-width: 520px; margin-left: auto; margin-right: auto; }
+    .ra-results__score-row { display: flex; align-items: baseline; gap: 16px; justify-content: center; margin-bottom: 6px; flex-wrap: wrap; }
+    .ra-results__score { font-size: 56px; font-weight: 800; color: var(--gold); line-height: 1; }
+    .ra-results__level { font-size: 19px; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 0.04em; }
+    .ra-results__sub { text-align: center; color: rgba(255,255,255,0.5); font-size: 14px; margin: 0 auto 32px; max-width: 520px; }
+    .ra-results__disclaimer { text-align: center; color: rgba(255,255,255,0.3); font-size: 12px; margin: 0 auto 36px; max-width: 480px; line-height: 1.6; }
 
-    .ra-breakdown { display: flex; flex-direction: column; gap: 1px; background: rgba(255,255,255,0.08); border-radius: 10px; overflow: hidden; margin-bottom: 32px; }
-    .ra-breakdown__row { background: #101f38; padding: 16px 20px; display: flex; gap: 14px; align-items: flex-start; }
-    .ra-breakdown__icon { flex-shrink: 0; font-size: 15px; margin-top: 1px; }
-    .ra-breakdown__icon--correct { color: #4ade80; }
-    .ra-breakdown__icon--wrong { color: #f87171; }
-    .ra-breakdown__cat { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255,255,255,0.45); margin-bottom: 4px; }
-    .ra-breakdown__explain { font-size: 13.5px; color: rgba(255,255,255,0.65); line-height: 1.55; }
+    .ra-gate {
+      background: linear-gradient(120deg, rgba(244,180,0,0.14), rgba(11,31,58,0.4));
+      border: 1px solid rgba(244,180,0,0.25); border-radius: 14px; padding: 32px; margin-bottom: 8px;
+    }
+    .ra-gate h3 { font-size: 19px; font-weight: 800; color: #fff; margin: 0 0 10px; text-align: center; }
+    .ra-gate p { font-size: 14.5px; color: rgba(255,255,255,0.65); line-height: 1.6; text-align: center; margin: 0 0 24px; }
+    .ra-gate__locked { filter: blur(6px); pointer-events: none; user-select: none; opacity: 0.5; }
+    .ra-gate__toggle { display: flex; gap: 8px; justify-content: center; margin-bottom: 22px; }
+    .ra-gate__toggle button {
+      background: none; border: none; color: rgba(255,255,255,0.5); font-family: inherit; font-size: 13.5px;
+      font-weight: 700; cursor: pointer; padding: 8px 4px; border-bottom: 2px solid transparent;
+    }
+    .ra-gate__toggle button.active { color: var(--gold); border-bottom-color: var(--gold); }
+    .ra-gate__form { max-width: 380px; margin: 0 auto; }
+    .ra-gate__note { text-align: center; font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 12px; }
+
+    .ra-cat-scores { display: flex; flex-direction: column; gap: 14px; margin-bottom: 32px; }
+    .ra-cat-score__row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+    .ra-cat-score__label { font-size: 13.5px; font-weight: 600; color: rgba(255,255,255,0.8); }
+    .ra-cat-score__pct { font-size: 13.5px; font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
+    .ra-cat-score__track { height: 8px; border-radius: 100px; background: rgba(255,255,255,0.08); overflow: hidden; }
+    .ra-cat-score__fill { height: 100%; border-radius: 100px; background: var(--gold); }
+
+    .ra-highlight-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 32px; }
+    .ra-highlight-card { background: #101f38; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 18px 20px; }
+    .ra-highlight-card__label { font-size: 10.5px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 8px; }
+    .ra-highlight-card--strong .ra-highlight-card__label { color: #4ade80; }
+    .ra-highlight-card--weak .ra-highlight-card__label { color: #f87171; }
+    .ra-highlight-card__item { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+    .ra-highlight-card__pct { font-size: 12.5px; color: rgba(255,255,255,0.5); }
 
     .ra-recommend {
-      background: linear-gradient(120deg, rgba(244,180,0,0.14), rgba(11,31,58,0.4));
-      border: 1px solid rgba(244,180,0,0.25); border-radius: 12px; padding: 30px 32px; margin-bottom: 24px;
+      background: #101f38; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 26px 28px; margin-bottom: 24px;
     }
-    .ra-recommend h3 { font-size: 19px; font-weight: 800; color: #fff; margin-bottom: 8px; }
-    .ra-recommend p { font-size: 14.5px; color: rgba(255,255,255,0.65); line-height: 1.65; margin-bottom: 20px; }
+    .ra-recommend h3 { font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 12px; }
+    .ra-recommend p { font-size: 14px; color: rgba(255,255,255,0.65); line-height: 1.7; margin-bottom: 10px; }
+
+    .ra-convert {
+      background: linear-gradient(120deg, rgba(244,180,0,0.14), rgba(11,31,58,0.4));
+      border: 1px solid rgba(244,180,0,0.25); border-radius: 14px; padding: 32px; margin-bottom: 24px; text-align: center;
+    }
+    .ra-convert h3 { font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 10px; }
+    .ra-convert p { font-size: 14.5px; color: rgba(255,255,255,0.65); line-height: 1.65; margin-bottom: 22px; max-width: 480px; margin-left: auto; margin-right: auto; }
+    .ra-convert__features { list-style: none; padding: 0; margin: 0 auto 24px; max-width: 420px; text-align: left; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
+    .ra-convert__features li { font-size: 13px; color: rgba(255,255,255,0.6); display: flex; align-items: center; gap: 8px; }
+    .ra-convert__features li::before { content: '✓'; color: var(--gold); font-weight: 800; }
+    .ra-convert__ctas { display: flex; flex-direction: column; gap: 12px; max-width: 380px; margin: 0 auto; }
+
+    .ra-share { text-align: center; margin-bottom: 8px; }
 
     @media (max-width: 640px) {
-      .ra-hero { padding: 72px 0 48px; }
+      .ra-hero { padding: 72px 0 40px; }
       .ra-step__question { font-size: 18px; }
-      .ra-results__score { font-size: 40px; }
-      .ra-recommend { padding: 24px 22px; }
+      .ra-results__score { font-size: 42px; }
+      .ra-gate, .ra-convert { padding: 24px 20px; }
+      .ra-highlight-row { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -200,11 +244,19 @@
   <!-- ═══ 1. HERO / INTRO ═══ -->
   <section class="ra-hero">
     <div class="container">
-      <div class="ra-eyebrow">Free Checkride Readiness Assessment</div>
-      <h1>How Checkride-Ready Are You, Really?</h1>
-      <p>8 quick questions across real ACS knowledge areas. See exactly which topics need work before your oral exam — with a real answer breakdown, not just a score.</p>
-      <button type="button" class="btn--cta-primary" id="raStartBtn">Start the Assessment</button>
-      <div class="ra-hero__meta">Takes about 2 minutes · No account or payment required</div>
+      <div class="ra-eyebrow">Free Private Pilot Checkride Assessment</div>
+      <h1>Would You Pass Your Oral Tomorrow?</h1>
+      <p>Take a free 5-minute Private Pilot Checkride Readiness Assessment built around DPE-style questions, regulatory interpretation, and real-world scenarios.</p>
+      <ul class="ra-benefits">
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>20 DPE-style questions across every ACS oral-exam area</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Instant readiness score</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Category-by-category breakdown</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Identify your weakest areas</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Personalized study recommendations</li>
+      </ul>
+      <button type="button" class="btn--cta-primary" id="raStartBtn">Start My Free Assessment</button>
+      <div class="ra-hero__meta">No credit card required · Takes about 5 minutes</div>
+      <p class="ra-hero__disclaimer">The Apex Checkride Readiness Score is a study diagnostic and does not predict or guarantee practical test performance.</p>
     </div>
   </section>
 
@@ -279,72 +331,219 @@
   <script src="script.js"></script>
   <script>
     // ═══════════════════════════════════════════════════════════════
-    // Free Checkride Readiness Assessment — 8 knowledge questions across
-    // real ACS categories (matching the category ids used by the paid
-    // product's own DPE library/ACS Coverage Map, for continuity), then
-    // checkride timing + email, then a real answer-by-answer breakdown
-    // -- not just a score -- before the CTA into the full product.
+    // Checkride Readiness Assessment V1
     //
-    // Every question below is a standard, well-established private
-    // pilot ground-school fact (14 CFR citations noted in comments) --
-    // nothing invented or guessed.
+    // 20 multiple-choice questions across the 9 REAL ACS categories
+    // this codebase already uses everywhere else (dpe_categories,
+    // weak-area detection, ACS Coverage Map) -- not an invented
+    // 6-category scheme, for continuity with the paid product's own
+    // category breakdown. Every question is freshly written, grounded
+    // in standard, well-established Private Pilot ACS knowledge (14 CFR
+    // citations noted in comments where relevant) -- adapted in spirit
+    // from the paid DPE bank's real content and question style, not
+    // verbatim copies of it (see readiness-assessment.html's own prior
+    // version for the same original-content precedent this follows).
+    //
+    // Scoring: each question has a type/weight (knowledge 1.0, applied
+    // 1.5, scenario/ADM 2.0). Overall and per-category scores are both
+    // (weighted points earned / weighted points possible) * 100.
     // ═══════════════════════════════════════════════════════════════
+    var CATEGORIES = {
+      eligibility:   'Eligibility & Documents',
+      airworthiness: 'Airworthiness',
+      privileges:    'Privileges & Limitations',
+      airspace:      'Airspace',
+      weather:       'Weather',
+      performance:   'Performance & W&B',
+      aeromedical:   'Aeromedical Factors',
+      crosscountry:  'Cross-Country Planning',
+      emergency:     'Emergency Operations'
+    };
+
+    // If weak, recommend review here -- one line per real category,
+    // adapted from that category's own intro copy in the paid product
+    // (supabase-portal-schema-v5.sql) rather than invented separately.
+    var REVIEW_RECOMMENDATIONS = {
+      eligibility: 'Review the eligibility requirements, required endorsements, and document list (IACRA, Knowledge Test Report, logbook) you need on hand for checkride day -- avoidable paperwork mistakes do the most unnecessary damage to a first impression.',
+      airworthiness: 'Review ARROW required documents, inspection intervals (annual, 100-hour, transponder/altimeter, ELT), and the 91.213 inoperative-equipment process -- know your responsibility as PIC to determine the aircraft is legal and safe, not just recite a schedule.',
+      privileges: 'Review flight review and currency requirements, BasicMed limitations, the pro rata cost-sharing rule, and exactly what your certificate does and doesn’t allow -- examiners often probe the edges of a privilege, not just its existence.',
+      airspace: 'Review the entry requirements, dimensions, and weather minimums for Class B/C/D/E/G airspace from memory -- real flight planning happens before you ever pull up a chart in the airplane.',
+      weather: 'Review METAR/TAF interpretation and translating decoded weather into a real go/no-go decision -- a DPE cares less about your ability to define a term than your ability to use it.',
+      performance: 'Review turning published performance numbers (weight and balance, density altitude, takeoff/landing distance) into an actual go/no-go decision for a specific day, load, and runway.',
+      aeromedical: 'Review IMSAFE, the 8-hour bottle-to-throttle rule, and hypoxia/hyperventilation symptoms -- this section tests judgment about yourself, not just the airplane.',
+      crosscountry: 'Review fuel reserve requirements and in-flight re-planning when conditions change -- cross-country planning ties together airspace, weather, and performance into one real decision.',
+      emergency: 'Review the standard response priorities for engine failure after takeoff, in-flight fire, and other emergencies -- examiners are listening for structured, rehearsed procedure, not dramatic language.'
+    };
+
     var QUESTIONS = [
+      // ── Eligibility & Documents (2) ──
       {
-        cat: 'eligibility', catLabel: 'Eligibility & Requirements',
+        cat: 'eligibility', type: 'knowledge', weight: 1.0,
         q: 'What is the minimum total flight time required for a Private Pilot certificate under 14 CFR Part 61?',
         options: ['20 hours', '35 hours', '40 hours', '50 hours'],
         correct: 2,
-        explain: 'Part 61.109 sets a 40-hour minimum (most students fly more before they’re ready) — 20 hours of flight training and 10 hours of solo are part of that total, not on top of it.'
+        explain: 'Part 61.109 sets a 40-hour minimum -- most students fly more before they’re ready. 20 hours of flight training and 10 hours of solo are part of that total, not on top of it.',
+        review: 'The Part 61.109 aeronautical experience requirements.'
       },
       {
-        cat: 'airworthiness', catLabel: 'Airworthiness',
+        cat: 'eligibility', type: 'applied', weight: 1.5,
+        q: 'Which document lists the specific ACS codes you missed on your FAA Knowledge Test, and should shape your oral exam review?',
+        options: ['Your student pilot certificate', 'The Knowledge Test Report', 'Your logbook endorsement page', 'The IACRA confirmation email'],
+        correct: 1,
+        explain: 'The Knowledge Test Report maps directly to specific ACS Tasks. A DPE will often ask about any codes you missed -- have a genuine, prepared answer, not a vague one.',
+        review: 'How to read your own Knowledge Test Report and connect its codes to ACS Tasks.'
+      },
+      // ── Airworthiness (2) ──
+      {
+        cat: 'airworthiness', type: 'knowledge', weight: 1.0,
         q: 'How often must an aircraft operated under Part 91 receive an annual inspection?',
         options: ['Every 6 calendar months', 'Every 100 hours', 'Every 12 calendar months', 'Every 24 calendar months'],
         correct: 2,
-        explain: '14 CFR 91.409(a) requires an annual inspection within the preceding 12 calendar months, regardless of how many hours were flown.'
+        explain: '14 CFR 91.409(a) requires an annual inspection within the preceding 12 calendar months, regardless of how many hours were flown.',
+        review: 'Required inspection intervals: annual, 100-hour, transponder/altimeter, and ELT.'
       },
       {
-        cat: 'weather', catLabel: 'Weather',
+        cat: 'airworthiness', type: 'scenario', weight: 2.0,
+        q: 'In cruise on a humid 55°F day, flying a carbureted engine, you notice a gradual RPM decrease with no other symptom. What should you suspect first, and what’s your first action?',
+        options: ['A failing alternator -- check the ammeter', 'Carburetor icing -- apply carb heat', 'Spark plug fouling -- lean the mixture', 'Low oil pressure -- reduce power immediately'],
+        correct: 1,
+        explain: 'Carb ice can form at outside air temperatures up to around 70°F with enough humidity, since the fuel/air mixture cools sharply passing through the carburetor. A gradual, unexplained RPM loss is the classic symptom, and carb heat is the standard first response.',
+        review: 'Carburetor icing conditions and the 91.213 inoperative-equipment decision process.'
+      },
+      // ── Privileges & Limitations (2) ──
+      {
+        cat: 'privileges', type: 'knowledge', weight: 1.0,
+        q: 'How often must you complete a flight review (or equivalent) to continue acting as pilot in command?',
+        options: ['Every 12 calendar months', 'Every 24 calendar months', 'Every 100 hours', 'Only once, after certification'],
+        correct: 1,
+        explain: 'A flight review is a minimum 1 hour of ground and 1 hour of flight training with an authorized instructor, required within the preceding 24 calendar months to act as PIC.',
+        review: 'Flight review requirements and what can substitute for one.'
+      },
+      {
+        cat: 'privileges', type: 'applied', weight: 1.5,
+        q: 'You and three friends want to split the cost of a weekend cross-country trip you were already planning to take yourself. As a private pilot, is this legal?',
+        options: ['No -- any cost-sharing with passengers requires a commercial certificate', 'Yes, as long as you pay at least an equal, pro rata share and have your own reason for the flight', 'Yes, but only if the passengers pay the entire cost', 'No -- private pilots can never accept money from passengers'],
+        correct: 1,
+        explain: '14 CFR 61.113 allows a private pilot to share operating expenses pro rata with passengers, as long as the pilot pays at least an equal share and has a genuine reason for the flight beyond just carrying passengers.',
+        review: 'The pro rata cost-sharing rule and other narrow compensation exceptions.'
+      },
+      // ── Airspace (3) ──
+      {
+        cat: 'airspace', type: 'applied', weight: 1.5,
+        q: 'Before entering which class of airspace must a VFR pilot receive an explicit ATC clearance -- not just establish two-way radio contact?',
+        options: ['Class C', 'Class D', 'Class B', 'Class E'],
+        correct: 2,
+        explain: 'Class B is the only one requiring an actual "cleared into Class B airspace" from ATC. Class C and D only require establishing two-way radio communication.',
+        review: 'Entry requirements for each class of airspace.'
+      },
+      {
+        cat: 'airspace', type: 'knowledge', weight: 1.0,
         q: 'What are the basic VFR weather minimums for visibility and cloud clearance in Class D airspace?',
         options: ['1 SM, clear of clouds', '3 SM, 500 below / 1,000 above / 2,000 horizontal', '5 SM, 1,000/1,000/1 mile', '3 SM, clear of clouds'],
         correct: 1,
-        explain: '14 CFR 91.155: Class D (like Class C and most of Class E below 10,000 ft) requires 3 statute miles visibility and those specific cloud clearance distances.'
+        explain: '14 CFR 91.155: Class D (like Class C and most of Class E below 10,000 ft) requires 3 statute miles visibility and those specific cloud clearance distances.',
+        review: 'VFR weather minimums by airspace class, from memory.'
       },
       {
-        cat: 'airspace', catLabel: 'Airspace',
-        q: 'Before entering which class of airspace must a VFR pilot receive an explicit ATC clearance — not just establish two-way radio contact?',
-        options: ['Class C', 'Class D', 'Class B', 'Class E'],
-        correct: 2,
-        explain: 'Class B is the only one that requires an actual "cleared into Class B airspace" from ATC. Class C and D only require establishing two-way radio communication.'
+        cat: 'airspace', type: 'scenario', weight: 2.0,
+        q: 'You’re flying VFR at 4,500 ft MSL, approaching a Class B shelf that begins at 4,000 ft. ATC has not cleared you into Class B. What must you do?',
+        options: ['Continue -- established radio contact is enough', 'Descend or divert to remain clear of the Class B shelf', 'Climb above the shelf to avoid it', 'Contact ATC after entering to request clearance retroactively'],
+        correct: 1,
+        explain: 'Without an explicit Class B clearance, you must remain clear of it entirely -- in this case, staying below the 4,000 ft shelf (or diverting around it) until cleared in.',
+        review: 'How to read sectional Class B shelf altitudes and plan around them.'
+      },
+      // ── Weather (3) ──
+      {
+        cat: 'weather', type: 'knowledge', weight: 1.0,
+        q: 'A METAR includes the group "BKN008". What does this tell you about sky condition?',
+        options: ['Broken clouds at 8,000 feet AGL', 'Broken clouds at 800 feet AGL', 'Scattered clouds at 8,000 feet MSL', 'Overcast at 800 feet MSL'],
+        correct: 1,
+        explain: 'Cloud height in a METAR is reported in hundreds of feet AGL, and "BKN" is broken (5/8 to 7/8 sky coverage) -- so BKN008 is broken clouds at 800 feet AGL.',
+        review: 'Decoding METAR sky condition, visibility, and remarks.'
       },
       {
-        cat: 'performance', catLabel: 'Performance',
+        cat: 'weather', type: 'applied', weight: 1.5,
+        q: 'A TAF includes a "TEMPO" group forecasting 3 SM visibility and mist for a two-hour window that overlaps your planned departure. What does TEMPO actually tell you?',
+        options: ['Those conditions are guaranteed for the full two hours', 'Those conditions are expected temporarily, for less than an hour at a time, over less than half the period', 'TEMPO conditions can be ignored for VFR planning', 'The forecast is unreliable and should be disregarded entirely'],
+        correct: 1,
+        explain: 'TEMPO indicates temporary, fluctuating conditions expected for less than an hour at a time, affecting less than 50% of the period -- real, but not continuous, and still worth factoring into a go/no-go decision.',
+        review: 'TAF forecast group definitions: TEMPO, BECMG, PROB.'
+      },
+      {
+        cat: 'weather', type: 'scenario', weight: 2.0,
+        q: '20 minutes into a planned VFR cross-country, you notice cumulus clouds building and the sky darkening ahead, worse than the forecast suggested. What’s the correct decision-making response?',
+        options: ['Continue as planned -- the forecast already accounted for this', 'Reassess in real time and turn back or divert if conditions are worse than forecast', 'Climb above the weather to stay VFR on top', 'Descend and continue at a lower altitude until conditions clear'],
+        correct: 1,
+        explain: 'Forecasts are a planning tool, not a guarantee -- real-time conditions take priority. Deteriorating weather worse than forecast calls for an early decision to turn back or divert, not pressing on and hoping.',
+        review: 'In-flight weather decision making and personal minimums.'
+      },
+      // ── Performance & W&B (2) ──
+      {
+        cat: 'performance', type: 'knowledge', weight: 1.0,
         q: 'As density altitude increases, aircraft takeoff performance generally:',
         options: ['Improves', 'Is unaffected', 'Degrades', 'Improves only in cold weather'],
         correct: 2,
-        explain: 'Higher density altitude means thinner air — less lift, less propeller efficiency, and less engine power, all of which lengthen the takeoff roll and reduce climb performance.'
+        explain: 'Higher density altitude means thinner air -- less lift, less propeller efficiency, and less engine power, all of which lengthen the takeoff roll and reduce climb performance.',
+        review: 'How density altitude affects lift, power, and takeoff/climb performance.'
       },
       {
-        cat: 'aircraft-systems', catLabel: 'Aircraft Systems',
-        q: 'Carburetor icing is most likely to occur:',
-        options: ['Only at freezing outside air temperatures', 'At any temperature with visible moisture present, even well above freezing', 'Only above 20,000 feet', 'Only when the mixture is full rich'],
-        correct: 1,
-        explain: 'Carb ice can form at outside air temperatures up to around 70°F with enough humidity, because the fuel/air mixture cools sharply as it passes through the carburetor.'
+        cat: 'performance', type: 'applied', weight: 1.5,
+        q: 'Your aircraft’s maximum gross weight is 2,550 lbs, and today’s calculated takeoff weight comes to 2,610 lbs. Are you legal to depart?',
+        options: ['Yes, as long as the CG is within limits', 'Yes, if performance charts show adequate runway available', 'No -- exceeding max gross weight is not legal regardless of performance numbers', 'Yes, up to 5% over gross is an accepted margin'],
+        correct: 2,
+        explain: 'Maximum gross weight is a hard legal limit, not a performance recommendation -- exceeding it isn’t legal no matter how much runway or climb margin the charts show.',
+        review: 'Weight and balance calculations and the difference between a legal limit and a performance margin.'
       },
+      // ── Aeromedical Factors (2) ──
       {
-        cat: 'aeromedical', catLabel: 'Aeromedical & Human Factors',
+        cat: 'aeromedical', type: 'knowledge', weight: 1.0,
         q: 'Per 14 CFR 91.17, how many hours must pass between consuming alcohol and acting as pilot in command, at minimum?',
         options: ['4 hours', '8 hours', '12 hours', '24 hours'],
         correct: 1,
-        explain: '91.17 sets an 8-hour "bottle to throttle" minimum — though many operators and instructors recommend a longer margin depending on how much was consumed.'
+        explain: '91.17 sets an 8-hour "bottle to throttle" minimum -- though many instructors and operators recommend a longer margin depending on how much was consumed.',
+        review: '91.17 alcohol/drug rules and the blood alcohol concentration limit.'
       },
       {
-        cat: 'emergency', catLabel: 'Emergency Operations',
+        cat: 'aeromedical', type: 'applied', weight: 1.5,
+        q: 'You wake up the morning of a planned flight with mild congestion from a cold. Using IMSAFE, what’s the correct way to think about this?',
+        options: ['Congestion is never disqualifying -- fly as planned', 'Assess it honestly under "Illness," considering effects like sinus block at altitude, and decide accordingly -- it’s a judgment call, not automatic grounding', 'Any illness automatically means the flight must be canceled', 'Only a fever is relevant to fitness to fly'],
+        correct: 1,
+        explain: 'IMSAFE’s "Illness" pillar is about honest self-assessment, not a hard rule. Congestion specifically raises real concern about sinus and ear blocks at altitude -- worth genuinely weighing, not dismissing or overreacting to.',
+        review: 'The IMSAFE checklist and how to apply it honestly, not just recite it.'
+      },
+      // ── Cross-Country Planning (2) ──
+      {
+        cat: 'crosscountry', type: 'knowledge', weight: 1.0,
+        q: 'For a daytime VFR flight, what minimum fuel reserve is required beyond what’s needed to reach the first point of intended landing?',
+        options: ['15 minutes', '30 minutes', '45 minutes', '60 minutes'],
+        correct: 1,
+        explain: '14 CFR 91.151 requires enough fuel to fly to the first point of intended landing, plus 30 minutes at normal cruise for a daytime VFR flight (45 minutes at night).',
+        review: 'VFR fuel reserve requirements, day and night.'
+      },
+      {
+        cat: 'crosscountry', type: 'scenario', weight: 2.0,
+        q: '20 minutes into a planned 90-minute VFR cross-country, an unforecast 25-knot headwind is cutting your groundspeed well below plan. What should you do?',
+        options: ['Continue and recheck fuel only after landing', 'Recompute fuel and ETA in flight now, and consider diverting if reserves are threatened', 'Increase altitude to escape the headwind without recalculating anything', 'Ignore it -- forecasts already account for normal wind variation'],
+        correct: 1,
+        explain: 'Cross-country planning doesn’t stop at the preflight briefing. A real, unforecast deviation like this calls for recalculating fuel and ETA in flight, and being willing to divert if your reserve is genuinely at risk.',
+        review: 'In-flight fuel and time recalculation, and when to divert.'
+      },
+      // ── Emergency Operations (2) ──
+      {
+        cat: 'emergency', type: 'applied', weight: 1.5,
         q: 'Following an engine failure shortly after takeoff, with insufficient altitude to turn back to the runway, the standard guidance is to:',
         options: ['Attempt a 180° turn back to the runway', 'Land straight ahead, with only minor turns to avoid obstacles', 'Extend full flaps immediately and glide as far as possible', 'Shut down all electrical systems before landing'],
         correct: 1,
-        explain: 'The "impossible turn" back to the runway at low altitude is a leading cause of stall/spin accidents. Landing generally straight ahead, even off-airport, is the standard low-altitude engine-failure response.'
+        explain: 'The "impossible turn" back to the runway at low altitude is a leading cause of stall/spin accidents. Landing generally straight ahead, even off-airport, is the standard low-altitude engine-failure response.',
+        review: 'Engine-failure-after-takeoff decision altitude and the risks of the "impossible turn."'
+      },
+      {
+        cat: 'emergency', type: 'scenario', weight: 2.0,
+        q: 'You smell smoke in the cabin during cruise flight. What is the correct general priority order for your response?',
+        options: ['Land immediately at the nearest airport, skip all other steps', 'Fly the airplane first, then work to identify and eliminate the source, then land as soon as practical', 'Shut off all electrical power immediately, then figure out where to land', 'Open a window immediately to clear the smoke before doing anything else'],
+        correct: 1,
+        explain: 'Aviate first -- keep the airplane under control. Then work the problem: try to identify and isolate the source (electrical vs. other). Then land as soon as practical or immediately, depending on severity. Examiners are listening for this structured order, not just "land right away."',
+        review: 'In-flight fire/smoke emergency procedures and the aviate-navigate-communicate priority order.'
       }
     ];
 
@@ -356,11 +555,17 @@
       { value: 'not_scheduled', label: 'Not scheduled yet' },
     ];
 
-    var TOTAL_STEPS = QUESTIONS.length + 2; // + timing step + email step
+    // Real question count from the live paid product -- verified against
+    // the actual dpe_questions table, not guessed. Never advertise a
+    // count that isn't real.
+    var REAL_QUESTION_BANK_SIZE = '328';
+
+    var TOTAL_STEPS = QUESTIONS.length + 1; // + timing step (email comes after the score teaser now, via the auth gate)
     var current = 0;
     var answers = new Array(QUESTIONS.length).fill(null);
     var timing = '';
-    var contact = { name: '', email: '' };
+    var results = null; // set once computed
+    var savedLeadEmail = null; // set once we know who this is (gate submit)
 
     var startBtn = document.getElementById('raStartBtn');
     var quizSection = document.getElementById('raQuiz');
@@ -370,8 +575,19 @@
 
     function escapeHtml(s) {
       var div = document.createElement('div');
-      div.textContent = s;
+      div.textContent = s == null ? '' : String(s);
       return div.innerHTML;
+    }
+
+    function getUtmAndSource() {
+      var params = new URLSearchParams(window.location.search);
+      return {
+        source: params.get('source') || null,
+        utm_source: params.get('utm_source') || null,
+        utm_medium: params.get('utm_medium') || null,
+        utm_campaign: params.get('utm_campaign') || null,
+        utm_content: params.get('utm_content') || null,
+      };
     }
 
     function renderStep() {
@@ -381,19 +597,24 @@
         var q = QUESTIONS[current];
         var optionsHtml = q.options.map(function (opt, i) {
           var selected = answers[current] === i ? ' selected' : '';
-          return '<button type="button" class="ra-option' + selected + '" data-idx="' + i + '">' + escapeHtml(opt) + '</button>';
+          return '<button type="button" class="ra-option' + selected + '" data-idx="' + i + '" role="radio" aria-checked="' + (answers[current] === i) + '">' + escapeHtml(opt) + '</button>';
         }).join('');
         stepContainer.innerHTML =
-          '<div class="ra-step__category">Question ' + (current + 1) + ' of ' + QUESTIONS.length + ' — ' + escapeHtml(q.catLabel) + '</div>' +
+          '<div class="ra-progress__label">Question ' + (current + 1) + ' of ' + QUESTIONS.length + '</div>' +
+          '<div class="ra-step__category">' + escapeHtml(CATEGORIES[q.cat]) + '</div>' +
           '<div class="ra-step__question">' + escapeHtml(q.q) + '</div>' +
-          '<div class="ra-options" id="raOptions">' + optionsHtml + '</div>' +
+          '<div class="ra-options" role="radiogroup" id="raOptions">' + optionsHtml + '</div>' +
           '<div class="ra-step__nav">' +
             '<button type="button" class="btn--outline-gold" id="raBackBtn"' + (current === 0 ? ' style="visibility:hidden"' : '') + '>Back</button>' +
             '<button type="button" class="btn--cta-primary" id="raNextBtn" style="width:auto;padding:14px 28px" ' + (answers[current] === null ? 'disabled' : '') + '>Next</button>' +
           '</div>';
         stepContainer.querySelectorAll('.ra-option').forEach(function (btn) {
           btn.addEventListener('click', function () {
+            var isNewAnswer = answers[current] === null;
             answers[current] = parseInt(btn.dataset.idx, 10);
+            if (isNewAnswer && window.apexTrack) {
+              apexTrack('readiness_question_answered', { question_number: current + 1, category: q.cat });
+            }
             renderStep();
           });
         });
@@ -402,158 +623,366 @@
         return;
       }
 
-      if (current === QUESTIONS.length) {
-        var timingHtml = TIMING_OPTIONS.map(function (o) {
-          var selected = timing === o.value ? ' selected' : '';
-          return '<button type="button" class="ra-option' + selected + '" data-val="' + o.value + '">' + o.label + '</button>';
-        }).join('');
-        stepContainer.innerHTML =
-          '<div class="ra-step__category">One Last Thing</div>' +
-          '<div class="ra-step__question">When is your checkride?</div>' +
-          '<div class="ra-options" id="raOptions">' + timingHtml + '</div>' +
-          '<div class="ra-step__nav">' +
-            '<button type="button" class="btn--outline-gold" id="raBackBtn">Back</button>' +
-            '<button type="button" class="btn--cta-primary" id="raNextBtn" style="width:auto;padding:14px 28px" ' + (!timing ? 'disabled' : '') + '>Next</button>' +
-          '</div>';
-        stepContainer.querySelectorAll('.ra-option').forEach(function (btn) {
-          btn.addEventListener('click', function () {
-            timing = btn.dataset.val;
-            renderStep();
-          });
-        });
-        document.getElementById('raNextBtn').addEventListener('click', function () { current++; renderStep(); });
-        document.getElementById('raBackBtn').addEventListener('click', function () { current--; renderStep(); });
-        return;
-      }
-
-      // Final step: email capture
+      // Final step: checkride timing, then compute + show the score teaser directly (no email gate before the score itself)
+      var timingHtml = TIMING_OPTIONS.map(function (o) {
+        var selected = timing === o.value ? ' selected' : '';
+        return '<button type="button" class="ra-option' + selected + '" data-val="' + o.value + '">' + o.label + '</button>';
+      }).join('');
       stepContainer.innerHTML =
-        '<div class="ra-step__category">Almost Done</div>' +
-        '<div class="ra-step__question">Where should we send your results?</div>' +
-        '<div class="ra-field-group"><label for="raName">First name</label><input type="text" id="raName" placeholder="Jane" value="' + escapeHtml(contact.name) + '" /></div>' +
-        '<div class="ra-field-group"><label for="raEmail">Email</label><input type="email" id="raEmail" placeholder="you@email.com" value="' + escapeHtml(contact.email) + '" required /></div>' +
-        '<div id="raSubmitError" class="ra-field-group" style="display:none;color:#f87171;font-size:13px"></div>' +
+        '<div class="ra-step__category">One Last Thing</div>' +
+        '<div class="ra-step__question">When is your checkride?</div>' +
+        '<div class="ra-options" id="raOptions">' + timingHtml + '</div>' +
         '<div class="ra-step__nav">' +
           '<button type="button" class="btn--outline-gold" id="raBackBtn">Back</button>' +
-          '<button type="button" class="btn--cta-primary" id="raSubmitBtn" style="width:auto;padding:14px 28px">See My Results</button>' +
+          '<button type="button" class="btn--cta-primary" id="raSubmitBtn" style="width:auto;padding:14px 28px" ' + (!timing ? 'disabled' : '') + '>See My Score</button>' +
         '</div>';
+      stepContainer.querySelectorAll('.ra-option').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          timing = btn.dataset.val;
+          renderStep();
+        });
+      });
       document.getElementById('raBackBtn').addEventListener('click', function () { current--; renderStep(); });
-      document.getElementById('raSubmitBtn').addEventListener('click', handleSubmit);
+      document.getElementById('raSubmitBtn').addEventListener('click', handleComplete);
     }
 
+    // ── Scoring ──────────────────────────────────────────────────
     function computeResults() {
-      var correctCount = 0;
-      var breakdown = QUESTIONS.map(function (q, i) {
+      var byCat = {}; // cat -> { earned, possible, correctCount, total }
+      Object.keys(CATEGORIES).forEach(function (c) { byCat[c] = { earned: 0, possible: 0, correctCount: 0, total: 0 }; });
+
+      var totalEarned = 0, totalPossible = 0;
+      var answerLog = [];
+      QUESTIONS.forEach(function (q, i) {
         var isCorrect = answers[i] === q.correct;
-        if (isCorrect) correctCount++;
-        return { cat: q.cat, catLabel: q.catLabel, correct: isCorrect, explain: q.explain, correctAnswer: q.options[q.correct] };
+        byCat[q.cat].possible += q.weight;
+        byCat[q.cat].total += 1;
+        totalPossible += q.weight;
+        if (isCorrect) {
+          byCat[q.cat].earned += q.weight;
+          byCat[q.cat].correctCount += 1;
+          totalEarned += q.weight;
+        }
+        answerLog.push({ q: i, cat: q.cat, correct: isCorrect, selected: answers[i] });
       });
-      var score = Math.round((correctCount / QUESTIONS.length) * 100);
-      var level = score >= 90 ? 'Checkride ready' : score >= 70 ? 'Almost there' : score >= 40 ? 'Building momentum' : 'Just getting started';
-      return { score: score, level: level, breakdown: breakdown };
+
+      var categoryScores = {};
+      Object.keys(byCat).forEach(function (c) {
+        categoryScores[c] = byCat[c].possible > 0 ? Math.round((byCat[c].earned / byCat[c].possible) * 100) : null;
+      });
+
+      var scored = Object.keys(categoryScores).filter(function (c) { return categoryScores[c] !== null; })
+        .map(function (c) { return { cat: c, score: categoryScores[c] }; })
+        .sort(function (a, b) { return b.score - a.score; });
+
+      var overallScore = totalPossible > 0 ? Math.round((totalEarned / totalPossible) * 100) : 0;
+      var band = overallScore >= 90 ? 'Strong Readiness'
+        : overallScore >= 80 ? 'Nearly Ready'
+        : overallScore >= 70 ? 'Getting Close'
+        : overallScore >= 60 ? 'Significant Review Recommended'
+        : 'Foundation Needs Work';
+
+      return {
+        overallScore: overallScore,
+        band: band,
+        categoryScores: categoryScores,
+        strongest: scored[0] || null,
+        weakest: scored.slice(-2).reverse(),
+        answerLog: answerLog,
+        timing: timing
+      };
     }
 
     function timingRecommendation(timingVal, score) {
       var weak = score < 70;
       var copy = {
         within_14_days: weak
-          ? 'With your checkride within 14 days, focus only on the ACS areas you missed above — that’s exactly what AI DPE Practice and the full question library are built for: fast, targeted review, not starting from scratch.'
+          ? 'With your checkride within 14 days, focus only on the areas above -- that’s exactly what AI DPE Practice and the full question library are built for: fast, targeted review, not starting from scratch.'
           : 'You’re in good shape with 14 days out. A couple of focused review passes on your weakest area, plus a full simulated oral, should have you walking in confident.',
         within_30_days: weak
-          ? 'With 30 days, you have real time to close these gaps properly — work through the full question library by ACS area, then run a practice oral once you feel solid.'
-          : 'With 30 days and a strong quiz result, this is the window to run a couple of full practice orals and lock in what you already know.',
-        within_60_days: 'With 60 days, you have enough runway to work through every ACS area systematically — including whatever you missed above — more than once, rather than cramming at the end.',
-        more_than_60_days: 'With more than 60 days to go, the best move is building a consistent study habit now — a system that tracks your progress and flags weak areas early beats scrambling in the final week.',
-        not_scheduled: 'Since your checkride isn’t scheduled yet, use this as a real gap-check: work through the areas you missed above, then schedule your checkride once you actually know where you stand.'
+          ? 'With 30 days, you have real time to close these gaps properly -- work through the full question library by ACS area, then run a practice oral once you feel solid.'
+          : 'With 30 days and a strong result, this is the window to run a couple of full practice orals and lock in what you already know.',
+        within_60_days: 'With 60 days, you have enough runway to work through every ACS area systematically -- including whatever you missed above -- more than once, rather than cramming at the end.',
+        more_than_60_days: 'With more than 60 days to go, the best move is building a consistent study habit now -- a system that tracks your progress and flags weak areas early beats scrambling in the final week.',
+        not_scheduled: 'Since your checkride isn’t scheduled yet, use this as a real gap-check: work through the areas above, then schedule your checkride once you actually know where you stand.'
       };
       return copy[timingVal] || copy.not_scheduled;
     }
 
-    function handleSubmit() {
-      var nameInput = document.getElementById('raName');
-      var emailInput = document.getElementById('raEmail');
-      var errorEl = document.getElementById('raSubmitError');
-      contact.name = nameInput.value.trim();
-      contact.email = emailInput.value.trim();
-      if (!contact.email || contact.email.indexOf('@') === -1) {
-        errorEl.textContent = 'Enter a valid email to see your results.';
-        errorEl.style.display = 'block';
-        return;
-      }
-
-      var results = computeResults();
-      var categoryResults = {};
-      results.breakdown.forEach(function (b) { categoryResults[b.cat] = b.correct; });
-
-      // The visitor answered honestly and is waiting to see their result --
-      // a failed (or, in a real browser, merely slow) lead-save must never
-      // be able to stop renderResults() below from running, so this whole
-      // block is defensive the same way apexTrack() is in analytics-events.js.
+    function saveLead(profileId) {
+      var utm = getUtmAndSource();
+      var row = {
+        email: savedLeadEmail,
+        checkride_timing: results.timing,
+        score: results.overallScore,
+        readiness_level: results.band,
+        category_results: results.categoryScores,
+        strongest_category: results.strongest ? results.strongest.cat : null,
+        weakest_category_1: results.weakest[0] ? results.weakest[0].cat : null,
+        weakest_category_2: results.weakest[1] ? results.weakest[1].cat : null,
+        answers_json: results.answerLog,
+        source: utm.source,
+        utm_source: utm.utm_source,
+        utm_medium: utm.utm_medium,
+        utm_campaign: utm.utm_campaign,
+        utm_content: utm.utm_content,
+      };
+      if (profileId) row.profile_id = profileId;
+      // A failed lead-save must never block the visitor from seeing their
+      // own result -- same defensive pattern as apexTrack() itself.
       try {
         if (window.apexSupabase) {
-          window.apexSupabase.from('readiness_assessment_leads').insert({
-            email: contact.email,
-            full_name: contact.name || null,
-            checkride_timing: timing,
-            score: results.score,
-            readiness_level: results.level,
-            category_results: categoryResults,
-          }).then(function (res) {
+          window.apexSupabase.from('readiness_assessment_leads').insert(row).then(function (res) {
             if (res && res.error) console.error('readiness_assessment_leads insert failed', res.error);
           }).catch(function (e) { console.error('readiness_assessment_leads insert threw', e); });
         }
       } catch (e) {
         console.error('readiness_assessment_leads insert failed synchronously', e);
       }
-
-      if (window.apexTrack) {
-        apexTrack('readiness_assessment_completed', {
-          score: results.score, assessment_result: results.level, checkride_timing: timing,
-        });
-      }
-
-      renderResults(results);
     }
 
-    function renderResults(results) {
+    function handleComplete() {
+      results = computeResults();
+      if (window.apexTrack) {
+        apexTrack('readiness_assessment_completed', {
+          score: results.overallScore, readiness_band: results.band,
+          strongest_category: results.strongest ? results.strongest.cat : null,
+          weakest_category: results.weakest[0] ? results.weakest[0].cat : null,
+          checkride_timing: timing,
+        });
+      }
+      renderTeaser();
+    }
+
+    // ── Teaser (pre-auth) ────────────────────────────────────────
+    function checkExistingSession() {
+      if (!window.apexSupabase) return Promise.resolve(null);
+      return window.apexSupabase.auth.getSession().then(function (res) {
+        return (res && res.data && res.data.session) || null;
+      }).catch(function () { return null; });
+    }
+
+    function renderTeaser() {
       quizSection.hidden = true;
       resultsSection.hidden = false;
 
-      var missed = results.breakdown.filter(function (b) { return !b.correct; });
-      var breakdownHtml = results.breakdown.map(function (b) {
-        var icon = b.correct ? '✓' : '✗';
-        var iconClass = b.correct ? 'ra-breakdown__icon--correct' : 'ra-breakdown__icon--wrong';
-        var explainText = b.correct ? b.explain : (b.explain + ' The correct answer is: ' + escapeHtml(b.correctAnswer) + '.');
-        return '<div class="ra-breakdown__row">' +
-          '<span class="ra-breakdown__icon ' + iconClass + '">' + icon + '</span>' +
-          '<div><div class="ra-breakdown__cat">' + escapeHtml(b.catLabel) + '</div><div class="ra-breakdown__explain">' + explainText + '</div></div>' +
+      checkExistingSession().then(function (session) {
+        if (session && session.user) {
+          // Already a member -- no gate needed at all. Save immediately
+          // with the real profile_id known, and show the full report.
+          savedLeadEmail = session.user.email;
+          saveLead(session.user.id);
+          if (window.apexTrack) apexTrack('readiness_score_viewed', { score: results.overallScore, readiness_band: results.band, gated: false });
+          renderFullResults();
+          return;
+        }
+        renderGatedTeaser();
+      });
+    }
+
+    function renderGatedTeaser() {
+      if (window.apexTrack) apexTrack('readiness_score_viewed', { score: results.overallScore, readiness_band: results.band, gated: true });
+      document.getElementById('raResultsContainer').innerHTML =
+        '<div class="ra-results__score-row"><span class="ra-results__score">' + results.overallScore + '%</span><span class="ra-results__level">' + escapeHtml(results.band) + '</span></div>' +
+        '<p class="ra-results__disclaimer">Your Apex Readiness Score is a study diagnostic, not a prediction or guarantee of checkride performance.</p>' +
+        '<div class="ra-gate">' +
+          '<h3>Unlock Your Full Report</h3>' +
+          '<p>Create your free Apex Advantage account to unlock your full breakdown, strongest area, weakest areas, and personalized study recommendations.</p>' +
+          '<div class="ra-gate__toggle">' +
+            '<button type="button" id="raGateTabSignup" class="active">Create Free Account</button>' +
+            '<button type="button" id="raGateTabLogin">Already Have an Account</button>' +
+          '</div>' +
+          '<div id="raGateFormArea"></div>' +
+        '</div>';
+      window.scrollTo({ top: resultsSection.offsetTop - 20, behavior: 'smooth' });
+      renderGateForm('signup');
+      document.getElementById('raGateTabSignup').addEventListener('click', function () { setGateTab('signup'); });
+      document.getElementById('raGateTabLogin').addEventListener('click', function () { setGateTab('login'); });
+    }
+
+    function setGateTab(which) {
+      document.getElementById('raGateTabSignup').classList.toggle('active', which === 'signup');
+      document.getElementById('raGateTabLogin').classList.toggle('active', which === 'login');
+      renderGateForm(which);
+    }
+
+    function renderGateForm(which) {
+      var area = document.getElementById('raGateFormArea');
+      if (which === 'login') {
+        area.innerHTML =
+          '<div class="ra-gate__form">' +
+            '<div class="ra-field-group"><label for="raLoginEmail">Email</label><input type="email" id="raLoginEmail" autocomplete="email" /></div>' +
+            '<div class="ra-field-group"><label for="raLoginPassword">Password</label><input type="password" id="raLoginPassword" autocomplete="current-password" /></div>' +
+            '<div id="raGateError" style="display:none;color:#f87171;font-size:13px;margin-bottom:14px"></div>' +
+            '<button type="button" class="btn--cta-primary" id="raGateSubmit">Log In &amp; See My Full Report</button>' +
+          '</div>';
+        document.getElementById('raGateSubmit').addEventListener('click', handleGateLogin);
+      } else {
+        area.innerHTML =
+          '<div class="ra-gate__form">' +
+            '<div class="ra-field-group"><label for="raGateName">First name</label><input type="text" id="raGateName" autocomplete="given-name" /></div>' +
+            '<div class="ra-field-group"><label for="raGateEmail">Email</label><input type="email" id="raGateEmail" autocomplete="email" /></div>' +
+            '<div id="raGateError" style="display:none;color:#f87171;font-size:13px;margin-bottom:14px"></div>' +
+            '<button type="button" class="btn--cta-primary" id="raGateSubmit">Create Free Account</button>' +
+            '<p class="ra-gate__note">You’ll get an email to set your password. Your full report will be waiting on your dashboard once you sign in.</p>' +
+          '</div>';
+        document.getElementById('raGateSubmit').addEventListener('click', handleGateSignup);
+      }
+    }
+
+    function handleGateLogin() {
+      var email = document.getElementById('raLoginEmail').value.trim();
+      var password = document.getElementById('raLoginPassword').value;
+      var errorEl = document.getElementById('raGateError');
+      var btn = document.getElementById('raGateSubmit');
+      errorEl.style.display = 'none';
+      if (!email || !password) { errorEl.textContent = 'Enter your email and password.'; errorEl.style.display = 'block'; return; }
+      btn.disabled = true;
+      btn.textContent = 'Signing in…';
+      if (window.apexTrack) apexTrack('readiness_signup_started', { mode: 'login' });
+      window.apexSupabase.auth.signInWithPassword({ email: email, password: password }).then(function (res) {
+        btn.disabled = false;
+        btn.textContent = 'Log In & See My Full Report';
+        if (res.error) {
+          errorEl.textContent = res.error.message;
+          errorEl.style.display = 'block';
+          return;
+        }
+        savedLeadEmail = email;
+        saveLead(res.data.user.id);
+        if (window.apexTrack) apexTrack('readiness_signup_completed', { mode: 'login' });
+        renderFullResults();
+      });
+    }
+
+    function handleGateSignup() {
+      var name = document.getElementById('raGateName').value.trim();
+      var email = document.getElementById('raGateEmail').value.trim();
+      var errorEl = document.getElementById('raGateError');
+      var btn = document.getElementById('raGateSubmit');
+      errorEl.style.display = 'none';
+      if (!name || !email || email.indexOf('@') === -1) { errorEl.textContent = 'Enter your name and a valid email.'; errorEl.style.display = 'block'; return; }
+      btn.disabled = true;
+      btn.textContent = 'Creating your account…';
+      savedLeadEmail = email;
+      saveLead(null); // anonymous for now -- claim_readiness_assessment_by_email() (v78.sql) reconciles this once the account exists
+      if (window.apexTrack) apexTrack('readiness_signup_started', { mode: 'signup' });
+      window.apexSupabase.functions.invoke('create-free-account', {
+        body: {
+          name: name, email: email, dest: 'dashboard', checkride_timing: results.timing,
+          utm_first: window.apexGetFirstTouchUtm ? apexGetFirstTouchUtm() : undefined,
+          ref: window.apexGetFirstTouchRef ? apexGetFirstTouchRef() : undefined,
+        }
+      }).then(function (res) {
+        btn.disabled = false;
+        btn.textContent = 'Create Free Account';
+        if (res.error || !res.data || !res.data.ok) {
+          errorEl.textContent = (res.data && res.data.error) || 'Could not create account. Please try again.';
+          errorEl.style.display = 'block';
+          return;
+        }
+        if (window.apexTrack) apexTrack('readiness_signup_completed', { mode: 'signup' });
+        renderSignupPending();
+      });
+    }
+
+    function renderSignupPending() {
+      document.getElementById('raResultsContainer').innerHTML =
+        '<div class="ra-results__score-row"><span class="ra-results__score">' + results.overallScore + '%</span><span class="ra-results__level">' + escapeHtml(results.band) + '</span></div>' +
+        '<div class="ra-gate">' +
+          '<h3>Check Your Email</h3>' +
+          '<p>We sent you a link to set your password. Once you sign in, your full readiness report -- category breakdown, strongest area, weakest areas, and study recommendations -- will be waiting on your dashboard.</p>' +
+          '<a href="portal-login.html" class="btn--outline-gold" style="display:block;text-align:center;max-width:280px;margin:0 auto">Go to Sign In</a>' +
+        '</div>';
+    }
+
+    // ── Full results (member, either already logged in or just authenticated inline) ──
+    function renderFullResults() {
+      quizSection.hidden = true;
+      resultsSection.hidden = false;
+
+      var catRows = Object.keys(CATEGORIES).map(function (c) {
+        var score = results.categoryScores[c];
+        if (score === null || score === undefined) return null;
+        return { cat: c, label: CATEGORIES[c], score: score };
+      }).filter(Boolean);
+
+      var catScoresHtml = catRows.map(function (r) {
+        return '<div>' +
+          '<div class="ra-cat-score__row"><span class="ra-cat-score__label">' + escapeHtml(r.label) + '</span><span class="ra-cat-score__pct">' + r.score + '%</span></div>' +
+          '<div class="ra-cat-score__track"><div class="ra-cat-score__fill" style="width:' + r.score + '%"></div></div>' +
         '</div>';
       }).join('');
 
-      var signupUrl = 'portal-login.html?view=signup&dest=checkride-prep&email=' + encodeURIComponent(contact.email) + '&timing=' + encodeURIComponent(timing);
+      var strong = results.strongest;
+      var weak1 = results.weakest[0];
+      var weak2 = results.weakest[1];
 
-      var weakSummary = missed.length === 0
-        ? 'You answered every question correctly — nice work. The full Checkride Prep System will help you go from "knows the facts" to "can explain and apply them under oral-exam pressure."'
-        : 'Your weakest area' + (missed.length > 1 ? 's were' : ' was') + ' ' + missed.map(function (b) { return b.catLabel; }).join(', ') + '.';
-
-      document.getElementById('raResultsContainer').innerHTML =
-        '<div class="ra-results__score-row"><span class="ra-results__score">' + results.score + '%</span><span class="ra-results__level">' + results.level + '</span></div>' +
-        '<p class="ra-results__sub">Based on this 8-question sample — not the same multi-factor readiness score you’ll see inside the full portal, but the same tier language.</p>' +
-        '<div class="ra-breakdown">' + breakdownHtml + '</div>' +
-        '<div class="ra-recommend">' +
-          '<h3>What this means for you</h3>' +
-          '<p>' + weakSummary + ' ' + timingRecommendation(timing, results.score) + '</p>' +
-          '<a href="' + signupUrl + '" class="btn--cta-primary" style="max-width:420px">Build My Complete Checkride Study Plan →</a>' +
+      var highlightHtml =
+        '<div class="ra-highlight-row">' +
+          (strong ? '<div class="ra-highlight-card ra-highlight-card--strong"><div class="ra-highlight-card__label">Strongest Area</div><div class="ra-highlight-card__item">' + escapeHtml(CATEGORIES[strong.cat]) + '</div><div class="ra-highlight-card__pct">' + strong.score + '%</div></div>' : '<div></div>') +
+          (weak1 ? '<div class="ra-highlight-card ra-highlight-card--weak"><div class="ra-highlight-card__label">Area to Review</div><div class="ra-highlight-card__item">' + escapeHtml(CATEGORIES[weak1.cat]) + '</div><div class="ra-highlight-card__pct">' + weak1.score + '%</div></div>' : '<div></div>') +
         '</div>';
 
-      if (window.gtag) gtag('event', 'readiness_assessment_result', { score: results.score, level: results.level });
+      var recommendHtml = results.weakest.filter(Boolean).map(function (w) {
+        return '<p><strong style="color:#fff">' + escapeHtml(CATEGORIES[w.cat]) + ':</strong> ' + escapeHtml(REVIEW_RECOMMENDATIONS[w.cat]) + '</p>';
+      }).join('');
+
+      document.getElementById('raResultsContainer').innerHTML =
+        '<div class="ra-results__score-row"><span class="ra-results__score">' + results.overallScore + '%</span><span class="ra-results__level">' + escapeHtml(results.band) + '</span></div>' +
+        '<p class="ra-results__sub">Your Checkride Readiness Score, based on this 20-question sample across all 9 real ACS oral-exam areas.</p>' +
+        '<p class="ra-results__disclaimer">The Apex Checkride Readiness Score is a study diagnostic and does not predict or guarantee practical test performance.</p>' +
+        highlightHtml +
+        '<div class="ra-cat-scores">' + catScoresHtml + '</div>' +
+        '<div class="ra-recommend"><h3>Where to Focus Next</h3>' + (recommendHtml || '<p>You covered every area solidly -- keep your skills sharp with regular review.</p>') + '<p>' + escapeHtml(timingRecommendation(results.timing, results.overallScore)) + '</p></div>' +
+        '<div class="ra-convert">' +
+          '<h3>Your Score Tells You Where to Focus. Apex Helps You Fix It.</h3>' +
+          '<p>Continue practicing with DPE-style questions, scenario-based oral prep, ACS coverage tracking, and targeted weak-area review inside Apex Advantage Checkride Prep.</p>' +
+          '<ul class="ra-convert__features">' +
+            '<li>' + REAL_QUESTION_BANK_SIZE + '+ DPE-style questions</li>' +
+            '<li>Checkride Mode</li>' +
+            '<li>DPE Rapid Fire</li>' +
+            '<li>ACS Coverage tracking</li>' +
+            '<li>Weak-area detection</li>' +
+            '<li>Readiness tracking</li>' +
+            '<li>Favorites</li>' +
+            '<li>Scenario-based practice</li>' +
+          '</ul>' +
+          '<div class="ra-convert__ctas">' +
+            '<a href="portal-login.html?view=signup&dest=checkride-prep" class="btn--cta-primary" id="raCheckridePrepCta">Unlock Checkride Prep</a>' +
+            '<a href="portal-login.html" class="btn--outline-gold">Continue in Free Apex Advantage</a>' +
+          '</div>' +
+        '</div>' +
+        '<div class="ra-share"><button type="button" class="btn--outline-gold" id="raShareBtn">Share My Score</button></div>';
+
+      document.getElementById('raCheckridePrepCta').addEventListener('click', function () {
+        if (window.apexTrack) apexTrack('readiness_checkride_prep_clicked', { score: results.overallScore, readiness_band: results.band });
+      });
+      var shareBtn = document.getElementById('raShareBtn');
+      if (shareBtn) shareBtn.addEventListener('click', function () { handleShare(results); });
+
       window.scrollTo({ top: resultsSection.offsetTop - 20, behavior: 'smooth' });
+    }
+
+    function handleShare(r) {
+      var shareText = 'I scored ' + r.overallScore + '% on the Apex Advantage Private Pilot Checkride Readiness Assessment. Think you can beat me?';
+      var shareUrl = 'https://apexaviationtx.com/readiness-assessment.html';
+      if (navigator.share) {
+        navigator.share({ title: 'Apex Checkride Readiness Assessment', text: shareText, url: shareUrl }).catch(function () {});
+      } else if (navigator.clipboard) {
+        navigator.clipboard.writeText(shareText + ' ' + shareUrl).then(function () {
+          var btn = document.getElementById('raShareBtn');
+          var original = btn.textContent;
+          btn.textContent = 'Copied!';
+          setTimeout(function () { btn.textContent = original; }, 1800);
+        }).catch(function () {});
+      }
     }
 
     startBtn.addEventListener('click', function () {
       startBtn.parentElement.querySelector('h1').style.display = 'none';
       startBtn.closest('.ra-hero').style.paddingBottom = '24px';
-      startBtn.closest('.ra-hero').querySelector('p').style.display = 'none';
+      startBtn.closest('.ra-hero').querySelectorAll('p, ul').forEach(function (el) { el.style.display = 'none'; });
       startBtn.style.display = 'none';
       quizSection.hidden = false;
       if (window.apexTrack) apexTrack('readiness_assessment_started', { product: 'checkride_prep' });
@@ -561,7 +990,7 @@
       window.scrollTo({ top: quizSection.offsetTop - 20, behavior: 'smooth' });
     });
 
-    if (window.apexTrack) apexTrack('landing_page_viewed', { product: 'readiness_assessment' });
+    if (window.apexTrack) apexTrack('readiness_assessment_viewed', getUtmAndSource());
   </script>
 </body>
 </html>
