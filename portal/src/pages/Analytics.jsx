@@ -101,6 +101,18 @@ export default function Analytics() {
           // whether the code matched an existing member (create-free-
           // account/index.ts), since most CFI codes won't.
           'signup_ref_code_used',
+          // GS -> Portal Growth Funnel, section 19 -- ground_school_
+          // purchased (stripe-webhook, real $25/$400 purchases, profile_id
+          // null for anonymous buyers -- still countable) and
+          // ground_school_purchaser_activated (create-free-account, fires
+          // only when claim_ground_school_enrollments_by_email actually
+          // linked >=1 enrollment) give "purchasers -> activation rate".
+          // portal_activation_cta_viewed/clicked (portal-login.html) and
+          // signup_entry_source (the landing page's free-account CTA)
+          // cover the non-buyer path.
+          'ground_school_purchased', 'ground_school_purchaser_activated',
+          'portal_activation_cta_viewed', 'portal_activation_cta_clicked',
+          'signup_entry_source',
         ]).gte('created_at', thirtyDaysAgoIso),
       ])
 
@@ -128,6 +140,16 @@ export default function Analytics() {
       })
       const refCodeBreakdown = Object.entries(refCodeCounts).map(([code, count]) => ({ code, count })).sort((a, b) => b.count - a.count)
 
+      // GS -> Portal Growth Funnel, section 19. gsPurchased counts rows,
+      // not distinct profiles -- most purchases have profile_id null
+      // (anonymous checkout, by design) so a profile-based count would
+      // undercount real purchases badly.
+      const gsPurchased = gsCrossSellRows.filter(r => r.event_type === 'ground_school_purchased').length
+      const gsPurchaserActivated = new Set(gsCrossSellRows.filter(r => r.event_type === 'ground_school_purchaser_activated').map(r => r.profile_id)).size
+      const gsActivationCtaViewed = gsCrossSellRows.filter(r => r.event_type === 'portal_activation_cta_viewed').length
+      const gsActivationCtaClicked = gsCrossSellRows.filter(r => r.event_type === 'portal_activation_cta_clicked').length
+      const gsNonBuyerSignups = new Set(gsCrossSellRows.filter(r => r.event_type === 'signup_entry_source' && r.metadata?.source === 'ground_school').map(r => r.profile_id)).size
+
       setGrowthKpis({
         referralsTotal: referralRows.length,
         referralsSignedUp: referralRows.filter(r => r.status === 'signed_up' || r.status === 'redeemed').length,
@@ -139,6 +161,13 @@ export default function Analytics() {
         challengeCompletionRatePct: challengeStarted > 0 ? Math.round((challengeCompleted / challengeStarted) * 1000) / 10 : null,
         challengeUpgradeClicks,
         refCodeBreakdown,
+        gsPurchased,
+        gsPurchaserActivated,
+        gsPurchaserActivationRatePct: gsPurchased > 0 ? Math.round((gsPurchaserActivated / gsPurchased) * 1000) / 10 : null,
+        gsActivationCtaViewed,
+        gsActivationCtaClicked,
+        gsActivationCtaClickRatePct: gsActivationCtaViewed > 0 ? Math.round((gsActivationCtaClicked / gsActivationCtaViewed) * 1000) / 10 : null,
+        gsNonBuyerSignups,
       })
 
       // ── DPE Question Bank engagement ──
@@ -549,6 +578,52 @@ export default function Analytics() {
           </div>
         </section>
       )}
+
+      <div className="page-header" style={{ marginTop: 40 }}>
+        <div>
+          <h2 className="page-title" style={{ fontSize: 22 }}>Ground School → Portal Funnel</h2>
+          <p className="page-sub">Last 30 days — see the note below on what "activated" means here</p>
+        </div>
+      </div>
+      <div className="stat-grid">
+        <div className="stat-card">
+          <p className="stat-card__label">Ground School Purchases</p>
+          <p className="stat-card__value">{growthKpis?.gsPurchased ?? 0}</p>
+          <p className="stat-card__sub">$25/class + $400/pack, counted per purchase, not per buyer</p>
+        </div>
+        <div className="stat-card">
+          <p className="stat-card__label">Purchasers Who Activated</p>
+          <p className="stat-card__value">{growthKpis?.gsPurchaserActivated ?? 0}</p>
+          <p className="stat-card__sub">created a portal account and it linked to an existing purchase</p>
+        </div>
+        <div className="stat-card">
+          <p className="stat-card__label">Purchaser Activation Rate</p>
+          <p className="stat-card__value">{fmtKpi(growthKpis?.gsPurchaserActivationRatePct, '%')}</p>
+        </div>
+        <div className="stat-card">
+          <p className="stat-card__label">Non-Buyer Free Signups</p>
+          <p className="stat-card__value">{growthKpis?.gsNonBuyerSignups ?? 0}</p>
+          <p className="stat-card__sub">from the landing page's "Create Your Free Account" section</p>
+        </div>
+      </div>
+      <div className="stat-grid" style={{ marginTop: 16 }}>
+        <div className="stat-card">
+          <p className="stat-card__label">Activation Screen Viewed</p>
+          <p className="stat-card__value">{growthKpis?.gsActivationCtaViewed ?? 0}</p>
+          <p className="stat-card__sub">"Your class is booked" shown on portal-login.html</p>
+        </div>
+        <div className="stat-card">
+          <p className="stat-card__label">Activation CTA Clicked</p>
+          <p className="stat-card__value">{growthKpis?.gsActivationCtaClicked ?? 0}</p>
+        </div>
+        <div className="stat-card">
+          <p className="stat-card__label">Activation Screen → Click Rate</p>
+          <p className="stat-card__value">{fmtKpi(growthKpis?.gsActivationCtaClickRatePct, '%')}</p>
+        </div>
+      </div>
+      <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
+        "Purchasers Who Activated" undercounts on purpose: a purchaser whose email already matched an existing portal account was linked at checkout time (stripe-webhook), not counted again here — this row is specifically new accounts created after an anonymous purchase. A purchaser who never creates any account (pays for one class, never returns) is expected and not a funnel failure by itself.
+      </p>
 
       <div className="page-header" style={{ marginTop: 40 }}>
         <div>

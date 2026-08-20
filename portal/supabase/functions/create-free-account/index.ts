@@ -79,7 +79,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    const { name, email, dest, checkride_timing, utm_first, ref } = await req.json()
+    const { name, email, dest, checkride_timing, utm_first, ref, source, intent } = await req.json()
     if (!name || !email) {
       return new Response(JSON.stringify({ error: 'Missing required fields: name, email' }), {
         status: 400,
@@ -163,6 +163,60 @@ serve(async (req) => {
       }).then((res: { error: unknown }) => {
         if (res.error) console.error('create-free-account: signup_ref_code_used log failed', res.error)
       })
+    }
+
+    // GS -> Portal Growth Funnel, section 8/18/19 -- source=ground_school&
+    // intent=free_training identifies the Ground School landing page's
+    // secondary free-account CTA as this signup's entry point, for the
+    // "GS non-buyers -> portal" admin funnel metric (accounts created from
+    // that specific CTA). Deliberately a distinct event, not the brief's
+    // generic "portal_account_created" step -- that one already exists
+    // and fires for every signup unconditionally (the 'signup' portal_
+    // events row, supabase-portal-schema-v2.sql's handle_new_profile_
+    // portal_event trigger); reusing that name here for a conditional,
+    // source-specific event would be a second, confusingly-named event
+    // for the same underlying thing.
+    const safeSource = typeof source === 'string' && /^[a-z_]{1,40}$/.test(source) ? source : null
+    const safeIntent = typeof intent === 'string' && /^[a-z_]{1,40}$/.test(intent) ? intent : null
+    if (safeSource || safeIntent) {
+      await supabase.from('portal_events').insert({
+        profile_id: created.user.id, event_type: 'signup_entry_source', metadata: { source: safeSource, intent: safeIntent },
+      }).then((res: { error: unknown }) => {
+        if (res.error) console.error('create-free-account: signup_entry_source log failed', res.error)
+      })
+    }
+
+    // GS -> Portal Growth Funnel, section 4 -- Purchase to Account
+    // Attribution. handleGroundSchoolRegistration (stripe-webhook)
+    // already links a $25 class purchase to an existing profile by email
+    // at checkout time; this covers the other direction, someone who
+    // bought anonymously (checkout never requires an account) and is
+    // only now creating one. Without this, get_my_ground_school_
+    // enrollments() (v65.sql, strictly profile_id = auth.uid()) would
+    // never surface a class they already paid for. Same non-fatal
+    // pattern as record_referral_signup above -- a reconciliation miss
+    // is not a reason to fail account creation.
+    try {
+      const { data: gsClaimedCount, error: gsClaimError } = await supabase.rpc('claim_ground_school_enrollments_by_email', {
+        p_profile_id: created.user.id, p_email: email,
+      })
+      if (gsClaimError) {
+        console.error('create-free-account: claim_ground_school_enrollments_by_email failed', gsClaimError)
+      } else if ((gsClaimedCount ?? 0) > 0) {
+        // Section 19's "portal activations from purchasers" admin metric
+        // needs a countable signal that this specific signup was a GS
+        // purchaser activating, not just that reconciliation ran (it runs
+        // for every signup, most of the time claiming nothing).
+        // claim_ground_school_enrollments_by_email returning >0 (v77.sql)
+        // is that signal.
+        await supabase.from('portal_events').insert({
+          profile_id: created.user.id, event_type: 'ground_school_purchaser_activated', metadata: { enrollments_claimed: gsClaimedCount },
+        }).then((res: { error: unknown }) => {
+          if (res.error) console.error('create-free-account: ground_school_purchaser_activated log failed', res.error)
+        })
+      }
+    } catch (err) {
+      console.error('create-free-account: claim_ground_school_enrollments_by_email threw', err)
     }
 
     // Without an explicit redirectTo, generateLink falls back to whatever

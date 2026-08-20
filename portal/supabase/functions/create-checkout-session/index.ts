@@ -697,7 +697,15 @@ serve(async (req) => {
             quantity: 1,
           }],
           metadata: { purpose: 'ground-school-registration', scheduled_class_id: scheduledClassId, full_name: name, email },
-          success_url: `${siteOrigin}/portal.html?registered=1&amount_cents=${GROUND_SCHOOL_PRICE_CENTS}&session_id={CHECKOUT_SESSION_ID}#ground-school`,
+          // GS -> Portal Growth Funnel, section 3 -- class_title/class_when/
+          // email/name ride along on success_url so the post-purchase
+          // portal-activation screen can show real "You're booked for X on
+          // Y" copy and prefill the signup form, even for a purchaser with
+          // no session at all (checkout never requires an account). All
+          // four are already known here server-side -- no new lookup, and
+          // nothing sensitive: this is the same class title/time already
+          // shown publicly on the landing page.
+          success_url: `${siteOrigin}/portal.html?registered=1&amount_cents=${GROUND_SCHOOL_PRICE_CENTS}&session_id={CHECKOUT_SESSION_ID}&class_title=${encodeURIComponent(scheduledClass.title)}&class_when=${encodeURIComponent(when)}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}#ground-school`,
           cancel_url: `${siteOrigin}/portal.html#ground-school`,
         })
         await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'ground-school-registration', email, amountCents: GROUND_SCHOOL_PRICE_CENTS, utm: body.utm })
@@ -746,7 +754,7 @@ serve(async (req) => {
           quantity: 1,
         }],
         metadata: { purpose: 'ground-school-registration', session_id: sessionId, full_name: name, email },
-        success_url: `${siteOrigin}/portal.html?registered=1&amount_cents=${GROUND_SCHOOL_PRICE_CENTS}&session_id={CHECKOUT_SESSION_ID}#ground-school`,
+        success_url: `${siteOrigin}/portal.html?registered=1&amount_cents=${GROUND_SCHOOL_PRICE_CENTS}&session_id={CHECKOUT_SESSION_ID}&class_title=${encodeURIComponent(groundSession.title)}&class_when=${encodeURIComponent(when)}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}#ground-school`,
         cancel_url: `${siteOrigin}/portal.html#ground-school`,
       })
       await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'ground-school-registration', email, amountCents: GROUND_SCHOOL_PRICE_CENTS, utm: body.utm })

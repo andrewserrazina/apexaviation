@@ -8,7 +8,10 @@
   <meta property="og:title" content="Live Private Pilot Ground School | Apex Advantage" />
   <meta property="og:description" content="Live, instructor-led classes built around real questions and scenarios — not another video playlist. $25 per class or $400 for the complete program." />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://apexaviationtx.com/apex-advantage-private-pilot.html" />
+  <!-- GS -> Portal Growth Funnel, section 14 -- normalized to the
+       extensionless path, the real production route (confirmed by the
+       site owner, not inferred here). -->
+  <meta property="og:url" content="https://apexaviationtx.com/apex-advantage-private-pilot" />
   <meta property="og:image" content="https://apexaviationtx.com/apexwhite.png" />
   <meta property="og:site_name" content="Apex Aviation" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -43,10 +46,10 @@
     "availableLanguage": "English",
     "inLanguage": "en-US",
     "teaches": ["Aerodynamics","Aircraft Systems","Airspace","FARs","VFR Navigation","Aviation Weather","Weight and Balance","Risk Management","Aeronautical Decision Making","Checkride Preparation"],
-    "url": "https://apexaviationtx.com/apex-advantage-private-pilot.html"
+    "url": "https://apexaviationtx.com/apex-advantage-private-pilot"
   }
   </script>
-  <link rel="canonical" href="https://apexaviationtx.com/apex-advantage-private-pilot.html" />
+  <link rel="canonical" href="https://apexaviationtx.com/apex-advantage-private-pilot" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -784,7 +787,18 @@
 
   <!-- Social proof -->
   <div class="social-proof-strip">
-    <div class="social-proof-strip__stars" aria-label="5 out of 5 stars">
+    <!-- GS -> Portal Growth Funnel, section 13 -- these stars aren't
+         computed from a real review platform (no aggregate rating count
+         or source anywhere on this page), so aria-label="5 out of 5
+         stars" was asserting a specific, unverifiable rating claim
+         through accessible markup. The real testimonial quotes below
+         make no such claim and are left exactly as they were; the stars
+         are decorative styling around them, not a rating -- marked
+         aria-hidden accordingly. Same pattern exists on 5 other pages
+         (portal.html, spin-awareness.html, weight-balance.html,
+         radio-calls.html, dpe-questions.html), left untouched here since
+         they're outside this sprint's scope. -->
+    <div class="social-proof-strip__stars" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
       <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
       <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
@@ -895,6 +909,28 @@
       </div>
 
       <div class="gs-class-grid" id="gsClassGrid" style="display:none"></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       GS -> Portal Growth Funnel, section 7 -- ONE secondary
+       acquisition exit for visitors who aren't ready to pay yet.
+       Deliberately quiet/subordinate to the $25 CTA above: no gold
+       fill, no large type, no hero placement -- this is the exit
+       path, not competing with the primary offer. data-apx-cta gets
+       the same UTM auto-append + ground_school_cta_click tracking
+       every other CTA on this page already has (see the two IIFEs
+       below), so no separate tracking code was needed here.
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section" style="background:#0b1627;padding:0 0 56px">
+    <div class="container">
+      <div style="max-width:600px;margin:0 auto;text-align:center;padding:28px 32px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:14px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:10px">Not Ready For a Live Class Yet?</div>
+        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.6;margin:0 0 14px">Start training free inside Apex Advantage.</p>
+        <p style="color:rgba(255,255,255,0.45);font-size:13px;line-height:1.8;margin:0 0 18px">10 Free DPE Questions · Question of the Day · Free Pilot Resources</p>
+        <a href="portal-login.html?view=signup&source=ground_school&intent=free_training" class="btn btn--ghost" data-apx-cta data-apx-cta-location="gs_free_account_exit">Create Your Free Account</a>
+        <p style="color:rgba(255,255,255,0.35);font-size:12px;margin-top:10px">No Ground School purchase required.</p>
+      </div>
     </div>
   </section>
 
@@ -1472,8 +1508,11 @@
         </div>
       </div>
 
-      <!-- Checkride Prep Pack upsell -->
-      <a href="checkride-prep.html" style="display:flex;align-items:center;gap:20px;max-width:720px;margin:24px auto 0;padding:20px 28px;background:rgba(244,180,0,0.06);border:1px solid rgba(244,180,0,0.2);border-radius:14px;text-decoration:none;flex-wrap:wrap">
+      <!-- Checkride Prep Pack upsell. data-apx-cta gets this the same
+           UTM auto-append + ground_school_cta_click tracking every other
+           CTA on this page already has (section 18's checkride_prep_view
+           funnel step) -- it had neither before. -->
+      <a href="checkride-prep.html" data-apx-cta data-apx-cta-location="checkride_prep_crosssell" style="display:flex;align-items:center;gap:20px;max-width:720px;margin:24px auto 0;padding:20px 28px;background:rgba(244,180,0,0.06);border:1px solid rgba(244,180,0,0.2);border-radius:14px;text-decoration:none;flex-wrap:wrap">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <div style="flex:1;min-width:200px">
           <div style="font-size:11px;font-weight:700;color:var(--gold);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px">Closer to Checkride Day?</div>
