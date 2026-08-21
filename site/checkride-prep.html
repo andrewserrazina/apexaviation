@@ -8,14 +8,14 @@
   <meta property="og:title" content="Private Pilot Checkride Prep System | Apex Advantage" />
   <meta property="og:description" content="An interactive training system inside Apex Advantage — DPE-style questions, AI oral exam practice, realistic scenarios, and readiness tracking, built to help you understand the checkride, not just memorize it." />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://apexaviationtx.com/checkride-prep.html" />
+  <meta property="og:url" content="https://apexaviationtx.com/checkride-prep" />
   <meta property="og:image" content="https://apexaviationtx.com/ApexPrivate.png" />
   <meta property="og:site_name" content="Apex Aviation" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Private Pilot Checkride Prep System | Apex Advantage" />
   <meta name="twitter:description" content="An interactive training system inside Apex Advantage — DPE-style questions, AI oral exam practice, realistic scenarios, and readiness tracking, built to help you understand the checkride, not just memorize it." />
   <meta name="twitter:image" content="https://apexaviationtx.com/ApexPrivate.png" />
-  <link rel="canonical" href="https://apexaviationtx.com/checkride-prep.html" />
+  <link rel="canonical" href="https://apexaviationtx.com/checkride-prep" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -35,7 +35,7 @@
       "priceCurrency": "USD",
       "availability": "https://schema.org/InStock"
     },
-    "url": "https://apexaviationtx.com/checkride-prep.html"
+    "url": "https://apexaviationtx.com/checkride-prep"
   }
   </script>
   <!-- Google Analytics 4 -->
@@ -665,6 +665,46 @@
       .cp-preview-grid { grid-template-columns: 1fr; }
     }
 
+    /* ─── Mobile CRO reorder: tighter rhythm for the front-loaded early
+       section run (product proof -> quick value -> early CTA), so the
+       first ~30% of the page reads fast instead of using the standard
+       72px .cp-section rhythm meant for the long-form content below.
+       Scoped modifier -- .cp-section itself is untouched, so every other
+       section on the page keeps its normal spacing. ─── */
+    .cp-section--tight { padding: 40px 0 56px; }
+    @media (max-width: 640px) {
+      .cp-section--tight { padding: 32px 0 40px; }
+    }
+
+    /* ─── Condensed "what you get" -- one line per item, not a card wall.
+       Deliberately lighter than .cp-system-card (no background block, no
+       26px padding) so it doesn't read as a second full feature section
+       stacked directly under the one just above it. ─── */
+    .cp-quickvalue { max-width: 720px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 22px 32px; }
+    .cp-quickvalue__item { display: flex; gap: 12px; align-items: flex-start; }
+    .cp-quickvalue__item svg { flex-shrink: 0; margin-top: 3px; color: #F4B400; }
+    .cp-quickvalue__item h3 { font-size: 13.5px; font-weight: 800; color: #fff; margin: 0 0 4px; letter-spacing: 0.02em; }
+    .cp-quickvalue__item p { font-size: 13px; color: #E5E7EB; line-height: 1.55; margin: 0; }
+    @media (max-width: 640px) {
+      .cp-quickvalue { grid-template-columns: 1fr; gap: 18px; }
+    }
+
+    /* ─── Early repeat CTA -- compact version of .cp-offer-box, no
+       feature list (that's what quick-value above and the full pricing
+       card below are for) -- just price, urgency, and the button. ─── */
+    .cp-early-cta {
+      max-width: 480px; margin: 0 auto; text-align: center;
+      background: rgba(244,180,0,0.06); border: 1px solid rgba(244,180,0,0.25);
+      padding: 28px 32px;
+    }
+    .cp-early-cta__title { font-size: 16px; font-weight: 800; color: #fff; margin: 0 0 12px; letter-spacing: 0.01em; }
+    .cp-early-cta__price-row { display: flex; align-items: baseline; justify-content: center; gap: 10px; margin-bottom: 4px; }
+    .cp-early-cta__price { font-size: 34px; font-weight: 800; color: #F4B400; font-family: 'Montserrat', sans-serif; }
+    .cp-early-cta__price-regular { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.5); }
+    .cp-early-cta__note { font-size: 12.5px; color: rgba(255,255,255,0.5); margin-bottom: 4px; }
+    .cp-early-cta__urgency { font-size: 12.5px; color: #F4B400; font-weight: 600; margin-bottom: 18px; }
+    .cp-early-cta .btn--cta-primary { width: 100%; min-height: 52px; }
+
     /* ─── Why different — typical vs Apex comparison ─── */
     .cp-compare-grid {
       display: grid;
@@ -886,6 +926,12 @@
       .cp-offer-box { padding: 32px 22px; }
       .cp-offer-price { font-size: 40px; }
       .cp-hero__offer { padding: 18px 18px; }
+      /* Matches .cp-offer-box's own mobile padding above -- the fixed
+         28px/32px used at wider widths left too little room for the CTA
+         button text ("UNLOCK CHECKRIDE PREP — $29") to fit on one line
+         at 390-430px, where the equivalent button in the pricing card
+         below (narrower side padding on mobile) does not wrap. */
+      .cp-early-cta { padding: 24px 18px; }
     }
   </style>
 </head>
@@ -1002,6 +1048,120 @@
     </div>
   </div>
 
+  <!-- ═══ 3D. REAL PRODUCT PROOF (moved up from its original position
+       further down the page) — mobile CRO reorder, see report. Real
+       portal screenshots, supplied by the client. Files expected at
+       site/images/QuestionsLibrary.png, ModelAnswer.png,
+       ScenarioTraining.png, ProgressTracking.png. id="product-preview"
+       kept unchanged -- the existing product_preview_viewed
+       IntersectionObserver (bottom of page) targets this id and needed
+       no changes to keep firing correctly from its new position.
+  ════════════════════════════════════════════════════════════════ -->
+  <section class="cp-section cp-section--deep cp-section--tight cp-reveal" id="product-preview">
+    <div class="container">
+      <div class="cp-section__eyebrow">Inside the Portal</div>
+      <h2 class="cp-section__title">SEE WHAT YOU ARE GETTING</h2>
+      <div class="cp-preview-grid">
+        <div class="cp-preview-panel">
+          <div class="cp-preview-panel__media">
+            <img src="images/QuestionsLibrary.png" alt="DPE Questions Library screen showing Checkride Mode, DPE Rapid Fire, the search bar, and ACS category tabs" loading="lazy" width="1200" height="750" />
+          </div>
+          <div class="cp-preview-panel__body">
+            <h3>Question Library</h3>
+            <p>Search or browse all 300+ questions by ACS category, or launch Checkride Mode and DPE Rapid Fire for timed practice.</p>
+          </div>
+        </div>
+        <div class="cp-preview-panel">
+          <div class="cp-preview-panel__media">
+            <img src="images/ModelAnswer.png" alt="An expanded oral exam question showing the model answer, common student mistakes, what the DPE is evaluating, real-world application, and ACS connection" loading="lazy" width="1200" height="750" />
+          </div>
+          <div class="cp-preview-panel__body">
+            <h3>Model Answer View</h3>
+            <p>Every question breaks down the model answer, common mistakes, what the DPE is evaluating, and the ACS connection — not just a correct answer to memorize.</p>
+          </div>
+        </div>
+        <div class="cp-preview-panel">
+          <div class="cp-preview-panel__media">
+            <img src="images/ScenarioTraining.png" alt="Four checkride scenario cards from Aircraft Systems and Aeronautical Decision-Making categories, each with a Reveal Model Answer control" loading="lazy" width="1200" height="750" />
+          </div>
+          <div class="cp-preview-panel__body">
+            <h3>Scenario View</h3>
+            <p>Work through realistic Aircraft Systems and Aeronautical Decision-Making scenarios the way a DPE actually presents them.</p>
+          </div>
+        </div>
+        <div class="cp-preview-panel">
+          <div class="cp-preview-panel__media">
+            <img src="images/ProgressTracking.png" alt="Progress tracking checklist for the Private Pilot Checkride Prep lessons, showing each section and a completion percentage" loading="lazy" width="1200" height="750" />
+          </div>
+          <div class="cp-preview-panel__body">
+            <h3>Progress View</h3>
+            <p>Check off each lesson section as you complete it, so your final review stays focused on what's left.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 3E. CONDENSED "WHAT YOU GET" — mobile CRO reorder.
+       No testimonial section here (see report, section F): no existing
+       testimonial in this codebase is actually about Checkride Prep
+       specifically (the real ones are about in-person CFI instruction),
+       and the brief was explicit about not fabricating or repurposing
+       one out of context. Kept to 4 short one-liners, not a card wall,
+       so it doesn't repeat the hero benefits checklist / value strip
+       above it at the same weight — this version exists to reinforce
+       what the visitor just SAW in the screenshots above, not to
+       introduce the list a third time. ═══ -->
+  <section class="cp-section cp-section--navy cp-section--tight cp-reveal">
+    <div class="container">
+      <div class="cp-section__eyebrow">What You Get</div>
+      <div class="cp-quickvalue">
+        <div class="cp-quickvalue__item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div><h3>DPE QUESTION BANK</h3><p>300+ ACS-mapped oral questions with model answers and common mistakes explained.</p></div>
+        </div>
+        <div class="cp-quickvalue__item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div><h3>AI DPE PRACTICE</h3><p>Practice answering out loud in a simulated oral exam before checkride day.</p></div>
+        </div>
+        <div class="cp-quickvalue__item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div><h3>SCENARIO TRAINING</h3><p>Apply what you know to realistic pilot-in-command decisions, not just recall it.</p></div>
+        </div>
+        <div class="cp-quickvalue__item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div><h3>READINESS TRACKING</h3><p>See what you've covered and where you still need work before test day.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 3F. EARLY REPEAT CTA — mobile CRO reorder. Same checkout link/
+       data attributes as every other CTA on this page (data-cp-cta,
+       data-cp-cta-label, data-cp-price, data-cp-early-access,
+       data-cp-regular-price) so the live-pricing script, UTM
+       passthrough, and click-tracking below all pick it up automatically
+       with no JS changes — a new querySelectorAll('[data-cp-cta]') match,
+       not a new code path. data-cp-location="early-repeat" distinguishes
+       it from hero/sticky/pricing/final in the existing location
+       property (not a gated/allowlisted value — see report, section H).
+       ═══ -->
+  <section class="cp-section cp-section--deep cp-section--tight cp-reveal">
+    <div class="container">
+      <div class="cp-early-cta">
+        <div class="cp-section__eyebrow" style="margin-bottom:10px">Ready to Start Training?</div>
+        <div class="cp-early-cta__title">PRIVATE PILOT CHECKRIDE PREP</div>
+        <div class="cp-early-cta__price-row">
+          <span class="cp-early-cta__price" data-cp-price>$29</span>
+          <span class="cp-early-cta__price-regular" data-cp-regular-price>Regular price <s>$49</s></span>
+        </div>
+        <div class="cp-early-cta__note">One-time unlock &middot; No subscription</div>
+        <div class="cp-early-cta__urgency" data-cp-early-access>Early Access ends August 31</div>
+        <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-cta-label data-cp-location="early-repeat">UNLOCK CHECKRIDE PREP &mdash; $29</a>
+      </div>
+    </div>
+  </section>
+
   <!-- ═══ 3B. MEMORIZATION VS. PREPARATION ═══ -->
   <section class="cp-section cp-section--deep cp-reveal">
     <div class="container">
@@ -1083,56 +1243,6 @@
         <div class="cp-system-card">
           <h3>GUIDED PROGRESS TRACKING</h3>
           <p>Check off each lesson and question as you go, so your final week of prep follows a clear process and stays focused on what's actually left — not a guess.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══ 5. SEE INSIDE THE SYSTEM ═══
-       Real portal screenshots, supplied by the client. Files expected
-       at site/images/QuestionsLibrary.png, ModelAnswer.png,
-       ScenarioTraining.png, ProgressTracking.png.
-  ════════════════════════════════════════════════════════════════ -->
-  <section class="cp-section cp-section--deep cp-reveal" id="product-preview">
-    <div class="container">
-      <div class="cp-section__eyebrow">Inside the Portal</div>
-      <h2 class="cp-section__title">SEE WHAT YOU ARE GETTING</h2>
-      <div class="cp-preview-grid">
-        <div class="cp-preview-panel">
-          <div class="cp-preview-panel__media">
-            <img src="images/QuestionsLibrary.png" alt="DPE Questions Library screen showing Checkride Mode, DPE Rapid Fire, the search bar, and ACS category tabs" loading="lazy" width="1200" height="750" />
-          </div>
-          <div class="cp-preview-panel__body">
-            <h3>Question Library</h3>
-            <p>Search or browse all 300+ questions by ACS category, or launch Checkride Mode and DPE Rapid Fire for timed practice.</p>
-          </div>
-        </div>
-        <div class="cp-preview-panel">
-          <div class="cp-preview-panel__media">
-            <img src="images/ModelAnswer.png" alt="An expanded oral exam question showing the model answer, common student mistakes, what the DPE is evaluating, real-world application, and ACS connection" loading="lazy" width="1200" height="750" />
-          </div>
-          <div class="cp-preview-panel__body">
-            <h3>Model Answer View</h3>
-            <p>Every question breaks down the model answer, common mistakes, what the DPE is evaluating, and the ACS connection — not just a correct answer to memorize.</p>
-          </div>
-        </div>
-        <div class="cp-preview-panel">
-          <div class="cp-preview-panel__media">
-            <img src="images/ScenarioTraining.png" alt="Four checkride scenario cards from Aircraft Systems and Aeronautical Decision-Making categories, each with a Reveal Model Answer control" loading="lazy" width="1200" height="750" />
-          </div>
-          <div class="cp-preview-panel__body">
-            <h3>Scenario View</h3>
-            <p>Work through realistic Aircraft Systems and Aeronautical Decision-Making scenarios the way a DPE actually presents them.</p>
-          </div>
-        </div>
-        <div class="cp-preview-panel">
-          <div class="cp-preview-panel__media">
-            <img src="images/ProgressTracking.png" alt="Progress tracking checklist for the Private Pilot Checkride Prep lessons, showing each section and a completion percentage" loading="lazy" width="1200" height="750" />
-          </div>
-          <div class="cp-preview-panel__body">
-            <h3>Progress View</h3>
-            <p>Check off each lesson section as you complete it, so your final review stays focused on what's left.</p>
-          </div>
         </div>
       </div>
     </div>
