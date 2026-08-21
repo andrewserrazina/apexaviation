@@ -579,6 +579,13 @@
 .portal-practice-panel {
   width: 100%; max-width: 620px; background: #101f38; border: 1px solid rgba(255,255,255,0.09);
   border-radius: var(--radius-lg); padding: 36px; box-shadow: var(--shadow-lg); position: relative;
+  /* Every prior use of this shared panel (milestone form, delete-account
+     confirm, checkride-passed form) was always short enough to fit the
+     viewport, so this was never needed. The readiness report modal can
+     run to 20+ question cards -- without a cap the overlay just clips
+     it at the fixed viewport edge with nothing scrollable to reach the
+     rest. max-height/overflow here is a no-op for the short cases. */
+  max-height: 90vh; overflow-y: auto;
 }
 .portal-practice-panel__close {
   position: absolute; top: 18px; right: 18px; background: none; border: none; cursor: pointer;
