@@ -392,177 +392,15 @@
       emergency: 'Review the standard response priorities for engine failure after takeoff, in-flight fire, and other emergencies -- examiners are listening for structured, rehearsed procedure, not dramatic language.'
     };
 
-    var QUESTIONS = [
-      // ── Eligibility & Documents (2) ──
-      {
-        cat: 'eligibility', type: 'knowledge', weight: 1.0,
-        q: 'What is the minimum total flight time required for a Private Pilot certificate under 14 CFR Part 61?',
-        options: ['20 hours', '35 hours', '40 hours', '50 hours'],
-        correct: 2,
-        explain: 'Part 61.109 sets a 40-hour minimum -- most students fly more before they’re ready. 20 hours of flight training and 10 hours of solo are part of that total, not on top of it.',
-        review: 'The Part 61.109 aeronautical experience requirements.'
-      },
-      {
-        cat: 'eligibility', type: 'applied', weight: 1.5,
-        q: 'Which document lists the specific ACS codes you missed on your FAA Knowledge Test, and should shape your oral exam review?',
-        options: ['Your student pilot certificate', 'The Knowledge Test Report', 'Your logbook endorsement page', 'The IACRA confirmation email'],
-        correct: 1,
-        explain: 'The Knowledge Test Report maps directly to specific ACS Tasks. A DPE will often ask about any codes you missed -- have a genuine, prepared answer, not a vague one.',
-        review: 'How to read your own Knowledge Test Report and connect its codes to ACS Tasks.'
-      },
-      // ── Airworthiness (2) ──
-      {
-        cat: 'airworthiness', type: 'knowledge', weight: 1.0,
-        q: 'How often must an aircraft operated under Part 91 receive an annual inspection?',
-        options: ['Every 6 calendar months', 'Every 100 hours', 'Every 12 calendar months', 'Every 24 calendar months'],
-        correct: 2,
-        explain: '14 CFR 91.409(a) requires an annual inspection within the preceding 12 calendar months, regardless of how many hours were flown.',
-        review: 'Required inspection intervals: annual, 100-hour, transponder/altimeter, and ELT.'
-      },
-      {
-        cat: 'airworthiness', type: 'scenario', weight: 2.0,
-        q: 'In cruise on a humid 55°F day, flying a carbureted engine, you notice a gradual RPM decrease with no other symptom. What should you suspect first, and what’s your first action?',
-        options: ['A failing alternator -- check the ammeter', 'Carburetor icing -- apply carb heat', 'Spark plug fouling -- lean the mixture', 'Low oil pressure -- reduce power immediately'],
-        correct: 1,
-        explain: 'Carb ice can form at outside air temperatures up to around 70°F with enough humidity, since the fuel/air mixture cools sharply passing through the carburetor. A gradual, unexplained RPM loss is the classic symptom, and carb heat is the standard first response.',
-        review: 'Carburetor icing conditions and the 91.213 inoperative-equipment decision process.'
-      },
-      // ── Privileges & Limitations (2) ──
-      {
-        cat: 'privileges', type: 'knowledge', weight: 1.0,
-        q: 'How often must you complete a flight review (or equivalent) to continue acting as pilot in command?',
-        options: ['Every 12 calendar months', 'Every 24 calendar months', 'Every 100 hours', 'Only once, after certification'],
-        correct: 1,
-        explain: 'A flight review is a minimum 1 hour of ground and 1 hour of flight training with an authorized instructor, required within the preceding 24 calendar months to act as PIC.',
-        review: 'Flight review requirements and what can substitute for one.'
-      },
-      {
-        cat: 'privileges', type: 'applied', weight: 1.5,
-        q: 'You and three friends want to split the cost of a weekend cross-country trip you were already planning to take yourself. As a private pilot, is this legal?',
-        options: ['No -- any cost-sharing with passengers requires a commercial certificate', 'Yes, as long as you pay at least an equal, pro rata share and have your own reason for the flight', 'Yes, but only if the passengers pay the entire cost', 'No -- private pilots can never accept money from passengers'],
-        correct: 1,
-        explain: '14 CFR 61.113 allows a private pilot to share operating expenses pro rata with passengers, as long as the pilot pays at least an equal share and has a genuine reason for the flight beyond just carrying passengers.',
-        review: 'The pro rata cost-sharing rule and other narrow compensation exceptions.'
-      },
-      // ── Airspace (3) ──
-      {
-        cat: 'airspace', type: 'applied', weight: 1.5,
-        q: 'Before entering which class of airspace must a VFR pilot receive an explicit ATC clearance -- not just establish two-way radio contact?',
-        options: ['Class C', 'Class D', 'Class B', 'Class E'],
-        correct: 2,
-        explain: 'Class B is the only one requiring an actual "cleared into Class B airspace" from ATC. Class C and D only require establishing two-way radio communication.',
-        review: 'Entry requirements for each class of airspace.'
-      },
-      {
-        cat: 'airspace', type: 'knowledge', weight: 1.0,
-        q: 'What are the basic VFR weather minimums for visibility and cloud clearance in Class D airspace?',
-        options: ['1 SM, clear of clouds', '3 SM, 500 below / 1,000 above / 2,000 horizontal', '5 SM, 1,000/1,000/1 mile', '3 SM, clear of clouds'],
-        correct: 1,
-        explain: '14 CFR 91.155: Class D (like Class C and most of Class E below 10,000 ft) requires 3 statute miles visibility and those specific cloud clearance distances.',
-        review: 'VFR weather minimums by airspace class, from memory.'
-      },
-      {
-        cat: 'airspace', type: 'scenario', weight: 2.0,
-        q: 'You’re flying VFR at 4,500 ft MSL, approaching a Class B shelf that begins at 4,000 ft. ATC has not cleared you into Class B. What must you do?',
-        options: ['Continue -- established radio contact is enough', 'Descend or divert to remain clear of the Class B shelf', 'Climb above the shelf to avoid it', 'Contact ATC after entering to request clearance retroactively'],
-        correct: 1,
-        explain: 'Without an explicit Class B clearance, you must remain clear of it entirely -- in this case, staying below the 4,000 ft shelf (or diverting around it) until cleared in.',
-        review: 'How to read sectional Class B shelf altitudes and plan around them.'
-      },
-      // ── Weather (3) ──
-      {
-        cat: 'weather', type: 'knowledge', weight: 1.0,
-        q: 'A METAR includes the group "BKN008". What does this tell you about sky condition?',
-        options: ['Broken clouds at 8,000 feet AGL', 'Broken clouds at 800 feet AGL', 'Scattered clouds at 8,000 feet MSL', 'Overcast at 800 feet MSL'],
-        correct: 1,
-        explain: 'Cloud height in a METAR is reported in hundreds of feet AGL, and "BKN" is broken (5/8 to 7/8 sky coverage) -- so BKN008 is broken clouds at 800 feet AGL.',
-        review: 'Decoding METAR sky condition, visibility, and remarks.'
-      },
-      {
-        cat: 'weather', type: 'applied', weight: 1.5,
-        q: 'A TAF includes a "TEMPO" group forecasting 3 SM visibility and mist for a two-hour window that overlaps your planned departure. What does TEMPO actually tell you?',
-        options: ['Those conditions are guaranteed for the full two hours', 'Those conditions are expected temporarily, for less than an hour at a time, over less than half the period', 'TEMPO conditions can be ignored for VFR planning', 'The forecast is unreliable and should be disregarded entirely'],
-        correct: 1,
-        explain: 'TEMPO indicates temporary, fluctuating conditions expected for less than an hour at a time, affecting less than 50% of the period -- real, but not continuous, and still worth factoring into a go/no-go decision.',
-        review: 'TAF forecast group definitions: TEMPO, BECMG, PROB.'
-      },
-      {
-        cat: 'weather', type: 'scenario', weight: 2.0,
-        q: '20 minutes into a planned VFR cross-country, you notice cumulus clouds building and the sky darkening ahead, worse than the forecast suggested. What’s the correct decision-making response?',
-        options: ['Continue as planned -- the forecast already accounted for this', 'Reassess in real time and turn back or divert if conditions are worse than forecast', 'Climb above the weather to stay VFR on top', 'Descend and continue at a lower altitude until conditions clear'],
-        correct: 1,
-        explain: 'Forecasts are a planning tool, not a guarantee -- real-time conditions take priority. Deteriorating weather worse than forecast calls for an early decision to turn back or divert, not pressing on and hoping.',
-        review: 'In-flight weather decision making and personal minimums.'
-      },
-      // ── Performance & W&B (2) ──
-      {
-        cat: 'performance', type: 'knowledge', weight: 1.0,
-        q: 'As density altitude increases, aircraft takeoff performance generally:',
-        options: ['Improves', 'Is unaffected', 'Degrades', 'Improves only in cold weather'],
-        correct: 2,
-        explain: 'Higher density altitude means thinner air -- less lift, less propeller efficiency, and less engine power, all of which lengthen the takeoff roll and reduce climb performance.',
-        review: 'How density altitude affects lift, power, and takeoff/climb performance.'
-      },
-      {
-        cat: 'performance', type: 'applied', weight: 1.5,
-        q: 'Your aircraft’s maximum gross weight is 2,550 lbs, and today’s calculated takeoff weight comes to 2,610 lbs. Are you legal to depart?',
-        options: ['Yes, as long as the CG is within limits', 'Yes, if performance charts show adequate runway available', 'No -- exceeding max gross weight is not legal regardless of performance numbers', 'Yes, up to 5% over gross is an accepted margin'],
-        correct: 2,
-        explain: 'Maximum gross weight is a hard legal limit, not a performance recommendation -- exceeding it isn’t legal no matter how much runway or climb margin the charts show.',
-        review: 'Weight and balance calculations and the difference between a legal limit and a performance margin.'
-      },
-      // ── Aeromedical Factors (2) ──
-      {
-        cat: 'aeromedical', type: 'knowledge', weight: 1.0,
-        q: 'Per 14 CFR 91.17, how many hours must pass between consuming alcohol and acting as pilot in command, at minimum?',
-        options: ['4 hours', '8 hours', '12 hours', '24 hours'],
-        correct: 1,
-        explain: '91.17 sets an 8-hour "bottle to throttle" minimum -- though many instructors and operators recommend a longer margin depending on how much was consumed.',
-        review: '91.17 alcohol/drug rules and the blood alcohol concentration limit.'
-      },
-      {
-        cat: 'aeromedical', type: 'applied', weight: 1.5,
-        q: 'You wake up the morning of a planned flight with mild congestion from a cold. Using IMSAFE, what’s the correct way to think about this?',
-        options: ['Congestion is never disqualifying -- fly as planned', 'Assess it honestly under "Illness," considering effects like sinus block at altitude, and decide accordingly -- it’s a judgment call, not automatic grounding', 'Any illness automatically means the flight must be canceled', 'Only a fever is relevant to fitness to fly'],
-        correct: 1,
-        explain: 'IMSAFE’s "Illness" pillar is about honest self-assessment, not a hard rule. Congestion specifically raises real concern about sinus and ear blocks at altitude -- worth genuinely weighing, not dismissing or overreacting to.',
-        review: 'The IMSAFE checklist and how to apply it honestly, not just recite it.'
-      },
-      // ── Cross-Country Planning (2) ──
-      {
-        cat: 'crosscountry', type: 'knowledge', weight: 1.0,
-        q: 'For a daytime VFR flight, what minimum fuel reserve is required beyond what’s needed to reach the first point of intended landing?',
-        options: ['15 minutes', '30 minutes', '45 minutes', '60 minutes'],
-        correct: 1,
-        explain: '14 CFR 91.151 requires enough fuel to fly to the first point of intended landing, plus 30 minutes at normal cruise for a daytime VFR flight (45 minutes at night).',
-        review: 'VFR fuel reserve requirements, day and night.'
-      },
-      {
-        cat: 'crosscountry', type: 'scenario', weight: 2.0,
-        q: '20 minutes into a planned 90-minute VFR cross-country, an unforecast 25-knot headwind is cutting your groundspeed well below plan. What should you do?',
-        options: ['Continue and recheck fuel only after landing', 'Recompute fuel and ETA in flight now, and consider diverting if reserves are threatened', 'Increase altitude to escape the headwind without recalculating anything', 'Ignore it -- forecasts already account for normal wind variation'],
-        correct: 1,
-        explain: 'Cross-country planning doesn’t stop at the preflight briefing. A real, unforecast deviation like this calls for recalculating fuel and ETA in flight, and being willing to divert if your reserve is genuinely at risk.',
-        review: 'In-flight fuel and time recalculation, and when to divert.'
-      },
-      // ── Emergency Operations (2) ──
-      {
-        cat: 'emergency', type: 'applied', weight: 1.5,
-        q: 'Following an engine failure shortly after takeoff, with insufficient altitude to turn back to the runway, the standard guidance is to:',
-        options: ['Attempt a 180° turn back to the runway', 'Land straight ahead, with only minor turns to avoid obstacles', 'Extend full flaps immediately and glide as far as possible', 'Shut down all electrical systems before landing'],
-        correct: 1,
-        explain: 'The "impossible turn" back to the runway at low altitude is a leading cause of stall/spin accidents. Landing generally straight ahead, even off-airport, is the standard low-altitude engine-failure response.',
-        review: 'Engine-failure-after-takeoff decision altitude and the risks of the "impossible turn."'
-      },
-      {
-        cat: 'emergency', type: 'scenario', weight: 2.0,
-        q: 'You smell smoke in the cabin during cruise flight. What is the correct general priority order for your response?',
-        options: ['Land immediately at the nearest airport, skip all other steps', 'Fly the airplane first, then work to identify and eliminate the source, then land as soon as practical', 'Shut off all electrical power immediately, then figure out where to land', 'Open a window immediately to clear the smoke before doing anything else'],
-        correct: 1,
-        explain: 'Aviate first -- keep the airplane under control. Then work the problem: try to identify and isolate the source (electrical vs. other). Then land as soon as practical or immediately, depending on severity. Examiners are listening for this structured order, not just "land right away."',
-        review: 'In-flight fire/smoke emergency procedures and the aviate-navigate-communicate priority order.'
-      }
-    ];
+    // Loaded from checkride_readiness_questions (v80.sql) rather than
+    // hardcoded here -- see loadQuestions() below. Was a static array
+    // through V1; moved server-side once the portal dashboard needed to
+    // review a PAST attempt's actual question text/options/explanation,
+    // which a second hand-kept-in-sync copy of this array would have
+    // risked drifting from. Same shape as before ({cat, type, weight, q,
+    // options, correct, explain, review}) so nothing below this line had
+    // to change.
+    var QUESTIONS = [];
 
     var TIMING_OPTIONS = [
       { value: 'within_14_days', label: 'Within 14 days' },
@@ -577,9 +415,9 @@
     // count that isn't real.
     var REAL_QUESTION_BANK_SIZE = '328';
 
-    var TOTAL_STEPS = QUESTIONS.length + 1; // + timing step (email comes after the score teaser now, via the auth gate)
+    var TOTAL_STEPS = 1; // + timing step -- real value set once QUESTIONS loads, see loadQuestions()
     var current = 0;
-    var answers = new Array(QUESTIONS.length).fill(null);
+    var answers = [];
     var timing = '';
     var results = null; // set once computed
     var savedLeadEmail = null; // set once we know who this is (gate submit)
@@ -606,6 +444,40 @@
         utm_content: params.get('utm_content') || null,
       };
     }
+
+    // Disabled until loadQuestions() resolves -- prevents a click racing
+    // ahead of the fetch on a very slow connection (a real page load, not
+    // a synchronous array, has to actually finish before Question 1 exists
+    // to render).
+    startBtn.disabled = true;
+
+    function loadQuestions() {
+      if (!window.apexSupabase) { startBtn.textContent = 'Could not load the assessment — refresh to try again'; return; }
+      window.apexSupabase.from('checkride_readiness_questions')
+        .select('category, question_type, weight, question_text, options, correct_answer, explanation, recommended_review_topic')
+        .eq('is_active', true)
+        .order('display_order')
+        .then(function (res) {
+          if (res.error || !res.data || !res.data.length) {
+            console.error('loadQuestions failed', res.error);
+            startBtn.textContent = 'Could not load the assessment — refresh to try again';
+            return;
+          }
+          QUESTIONS = res.data.map(function (r) {
+            return {
+              cat: r.category, type: r.question_type, weight: r.weight, q: r.question_text,
+              options: r.options, correct: r.correct_answer, explain: r.explanation, review: r.recommended_review_topic,
+            };
+          });
+          TOTAL_STEPS = QUESTIONS.length + 1;
+          answers = new Array(QUESTIONS.length).fill(null);
+          startBtn.disabled = false;
+        }).catch(function (e) {
+          console.error('loadQuestions threw', e);
+          startBtn.textContent = 'Could not load the assessment — refresh to try again';
+        });
+    }
+    loadQuestions();
 
     function renderStep() {
       progressFill.style.width = Math.round((current / TOTAL_STEPS) * 100) + '%';
