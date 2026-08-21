@@ -872,6 +872,27 @@
       });
     }
 
+    // supabase-js's functions.invoke() throws a FunctionsHttpError on any
+    // non-2xx response, whose .message is ALWAYS the generic literal "Edge
+    // Function returned a non-2xx status code" -- regardless of what
+    // create-free-account itself actually returned (e.g. its real, specific
+    // 409 "An account with this email already exists. Try signing in
+    // instead."). On failure res.data is null and the real response body is
+    // only reachable via the unconsumed Response at res.error.context. Same
+    // helper as site/portal-login.html and site/portal-stable.js use for
+    // this exact call -- duplicated here since this page shares no module
+    // with them.
+    function extractInvokeError(res) {
+      if (res.data && res.data.error) return Promise.resolve(res.data.error);
+      var fallback = (res.error && res.error.message) || 'Could not create account. Please try again.';
+      if (res.error && res.error.context && typeof res.error.context.json === 'function') {
+        return res.error.context.json().then(function (body) {
+          return (body && body.error) || fallback;
+        }).catch(function () { return fallback; });
+      }
+      return Promise.resolve(fallback);
+    }
+
     function handleGateSignup() {
       var name = document.getElementById('raGateName').value.trim();
       var email = document.getElementById('raGateEmail').value.trim();
@@ -894,8 +915,22 @@
         btn.disabled = false;
         btn.textContent = 'Create Free Account';
         if (res.error || !res.data || !res.data.ok) {
-          errorEl.textContent = (res.data && res.data.error) || 'Could not create account. Please try again.';
-          errorEl.style.display = 'block';
+          extractInvokeError(res).then(function (msg) {
+            errorEl.textContent = msg;
+            errorEl.style.display = 'block';
+            // create-free-account's real 409 for this case -- surfacing the
+            // message alone isn't enough if they still have to retype their
+            // email on the login tab themselves; carry it over and switch
+            // for them, same recovery UX portal-login.html already gives
+            // this exact error.
+            if (msg.indexOf('already exists') !== -1) {
+              setGateTab('login');
+              var loginEmailEl = document.getElementById('raLoginEmail');
+              if (loginEmailEl) loginEmailEl.value = email;
+              document.getElementById('raGateError').textContent = msg;
+              document.getElementById('raGateError').style.display = 'block';
+            }
+          });
           return;
         }
         if (window.apexTrack) apexTrack('readiness_signup_completed', { mode: 'signup' });
