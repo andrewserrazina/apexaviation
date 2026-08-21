@@ -449,17 +449,22 @@
              profile_id by email at signup (claim_readiness_assessment_
              by_email(), supabase-portal-schema-v78.sql) or saved directly
              if they were already logged in when they took it. -->
-        <div class="portal-grid portal-grid--2" id="readinessBaselineRow" style="margin-bottom:24px;display:none">
-          <div class="portal-card" id="readinessBaselineCard">
-            <div class="portal-header__eyebrow" style="margin-bottom:8px">Initial Readiness Assessment</div>
-            <h3 style="color:#fff;font-size:28px;font-weight:800;margin-bottom:4px" id="readinessBaselineScore">—</h3>
-            <p style="color:rgba(255,255,255,0.5);font-size:13px" id="readinessBaselineDate"></p>
+        <div id="readinessBaselineWrap" style="margin-bottom:24px;display:none">
+          <div class="portal-grid portal-grid--2" id="readinessBaselineRow">
+            <div class="portal-card" id="readinessBaselineCard" style="cursor:pointer">
+              <div class="portal-header__eyebrow" style="margin-bottom:8px">Initial Readiness Assessment</div>
+              <h3 style="color:#fff;font-size:28px;font-weight:800;margin-bottom:4px" id="readinessBaselineScore">—</h3>
+              <p style="color:rgba(255,255,255,0.5);font-size:13px" id="readinessBaselineDate"></p>
+              <p style="color:#F4B400;font-size:12.5px;font-weight:600;margin-top:8px">View Full Report →</p>
+            </div>
+            <div class="portal-card" id="readinessLatestCard" style="display:none;cursor:pointer">
+              <div class="portal-header__eyebrow" style="margin-bottom:8px">Latest Retake</div>
+              <h3 style="color:#fff;font-size:28px;font-weight:800;margin-bottom:4px" id="readinessLatestScore">—</h3>
+              <p style="color:rgba(255,255,255,0.5);font-size:13px" id="readinessLatestDelta"></p>
+              <p style="color:#F4B400;font-size:12.5px;font-weight:600;margin-top:8px">View Full Report →</p>
+            </div>
           </div>
-          <div class="portal-card" id="readinessLatestCard" style="display:none">
-            <div class="portal-header__eyebrow" style="margin-bottom:8px">Latest Retake</div>
-            <h3 style="color:#fff;font-size:28px;font-weight:800;margin-bottom:4px" id="readinessLatestScore">—</h3>
-            <p style="color:rgba(255,255,255,0.5);font-size:13px" id="readinessLatestDelta"></p>
-          </div>
+          <button type="button" id="readinessViewAllBtn" style="display:none;background:none;border:none;color:rgba(255,255,255,0.4);font-size:12.5px;font-weight:600;cursor:pointer;margin-top:10px;padding:0">View all past attempts →</button>
         </div>
 
         <!-- Testimonial prompt (shown once readiness > 80%) -->

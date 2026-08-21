@@ -4504,42 +4504,163 @@
   }
 
   /* ══════════════════════════════════════════════════════════════
-     CHECKRIDE READINESS ASSESSMENT V1 -- baseline card
+     CHECKRIDE READINESS ASSESSMENT V1 -- baseline card + past-attempt review
      Reads the member's own readiness_assessment_leads rows (RLS: auth.uid()
      = profile_id, v78.sql). Baseline is the first-ever attempt (by
      created_at); if a later retake exists, its score and the delta from
-     baseline are also shown -- no full historical chart, per the brief's
-     own "not unless trivial" guidance.
+     baseline are also shown. Full history is preserved in the table and
+     reviewable (readinessAttempts below, openReadinessReportModal) -- no
+     chart, per the brief's own "not unless trivial" guidance, just a
+     plain list.
      ══════════════════════════════════════════════════════════════ */
+  var readinessAttempts = [];
+  // Same 9 real ACS categories as site/readiness-assessment.html's own
+  // CATEGORIES map -- kept as a second small, stable copy rather than
+  // fetched, same reasoning as that file: 9 rarely-changing labels is a
+  // safe duplication, unlike the 20-question bank (checkride_readiness_
+  // questions, v80.sql), which is genuinely fetched by both pages so it
+  // can't drift.
+  var READINESS_CATEGORY_LABELS = {
+    eligibility: 'Eligibility & Documents', airworthiness: 'Airworthiness', privileges: 'Privileges & Limitations',
+    airspace: 'Airspace', weather: 'Weather', performance: 'Performance & W&B',
+    aeromedical: 'Aeromedical Factors', crosscountry: 'Cross-Country Planning', emergency: 'Emergency Operations',
+  };
+
   function renderReadinessBaseline() {
-    var rowEl = document.getElementById('readinessBaselineRow');
-    if (!rowEl || !member) return;
+    var wrapEl = document.getElementById('readinessBaselineWrap');
+    if (!wrapEl || !member) return;
     apexSupabase.from('readiness_assessment_leads')
-      .select('score, readiness_level, created_at')
+      .select('id, score, readiness_level, category_results, answers_json, created_at')
       .eq('profile_id', member.id)
       .order('created_at', { ascending: true })
       .then(function (res) {
-        var attempts = (res && res.data) || [];
-        if (!attempts.length) { rowEl.style.display = 'none'; return; }
-        rowEl.style.display = 'grid';
+        readinessAttempts = (res && res.data) || [];
+        if (!readinessAttempts.length) { wrapEl.style.display = 'none'; return; }
+        wrapEl.style.display = 'block';
 
-        var baseline = attempts[0];
-        var latest = attempts[attempts.length - 1];
+        var baseline = readinessAttempts[0];
+        var latest = readinessAttempts[readinessAttempts.length - 1];
         document.getElementById('readinessBaselineScore').textContent = baseline.score + '%';
         document.getElementById('readinessBaselineDate').textContent =
           'Completed ' + new Date(baseline.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' · ' + baseline.readiness_level;
+        document.getElementById('readinessBaselineCard').onclick = function () { openReadinessReportModal(baseline); };
 
         var latestCard = document.getElementById('readinessLatestCard');
-        if (attempts.length > 1 && latest !== baseline) {
+        if (readinessAttempts.length > 1 && latest !== baseline) {
           latestCard.style.display = 'block';
           document.getElementById('readinessLatestScore').textContent = latest.score + '%';
           var delta = latest.score - baseline.score;
           var deltaText = (delta > 0 ? '+' : '') + delta + ' point' + (Math.abs(delta) === 1 ? '' : 's') + ' vs. baseline';
           document.getElementById('readinessLatestDelta').textContent =
             new Date(latest.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' · ' + deltaText;
+          latestCard.onclick = function () { openReadinessReportModal(latest); };
         } else {
           latestCard.style.display = 'none';
         }
+
+        var viewAllBtn = document.getElementById('readinessViewAllBtn');
+        if (readinessAttempts.length > 2) {
+          viewAllBtn.style.display = 'block';
+          viewAllBtn.onclick = renderReadinessAttemptsList;
+        } else {
+          viewAllBtn.style.display = 'none';
+        }
+      });
+  }
+
+  function renderReadinessAttemptsList() {
+    var overlay = document.getElementById('passedOverlay');
+    overlay.hidden = false;
+    var rowsHtml = readinessAttempts.slice().reverse().map(function (a) {
+      return '<button type="button" class="btn btn--ghost" data-readiness-attempt="' + a.id + '" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:12px 16px">' +
+        '<span>' + new Date(a.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + '</span>' +
+        '<span style="color:#F4B400;font-weight:700">' + a.score + '% · ' + escapeHtmlSafe(a.readiness_level) + '</span>' +
+      '</button>';
+    }).join('');
+    overlay.innerHTML =
+      '<div class="portal-practice-panel">' +
+        '<button class="portal-practice-panel__close" id="readinessListCloseBtn" type="button">' +
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
+        '</button>' +
+        '<h3 style="color:#fff;font-size:18px;font-weight:700;margin-bottom:18px">All Readiness Attempts</h3>' +
+        rowsHtml +
+      '</div>';
+    document.getElementById('readinessListCloseBtn').addEventListener('click', function () { overlay.hidden = true; });
+    overlay.querySelectorAll('[data-readiness-attempt]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var attempt = readinessAttempts.filter(function (a) { return a.id === btn.dataset.readinessAttempt; })[0];
+        if (attempt) openReadinessReportModal(attempt);
+      });
+    });
+  }
+
+  function openReadinessReportModal(attempt) {
+    var overlay = document.getElementById('passedOverlay');
+    overlay.hidden = false;
+    overlay.innerHTML =
+      '<div class="portal-practice-panel">' +
+        '<button class="portal-practice-panel__close" id="readinessReportCloseBtn" type="button">' +
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
+        '</button>' +
+        '<div style="text-align:center;margin-bottom:20px">' +
+          '<div style="font-size:42px;font-weight:800;color:#F4B400;line-height:1">' + attempt.score + '%</div>' +
+          '<div style="color:#fff;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;margin-top:4px">' + escapeHtmlSafe(attempt.readiness_level) + '</div>' +
+          '<div style="color:rgba(255,255,255,0.4);font-size:12.5px;margin-top:4px">' + new Date(attempt.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) + '</div>' +
+        '</div>' +
+        '<div id="readinessReportCategories" style="margin-bottom:20px"></div>' +
+        '<h4 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:12px">Question by Question</h4>' +
+        '<div id="readinessReportQuestions"><p style="color:rgba(255,255,255,0.4);font-size:13px">Loading…</p></div>' +
+      '</div>';
+    document.getElementById('readinessReportCloseBtn').addEventListener('click', function () { overlay.hidden = true; });
+
+    var categoryScores = attempt.category_results || {};
+    document.getElementById('readinessReportCategories').innerHTML = Object.keys(READINESS_CATEGORY_LABELS).map(function (cat) {
+      var score = categoryScores[cat];
+      if (score === null || score === undefined) return '';
+      return '<div style="margin-bottom:10px">' +
+        '<div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px"><span style="color:rgba(255,255,255,0.7)">' + READINESS_CATEGORY_LABELS[cat] + '</span><span style="color:#F4B400;font-weight:700">' + score + '%</span></div>' +
+        '<div style="height:6px;border-radius:100px;background:rgba(255,255,255,0.08);overflow:hidden"><div style="height:100%;border-radius:100px;background:#F4B400;width:' + score + '%"></div></div>' +
+      '</div>';
+    }).join('');
+
+    var answerLog = attempt.answers_json || [];
+    if (!answerLog.length) {
+      document.getElementById('readinessReportQuestions').innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:13px">No per-question detail saved for this attempt.</p>';
+      return;
+    }
+    var displayOrders = answerLog.map(function (a) { return a.q; });
+    apexSupabase.from('checkride_readiness_questions')
+      .select('display_order, question_text, options, correct_answer, explanation')
+      .in('display_order', displayOrders)
+      .then(function (res) {
+        var container = document.getElementById('readinessReportQuestions');
+        if (!container) return; // modal closed before this resolved
+        if (res.error || !res.data) {
+          container.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:13px">Could not load question detail for this attempt.</p>';
+          return;
+        }
+        var byOrder = {};
+        res.data.forEach(function (q) { byOrder[q.display_order] = q; });
+        container.innerHTML = answerLog.map(function (a, i) {
+          var q = byOrder[a.q];
+          if (!q) return '';
+          var yourAnswer = q.options[a.selected];
+          var correctAnswer = q.options[q.correct_answer];
+          var statusColor = a.correct ? '#4ade80' : '#f87171';
+          var statusLabel = a.correct ? '✓ Correct' : '✗ Incorrect';
+          return '<div style="background:#101f38;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px 16px;margin-bottom:10px">' +
+            '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">' +
+              '<span style="color:rgba(255,255,255,0.4);font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em">Question ' + (i + 1) + ' · ' + escapeHtmlSafe(READINESS_CATEGORY_LABELS[a.cat] || a.cat) + '</span>' +
+              '<span style="color:' + statusColor + ';font-size:12px;font-weight:700">' + statusLabel + '</span>' +
+            '</div>' +
+            '<div style="color:#fff;font-size:14px;font-weight:600;margin-bottom:8px">' + escapeHtmlSafe(q.question_text) + '</div>' +
+            (a.correct
+              ? '<div style="color:rgba(255,255,255,0.6);font-size:13px">Your answer: ' + escapeHtmlSafe(yourAnswer) + '</div>'
+              : '<div style="color:rgba(255,255,255,0.6);font-size:13px">Your answer: ' + escapeHtmlSafe(yourAnswer == null ? '(skipped)' : yourAnswer) + '</div>' +
+                '<div style="color:#4ade80;font-size:13px;margin-top:2px">Correct answer: ' + escapeHtmlSafe(correctAnswer) + '</div>') +
+            '<div style="color:rgba(255,255,255,0.4);font-size:12.5px;margin-top:8px">' + escapeHtmlSafe(q.explanation) + '</div>' +
+          '</div>';
+        }).join('');
       });
   }
 
