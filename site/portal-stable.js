@@ -561,6 +561,18 @@
   document.getElementById('unlockModalClose').addEventListener('click', closeUnlockModal);
   unlockModalOverlay.addEventListener('click', function (e) { if (e.target === unlockModalOverlay) closeUnlockModal(); });
 
+  // #passedOverlay is shared by openMilestoneForm/openDeleteAccountConfirm/
+  // openPassedForm/openReadinessReportModal -- each only wires its own inner
+  // X button, with no way to dismiss otherwise. Never mattered until the
+  // readiness report's content (up to 20 question cards) started scrolling
+  // the X out of view along with the rest of the panel (it's position:
+  // absolute inside the now-scrollable .portal-practice-panel). One shared
+  // backdrop-click-to-close handler, same pattern as unlockModalOverlay
+  // above, fixes it for all four regardless of which populated it.
+  document.getElementById('passedOverlay').addEventListener('click', function (e) {
+    if (e.target === this) this.hidden = true;
+  });
+
   unlockModalCta.addEventListener('click', function () {
     unlockModalError.classList.remove('show');
     unlockModalCta.disabled = true;
