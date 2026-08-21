@@ -1843,6 +1843,27 @@
         return topicWords.every(function (w) { return haystack.indexOf(w) !== -1; });
       }
 
+      // supabase-js's functions.invoke() throws a FunctionsHttpError on any
+      // non-2xx response, whose .message is ALWAYS the generic literal "Edge
+      // Function returned a non-2xx status code" -- regardless of what
+      // create-checkout-session actually returned (e.g. "Ground school class
+      // is full" or "This email is already registered for this class", both
+      // real, actionable messages a paying customer needs to see instead of
+      // a generic retry prompt). On failure res.data is null and the real
+      // response body is only reachable via the unconsumed Response at
+      // res.error.context. Same helper as site/portal-login.html and
+      // site/portal-stable.js use for this exact call.
+      function extractInvokeError(res) {
+        if (res.data && res.data.error) return Promise.resolve(res.data.error);
+        var fallback = (res.error && res.error.message) || 'Could not start checkout. Please try again.';
+        if (res.error && res.error.context && typeof res.error.context.json === 'function') {
+          return res.error.context.json().then(function (body) {
+            return (body && body.error) || fallback;
+          }).catch(function () { return fallback; });
+        }
+        return Promise.resolve(fallback);
+      }
+
       function reserveSeat(row, formEl) {
         var nameInput = formEl.querySelector('[data-gs-name]');
         var emailInput = formEl.querySelector('[data-gs-email]');
@@ -1874,11 +1895,12 @@
           }
         }).then(function (res) {
           if (res.error || !res.data || !res.data.url) {
-            btn.disabled = false;
-            btn.textContent = 'Confirm & Pay $25';
-            errorEl.textContent = (res.data && res.data.error) || 'Could not start checkout. Please try again.';
-            errorEl.style.display = 'block';
-            return;
+            return extractInvokeError(res).then(function (msg) {
+              btn.disabled = false;
+              btn.textContent = 'Confirm & Pay $25';
+              errorEl.textContent = msg;
+              errorEl.style.display = 'block';
+            });
           }
           window.location.href = res.data.url;
         }).catch(function () {
