@@ -3163,9 +3163,9 @@
         '<div class="form-group" style="margin-bottom:14px"><label style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px">Date</label>' +
           '<input type="date" id="journeyFormDate" value="' + (existing ? existing.achieved_on : getTodayStr()) + '" style="width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none" /></div>' +
         '<div class="form-group" style="margin-bottom:14px"><label style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px">Notes (optional)</label>' +
-          '<textarea id="journeyFormNotes" rows="2" style="width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none;resize:vertical">' + (existing && existing.notes ? existing.notes : '') + '</textarea></div>' +
+          '<textarea id="journeyFormNotes" rows="2" style="width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none;resize:vertical">' + (existing && existing.notes ? escapeHtmlSafe(existing.notes) : '') + '</textarea></div>' +
         '<div class="form-group" style="margin-bottom:20px"><label style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);display:block;margin-bottom:6px">Reflection (optional) — how did it feel?</label>' +
-          '<textarea id="journeyFormReflection" rows="3" style="width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none;resize:vertical">' + (existing && existing.reflection ? existing.reflection : '') + '</textarea></div>' +
+          '<textarea id="journeyFormReflection" rows="3" style="width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none;resize:vertical">' + (existing && existing.reflection ? escapeHtmlSafe(existing.reflection) : '') + '</textarea></div>' +
         '<button class="btn btn--primary btn--full" id="journeyFormSaveBtn">Save Milestone</button>' +
       '</div>';
     document.getElementById('journeyFormCloseBtn').addEventListener('click', function () { overlay.hidden = true; });
@@ -3207,7 +3207,7 @@
             '<div>' +
               '<h3 style="color:#fff;font-size:14.5px;font-weight:700;margin-bottom:3px">✓ ' + t.label + '</h3>' +
               '<p style="color:rgba(255,255,255,0.45);font-size:12.5px;margin-bottom:4px">' + dateLabel + '</p>' +
-              (m.notes ? '<p style="color:rgba(255,255,255,0.5);font-size:12.5px;margin-bottom:4px">' + m.notes + '</p>' : '') +
+              (m.notes ? '<p style="color:rgba(255,255,255,0.5);font-size:12.5px;margin-bottom:4px">' + escapeHtmlSafe(m.notes) + '</p>' : '') +
               (VERIFICATION_BADGES[m.verification_status] || '') +
             '</div>' +
             '<button class="btn-link-journey" data-edit-milestone="' + t.milestone_key + '" style="background:none;border:none;color:#F4B400;font-size:12.5px;cursor:pointer;white-space:nowrap">Edit</button>' +
@@ -3478,8 +3478,8 @@
       var q = DPE_DATA.filter(function (d) { return d.id === r.question_id; })[0];
       var studentName = (profileMap[r.profile_id] && profileMap[r.profile_id].full_name) || 'A student';
       return '<div class="portal-admin-inbox-item" data-discussion="' + r.id + '">' +
-        '<div class="meta">' + studentName + ' · on: "' + (q ? q.q : r.question_id) + '"</div>' +
-        '<div class="msg">' + r.message + '</div>' +
+        '<div class="meta">' + escapeHtmlSafe(studentName) + ' · on: "' + escapeHtmlSafe(q ? q.q : r.question_id) + '"</div>' +
+        '<div class="msg">' + escapeHtmlSafe(r.message) + '</div>' +
         '<textarea rows="2" placeholder="Type your answer…" data-answer-input></textarea>' +
         '<button class="btn btn--primary" data-answer-submit>Send Answer</button>' +
       '</div>';
@@ -3505,8 +3505,8 @@
     if (!rows.length) { el.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:13px">Nothing pending.</p>'; return; }
     el.innerHTML = rows.map(function (r) {
       return '<div class="portal-admin-inbox-item" data-testimonial="' + r.id + '">' +
-        '<div class="meta">' + (r.display_name || 'Student') + ' · readiness ' + (r.readiness_score_at_submission || '—') + '%</div>' +
-        '<div class="msg">"' + r.content + '"</div>' +
+        '<div class="meta">' + escapeHtmlSafe(r.display_name || 'Student') + ' · readiness ' + (r.readiness_score_at_submission || '—') + '%</div>' +
+        '<div class="msg">"' + escapeHtmlSafe(r.content) + '"</div>' +
         '<button class="btn btn--correct" data-approve>Approve</button> ' +
         '<button class="btn btn--missed" data-reject>Reject</button>' +
       '</div>';
@@ -3540,7 +3540,7 @@
       var next = REFERRAL_NEXT_STATUS[r.status];
       var actionBtn = next ? '<button class="btn btn--ghost" style="margin-left:10px;padding:4px 12px;font-size:11.5px" data-referral-advance="' + r.id + '" data-next-status="' + next + '">' + REFERRAL_NEXT_LABEL[r.status] + '</button>' : '';
       var statusText = r.status === 'rewarded' && r.redeemed_at ? 'rewarded (redeemed)' : r.status;
-      return '<div class="portal-referral-row" data-referral-row="' + r.id + '"><span class="email">' + referrerName + ' → ' + r.referred_email + '</span><span style="display:flex;align-items:center"><span class="status">' + statusText + '</span>' + actionBtn + '</span></div>';
+      return '<div class="portal-referral-row" data-referral-row="' + r.id + '"><span class="email">' + escapeHtmlSafe(referrerName) + ' → ' + escapeHtmlSafe(r.referred_email) + '</span><span style="display:flex;align-items:center"><span class="status">' + statusText + '</span>' + actionBtn + '</span></div>';
     }).join('');
     el.querySelectorAll('[data-referral-advance]').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -4683,9 +4683,10 @@
       headers: { Authorization: 'Bearer ' + accessToken }
     }).then(function (res) {
       if (res.error || !res.data || !res.data.url) {
-        if (btn) { btn.disabled = false; btn.textContent = 'Manage Billing'; }
-        toast('Could not open the billing portal. Please try again.');
-        return;
+        return extractInvokeError(res).then(function (msg) {
+          if (btn) { btn.disabled = false; btn.textContent = 'Manage Billing'; }
+          toast(msg);
+        });
       }
       window.location.href = res.data.url;
     });
@@ -5159,15 +5160,15 @@
       wallGrid.innerHTML = passes.length ? passes.map(function (p) {
         return '<div class="portal-card portal-success-card">' +
           '<div class="portal-success-card__badge">🎓</div>' +
-          '<h3>' + (p.display_name || 'Apex Student') + '</h3>' +
-          '<p>' + (p.aircraft ? p.aircraft + ' · ' : '') + new Date(p.exam_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + '</p>' +
+          '<h3>' + escapeHtmlSafe(p.display_name || 'Apex Student') + '</h3>' +
+          '<p>' + (p.aircraft ? escapeHtmlSafe(p.aircraft) + ' · ' : '') + new Date(p.exam_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + '</p>' +
         '</div>';
       }).join('') : '<p style="color:rgba(255,255,255,0.4);font-size:14px">No results yet — be the first on the wall.</p>';
 
       testimonialGrid.innerHTML = testimonials.length ? testimonials.map(function (t) {
         return '<div class="portal-card portal-testimonial-card">' +
-          '<p class="quote">"' + t.content + '"</p>' +
-          '<p class="name">' + (t.display_name || 'Apex Student') + '</p>' +
+          '<p class="quote">"' + escapeHtmlSafe(t.content) + '"</p>' +
+          '<p class="name">' + escapeHtmlSafe(t.display_name || 'Apex Student') + '</p>' +
         '</div>';
       }).join('') : '<p style="color:rgba(255,255,255,0.4);font-size:14px">No testimonials yet.</p>';
     }).catch(function (e) {
