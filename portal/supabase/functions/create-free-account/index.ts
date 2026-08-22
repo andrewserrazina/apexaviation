@@ -270,10 +270,19 @@ serve(async (req) => {
     const safeDest = requestedDest || 'dashboard'
     // Activation-email click attribution (activation_email_1_clicked,
     // fired client-side once these UTMs reach portal.html -- see
-    // site/portal-stable.js) only applies to the generic activation
-    // copy, not the lead-magnet variant, matching timingClause/subject/
-    // bodyHtml's own requestedDest branch below.
-    const activationUtm = requestedDest ? '' : '&utm_source=email&utm_medium=email&utm_campaign=new_member_activation&utm_content=welcome_1'
+    // site/portal-stable.js). Previously only appended for the generic
+    // activation copy, on the theory that the lead-magnet variant was a
+    // "structurally different email" not worth tracking under the same
+    // funnel -- but that meant the vast majority of real signups (which
+    // arrive via a lead-magnet ?dest=, not the bare activation flow) had
+    // no click-attribution possible at all, and get_activation_email_kpis()
+    // (v72.sql) ended up reporting numbers that looked like a near-total
+    // failure of the welcome flow when the emails were actually going out
+    // fine. dest/utm are independent query params all the way through
+    // portal-reset-password.html -> portal.html (see that file's own
+    // forwarding logic), so appending this unconditionally doesn't change
+    // where anyone lands -- it only makes both signup paths trackable.
+    const activationUtm = '&utm_source=email&utm_medium=email&utm_campaign=new_member_activation&utm_content=welcome_1'
     const redirectTo = `${SITE_ORIGIN}/portal-reset-password.html?dest=${safeDest}${activationUtm}`
     const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
       type: 'recovery',
@@ -373,18 +382,23 @@ serve(async (req) => {
           })
           return false
         }
-        if (!requestedDest) {
-          // Server-side send record for the activation funnel (signup ->
-          // email sent -> CTA click -> first meaningful activity) --
-          // same analytics_events table and shape as checkout_abandoned
-          // in send-lifecycle-emails/index.ts. Only logged for the
-          // actual activation-sequence copy, not the lead-magnet
-          // variant, so the funnel isn't diluted by a structurally
-          // different email.
-          await supabase.from('analytics_events').insert({
-            event_name: 'activation_email_1_sent', profile_id: created.user.id, properties: { checkride_timing: safeCheckrideTiming, via: 'signup' },
-          })
-        }
+        // Server-side send record for the activation funnel (signup ->
+        // email sent -> CTA click -> first meaningful activity) -- same
+        // analytics_events table and shape as checkout_abandoned in
+        // send-lifecycle-emails/index.ts. Previously only logged for the
+        // generic activation-sequence copy, on the theory that the
+        // lead-magnet variant was a "structurally different email" that
+        // would dilute the funnel -- but since most real signups arrive
+        // via a lead-magnet dest, that meant get_activation_email_kpis()'s
+        // welcome_email_sent count only ever reflected a small minority of
+        // actual sends, next to a new_signups count that includes
+        // everyone. Logged unconditionally now, with `via` distinguishing
+        // the two copy variants so a query can still isolate the generic
+        // funnel specifically if that distinction matters again.
+        await supabase.from('analytics_events').insert({
+          event_name: 'activation_email_1_sent', profile_id: created.user.id,
+          properties: { checkride_timing: safeCheckrideTiming, via: requestedDest ? 'signup_lead_magnet' : 'signup', dest: requestedDest || null },
+        })
         // Idempotency flag for processActivationEmail1CatchUp (send-
         // lifecycle-emails/index.ts) -- set for BOTH branches (generic
         // activation copy AND the lead-magnet welcome variant), unlike
