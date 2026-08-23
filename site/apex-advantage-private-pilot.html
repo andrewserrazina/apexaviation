@@ -593,6 +593,14 @@
     @media (max-width: 720px) {
       .gs-social-proof-quotes { grid-template-columns: 1fr; }
     }
+    /* Mobile CRO pass (Aug 2026) -- one quote up top now, two next to
+       the instructor bio further down; both need their own column count
+       instead of inheriting the 3-col rule above. */
+    .gs-social-proof-quotes--single { grid-template-columns: 1fr; max-width: 640px; margin: 0 auto; }
+    .gs-social-proof-quotes--secondary { grid-template-columns: repeat(2, 1fr); max-width: 760px; margin: 0 auto; }
+    @media (max-width: 640px) {
+      .gs-social-proof-quotes--secondary { grid-template-columns: 1fr; }
+    }
 
     /* Live-vs-prerecorded comparison */
     .gs-compare-grid {
@@ -785,75 +793,6 @@
     </div>
   </div>
 
-  <!-- Social proof -->
-  <div class="social-proof-strip">
-    <!-- GS -> Portal Growth Funnel, section 13 -- these stars aren't
-         computed from a real review platform (no aggregate rating count
-         or source anywhere on this page), so aria-label="5 out of 5
-         stars" was asserting a specific, unverifiable rating claim
-         through accessible markup. The real testimonial quotes below
-         make no such claim and are left exactly as they were; the stars
-         are decorative styling around them, not a rating -- marked
-         aria-hidden accordingly. Same pattern exists on 5 other pages
-         (portal.html, spin-awareness.html, weight-balance.html,
-         radio-calls.html, dpe-questions.html), left untouched here since
-         they're outside this sprint's scope. -->
-    <div class="social-proof-strip__stars" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
-      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
-      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
-      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
-      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
-    </div>
-    <p class="social-proof-strip__caption">Real feedback from Apex Aviation students</p>
-    <div class="social-proof-strip__quotes gs-social-proof-quotes">
-      <blockquote class="social-proof-strip__quote">
-        <p>"Explains subjects in great detail. Definitely will attend his courses again."</p>
-        <cite>— Patricia M.</cite>
-      </blockquote>
-      <blockquote class="social-proof-strip__quote">
-        <p>"Excellent Instructor! I had a great time with Andrew on his class! Looking forward to his VOR-focused class in the near future."</p>
-        <cite>— Victor G.</cite>
-      </blockquote>
-      <blockquote class="social-proof-strip__quote">
-        <p>"Andrew was great, knowledgeable, friendly, and made you feel comfortable in the plane. I highly recommend him for your pilot training needs."</p>
-        <cite>— Alex B.</cite>
-      </blockquote>
-    </div>
-  </div>
-
-  <!-- ═══════════════════════════════════════════════════════════
-       THE PROBLEM — short, high-impact, sets up the hero's transformation
-       claim before the class schedule/offer. Kept tight on purpose: one
-       headline, one line of framing, four short application points.
-  ════════════════════════════════════════════════════════════ -->
-  <section class="section section--light" style="padding:52px 0">
-    <div class="container">
-      <div style="max-width:720px;margin:0 auto;text-align:center">
-        <h2 class="section__title" style="margin-bottom:14px">You can memorize the answer<br/><em class="accent">and still not understand it.</em></h2>
-        <p style="color:rgba(255,255,255,0.65);font-size:16px;line-height:1.8;margin:0 0 32px">Traditional ground school can make it easy to remember acronyms and definitions without learning how to actually apply them. Apex Ground School is built to help you understand:</p>
-      </div>
-      <div class="feature-rows" style="max-width:680px;margin:0 auto">
-        <div class="feature-row">
-          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <div><h3>Why the Answer Is Correct</h3></div>
-        </div>
-        <div class="feature-row">
-          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <div><h3>How It Applies in Flight</h3></div>
-        </div>
-        <div class="feature-row">
-          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <div><h3>How to Explain It Out Loud</h3></div>
-        </div>
-        <div class="feature-row">
-          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <div><h3>What Happens When Conditions Change</h3></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <!-- ═══════════════════════════════════════════════════════════
        UPCOMING LIVE CLASSES — real data, no fabricated seat counts.
        Deep-link support: ?topic=<text> highlights + scrolls to the
@@ -912,6 +851,41 @@
     </div>
   </section>
 
+  <!-- Social proof -->
+  <div class="social-proof-strip">
+    <!-- GS -> Portal Growth Funnel, section 13 -- these stars aren't
+         computed from a real review platform (no aggregate rating count
+         or source anywhere on this page), so aria-label="5 out of 5
+         stars" was asserting a specific, unverifiable rating claim
+         through accessible markup. The real testimonial quote below
+         makes no such claim and is left exactly as it was; the stars
+         are decorative styling around it, not a rating -- marked
+         aria-hidden accordingly. Same pattern exists on 5 other pages
+         (portal.html, spin-awareness.html, weight-balance.html,
+         radio-calls.html, dpe-questions.html), left untouched here since
+         they're outside this sprint's scope.
+
+         Mobile CRO pass (Aug 2026): reduced from 3 quotes to Patricia's
+         single strongest one so the schedule -- moved to right above
+         this block -- isn't followed by a second wall of copy. Victor's
+         and Alex's real quotes weren't deleted: they're now next to the
+         instructor bio further down the page. -->
+    <div class="social-proof-strip__stars" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
+      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
+      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
+      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
+      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
+    </div>
+    <p class="social-proof-strip__caption">Real feedback from Apex Aviation students</p>
+    <div class="social-proof-strip__quotes gs-social-proof-quotes gs-social-proof-quotes--single">
+      <blockquote class="social-proof-strip__quote">
+        <p>"Explains subjects in great detail. Definitely will attend his courses again."</p>
+        <cite>— Patricia M.</cite>
+      </blockquote>
+    </div>
+  </div>
+
   <!-- ═══════════════════════════════════════════════════════════
        GS -> Portal Growth Funnel, section 7 -- ONE secondary
        acquisition exit for visitors who aren't ready to pay yet.
@@ -930,6 +904,38 @@
         <p style="color:rgba(255,255,255,0.45);font-size:13px;line-height:1.8;margin:0 0 18px">10 Free DPE Questions · Question of the Day · Free Pilot Resources</p>
         <a href="portal-login.html?view=signup&source=ground_school&intent=free_training" class="btn btn--ghost" data-apx-cta data-apx-cta-location="gs_free_account_exit">Create Your Free Account</a>
         <p style="color:rgba(255,255,255,0.35);font-size:12px;margin-top:10px">No Ground School purchase required.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       THE PROBLEM — short, high-impact, sets up the hero's transformation
+       claim before the class schedule/offer. Kept tight on purpose: one
+       headline, one line of framing, four short application points.
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--light" style="padding:52px 0">
+    <div class="container">
+      <div style="max-width:720px;margin:0 auto;text-align:center">
+        <h2 class="section__title" style="margin-bottom:14px">You can memorize the answer<br/><em class="accent">and still not understand it.</em></h2>
+        <p style="color:rgba(255,255,255,0.65);font-size:16px;line-height:1.8;margin:0 0 32px">Traditional ground school can make it easy to remember acronyms and definitions without learning how to actually apply them. Apex Ground School is built to help you understand:</p>
+      </div>
+      <div class="feature-rows" style="max-width:680px;margin:0 auto">
+        <div class="feature-row">
+          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><h3>Why the Answer Is Correct</h3></div>
+        </div>
+        <div class="feature-row">
+          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><h3>How It Applies in Flight</h3></div>
+        </div>
+        <div class="feature-row">
+          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><h3>How to Explain It Out Loud</h3></div>
+        </div>
+        <div class="feature-row">
+          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><h3>What Happens When Conditions Change</h3></div>
+        </div>
       </div>
     </div>
   </section>
@@ -1387,6 +1393,24 @@
       </div>
     </div>
   </section>
+
+  <!-- More student feedback, moved here from the top-of-page social
+       proof strip during the mobile CRO pass (Aug 2026) so that block
+       could shrink to one quote -- same real quotes, same component,
+       just placed next to the instructor bio they're actually about. -->
+  <div class="social-proof-strip" style="padding-top:0">
+    <p class="social-proof-strip__caption">More from Apex Aviation students</p>
+    <div class="social-proof-strip__quotes gs-social-proof-quotes gs-social-proof-quotes--secondary">
+      <blockquote class="social-proof-strip__quote">
+        <p>"Excellent Instructor! I had a great time with Andrew on his class! Looking forward to his VOR-focused class in the near future."</p>
+        <cite>— Victor G.</cite>
+      </blockquote>
+      <blockquote class="social-proof-strip__quote">
+        <p>"Andrew was great, knowledgeable, friendly, and made you feel comfortable in the plane. I highly recommend him for your pilot training needs."</p>
+        <cite>— Alex B.</cite>
+      </blockquote>
+    </div>
+  </div>
 
   <!-- ═══════════════════════════════════════════════════════════
        FAQ
@@ -2037,7 +2061,7 @@
           '<div class="gs-class-card__badge">' + (row.module_title || 'Private Pilot') + '</div>' +
           '<h3 class="gs-class-card__title">' + row.title + '</h3>' +
           '<p class="gs-class-card__meta">' + fmtDateTime(row) + (instructor ? ' · ' + instructor : '') + (row.module_id ? ' <span class="gs-class-card__module-tag">· ' + row.module_id + '</span>' : '') + '</p>' +
-          '<p class="gs-class-card__seats">' + (spotsLeft !== null ? (full ? 'Class full' : spotsLeft + ' spot' + (spotsLeft === 1 ? '' : 's') + ' left') : '') + ' · $25</p>' +
+          '<p class="gs-class-card__seats">' + (full ? 'Class full' : (spotsLeft !== null ? spotsLeft + ' spot' + (spotsLeft === 1 ? '' : 's') + ' left · ' : '') + '$25') + '</p>' +
           (full ? '' : '<button type="button" class="btn btn--primary" data-gs-reserve-btn style="width:100%">Reserve Your Seat</button>') +
           (full ? '' :
             '<div class="gs-reserve-form" data-gs-form>' +

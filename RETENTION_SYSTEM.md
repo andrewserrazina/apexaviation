@@ -312,7 +312,15 @@ section is just the deployment checklist.
   (`supabase functions deploy <name>` from inside `portal/`) — all three
   changed this session.
 - Run `supabase-portal-schema-v72.sql` (admin activation-funnel KPIs) in
-  the SQL editor, after v71.
+  the SQL editor, after v71 — then run `supabase-portal-schema-v81.sql`
+  on top of it (same function, `create or replace`, idempotent). v81 fixes
+  `welcome_email_sent` and `email_sent_before_activation_rate_pct`, which
+  under v72 only counted the generic (dest-less) welcome copy and
+  undercounted real sends, since most signups arrive via a lead-magnet
+  `?dest=`. Re-deploy `create-free-account` again after this fix too — the
+  matching code change (log `activation_email_1_sent` and append the
+  click-tracking UTMs for both signup paths, not just the generic one)
+  lives in that same function.
 - Same manual cron/schedule requirement as every other lifecycle email in
   this file — nothing new here, just riding the existing daily job.
 - **Not verified against a live Supabase project** — same caveat as every

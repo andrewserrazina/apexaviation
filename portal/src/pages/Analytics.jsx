@@ -369,8 +369,9 @@ export default function Analytics() {
             <p className="stat-card__value">{fmtKpi(retentionKpis?.active_users_30d, '')}</p>
           </div>
           <div className="stat-card">
-            <p className="stat-card__label">Activation Rate (24h)</p>
+            <p className="stat-card__label">Activation Rate (24h) — All-Time</p>
             <p className="stat-card__value">{fmtKpi(retentionKpis?.activation_rate_24h_pct, '%')}</p>
+            <p className="stat-card__sub">every student ever, not just recent signups — see the Last {activationKpis?.window_days ?? 30}d version below</p>
           </div>
           <div className="stat-card">
             <p className="stat-card__label">Time to First Value</p>
@@ -426,7 +427,7 @@ export default function Analytics() {
       <div className="page-header" style={{ marginTop: 40 }}>
         <div>
           <h2 className="page-title" style={{ fontSize: 22 }}>New Member Activation</h2>
-          <p className="page-sub">get_activation_email_kpis() (supabase-portal-schema-v72.sql) — signups in the last {activationKpis?.window_days ?? 30} days</p>
+          <p className="page-sub">get_activation_email_kpis() (supabase-portal-schema-v81.sql) — signups in the last {activationKpis?.window_days ?? 30} days</p>
         </div>
       </div>
 
@@ -442,15 +443,17 @@ export default function Analytics() {
             <div className="stat-card">
               <p className="stat-card__label">Welcome Email Sent</p>
               <p className="stat-card__value">{fmtKpi(activationKpis?.welcome_email_sent, '')}</p>
+              <p className="stat-card__sub">of {fmtKpi(activationKpis?.new_signups, '')} signups — covers both the generic and lead-magnet welcome copy</p>
             </div>
             <div className="stat-card">
               <p className="stat-card__label">Welcome CTA Click Rate</p>
               <p className="stat-card__value">{fmtKpi(activationKpis?.welcome_cta_click_rate_pct, '%')}</p>
+              <p className="stat-card__sub">only tracks signups sent since the click-tracking fix — see footnote</p>
             </div>
             <div className="stat-card">
-              <p className="stat-card__label">24h Activation Rate</p>
+              <p className="stat-card__label">24h Activation Rate — Last {activationKpis?.window_days ?? 30}d</p>
               <p className="stat-card__value">{fmtKpi(activationKpis?.activation_rate_24h_pct, '%')}</p>
-              <p className="stat-card__sub">of signups activated within 24h of signup</p>
+              <p className="stat-card__sub">of signups activated within 24h of signup — recent cohort only, not the All-Time card above</p>
             </div>
           </div>
           <div className="stat-grid" style={{ marginTop: 16 }}>
@@ -509,7 +512,7 @@ export default function Analytics() {
             </div>
           )}
           <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
-            "n" below 10-15 in any row means treat that row's rate as directional, not precise — small-sample noise, not a real trend. Time to First Value is shown in the Retention &amp; Activation card above — same underlying metric, not repeated here. All rates here use FIRST meaningful activity relative to signup, never most recent activity (see get_activation_email_kpis(), supabase-portal-schema-v72.sql).
+            "n" below 10-15 in any row means treat that row's rate as directional, not precise — small-sample noise, not a real trend. Time to First Value is shown in the Retention &amp; Activation card above — same underlying metric, not repeated here. All rates here use FIRST meaningful activity relative to signup, never most recent activity (see get_activation_email_kpis(), supabase-portal-schema-v81.sql). Welcome Email Sent counts every signup path as of v81 — before that fix it only counted the generic (dest-less) copy, undercounting real sends since most signups arrive via a lead-magnet dest. Click-based rates (Welcome CTA Click Rate, Clicked Email Before Activating) can only reflect signups sent after the matching create-free-account fix, since a signup's link either carried tracking or it didn't at send time — that can't be added retroactively.
           </p>
         </>
       )}
