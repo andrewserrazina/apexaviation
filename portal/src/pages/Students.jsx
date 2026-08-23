@@ -10,9 +10,45 @@ const STUDENT_TYPE_OPTIONS = [
   { value: 'apex_advantage', label: 'Apex Advantage' },
   { value: 'flight_student', label: 'Flight Student' },
 ]
+// Same three options as the Broadcast page's "Send To" filter, so
+// "how many people is this" and "here's exactly who that is" always
+// agree with each other.
+const TYPE_FILTER_OPTIONS = [
+  { value: 'all', label: 'All Students' },
+  { value: 'flight_student', label: 'Flight Students' },
+  { value: 'apex_advantage', label: 'Apex Advantage Students' },
+]
 
 const BLANK_EDIT = { full_name: '', email: '', certificate_status: 'None', medical_expiry: '' }
 const BLANK_CREATE = { full_name: '', email: '', password: '', certificate_status: 'None', medical_expiry: '' }
+
+// Quotes a field only when it actually needs it (contains a comma, quote,
+// or newline) -- doubling any embedded quote per the CSV spec (RFC 4180),
+// rather than blanket-quoting every field, which is easier to read as a
+// diff but not required.
+function csvField(value) {
+  if (value == null) return ''
+  const s = String(value)
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+}
+
+function downloadCsv(rows, columns, filename) {
+  const lines = [columns.map(c => csvField(c.label)).join(',')]
+  for (const row of rows) lines.push(columns.map(c => csvField(c.get(row))).join(','))
+  // ﻿ (UTF-8 BOM) so Excel opens accented names and the ✈️-style
+  // characters elsewhere in this app correctly instead of guessing an
+  // 8-bit encoding -- a real problem for a roster with names like
+  // "Muhammad Yassin" or "Sebastián Díaz" otherwise.
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
 
 export default function Students() {
   const { profile } = useAuth()
@@ -21,6 +57,7 @@ export default function Students() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState('all')
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(BLANK_EDIT)
   const [saving, setSaving] = useState(false)
@@ -58,12 +95,35 @@ export default function Students() {
   useEffect(() => { load() }, [])
 
   const filtered = students.filter(s =>
-    s.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-    s.email?.toLowerCase().includes(search.toLowerCase())
+    (typeFilter === 'all' || (s.student_type ?? 'apex_advantage') === typeFilter) &&
+    (s.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+     s.email?.toLowerCase().includes(search.toLowerCase()))
   )
 
   function totalHours(student) {
     return (student.logbook_entries ?? []).reduce((sum, e) => sum + (e.duration_hours ?? 0), 0).toFixed(1)
+  }
+
+  // Exports exactly the rows the table is currently showing (search +
+  // type filter both apply) -- what you see is what you get, same
+  // principle as the Broadcast page's recipient count matching who it
+  // actually sends to.
+  function handleExport() {
+    const columns = [
+      { label: 'Full Name', get: s => s.full_name },
+      { label: 'Email', get: s => s.email },
+      { label: 'Type', get: s => STUDENT_TYPE_OPTIONS.find(o => o.value === (s.student_type ?? 'apex_advantage'))?.label ?? s.student_type },
+      { label: 'Certificate Status', get: s => s.certificate_status ?? 'None' },
+      { label: 'Medical Expiry', get: s => s.medical_expiry },
+      { label: 'Total Flight Hours', get: s => totalHours(s) },
+      { label: 'Checkride Prep Unlocked', get: s => s.checkride_prep_unlocked ? 'Yes' : 'No' },
+      { label: 'Training Stage', get: s => s.training_stage },
+      { label: 'Checkride Timing', get: s => s.checkride_timing },
+      { label: 'Signed Up', get: s => s.created_at ? new Date(s.created_at).toLocaleDateString() : '' },
+      { label: 'Last Active in Portal', get: s => s.portal_last_active_at ? new Date(s.portal_last_active_at).toLocaleDateString() : '' },
+    ]
+    const scope = TYPE_FILTER_OPTIONS.find(o => o.value === typeFilter)?.label.toLowerCase().replace(/\s+/g, '_') ?? 'students'
+    downloadCsv(filtered, columns, `apex_${scope}_${new Date().toISOString().slice(0, 10)}.csv`)
   }
 
   function openCreate() {
@@ -209,6 +269,12 @@ export default function Students() {
         <h2 className="page-title">Students</h2>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <input className="search-input" type="search" placeholder="Search students…" value={search} onChange={e => setSearch(e.target.value)} />
+          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+            {TYPE_FILTER_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          <button className="btn-secondary" onClick={handleExport} disabled={filtered.length === 0}>
+            Export CSV ({filtered.length})
+          </button>
           <button className="btn-primary-sm" onClick={openCreate}>+ Add Student</button>
         </div>
       </div>
