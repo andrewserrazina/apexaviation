@@ -245,6 +245,91 @@
           </div>
         </div>
 
+        <!-- Your Training Plan -- single unified engine (computeTrainingPlan())
+             replacing what used to be three separate recommendation systems
+             (Next Best Action, Next Class, Resume Studying) that could
+             disagree with each other. See docs/training-plan-architecture.md. -->
+        <div class="portal-card portal-my-training" style="margin-bottom:24px">
+          <div class="portal-my-training__head">
+            <div>
+              <div class="portal-header__eyebrow" style="margin-bottom:6px">Your Training Plan</div>
+              <h2>What to work on next.</h2>
+              <p>Your checkride timeline, readiness, and today's plan, in one place.</p>
+            </div>
+            <button class="btn btn--ghost" data-goto="progress">View Full Progress</button>
+          </div>
+
+          <div class="portal-my-training__preclass" id="trainingPlanPreclassBanner" hidden></div>
+
+          <div class="portal-my-training__grid">
+            <div class="portal-my-training__panel portal-my-training__panel--primary" id="trainingPlanCheckride">
+              <p class="portal-my-training__label">Checkride</p>
+              <h3>—</h3>
+            </div>
+            <div class="portal-my-training__panel" id="trainingPlanReadiness">
+              <p class="portal-my-training__label">Readiness</p>
+              <h3>—</h3>
+            </div>
+            <div class="portal-my-training__panel" id="trainingPlanFocus">
+              <p class="portal-my-training__label">Primary Focus</p>
+              <h3>—</h3>
+            </div>
+          </div>
+          <div class="portal-my-training__plan-head">
+            <span>✈️</span>
+            <h4>Today's Flight Plan</h4>
+          </div>
+          <div class="portal-my-training__plan" id="studentStudyPlanList"></div>
+          <p class="portal-my-training__why" id="trainingPlanWhy" hidden></p>
+          <div class="portal-my-training__plan-complete" id="studentStudyPlanComplete" hidden>
+            <span>✓</span>
+            <div>
+              <h4>Flight plan complete — nice work today.</h4>
+              <p>Come back tomorrow to keep your streak alive.</p>
+            </div>
+          </div>
+
+          <!-- Growth Sprint section 12: weak-area -> upcoming live class
+               cross-sell. Real scheduled-class data only (loadGroundSchool()
+               in portal-stable.js, same source the Ground School section
+               itself renders from) -- never fabricated availability. -->
+          <div class="portal-my-training__preclass" id="trainingPlanGsCrossSell" style="margin-top:16px" hidden></div>
+        </div>
+
+        <!-- Question of the Day -- free for every member (Retention Sprint
+             Tier 1): the daily habit-forming mechanic only works if it's
+             not gated behind the same paywall it's meant to build trust
+             toward. Was previously wrapped in [data-locked-widget], which
+             applyUnlockState() (portal-stable.js) blurs/disables for
+             anyone without checkride_prep_unlocked. -->
+        <div class="portal-card portal-qotd" style="margin-bottom:24px">
+          <div class="portal-qotd__head">
+            <div class="portal-header__eyebrow" style="margin-bottom:0">📅 Today's Oral Exam Question</div>
+            <span class="portal-qotd__cat" id="qotdCategory">—</span>
+          </div>
+          <h3 id="qotdQuestion" style="color:#fff;font-size:19px;font-weight:700;margin:14px 0 18px;line-height:1.5">Loading…</h3>
+          <div id="qotdPrompt">
+            <p style="color:rgba(255,255,255,0.45);font-size:13px;margin-bottom:14px">Think through your answer out loud before revealing — that's what actually builds recall.</p>
+            <button class="btn btn--primary" id="qotdRevealBtn">Reveal Answer</button>
+          </div>
+          <div id="qotdAnswer" style="display:none">
+            <div class="portal-qitem__field"><div class="portal-qitem__field-label">Model Answer</div><p id="qotdModel"></p></div>
+            <div class="portal-qitem__field"><div class="portal-qitem__field-label">DPE Insight</div><p id="qotdEvaluating"></p></div>
+            <div class="portal-qitem__field"><div class="portal-qitem__field-label">Apex Pro Tip</div><p id="qotdApplication"></p></div>
+            <div class="portal-qotd__actions">
+              <button class="btn btn--ghost" id="qotdStudiedBtn">Mark as Studied</button>
+              <button class="btn btn--ghost" id="qotdFavBtn">☆ Star for review</button>
+            </div>
+            <!-- Habit-loop reinforcement, shown once the member has
+                 actually revealed today's question -- see renderQotd()/
+                 the reveal click handler in portal-stable.js. Streak
+                 count reuses computeStreaks() (the same function driving
+                 the streak card elsewhere on this dashboard), not a
+                 separate/invented number. -->
+            <div id="qotdStreakNote" style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08);font-size:13px;color:rgba(255,255,255,0.5)"></div>
+          </div>
+        </div>
+
         <!-- Readiness + Streak + Weak Areas + Pilot Rank -->
         <div class="portal-grid portal-grid--4" style="margin-bottom:24px">
           <div class="portal-card portal-readiness portal-locked-widget" data-locked-widget data-widget="readiness">
@@ -331,77 +416,6 @@
              program the member is at). Never a direct-to-checkout link. -->
         <div class="portal-card" id="recommendedNextStepCard" hidden style="margin-bottom:24px;background:linear-gradient(120deg, rgba(244,180,0,0.10), rgba(11,31,58,0.4));border-color:rgba(244,180,0,0.2)"></div>
 
-        <!-- Your Training Plan -- single unified engine (computeTrainingPlan())
-             replacing what used to be three separate recommendation systems
-             (Next Best Action, Next Class, Resume Studying) that could
-             disagree with each other. See docs/training-plan-architecture.md. -->
-        <div class="portal-card portal-my-training" style="margin-bottom:24px">
-          <div class="portal-my-training__head">
-            <div>
-              <div class="portal-header__eyebrow" style="margin-bottom:6px">Your Training Plan</div>
-              <h2>What to work on next.</h2>
-              <p>Your checkride timeline, readiness, and today's plan, in one place.</p>
-            </div>
-            <button class="btn btn--ghost" data-goto="progress">View Full Progress</button>
-          </div>
-
-          <div class="portal-my-training__preclass" id="trainingPlanPreclassBanner" hidden></div>
-
-          <div class="portal-my-training__grid">
-            <div class="portal-my-training__panel portal-my-training__panel--primary" id="trainingPlanCheckride">
-              <p class="portal-my-training__label">Checkride</p>
-              <h3>—</h3>
-            </div>
-            <div class="portal-my-training__panel" id="trainingPlanReadiness">
-              <p class="portal-my-training__label">Readiness</p>
-              <h3>—</h3>
-            </div>
-            <div class="portal-my-training__panel" id="trainingPlanFocus">
-              <p class="portal-my-training__label">Primary Focus</p>
-              <h3>—</h3>
-            </div>
-          </div>
-          <div class="portal-my-training__plan-head">
-            <span>✈️</span>
-            <h4>Today's Flight Plan</h4>
-          </div>
-          <div class="portal-my-training__plan" id="studentStudyPlanList"></div>
-          <p class="portal-my-training__why" id="trainingPlanWhy" hidden></p>
-          <div class="portal-my-training__plan-complete" id="studentStudyPlanComplete" hidden>
-            <span>✓</span>
-            <div>
-              <h4>Flight plan complete — nice work today.</h4>
-              <p>Come back tomorrow to keep your streak alive.</p>
-            </div>
-          </div>
-
-          <!-- Growth Sprint section 12: weak-area -> upcoming live class
-               cross-sell. Real scheduled-class data only (loadGroundSchool()
-               in portal-stable.js, same source the Ground School section
-               itself renders from) -- never fabricated availability. -->
-          <div class="portal-my-training__preclass" id="trainingPlanGsCrossSell" style="margin-top:16px" hidden></div>
-        </div>
-
-        <!-- Your Week -- Retention Sprint Tier 2. Real activity only, no
-             new RPC calls: aggregated client-side from data already
-             loaded by loadProgress() (site/portal-stable.js). -->
-        <div class="portal-card" id="weeklyProgressCard" style="margin-bottom:24px">
-          <div class="portal-header__eyebrow" style="margin-bottom:8px">Your Week</div>
-          <div id="weeklyProgressEmpty" style="display:none">
-            <p style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:14px">No training logged yet this week.</p>
-            <button class="btn btn--primary" id="weeklyProgressStartBtn">Start Today's Training</button>
-          </div>
-          <div id="weeklyProgressStats" style="display:none">
-            <div class="portal-grid portal-grid--4" style="margin-bottom:14px">
-              <div class="portal-my-training__panel"><p class="portal-my-training__label">Questions</p><h3 id="weeklyQuestions">0</h3></div>
-              <div class="portal-my-training__panel"><p class="portal-my-training__label">Training Days</p><h3 id="weeklyDays">0</h3></div>
-              <div class="portal-my-training__panel"><p class="portal-my-training__label">Scenarios</p><h3 id="weeklyScenarios">0</h3></div>
-              <div class="portal-my-training__panel"><p class="portal-my-training__label">AI DPE</p><h3 id="weeklyAiDpe">0</h3></div>
-            </div>
-            <p style="color:rgba(255,255,255,0.55);font-size:13px" id="weeklyTopicLine"></p>
-          </div>
-        </div>
-
         <!-- 7-Day Checkride Challenge -- Growth Sprint Tier 2. Free-tier
              feature: pulls a small per-category slice of the DPE bank via
              get_challenge_day_questions() (supabase-portal-schema-v74.sql),
@@ -417,9 +431,13 @@
           <div id="challengeBody"></div>
         </div>
 
-        <!-- Checkride Countdown + Mock Oral Booking -->
-        <div class="portal-grid portal-grid--2" style="margin-bottom:24px">
-          <div class="portal-card portal-countdown" id="checkrideCountdownCard">
+        <!-- Checkride Countdown -- kept as a smaller, standalone,
+             lower-priority card. The countdown days are already surfaced
+             in the Training Plan header above, so this isn't the first
+             or only place a member sees them -- moved here (out of its
+             old 2-up grid with Mock Oral) so that number isn't shown
+             prominently twice near the top of the page. -->
+        <div class="portal-card portal-countdown" id="checkrideCountdownCard" style="margin-bottom:24px">
             <div id="checkrideCountdownSet" style="display:none">
               <div class="portal-header__eyebrow" style="margin-bottom:8px">Checkride Countdown</div>
               <div class="portal-countdown__value" id="checkrideCountdownValue">—</div>
@@ -433,8 +451,30 @@
                 <button class="btn btn--primary" id="checkrideDateSaveBtn">Save Date</button>
               </div>
             </div>
-          </div>
+        </div>
 
+        <!-- Practice For The Oral -- DPE Question Bank, AI DPE Practice,
+             Scenario Training, and Mock Oral grouped as one coherent
+             training suite instead of scattered across the old "Jump
+             back in" row (the first three) and a 2-up grid shared with
+             the countdown (Mock Oral). Markup/click-gating unchanged:
+             data-goto delegation + GATED_SECTIONS/openUnlockModal()
+             already handle free-vs-paid access for the first three;
+             Mock Oral's own booking handler is untouched. -->
+        <h3 style="font-size:16px;font-weight:700;color:#fff;margin-bottom:16px">Practice For The Oral</h3>
+        <div class="portal-grid portal-grid--2" style="margin-bottom:24px">
+          <button class="portal-card portal-quicklink" data-goto="dpe-library">
+            <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 6.253v13M12 6.253C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div><h3>DPE Questions Library</h3><p>Practice real oral exam questions</p></div>
+          </button>
+          <button class="portal-card portal-quicklink" data-goto="ai-dpe-practice">
+            <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8 10h8M8 14h5M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4-.83L3 20l1.05-3.16A7.86 7.86 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div><h3>AI DPE Practice</h3><p>A full simulated oral exam, on demand</p></div>
+          </button>
+          <button class="portal-card portal-quicklink" data-goto="scenarios">
+            <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div><h3>Scenario Training</h3><p>Work through real-world decision scenarios</p></div>
+          </button>
           <div class="portal-card portal-mockoral">
             <div class="portal-header__eyebrow" style="margin-bottom:8px">Mock Oral Exam</div>
             <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Book a Mock Oral</h3>
@@ -478,40 +518,6 @@
           </div>
         </div>
 
-        <!-- Question of the Day -- free for every member (Retention Sprint
-             Tier 1): the daily habit-forming mechanic only works if it's
-             not gated behind the same paywall it's meant to build trust
-             toward. Was previously wrapped in [data-locked-widget], which
-             applyUnlockState() (portal-stable.js) blurs/disables for
-             anyone without checkride_prep_unlocked. -->
-        <div class="portal-card portal-qotd" style="margin-bottom:24px">
-          <div class="portal-qotd__head">
-            <div class="portal-header__eyebrow" style="margin-bottom:0">📅 Today's Oral Exam Question</div>
-            <span class="portal-qotd__cat" id="qotdCategory">—</span>
-          </div>
-          <h3 id="qotdQuestion" style="color:#fff;font-size:19px;font-weight:700;margin:14px 0 18px;line-height:1.5">Loading…</h3>
-          <div id="qotdPrompt">
-            <p style="color:rgba(255,255,255,0.45);font-size:13px;margin-bottom:14px">Think through your answer out loud before revealing — that's what actually builds recall.</p>
-            <button class="btn btn--primary" id="qotdRevealBtn">Reveal Answer</button>
-          </div>
-          <div id="qotdAnswer" style="display:none">
-            <div class="portal-qitem__field"><div class="portal-qitem__field-label">Model Answer</div><p id="qotdModel"></p></div>
-            <div class="portal-qitem__field"><div class="portal-qitem__field-label">DPE Insight</div><p id="qotdEvaluating"></p></div>
-            <div class="portal-qitem__field"><div class="portal-qitem__field-label">Apex Pro Tip</div><p id="qotdApplication"></p></div>
-            <div class="portal-qotd__actions">
-              <button class="btn btn--ghost" id="qotdStudiedBtn">Mark as Studied</button>
-              <button class="btn btn--ghost" id="qotdFavBtn">☆ Star for review</button>
-            </div>
-            <!-- Habit-loop reinforcement, shown once the member has
-                 actually revealed today's question -- see renderQotd()/
-                 the reveal click handler in portal-stable.js. Streak
-                 count reuses computeStreaks() (the same function driving
-                 the streak card elsewhere on this dashboard), not a
-                 separate/invented number. -->
-            <div id="qotdStreakNote" style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08);font-size:13px;color:rgba(255,255,255,0.5)"></div>
-          </div>
-        </div>
-
         <!-- ACS Coverage Map -->
         <div class="portal-card portal-locked-widget" data-locked-widget data-widget="acs-coverage" style="margin-bottom:24px">
           <div class="portal-locked-widget__content">
@@ -523,6 +529,26 @@
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="#F4B400" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round"/></svg>
             <span>Unlock ACS Coverage Map</span>
             <small>$29 · Tap to unlock</small>
+          </div>
+        </div>
+
+        <!-- Your Week -- Retention Sprint Tier 2. Real activity only, no
+             new RPC calls: aggregated client-side from data already
+             loaded by loadProgress() (site/portal-stable.js). -->
+        <div class="portal-card" id="weeklyProgressCard" style="margin-bottom:24px">
+          <div class="portal-header__eyebrow" style="margin-bottom:8px">Your Week</div>
+          <div id="weeklyProgressEmpty" style="display:none">
+            <p style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:14px">No training logged yet this week.</p>
+            <button class="btn btn--primary" id="weeklyProgressStartBtn">Start Today's Training</button>
+          </div>
+          <div id="weeklyProgressStats" style="display:none">
+            <div class="portal-grid portal-grid--4" style="margin-bottom:14px">
+              <div class="portal-my-training__panel"><p class="portal-my-training__label">Questions</p><h3 id="weeklyQuestions">0</h3></div>
+              <div class="portal-my-training__panel"><p class="portal-my-training__label">Training Days</p><h3 id="weeklyDays">0</h3></div>
+              <div class="portal-my-training__panel"><p class="portal-my-training__label">Scenarios</p><h3 id="weeklyScenarios">0</h3></div>
+              <div class="portal-my-training__panel"><p class="portal-my-training__label">AI DPE</p><h3 id="weeklyAiDpe">0</h3></div>
+            </div>
+            <p style="color:rgba(255,255,255,0.55);font-size:13px" id="weeklyTopicLine"></p>
           </div>
         </div>
 
@@ -548,35 +574,8 @@
             <div class="portal-stat__label">Resources Available</div>
           </div>
         </div>
-
-        <h3 style="font-size:16px;font-weight:700;color:#fff;margin-bottom:16px">Jump back in</h3>
-        <div class="portal-grid portal-grid--4">
-          <button class="portal-card portal-quicklink" data-goto="free-resources">
-            <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M20 12V7a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2h6M20 12l-3.5 3.5M20 12l-3.5-3.5" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <div><h3>Free Resources</h3><p>4 guides — no unlock needed</p></div>
-          </button>
-          <button class="portal-card portal-quicklink" data-goto="checkride-prep">
-            <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <div><h3>Checkride Prep Pack</h3><p>Study guides &amp; endorsement checklists</p></div>
-          </button>
-          <button class="portal-card portal-quicklink" data-goto="dpe-library">
-            <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 6.253v13M12 6.253C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <div><h3>DPE Questions Library</h3><p>Practice real oral exam questions</p></div>
-          </button>
-          <button class="portal-card portal-quicklink" data-goto="ai-dpe-practice">
-            <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8 10h8M8 14h5M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4-.83L3 20l1.05-3.16A7.86 7.86 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <div><h3>AI DPE Practice</h3><p>A full simulated oral exam, on demand</p></div>
-          </button>
-          <button class="portal-card portal-quicklink" data-goto="scenarios">
-            <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <div><h3>Scenario Training</h3><p>Work through real-world decision scenarios</p></div>
-          </button>
-          <button class="portal-card portal-quicklink" data-goto="vault">
-            <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zM16 9V7a4 4 0 10-8 0v2" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <div><h3>Download Vault</h3><p>All your PDFs &amp; checklists in one place</p></div>
-          </button>
-        </div>
       </section>
+
 
       <!-- ─────────── FREE RESOURCES (hub for the 3 free lead-magnet guides) ─────────── -->
       <section class="portal-section" id="section-free-resources">
