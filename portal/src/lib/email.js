@@ -66,11 +66,7 @@ export async function sendBulkMessage(registrants, session, subject, message) {
     <p style="font-size:13px;color:rgba(255,255,255,0.35);margin-top:16px;">Session: ${session.title} · ${fmtDate(session.scheduled_at)}</p>
   `)
 
-  return Promise.all(
-    registrants.map(r =>
-      invoke({ to: r.email, subject: `[Apex Advantage] ${subject}`, html })
-    )
-  )
+  return sendPaced(registrants, (r) => invoke({ to: r.email, subject: `[Apex Advantage] ${subject}`, html }))
 }
 
 export async function sendWaitlistConfirmation(registration, session) {
@@ -111,34 +107,63 @@ export async function sendWaitlistPromotion(registration, session) {
   return invoke({ to: registration.email, subject: `Spot confirmed: ${session.title}`, html })
 }
 
-// Returns true/false so callers (sendAdminEmail's concurrency-capped
-// batch, in particular) can tell a real delivery failure apart from
-// success, rather than every send being reported as sent regardless of
-// what actually happened.
-async function invoke(payload) {
-  try {
-    const { error } = await supabase.functions.invoke('send-email', { body: payload })
-    if (error) { console.warn('Email send failed:', error); return false }
-    return true
-  } catch (e) {
-    console.warn('Email invoke error:', e)
-    return false
-  }
+// Resend's plan caps outbound sends at 2 requests/second. A concurrency-
+// capped worker pool (the previous mapWithConcurrency, 5-wide) still fires
+// that many requests as fast as each slot frees up -- with no pacing
+// between them, even 5-wide concurrency blows straight through that limit
+// the moment a batch has more than a couple of recipients, and a 429 was
+// never retried, just logged and permanently marked failed. This wasn't
+// theoretical: a real 113-recipient broadcast came back sent: 57,
+// failed: 56 within seconds of launch, once the burst hit Resend's limit.
+//
+// Fix: serialize sends at a fixed pace comfortably under 2/sec (sendPaced,
+// below) instead of firing them concurrently, and retry a failed send
+// with backoff (invoke, below) instead of giving up after one try -- a
+// rate limit or a dropped connection shouldn't permanently drop someone
+// from a broadcast.
+const RESEND_MIN_INTERVAL_MS = 600 // ~1.67 req/sec, safely under Resend's 2/sec cap
+const RESEND_MAX_ATTEMPTS = 3
+const RESEND_RETRY_BASE_MS = 1000
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-// Small concurrency cap so a large "all students" broadcast doesn't fire
-// dozens of concurrent requests at Resend at once.
-async function mapWithConcurrency(items, limit, fn) {
-  const results = Array.from({ length: items.length })
-  let next = 0
-  async function worker() {
-    for (;;) {
-      const i = next++
-      if (i >= items.length) return
-      results[i] = await fn(items[i])
+// Returns true/false so callers (sendAdminEmail's batch, in particular)
+// can tell a real delivery failure apart from success, rather than every
+// send being reported as sent regardless of what actually happened.
+async function invoke(payload) {
+  for (let attempt = 1; attempt <= RESEND_MAX_ATTEMPTS; attempt++) {
+    try {
+      const { error } = await supabase.functions.invoke('send-email', { body: payload })
+      if (!error) return true
+      // send-email is a bare passthrough to Resend, so a non-2xx from
+      // Resend (429 rate-limited, 5xx transient) comes back as this same
+      // non-2xx status on the Edge Function response -- supabase-js
+      // surfaces it as a FunctionsHttpError whose .context is the raw
+      // Response. A 4xx other than 429 (bad address, malformed payload)
+      // won't succeed on retry, so don't waste attempts on it.
+      const status = error?.context?.status
+      console.warn(`Email send failed (attempt ${attempt}/${RESEND_MAX_ATTEMPTS}, status ${status ?? 'unknown'}):`, error)
+      if (status && status !== 429 && status < 500) return false
+    } catch (e) {
+      console.warn(`Email invoke error (attempt ${attempt}/${RESEND_MAX_ATTEMPTS}):`, e)
     }
+    if (attempt < RESEND_MAX_ATTEMPTS) await sleep(RESEND_RETRY_BASE_MS * attempt)
   }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+  return false
+}
+
+// Sends items one at a time at a fixed pace, not concurrently, so a large
+// broadcast can't outrun Resend's rate limit. Slower wall-clock time for a
+// big list than the old concurrency-capped version, but "68 seconds for
+// 113 people" beats "half of them silently never got it."
+async function sendPaced(items, fn) {
+  const results = []
+  for (const item of items) {
+    results.push(await fn(item))
+    await sleep(RESEND_MIN_INTERVAL_MS)
+  }
   return results
 }
 
@@ -170,7 +195,7 @@ export async function sendAdminEmail({ recipients, subject, message, senderId, i
     </div>
   `)
 
-  const outcomes = await mapWithConcurrency(recipients, 5, (r) => invoke({ to: r.email, subject, html }))
+  const outcomes = await sendPaced(recipients, (r) => invoke({ to: r.email, subject, html }))
   const sentCount = outcomes.filter(Boolean).length
   const failedCount = outcomes.length - sentCount
 
@@ -181,9 +206,12 @@ export async function sendAdminEmail({ recipients, subject, message, senderId, i
     .single()
   if (broadcastError) throw broadcastError
 
+  // delivered records each recipient's real outcome (v82.sql) -- so a
+  // future rate-limit hit or bad address can be found with one query
+  // instead of exporting Resend's own send log and diffing it by hand.
   const { error: recipientsError } = await supabase
     .from('admin_broadcast_recipients')
-    .insert(recipients.map((r) => ({ broadcast_id: broadcast.id, profile_id: r.id, email: r.email })))
+    .insert(recipients.map((r, i) => ({ broadcast_id: broadcast.id, profile_id: r.id, email: r.email, delivered: outcomes[i] })))
   if (recipientsError) throw recipientsError
 
   return { sent: sentCount, failed: failedCount, broadcastId: broadcast.id }
