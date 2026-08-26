@@ -4439,6 +4439,32 @@
     return firstLoginClaimPromise;
   }
 
+  // Funnel-coherence pass -- identity stitching. anonId() (analytics-
+  // events.js) now persists via a cookie shared across apexaviationtx.com
+  // and advantage.apexaviationtx.com, so the SAME anon_id a visitor
+  // picked up on the marketing site (readiness assessment, checkride-
+  // prep.html, etc.) is still readable here once they reach the real
+  // portal -- but only going forward from whenever that cookie was first
+  // set. link_analytics_identity() (supabase-portal-schema-v85.sql)
+  // durably records (anon_id -> profile_id) the first time each profile
+  // is ever seen with a given anon_id, so the funnel RPCs can resolve
+  // every earlier anonymous event from that same browser to this profile
+  // even after the anon_id itself later disappears from analytics_events
+  // rows (once fully authenticated, most future events carry profile_id
+  // directly and don't need the map at all -- this exists specifically
+  // to bridge the anonymous-to-authenticated moment).
+  var identityLinkPromise = null;
+  function linkAnalyticsIdentityOnce() {
+    if (!member || !window.apexGetAnonId) return Promise.resolve(false);
+    if (!identityLinkPromise) {
+      var anon = window.apexGetAnonId();
+      identityLinkPromise = anon
+        ? apexSupabase.rpc('link_analytics_identity', { p_anon_id: anon }).catch(function () { /* best-effort */ })
+        : Promise.resolve();
+    }
+    return identityLinkPromise;
+  }
+
   // Activation-optimization pass -- root cause of training_stage/
   // primary_focus_area showing "not_set" for most of the current signup
   // cohort: showWelcomeOnboarding() used to be shown ONLY inside
@@ -4556,6 +4582,7 @@
     // can no longer cause a repeat fire.
     logEventOnce('first_login');
     claimFirstPortalLoginOnce();
+    linkAnalyticsIdentityOnce();
     maybeShowWelcomeOnboarding();
     claimActivationCompletedOnce();
 

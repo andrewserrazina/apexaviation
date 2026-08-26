@@ -52,10 +52,17 @@ const MIN_SAMPLE = 10
 
 function FunnelRows({ steps }) {
   const top = steps[0]?.users || 0
+  // A drop computed from a step with fewer than MIN_SAMPLE users going
+  // in is noise, not a leak -- 2 checkout starts -> 0 purchases is a
+  // 100% drop by arithmetic, but calling that "the biggest leak" implies
+  // a confidence the sample can't support. Excluded from biggestDrop
+  // entirely rather than just relabeled, so a tiny-sample step never
+  // outranks a real, well-sampled drop earlier in the same funnel.
   let biggestDrop = null
   steps.forEach((s, i) => {
     if (i === 0) return
     const prev = steps[i - 1]
+    if (prev.users < MIN_SAMPLE) return
     const dropPct = prev.users > 0 ? ((prev.users - s.users) / prev.users) * 100 : 0
     if (!biggestDrop || dropPct > biggestDrop.dropPct) biggestDrop = { from: prev.label, to: s.label, dropPct }
   })
@@ -80,6 +87,7 @@ function FunnelRows({ steps }) {
               const fromTop = pct(s.users, top)
               const dropPct = prev && prev.users > 0 ? ((prev.users - s.users) / prev.users) * 100 : null
               const isBiggest = biggestDrop && prev && biggestDrop.from === prev.label && biggestDrop.to === s.label && biggestDrop.dropPct > 0
+              const smallSample = prev && prev.users < MIN_SAMPLE
               return (
                 <tr key={s.label} style={isBiggest ? { background: 'rgba(239,68,68,0.06)' } : undefined}>
                   <td><strong>{s.label}</strong></td>
@@ -87,7 +95,9 @@ function FunnelRows({ steps }) {
                   <td>{stepConv === null ? '—' : fmtPct(stepConv)}</td>
                   <td>{fromTop === null ? '—' : fmtPct(fromTop)}</td>
                   <td>
-                    {dropPct === null ? '—' : (
+                    {dropPct === null ? '—' : smallSample ? (
+                      <span style={{ color: 'var(--muted)' }}>{fmtPct(dropPct)} — small sample (n={prev.users})</span>
+                    ) : (
                       <span className={isBiggest ? 'badge badge--red' : ''} style={!isBiggest ? { color: 'var(--muted)' } : undefined}>
                         {fmtPct(dropPct)}{isBiggest ? ' — biggest leak' : ''}
                       </span>
@@ -184,23 +194,38 @@ export default function MarketingFunnel() {
     return rows
   }, [utmRows, utmSort])
 
-  const executiveSteps = executive ? [
-    { label: 'Landing Visitors', users: executive.landing_visitors },
-    { label: 'Registration Started', users: executive.registration_started },
-    { label: 'Registration Completed', users: executive.registration_completed },
-    { label: 'Checkout Started', users: executive.checkout_started },
-    { label: 'Purchase Completed', users: executive.purchase_completed },
-    { label: 'Portal Activated', users: executive.portal_activated },
-    { label: 'First Training Started', users: executive.first_training_started },
+  // Two independent sequences, not one chain -- Apex Advantage is free to
+  // join, activate, and train in without ever purchasing, so "Purchase
+  // Completed -> Portal Activated" was never a valid funnel step (most
+  // activated members never purchased at all). Both start from the same
+  // landing_visitors cohort; get_marketing_executive_funnel() (v85)
+  // computes them separately server-side.
+  const acquisitionSteps = executive ? [
+    { label: 'Landing Visitors', users: executive.acquisition_activation.landing_visitors },
+    { label: 'Registration Started', users: executive.acquisition_activation.registration_started },
+    { label: 'Registration Completed', users: executive.acquisition_activation.registration_completed },
+    { label: 'Portal Activated', users: executive.acquisition_activation.portal_activated },
+    { label: 'First Training Started', users: executive.acquisition_activation.first_training_started },
+  ] : []
+  const monetizationSteps = executive ? [
+    { label: 'Landing Visitors', users: executive.monetization.landing_visitors },
+    { label: 'Checkout Started', users: executive.monetization.checkout_started },
+    { label: 'Purchase Completed', users: executive.monetization.purchase_completed },
   ] : []
 
+  // "Account Created" = readiness_signup_completed with mode:'signup'
+  // specifically -- a real new Apex account (create-free-account
+  // succeeded). mode:'login' (an existing member re-authenticating to
+  // retake the assessment) is a separate, non-registration event shown
+  // as its own stat below, not folded into this step -- conflating the
+  // two overstated new-account growth from this funnel.
   const readinessSteps = readiness ? [
     { label: 'Assessment Viewed', users: readiness.viewed },
     { label: 'Assessment Started', users: readiness.started },
     { label: 'Assessment Completed', users: readiness.completed },
     { label: 'Score Viewed', users: readiness.score_viewed },
-    { label: 'Signup Started', users: readiness.signup_started },
-    { label: 'Signup Completed', users: readiness.signup_completed },
+    { label: 'Email Gate Opened', users: readiness.signup_started },
+    { label: 'Account Created', users: readiness.account_created },
     { label: 'Checkride Prep Clicked', users: readiness.checkride_prep_clicked },
     { label: 'Checkride Prep Purchased', users: readiness.checkride_prep_purchased },
   ] : []
@@ -232,8 +257,8 @@ export default function MarketingFunnel() {
 
   // ── Deterministic insights (no AI) ──────────────────────────────
   const insights = []
-  if (executive && executive.landing_visitors >= MIN_SAMPLE) {
-    const regStartedRate = pct(executive.registration_started, executive.landing_visitors)
+  if (executive && executive.acquisition_activation.landing_visitors >= MIN_SAMPLE) {
+    const regStartedRate = pct(executive.acquisition_activation.registration_started, executive.acquisition_activation.landing_visitors)
     if (regStartedRate !== null) insights.push(`${fmtPct(100 - regStartedRate)} of landing visitors never started registration.`)
   }
   if (readiness && readiness.viewed >= MIN_SAMPLE) {
@@ -251,8 +276,8 @@ export default function MarketingFunnel() {
   } else if (groundSchool && groundSchool.schedule_viewers > 0) {
     insights.push(`Ground School: ${groundSchool.class_selected} of ${groundSchool.schedule_viewers} schedule viewers selected a class (small sample — directional only).`)
   }
-  if (executive && executive.registration_started >= MIN_SAMPLE) {
-    const completeRate = pct(executive.registration_completed, executive.registration_started)
+  if (executive && executive.acquisition_activation.registration_started >= MIN_SAMPLE) {
+    const completeRate = pct(executive.acquisition_activation.registration_completed, executive.acquisition_activation.registration_started)
     if (completeRate !== null && completeRate >= 70) insights.push(`Registration performs strongly after users begin signup (${fmtPct(completeRate)} completion).`)
   }
   if (readiness && readiness.checkride_prep_clicked >= MIN_SAMPLE) {
@@ -301,11 +326,14 @@ export default function MarketingFunnel() {
           )}
 
           {/* ── 1. Executive Funnel ── */}
-          <SectionHeader title="Executive Funnel" sub="Landing → registration → checkout → purchase → activation → first training, by distinct user" />
-          {executive && <FunnelRows steps={executiveSteps} />}
+          <SectionHeader title="Executive Funnel" sub="Two independent journeys, not one chain — Apex Advantage is free to join, activate, and train in without ever purchasing, so purchase is never a prerequisite for activation. Cohort = visitors who landed in this range; later steps count whether that same visitor ever reached them (may occur after the selected range)." />
+          <h3 className="card__title" style={{ marginBottom: 8 }}>Acquisition &amp; Activation</h3>
+          {executive && <FunnelRows steps={acquisitionSteps} />}
+          <h3 className="card__title" style={{ marginBottom: 8, marginTop: 20 }}>Monetization</h3>
+          {executive && <FunnelRows steps={monetizationSteps} />}
 
           {/* ── 2. Readiness Assessment Funnel ── */}
-          <SectionHeader title="Readiness Assessment Funnel" sub="Cohort = visitors who viewed the assessment in this range; every later step counts whether that same visitor ever reached it" />
+          <SectionHeader title="Readiness Assessment Funnel" sub="Cohort = visitors who viewed the assessment in this range (may convert after it). Checkride Prep Clicked counts either the results-page CTA (returning members who log back in) or the post-signup upgrade-modal deep link (new accounts) — both are real, tracked paths to the same conversion moment." />
           {readiness && <FunnelRows steps={readinessSteps} />}
           {readiness && (
             <div className="stat-grid" style={{ marginTop: 12 }}>
@@ -313,6 +341,11 @@ export default function MarketingFunnel() {
                 <p className="stat-card__label">Readiness → Checkride Prep Purchase</p>
                 <p className="stat-card__value">{fmtPct(pct(readiness.checkride_prep_purchased, readiness.checkride_prep_clicked))}</p>
                 <p className="stat-card__sub">of members who clicked through to Checkride Prep from their results</p>
+              </div>
+              <div className="stat-card">
+                <p className="stat-card__label">Gate Login Completed</p>
+                <p className="stat-card__value">{readiness.gate_login_completed}</p>
+                <p className="stat-card__sub">existing members re-authenticating to retake the assessment — not a new account, kept separate from Account Created above</p>
               </div>
             </div>
           )}
@@ -528,8 +561,15 @@ export default function MarketingFunnel() {
                 </div>
               </div>
             )}
+            {dataQuality?.funnel_warnings?.length > 0 && (
+              <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {dataQuality.funnel_warnings.map((w, i) => (
+                  <p key={i} style={{ fontSize: 13, color: '#f87171', margin: 0 }}>⚠ {w}</p>
+                ))}
+              </div>
+            )}
             <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
-              Dedupe/uniqueness checks only reflect events recorded after the analytics reliability fixes shipped — they can't detect or retroactively correct historical duplicates from before session_id/transaction_id existed on these events.
+              Dedupe/uniqueness checks only reflect events recorded after the analytics reliability fixes shipped — they can't detect or retroactively correct historical duplicates from before session_id/transaction_id existed on these events. Funnel-definition warnings above are computed live against the last 90 days on every load — a step exceeding 100% of its predecessor always means a broken definition (wrong event, wrong cohort, wrong identity), never a real over-100% conversion rate, and is never silently clamped.
             </p>
           </details>
         </>

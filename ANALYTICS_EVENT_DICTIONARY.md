@@ -120,12 +120,15 @@ addition to* those automatic ones.
 ### `readiness_signup_started` / `readiness_signup_completed`
 **Trigger:** The post-score email-gate form is opened / submitted successfully.
 **Properties:** `mode` (`login` / `signup`).
+**Naming note (funnel-coherence pass):** despite the name, this does NOT always mean a new Apex account was created. `mode: 'signup'` does — `create-free-account` just succeeded — but `mode: 'login'` is an EXISTING member re-authenticating to retake the assessment, not a registration. The Marketing & Funnel dashboard's Readiness Assessment Funnel labels these separately ("Account Created" = `mode:'signup'` only; "Gate Login Completed" = `mode:'login'`, shown as its own stat) rather than combining them under one misleading "Signup Completed" total — see `get_readiness_funnel_stats()`, v85. The raw event name and its `mode` property are unchanged; only the dashboard label was corrected.
+**registration_completed bridge (funnel-coherence pass):** `mode:'signup'` now ALSO fires `registration_completed` immediately after, so a real new account created via the Readiness Assessment counts in the Executive Funnel's Registration Completed step too — before this fix, these two funnels disagreed on total registrations for the same date range because this page's signups were invisible to the Executive Funnel entirely.
 **Expected frequency:** ~1 each per real gate interaction.
 
 ### `readiness_checkride_prep_clicked`
-**Trigger:** The "Unlock Checkride Prep" CTA is clicked from the results screen.
+**Trigger:** The "Unlock Checkride Prep" CTA is clicked from the results screen (`renderFullResults()`).
 **Properties:** `score`, `readiness_band`.
-**Expected frequency:** ~1 per real click-through; this is the event the Readiness → Checkride Prep purchase-conversion KPI is built on (see `get_readiness_funnel_stats()`, v83).
+**Coverage gap found and fixed (funnel-coherence pass):** `renderFullResults()` — and therefore this event — is only ever reached via the LOGIN path (an existing member re-authenticating in `handleGateLogin()`). The SIGNUP path (`handleGateSignup()`, a brand-new visitor) calls `renderSignupPending()` instead ("check your email") and never shows this CTA at all. Since new signups are the dominant path for a cold lead-magnet funnel, this event reading 0 was **real user behavior, not a tracking failure** — B and D from the original audit combined: the CTA both exists-and-works for the login path, and is architecturally unreachable for the signup path. Fixed by routing new signups' post-password-set landing through the real, already-instrumented `?upgrade=checkride-prep` deep link instead of a bare, untracked hash (`readiness-assessment.html`'s `dest: 'checkride-prep'`, `portal-reset-password.html`'s special case for that value) rather than fabricating a click that never happened. `get_readiness_funnel_stats()` (v85) now counts EITHER this event OR `checkride_prep_upgrade_modal_opened` (the new-signup path's real equivalent, once identity resolves through `analytics_identity_map`) as "reached the Checkride Prep CTA."
+**Expected frequency:** ~1 per real click-through (login path) or real upgrade-modal open (signup path, post-fix). This is the event the Readiness → Checkride Prep purchase-conversion KPI is built on.
 
 ### `portal_activation_cta_viewed` / `portal_activation_cta_clicked`
 **Trigger:** The "your class is booked, activate your account" banner is shown / clicked on `portal-login.html`, for a Ground School purchaser who hasn't yet created a portal account.

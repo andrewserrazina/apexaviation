@@ -95,13 +95,47 @@
     'activation_email_1_clicked', 'activation_email_2_clicked', 'activation_email_3_clicked', 'activation_email_4_clicked'
   ];
 
+  // readiness-assessment.html/checkride-prep.html/apex-advantage.html etc.
+  // are canonically served from apexaviationtx.com; the member portal
+  // (portal.html/portal-login.html) is on advantage.apexaviationtx.com --
+  // a DIFFERENT origin as far as localStorage is concerned. An anon_id
+  // written on one was never readable on the other, so every visitor
+  // whose journey crossed that boundary (readiness assessment -> signup
+  // -> portal is the common case) silently got a brand-new, unrelated
+  // anon_id the moment they landed on the portal subdomain -- funnel RPCs
+  // saw two disconnected anonymous visitors instead of one real person.
+  // A cookie scoped to the shared parent domain (.apexaviationtx.com) is
+  // visible from both; localStorage is kept only as a same-origin cache
+  // (avoids a cookie round-trip on repeat reads) and a fallback if
+  // cookies are ever blocked.
+  function cookieDomain() {
+    return /(^|\.)apexaviationtx\.com$/.test(location.hostname) ? '.apexaviationtx.com' : null;
+  }
+  function getCookie(name) {
+    try {
+      var m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+      return m ? decodeURIComponent(m[1]) : null;
+    } catch (e) { return null; }
+  }
+  function setCookie(name, value, days) {
+    try {
+      var domain = cookieDomain();
+      var expires = new Date(Date.now() + days * 86400000).toUTCString();
+      document.cookie = name + '=' + encodeURIComponent(value) + ';expires=' + expires + ';path=/' + (domain ? ';domain=' + domain : '') + ';SameSite=Lax';
+    } catch (e) { /* cookie write failed -- localStorage/in-memory fallback below still works for this page load */ }
+  }
   function anonId() {
     try {
-      var id = localStorage.getItem('apex_anon_id');
+      // Cookie first (cross-subdomain source of truth); localStorage as a
+      // same-origin cache AND as the migration path for a visitor whose
+      // only existing anon_id predates this fix (promotes it to a cookie
+      // instead of silently minting a new, unrelated id for them).
+      var id = getCookie('apex_anon_id') || localStorage.getItem('apex_anon_id');
       if (!id) {
         id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2));
-        localStorage.setItem('apex_anon_id', id);
       }
+      localStorage.setItem('apex_anon_id', id);
+      setCookie('apex_anon_id', id, 395); // ~13 months -- matches GA4's own default _ga cookie lifetime convention
       return id;
     } catch (e) { return null; }
   }
@@ -336,4 +370,5 @@
   window.apexGetFirstTouchRef = getFirstTouchRef;
   window.apexGetFirstTouchLanding = getFirstTouchLanding;
   window.apexSyncLastTouchIfFresh = syncLastTouchIfFresh;
+  window.apexGetAnonId = anonId;
 })();
