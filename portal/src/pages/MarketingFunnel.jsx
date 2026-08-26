@@ -7,7 +7,7 @@ import Layout from '../components/Layout'
 // site and this React app to read it automatically, so the data-quality
 // card's "documented" half is this hardcoded count instead. Update it
 // whenever EVENT_ALLOWLIST gains or loses an entry.
-const DOCUMENTED_EVENT_COUNT = 37
+const DOCUMENTED_EVENT_COUNT = 42
 
 const RANGE_PRESETS = [
   { key: 'today', label: 'Today' },
@@ -222,12 +222,12 @@ export default function MarketingFunnel() {
 
   const activationSteps = activation ? [
     { label: 'Signups', users: activation.signups },
-    { label: 'First Portal Login', users: activation.first_login },
-    { label: 'Onboarding Goal Saved', users: activation.onboarding_goal_saved },
-    { label: 'Onboarding Focus Saved', users: activation.onboarding_focus_saved },
-    { label: 'First Training Started', users: activation.onboarding_first_training },
-    { label: 'First Lesson Started', users: activation.first_lesson_started },
-    { label: 'First Lesson Completed', users: activation.first_lesson_completed },
+    { label: 'Onboarding Started', users: activation.onboarding_started },
+    { label: 'Onboarding Completed', users: activation.onboarding_completed },
+    { label: 'First Action Started', users: activation.onboarding_first_training },
+    { label: 'Activated', users: activation.activated },
+    { label: 'Returned D1', users: activation.returned_d1 },
+    { label: 'Returned D7', users: activation.returned_d7 },
   ] : []
 
   // ── Deterministic insights (no AI) ──────────────────────────────
@@ -427,8 +427,24 @@ export default function MarketingFunnel() {
           </div>
 
           {/* ── 7. Portal Activation ── */}
-          <SectionHeader title="Portal Activation" sub="Signup quality, independent of acquisition — does the account holder actually use Apex Advantage?" />
+          <SectionHeader title="Portal Activation" sub="Signup quality, independent of acquisition — does the account holder actually use Apex Advantage? Activated = completed a real training action (a DPE question, a scenario, or an AI DPE session), never just a login, a page view, or finishing onboarding." />
           {activation && <FunnelRows steps={activationSteps} />}
+          {activation && (
+            <div className="stat-grid" style={{ marginTop: 12 }}>
+              <div className="stat-card">
+                <p className="stat-card__label">Onboarding Goal Saved</p>
+                <p className="stat-card__value">{activation.onboarding_goal_saved}</p>
+              </div>
+              <div className="stat-card">
+                <p className="stat-card__label">Onboarding Focus Saved</p>
+                <p className="stat-card__value">{activation.onboarding_focus_saved}</p>
+              </div>
+              <div className="stat-card">
+                <p className="stat-card__label">First Lesson Started / Completed</p>
+                <p className="stat-card__value">{activation.first_lesson_started} / {activation.first_lesson_completed}</p>
+              </div>
+            </div>
+          )}
           {activation && (
             <div className="stat-grid" style={{ marginTop: 12 }}>
               <div className="stat-card">

@@ -191,6 +191,7 @@
         groundSchoolPackUnlocked: !!(profile && profile.private_pilot_ground_school_pack_unlocked),
         checkrideTiming: profile && profile.checkride_timing,
         trainingStage: profile && profile.training_stage,
+        primaryFocusArea: profile && profile.primary_focus_area,
         currentRating: (profile && profile.current_rating) || 'private',
         nextRatingInterest: profile && profile.next_rating_interest,
         totalXp: (profile && profile.total_xp) || 0,
@@ -4432,11 +4433,118 @@
           // signup handler). This is the "portal signup completion"
           // moment.
           if (window.apexTrackStandard) apexTrackStandard('CompleteRegistration', { content_name: 'Apex Advantage Portal' });
-          showWelcomeOnboarding();
           return true;
         });
     }
     return firstLoginClaimPromise;
+  }
+
+  // Activation-optimization pass -- root cause of training_stage/
+  // primary_focus_area showing "not_set" for most of the current signup
+  // cohort: showWelcomeOnboarding() used to be shown ONLY inside
+  // claimFirstPortalLoginOnce()'s "won" branch above, i.e. gated behind
+  // the exact same one-shot-per-profile-ever claim as the
+  // portal_first_login analytics event. That's the right gate for an
+  // event that must fire exactly once, but the wrong gate for a UI
+  // prompt that's supposed to keep asking until it actually gets an
+  // answer -- a member who dismissed the card, or closed the tab before
+  // clicking through their very first session, permanently lost any
+  // future chance to set these fields, even on every later login.
+  // Decoupled here: onboarding visibility now depends only on whether
+  // training_stage is still unset, re-checked on every call (guarded by
+  // onboardingShownThisLoad so it doesn't re-run/re-attach listeners on
+  // every one of checkLifecycleMilestones()'s many calls per session).
+  var onboardingShownThisLoad = false;
+  function maybeShowWelcomeOnboarding() {
+    if (!member || onboardingShownThisLoad || member.trainingStage) return;
+    onboardingShownThisLoad = true;
+    if (window.apexTrack) apexTrack('onboarding_viewed', { profile_id: member.id });
+    showWelcomeOnboarding();
+  }
+
+  // Same atomic-claim pattern as claim_first_portal_login() (v83), for
+  // the same reason: the OLD "has this member done anything yet" check
+  // below was `DPE_DATA.some(d => studied[d.id])`, and DPE_DATA is only
+  // ever populated for checkride_prep_unlocked members (loadPremiumContent()
+  // returns immediately otherwise -- get-premium-content's 403 is the
+  // real paywall enforcement, DPE_DATA empty client-side is just the
+  // visible symptom). A FREE member answering the free daily question
+  // writes a real row to portal_question_progress -- and the SERVER-side
+  // get_retention_kpis()/get_activation_email_kpis() correctly count it
+  // -- but every client-side check keyed on DPE_DATA silently saw an
+  // empty array and never fired, so free members (exactly who this pass
+  // is trying to activate) got no in-app confirmation of their own first
+  // real activity, ever. hasMeaningfulActivity() below reads the
+  // `studied` map directly (shared between questions and scenarios --
+  // see progressTableFor()) plus AI DPE sessions, none of which require
+  // DPE_DATA to be populated.
+  // Same 8 values as the onboarding focus-area buttons (portal.html,
+  // [data-onboarding-focus]) -- display labels only, not a second source
+  // of truth for the option set itself.
+  var FOCUS_AREA_LABELS = {
+    airspace: 'Airspace', weather: 'Weather', aircraft_systems: 'Aircraft Systems',
+    regulations: 'Regulations', performance: 'Performance', weight_balance: 'Weight & Balance',
+    navigation: 'Navigation', adm: 'Aeronautical Decision-Making', not_sure: 'Not sure yet'
+  };
+  function hasMeaningfulActivity() {
+    return Object.keys(studied).some(function (id) { return studied[id]; }) || myAiDpeSessions.length > 0;
+  }
+  var activationClaimPromise = null;
+  function claimActivationCompletedOnce() {
+    if (!member || !hasMeaningfulActivity()) return Promise.resolve(false);
+    if (!activationClaimPromise) {
+      activationClaimPromise = apexSupabase.rpc('claim_activation_completed', { p_profile_id: member.id })
+        .then(function (res) { return !res.error && res.data === true; })
+        .catch(function () { return false; })
+        .then(function (won) {
+          if (!won) return false;
+          if (window.apexTrack) {
+            apexTrack('first_action_completed', { profile_id: member.id, training_stage: member.trainingStage || null });
+            apexTrack('activation_completed', { profile_id: member.id, training_stage: member.trainingStage || null });
+          }
+          showFirstActivationCelebration();
+          return true;
+        });
+    }
+    return activationClaimPromise;
+  }
+
+  // Plain, professional confirmation -- per the brief, explicitly not a
+  // gamified reward animation. Readiness % is only shown for unlocked
+  // members: computeReadiness() is entirely a function of DPE_DATA (the
+  // full paywalled question bank), which is empty for free members, so
+  // it would always read 0% regardless of real activity -- showing that
+  // to someone who just did real work would read as broken, not
+  // encouraging. Questions Completed (from `studied` directly) and
+  // Primary Focus (from onboarding) are accurate for every member.
+  function showFirstActivationCelebration() {
+    var card = document.getElementById('firstActivationCard');
+    if (!card) return;
+    var statsEl = document.getElementById('firstActivationStats');
+    var completedCount = Object.keys(studied).filter(function (id) { return studied[id]; }).length;
+    var stats = [];
+    if (member.checkridePrepUnlocked) {
+      stats.push({ label: 'Readiness', value: computeReadiness() + '%' });
+    }
+    stats.push({ label: 'Questions Completed', value: completedCount });
+    if (member.primaryFocusArea) {
+      stats.push({ label: 'Primary Focus', value: FOCUS_AREA_LABELS[member.primaryFocusArea] || member.primaryFocusArea });
+    }
+    if (statsEl) {
+      statsEl.innerHTML = stats.map(function (s) {
+        return '<div class="portal-card portal-stat"><div class="portal-stat__value">' + s.value + '</div><div class="portal-stat__label">' + s.label + '</div></div>';
+      }).join('');
+    }
+    card.hidden = false;
+    var dismissBtn = document.getElementById('firstActivationDismiss');
+    var continueBtn = document.getElementById('firstActivationContinueBtn');
+    if (dismissBtn) dismissBtn.onclick = function () { card.hidden = true; };
+    if (continueBtn) continueBtn.onclick = function () {
+      card.hidden = true;
+      var plan = computeTrainingPlan();
+      var nextTask = plan.tasks.filter(function (t) { return !t.done; })[0];
+      if (nextTask) nextTask.go(); else showSection('dashboard');
+    };
   }
 
   function checkLifecycleMilestones() {
@@ -4448,8 +4556,10 @@
     // can no longer cause a repeat fire.
     logEventOnce('first_login');
     claimFirstPortalLoginOnce();
+    maybeShowWelcomeOnboarding();
+    claimActivationCompletedOnce();
 
-    if (DPE_DATA.some(function (d) { return studied[d.id]; })) {
+    if (hasMeaningfulActivity()) {
       var wasNew = !loggedEventTypes['first_question_completed'];
       logEventOnce('first_question_completed');
       if (wasNew) {
@@ -4517,6 +4627,7 @@
       btn.addEventListener('click', function () {
         var value = btn.dataset.value;
         apexSupabase.from('profiles').update({ primary_focus_area: value }).eq('id', member.id);
+        member.primaryFocusArea = value;
         if (window.apexTrack) apexTrack('onboarding_focus_area_saved', { primary_focus_area: value });
         step2.hidden = true;
         step3.hidden = false;
@@ -4526,6 +4637,15 @@
         var labelEl = document.getElementById('welcomeOnboardingFirstTaskLabel');
         if (labelEl) labelEl.textContent = firstTask ? firstTask.label : 'Explore your dashboard';
         var goFn = firstTask ? firstTask.go : function () { showSection('dashboard'); };
+
+        // onboarding_completed fires here, not after the training-stage
+        // step -- this is the point both answers actually exist. Distinct
+        // from onboarding_first_training_started just below: completing
+        // the two questions is a funnel step, not activation (Phase 10 --
+        // activation is real training activity, never onboarding
+        // completion or a click alone).
+        if (window.apexTrack) apexTrack('onboarding_completed', { training_stage: member.trainingStage || null, primary_focus_area: value });
+        if (window.apexTrack) apexTrack('first_action_presented', { recommended_action: firstTask ? firstTask.label : null, training_stage: member.trainingStage || null });
 
         var startFirstTask = function () {
           card.hidden = true;

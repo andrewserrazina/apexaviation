@@ -74,9 +74,16 @@
     'checkride_prep_upgrade_deeplink_viewed', 'checkride_prep_upgrade_modal_opened',
     // Deep-linked content matching (site/portal-stable.js)
     'content_deeplink_topic_matched',
-    // Portal activation + onboarding (site/portal-stable.js)
+    // Portal activation + onboarding (site/portal-stable.js). onboarding_
+    // viewed/completed and first_action_presented/completed +
+    // activation_completed were added in the activation-optimization
+    // pass -- onboarding_training_goal_saved/onboarding_focus_area_saved/
+    // onboarding_first_training_started already covered training_stage_
+    // selected/focus_area_selected/first_action_started, so those weren't
+    // duplicated under new names (see ANALYTICS_EVENT_DICTIONARY.md).
     'portal_first_login', 'first_lesson_started', 'first_lesson_completed',
-    'onboarding_training_goal_saved', 'onboarding_focus_area_saved', 'onboarding_first_training_started',
+    'onboarding_viewed', 'onboarding_training_goal_saved', 'onboarding_focus_area_saved', 'onboarding_completed',
+    'onboarding_first_training_started', 'first_action_presented', 'first_action_completed', 'activation_completed',
     // Free/paid conversion widgets (site/portal-stable.js)
     'upgrade_prompt_viewed', 'upgrade_prompt_clicked',
     // New Member Activation sequence -- real trigger in
