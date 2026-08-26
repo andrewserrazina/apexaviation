@@ -740,6 +740,17 @@
         savedLeadEmail = email;
         saveLead(res.data.user.id);
         if (window.apexTrack) apexTrack('readiness_signup_completed', { mode: 'login' });
+        // Identity stitching: this session is authenticated as this
+        // profile RIGHT NOW, on the same origin as the anon_id that's
+        // been following this visitor through the whole assessment --
+        // link them durably (supabase-portal-schema-v85.sql) rather than
+        // relying only on the portal picking it up later, since a member
+        // who just wants their results may never open portal.html this
+        // session at all.
+        if (window.apexGetAnonId && window.apexSupabase) {
+          var loginAnon = window.apexGetAnonId();
+          if (loginAnon) window.apexSupabase.rpc('link_analytics_identity', { p_anon_id: loginAnon }).catch(function () {});
+        }
         renderFullResults();
       });
     }
@@ -779,8 +790,23 @@
       if (window.apexTrack) apexTrack('readiness_signup_started', { mode: 'signup' });
       window.apexSupabase.functions.invoke('create-free-account', {
         body: {
-          name: name, email: email, dest: 'dashboard', checkride_timing: results.timing,
+          // dest: 'checkride-prep' (not 'dashboard') -- portal-reset-
+          // password.html special-cases this one value to land the new
+          // member on the real, already-tracked upgrade-modal deep link
+          // (?upgrade=checkride-prep, enforceUpgradeDeepLink() in
+          // portal-stable.js) instead of a bare #checkride-prep hash.
+          // This is the actual fix for readiness_checkride_prep_clicked
+          // reading 0: that event only ever fires from THIS page's own
+          // results CTA (raCheckridePrepCta below), which a brand-new
+          // signup never sees -- account creation here always lands them
+          // on renderSignupPending() (check-your-email), not
+          // renderFullResults(). The CTA click itself genuinely never
+          // happened for this path; this gives that population a real,
+          // already-instrumented equivalent moment once they do get into
+          // the portal, rather than fabricating a click that didn't occur.
+          name: name, email: email, dest: 'checkride-prep', checkride_timing: results.timing,
           utm_first: window.apexGetFirstTouchUtm ? apexGetFirstTouchUtm() : undefined,
+          first_touch_landing: window.apexGetFirstTouchLanding ? apexGetFirstTouchLanding() : undefined,
           ref: window.apexGetFirstTouchRef ? apexGetFirstTouchRef() : undefined,
         }
       }).then(function (res) {
@@ -805,7 +831,18 @@
           });
           return;
         }
-        if (window.apexTrack) apexTrack('readiness_signup_completed', { mode: 'signup' });
+        if (window.apexTrack) {
+          apexTrack('readiness_signup_completed', { mode: 'signup' });
+          // Funnel-coherence fix: readiness_signup_completed (mode:
+          // 'signup') IS a real new Apex account -- create-free-account
+          // just succeeded -- but this page never told the Executive
+          // funnel's registration_completed about it, which is why that
+          // funnel undercounted real signups relative to this one for
+          // the same date range. Only fired for mode:'signup' (a new
+          // account); mode:'login' is an existing member re-authenticating,
+          // not a registration.
+          apexTrack('registration_completed', { product: 'checkride_prep', source: 'readiness_assessment' });
+        }
         renderSignupPending();
       });
     }

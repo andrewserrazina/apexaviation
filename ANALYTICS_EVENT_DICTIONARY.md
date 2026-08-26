@@ -120,12 +120,15 @@ addition to* those automatic ones.
 ### `readiness_signup_started` / `readiness_signup_completed`
 **Trigger:** The post-score email-gate form is opened / submitted successfully.
 **Properties:** `mode` (`login` / `signup`).
+**Naming note (funnel-coherence pass):** despite the name, this does NOT always mean a new Apex account was created. `mode: 'signup'` does — `create-free-account` just succeeded — but `mode: 'login'` is an EXISTING member re-authenticating to retake the assessment, not a registration. The Marketing & Funnel dashboard's Readiness Assessment Funnel labels these separately ("Account Created" = `mode:'signup'` only; "Gate Login Completed" = `mode:'login'`, shown as its own stat) rather than combining them under one misleading "Signup Completed" total — see `get_readiness_funnel_stats()`, v85. The raw event name and its `mode` property are unchanged; only the dashboard label was corrected.
+**registration_completed bridge (funnel-coherence pass):** `mode:'signup'` now ALSO fires `registration_completed` immediately after, so a real new account created via the Readiness Assessment counts in the Executive Funnel's Registration Completed step too — before this fix, these two funnels disagreed on total registrations for the same date range because this page's signups were invisible to the Executive Funnel entirely.
 **Expected frequency:** ~1 each per real gate interaction.
 
 ### `readiness_checkride_prep_clicked`
-**Trigger:** The "Unlock Checkride Prep" CTA is clicked from the results screen.
+**Trigger:** The "Unlock Checkride Prep" CTA is clicked from the results screen (`renderFullResults()`).
 **Properties:** `score`, `readiness_band`.
-**Expected frequency:** ~1 per real click-through; this is the event the Readiness → Checkride Prep purchase-conversion KPI is built on (see `get_readiness_funnel_stats()`, v83).
+**Coverage gap found and fixed (funnel-coherence pass):** `renderFullResults()` — and therefore this event — is only ever reached via the LOGIN path (an existing member re-authenticating in `handleGateLogin()`). The SIGNUP path (`handleGateSignup()`, a brand-new visitor) calls `renderSignupPending()` instead ("check your email") and never shows this CTA at all. Since new signups are the dominant path for a cold lead-magnet funnel, this event reading 0 was **real user behavior, not a tracking failure** — B and D from the original audit combined: the CTA both exists-and-works for the login path, and is architecturally unreachable for the signup path. Fixed by routing new signups' post-password-set landing through the real, already-instrumented `?upgrade=checkride-prep` deep link instead of a bare, untracked hash (`readiness-assessment.html`'s `dest: 'checkride-prep'`, `portal-reset-password.html`'s special case for that value) rather than fabricating a click that never happened. `get_readiness_funnel_stats()` (v85) now counts EITHER this event OR `checkride_prep_upgrade_modal_opened` (the new-signup path's real equivalent, once identity resolves through `analytics_identity_map`) as "reached the Checkride Prep CTA."
+**Expected frequency:** ~1 per real click-through (login path) or real upgrade-modal open (signup path, post-fix). This is the event the Readiness → Checkride Prep purchase-conversion KPI is built on.
 
 ### `portal_activation_cta_viewed` / `portal_activation_cta_clicked`
 **Trigger:** The "your class is booked, activate your account" banner is shown / clicked on `portal-login.html`, for a Ground School purchaser who hasn't yet created a portal account.
@@ -146,14 +149,34 @@ addition to* those automatic ones.
 **Expected frequency:** Exactly 1 per profile, for the lifetime of that profile. **This was the event confirmed firing ~11.5x/user before this fix** — the old implementation decided "is this the first login" from an in-memory flag seeded by a non-atomic SELECT-then-INSERT against `portal_events`, which two tabs/devices for the same profile could both pass before either INSERT landed. If this ever again shows meaningfully more than 1 event per profile going forward, that's a real regression, not measurement noise.
 
 ### `first_lesson_started` / `first_lesson_completed`
-**Trigger:** The AI DPE Practice section is opened for the first time in a session / a member's first DPE question is marked studied and its confirmation email sends.
+**Trigger:** The AI DPE Practice section is opened for the first time in a session / a member's first DPE question or scenario is marked studied and its confirmation email sends.
 **Properties:** `profile_id`, `feature` (`ai_dpe_practice`, `first_lesson_started` only).
-**Expected frequency:** `first_lesson_completed` ≤1 per profile ever (guarded by `loggedEventTypes['first_question_completed']`, a `portal_events`-seeded flag — same category of guard `portal_first_login` used to rely on, currently believed reliable for this lower-stakes event but not migrated to the atomic-claim pattern in this pass). `first_lesson_started` is a per-session interest signal, not a lifetime-once milestone, so it can repeat.
+**Expected frequency:** `first_lesson_completed` ≤1 per profile ever (guarded by `loggedEventTypes['first_question_completed']`, a `portal_events`-seeded flag). **Activation-optimization pass fix:** this used to be gated on `DPE_DATA.some(d => studied[d.id])` — and `DPE_DATA` (the full question bank) is only ever populated for `checkride_prep_unlocked` members, so a FREE member completing the free daily question never satisfied this check at all, even though the row was really written. Now reads `studied` directly (`hasMeaningfulActivity()`, `site/portal-stable.js`), so it fires correctly for free and paid members alike. `first_lesson_started` is a per-session interest signal, not a lifetime-once milestone, so it can repeat.
+
+### `onboarding_viewed`
+**Trigger:** The welcome-onboarding card (`showWelcomeOnboarding()`) is actually shown. **New in the activation-optimization pass.** Fires whenever `member.trainingStage` is still unset on a portal load — no longer tied to the one-shot `portal_first_login` claim (see below).
+**Properties:** `profile_id`.
+**Expected frequency:** Can repeat across sessions for a member who hasn't completed onboarding yet (by design — this is the fix for the root cause below), then stops forever once `training_stage` is set.
 
 ### `onboarding_training_goal_saved` / `onboarding_focus_area_saved` / `onboarding_first_training_started`
-**Trigger:** Each step of the new-member welcome-onboarding wizard (`showWelcomeOnboarding()`) is completed. Only ever shown once per profile now that it's gated behind the same atomic `portal_first_login` claim.
+**Trigger:** Each step of the new-member welcome-onboarding wizard is completed — training stage picked / focus area picked / "Start Training" clicked on the recommended first task. These three already covered `training_stage_selected`/`focus_area_selected`/`first_action_started` from the activation-optimization brief, so no duplicate events were added under those names.
 **Properties:** `training_stage` / `primary_focus_area` / `task`.
-**Expected frequency:** ≤1 each per profile.
+**Expected frequency:** ≤1 each per profile, **now genuinely enforced by data (training_stage/primary_focus_area being non-null), not by a one-shot claim** — this is the root-cause fix. Previously, `showWelcomeOnboarding()` was shown only inside `claimFirstPortalLoginOnce()`'s one-time-ever branch, so a member who dismissed the card or closed the tab before finishing it lost any future chance to complete it, which is the direct explanation for `training_stage`/`primary_focus_area` reading `not_set` for most of the current signup cohort. The onboarding card now reappears on every login until these fields are actually set (`onboarding_viewed`/`maybeShowWelcomeOnboarding()`, `site/portal-stable.js`).
+
+### `onboarding_completed`
+**Trigger:** Both `training_stage` and `primary_focus_area` are known (fires the moment the focus-area step is answered, immediately before the first-action recommendation is shown). **New in the activation-optimization pass.**
+**Properties:** `training_stage`, `primary_focus_area`.
+**Expected frequency:** ≤1 per profile — a funnel step, not activation itself (see `activation_completed` below; Phase 10 of the brief is explicit that finishing onboarding must never be conflated with real training activity).
+
+### `first_action_presented`
+**Trigger:** The onboarding wizard's "First Mission" recommendation is computed and shown (same `computeTrainingPlan()` call `onboarding_first_training_started` and the dashboard's Training Plan card both already use — no second recommendation engine). **New in the activation-optimization pass.**
+**Properties:** `recommended_action` (the task's label), `training_stage`.
+**Expected frequency:** ≤1 per profile.
+
+### `first_action_completed` / `activation_completed`
+**Trigger:** The first time `claim_activation_completed()` (atomic, same single-conditional-UPDATE pattern as `claim_first_portal_login()` — see `supabase-portal-schema-v84.sql`) is won for a profile, checked via `hasMeaningfulActivity()` (any DPE question/scenario in `studied`, or any AI DPE session — deliberately NOT `DPE_DATA`-gated, so this fires correctly for free members). Both event names fire together from the same claim; kept as two names because the brief asked for both (`first_action_completed` for the onboarding funnel, `activation_completed` for the activation KPI itself) rather than because they measure different things. **New in the activation-optimization pass.**
+**Properties:** `profile_id`, `training_stage`.
+**Expected frequency:** Exactly 1 per profile, for the lifetime of that profile — same guarantee as `portal_first_login`, via the same atomic-claim mechanism. Also drives the in-app "First Training Session Complete" confirmation card (`showFirstActivationCelebration()`).
 
 ### `upgrade_prompt_viewed` / `upgrade_prompt_clicked`
 **Trigger:** A locked-widget upgrade prompt scrolls into view / is clicked anywhere in the portal.

@@ -74,9 +74,16 @@
     'checkride_prep_upgrade_deeplink_viewed', 'checkride_prep_upgrade_modal_opened',
     // Deep-linked content matching (site/portal-stable.js)
     'content_deeplink_topic_matched',
-    // Portal activation + onboarding (site/portal-stable.js)
+    // Portal activation + onboarding (site/portal-stable.js). onboarding_
+    // viewed/completed and first_action_presented/completed +
+    // activation_completed were added in the activation-optimization
+    // pass -- onboarding_training_goal_saved/onboarding_focus_area_saved/
+    // onboarding_first_training_started already covered training_stage_
+    // selected/focus_area_selected/first_action_started, so those weren't
+    // duplicated under new names (see ANALYTICS_EVENT_DICTIONARY.md).
     'portal_first_login', 'first_lesson_started', 'first_lesson_completed',
-    'onboarding_training_goal_saved', 'onboarding_focus_area_saved', 'onboarding_first_training_started',
+    'onboarding_viewed', 'onboarding_training_goal_saved', 'onboarding_focus_area_saved', 'onboarding_completed',
+    'onboarding_first_training_started', 'first_action_presented', 'first_action_completed', 'activation_completed',
     // Free/paid conversion widgets (site/portal-stable.js)
     'upgrade_prompt_viewed', 'upgrade_prompt_clicked',
     // New Member Activation sequence -- real trigger in
@@ -88,13 +95,47 @@
     'activation_email_1_clicked', 'activation_email_2_clicked', 'activation_email_3_clicked', 'activation_email_4_clicked'
   ];
 
+  // readiness-assessment.html/checkride-prep.html/apex-advantage.html etc.
+  // are canonically served from apexaviationtx.com; the member portal
+  // (portal.html/portal-login.html) is on advantage.apexaviationtx.com --
+  // a DIFFERENT origin as far as localStorage is concerned. An anon_id
+  // written on one was never readable on the other, so every visitor
+  // whose journey crossed that boundary (readiness assessment -> signup
+  // -> portal is the common case) silently got a brand-new, unrelated
+  // anon_id the moment they landed on the portal subdomain -- funnel RPCs
+  // saw two disconnected anonymous visitors instead of one real person.
+  // A cookie scoped to the shared parent domain (.apexaviationtx.com) is
+  // visible from both; localStorage is kept only as a same-origin cache
+  // (avoids a cookie round-trip on repeat reads) and a fallback if
+  // cookies are ever blocked.
+  function cookieDomain() {
+    return /(^|\.)apexaviationtx\.com$/.test(location.hostname) ? '.apexaviationtx.com' : null;
+  }
+  function getCookie(name) {
+    try {
+      var m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+      return m ? decodeURIComponent(m[1]) : null;
+    } catch (e) { return null; }
+  }
+  function setCookie(name, value, days) {
+    try {
+      var domain = cookieDomain();
+      var expires = new Date(Date.now() + days * 86400000).toUTCString();
+      document.cookie = name + '=' + encodeURIComponent(value) + ';expires=' + expires + ';path=/' + (domain ? ';domain=' + domain : '') + ';SameSite=Lax';
+    } catch (e) { /* cookie write failed -- localStorage/in-memory fallback below still works for this page load */ }
+  }
   function anonId() {
     try {
-      var id = localStorage.getItem('apex_anon_id');
+      // Cookie first (cross-subdomain source of truth); localStorage as a
+      // same-origin cache AND as the migration path for a visitor whose
+      // only existing anon_id predates this fix (promotes it to a cookie
+      // instead of silently minting a new, unrelated id for them).
+      var id = getCookie('apex_anon_id') || localStorage.getItem('apex_anon_id');
       if (!id) {
         id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2));
-        localStorage.setItem('apex_anon_id', id);
       }
+      localStorage.setItem('apex_anon_id', id);
+      setCookie('apex_anon_id', id, 395); // ~13 months -- matches GA4's own default _ga cookie lifetime convention
       return id;
     } catch (e) { return null; }
   }
@@ -329,4 +370,5 @@
   window.apexGetFirstTouchRef = getFirstTouchRef;
   window.apexGetFirstTouchLanding = getFirstTouchLanding;
   window.apexSyncLastTouchIfFresh = syncLastTouchIfFresh;
+  window.apexGetAnonId = anonId;
 })();

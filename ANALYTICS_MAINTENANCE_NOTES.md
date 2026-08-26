@@ -6,6 +6,73 @@ pass (GA4 purchase dedupe, `portal_first_login` fix, attribution
 persistence, Marketing & Funnel dashboard — see
 `portal/supabase-portal-schema-v83.sql`).
 
+## Identity stitching (funnel-coherence pass, v85)
+
+**Root cause found:** `readiness-assessment.html` and the other marketing
+pages are served from `apexaviationtx.com`; the portal
+(`portal.html`/`portal-login.html`) is on `advantage.apexaviationtx.com`
+— a different origin as far as `localStorage` is concerned. `anonId()`
+(`site/analytics-events.js`) used to live exclusively in `localStorage`,
+so an anon_id picked up during the readiness assessment was invisible
+the moment the same visitor reached the portal — they silently became a
+second, disconnected anonymous identity, which is why funnel steps that
+should have been the same person (e.g. Readiness `Signup Completed` vs.
+Executive `Registration Completed`) could disagree even before accounting
+for the separate event-naming issue documented in the dictionary.
+
+**Fix, in two parts:**
+1. `anonId()` now persists via a cookie scoped to the shared
+   `.apexaviationtx.com` parent domain (`cookieDomain()`,
+   `site/analytics-events.js`), readable from both the marketing site and
+   the portal. `localStorage` is kept only as a same-origin cache and a
+   migration path (an existing localStorage-only anon_id gets promoted to
+   a cookie on next read rather than being replaced).
+2. `analytics_identity_map` (`anon_id text primary key, profile_id uuid,
+   linked_at`) + `link_analytics_identity()` (`supabase-portal-schema-
+   v85.sql`) durably record the first time each anon_id is seen from an
+   authenticated session. Called from `site/portal-stable.js`'s
+   `checkLifecycleMilestones()` (every authenticated portal load) and
+   from `readiness-assessment.html`'s login-gate handler (the one
+   same-origin, immediately-authenticated case on that page). Every
+   funnel RPC resolves identity via `resolve_analytics_identity(anon_id,
+   profile_id)`, which prefers a resolved profile_id (direct or via the
+   map) over the raw anon_id — the reverse of the old plain
+   `coalesce(anon_id, profile_id::text)`, which (because anon_id is
+   written on every event, authenticated or not) meant anon_id always won
+   and profile_id was never actually reachable through it.
+
+**What this does NOT fix:** any anon_id that was already disconnected
+across the origin boundary *before* this shipped stays disconnected —
+that history is genuinely unrecoverable and was not fabricated or
+backfilled. Only journeys that happen after this ships get correctly
+stitched end-to-end.
+
+## Funnel RPC comparison table (Part 1 of the coherence audit)
+
+Every RPC uses `resolve_analytics_identity(anon_id, profile_id)` as of
+v85 (see above) and the same cohort model unless noted: **the cohort is
+whoever hit the funnel's first step within the selected date range; every
+later step counts whether that same identity EVER reached it, with no
+upper bound on when** ("open funnel" / cohort model, not same-period).
+This is deliberate for acquisition/activation funnels (a signup on day 29
+of a 30-day window can still convert on day 35) and is called out
+explicitly in the dashboard's own section subtitles. `get_marketing_
+revenue_summary()` is the one exception — it's a same-period transaction
+total, not a cohort, since "revenue in the last 30 days" should mean
+purchases that happened in the last 30 days, not purchases eventually
+made by anyone who merely visited in the last 30 days.
+
+| RPC | First-step event (cohort) | Identity | Same-period or cohort? | Counts events or unique users? |
+|---|---|---|---|---|
+| `get_marketing_executive_funnel` | `landing_page_viewed` | resolved | Cohort | Unique (distinct identity) |
+| `get_readiness_funnel_stats` | `readiness_assessment_viewed` | resolved | Cohort | Unique |
+| `get_checkride_prep_funnel_stats` | `landing_page_viewed` (product=checkride_prep) | resolved | Cohort | Unique |
+| `get_ground_school_funnel_stats` | `ground_school_schedule_viewed` | resolved | Cohort | Unique |
+| `get_portal_activation_funnel` | `registration_completed` (profile_id only — anonymous visitors have no onboarding/activation state) | `profile_id` directly, no anon_id | Cohort | Unique |
+| `get_utm_campaign_performance` / `get_channel_performance` | Any event with a recorded first touch | resolved, credited to each identity's EARLIEST touch in range | Cohort (per-user first touch), events scoped to range | Unique, `revenue` summed |
+| `get_marketing_revenue_summary` | n/a — direct aggregate | n/a | **Same-period** (transaction date, not cohort) | Revenue summed, purchases counted |
+| `get_analytics_data_quality` | n/a — checks + re-runs other RPCs over a fixed 90-day window for invariant checks | resolved | Fixed 90-day window, independent of the dashboard's selected range | Mixed |
+
 ## Orphaned pages
 
 Four pages carry zero analytics of any kind (no GA4, no Meta, no Clarity,

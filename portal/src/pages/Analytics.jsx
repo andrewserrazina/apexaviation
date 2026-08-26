@@ -30,6 +30,15 @@ function BarChart({ data, valueKey, labelKey, color = 'var(--gold)', unit = '' }
 function fmtKpi(value, suffix) {
   return value === null || value === undefined ? 'N/A' : `${value}${suffix}`
 }
+// Presentation only -- the underlying column stays a real NULL either
+// way (Phase 12 of the activation-optimization brief: never rewrite
+// historical rows just to make the admin UI read nicer). "not_set" here
+// is coalesce(training_stage, 'not_set')/coalesce(primary_focus_area,
+// 'not_set') from get_activation_email_kpis() (v72/v81), not a value
+// anyone actually chose.
+function fmtSegmentLabel(value) {
+  return value === 'not_set' ? 'Not collected' : value
+}
 function fmtMinutes(minutes) {
   if (minutes === null || minutes === undefined) return 'N/A'
   if (minutes < 60) return `${Math.round(minutes)}m`
@@ -483,7 +492,7 @@ export default function Analytics() {
                     <tbody>
                       {activationKpis.activation_by_training_stage.map(row => (
                         <tr key={row.training_stage}>
-                          <td>{row.training_stage}</td>
+                          <td>{fmtSegmentLabel(row.training_stage)}</td>
                           <td>{row.total}</td>
                           <td>{fmtKpi(row.activation_rate_pct, '%')}</td>
                         </tr>
@@ -500,7 +509,7 @@ export default function Analytics() {
                     <tbody>
                       {activationKpis.activation_by_focus_area.map(row => (
                         <tr key={row.focus_area}>
-                          <td>{row.focus_area}</td>
+                          <td>{fmtSegmentLabel(row.focus_area)}</td>
                           <td>{row.total}</td>
                           <td>{fmtKpi(row.activation_rate_pct, '%')}</td>
                         </tr>
