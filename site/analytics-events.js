@@ -11,33 +11,74 @@
 // without a GA4/Meta reporting-API integration. Requires portal-supabase.js
 // to be loaded first for the DB write; gtag/fbq firing works without it.
 //
-// EVENT_ALLOWLIST mirrors the funnel event list defined for this project.
-// Not every event is wired up yet -- only the ones with a real trigger in
-// the product today (see the implementation summary for what's deferred:
-// readiness_assessment_*, walkthrough_video_*, onboarding_completed,
-// quiz_completed, refund_requested -- those features don't exist yet).
+// EVENT_ALLOWLIST documents every event name apexTrack() is actually
+// called with somewhere in this codebase -- reconciled against a full
+// grep of every apexTrack( call site (site/*.html, portal-stable.js) as
+// of the analytics reliability pass, not carried forward from an older
+// list. An unlisted name still fires (this is a console.warn, not a hard
+// block -- see track() below), so this array is a data-quality/developer
+// aid, not an enforcement gate: its only job is to stay an accurate map
+// of what's real.
+//
+// Previously stale in two directions: this comment used to claim
+// readiness_assessment_started/_completed had no real trigger yet ("those
+// features don't exist yet") when readiness-assessment.html has fired
+// both since the Readiness Assessment shipped; and the array itself was
+// missing twelve event names already live in production (the whole
+// readiness sub-funnel past _started/_completed, the Ground School
+// schedule/class-select/reserve-form steps, the portal-activation-CTA
+// pair, and content_deeplink_topic_matched). Also removed: six names with
+// no apexTrack call anywhere in the repo (walkthrough_video_started/
+// _completed, onboarding_completed, quiz_completed, refund_requested,
+// ai_dpe_started, ground_school_calendar_viewed, ground_school_class_
+// viewed, ground_school_full_pack_viewed, checkride_prep_viewed) --
+// aspirational names for features that were never built this way, not
+// real gaps.
+//
+// Scope: this list is specifically the custom funnel events apexTrack()
+// sends to GA4 + Meta + analytics_events. It deliberately does NOT
+// include: Meta's own standard events (apexTrackStandard() -- ViewContent,
+// InitiateCheckout, Lead, CompleteRegistration -- go to Meta only, by
+// design, see trackStandard() below); legacy page-specific gtag() calls
+// that bypass apexTrack entirely (checkride_prep_page_view/_cta_click/
+// _checkout_start/_secondary_cta_click, dpe_questions_page_view/
+// _cta_click, lead_gen_download_page_view, ground_school_cta_click, the
+// GA4-standard sign_up event -- all in site/checkride-prep.html,
+// site/dpe-questions.html, site/checkride-guide-download.html,
+// site/apex-advantage-private-pilot.html, site/portal-login.html); or
+// GA4's own automatic events (page_view, scroll, session_start) or
+// Enhanced Ecommerce purchase, none of which go through apexTrack.
+// checkout_abandoned/seven_day_active_user/activation_email_N_sent are
+// logged server-side directly to analytics_events (send-lifecycle-emails,
+// create-free-account) with no client-side apexTrack call at all, so they
+// stay out of this client-side list too -- see docs/
+// ANALYTICS_EVENT_DICTIONARY.md for the complete picture across all of
+// the above, client and server.
 (function () {
   var EVENT_ALLOWLIST = [
-    'landing_page_viewed', 'pricing_viewed', 'readiness_assessment_started', 'readiness_assessment_completed',
-    'registration_started', 'registration_completed', 'product_preview_viewed',
-    'walkthrough_video_started', 'walkthrough_video_completed', 'checkout_started', 'checkout_abandoned',
-    'purchase_completed', 'portal_first_login', 'onboarding_completed', 'first_lesson_started',
-    'first_lesson_completed', 'quiz_completed', 'seven_day_active_user', 'upgrade_prompt_viewed',
-    'upgrade_prompt_clicked', 'refund_requested',
-    // Acquisition/conversion-system additions (see the Recommended Next
-    // Step dashboard card + conversion-state work) -- real triggers only,
-    // wired up alongside this allowlist addition, not speculative.
-    'ai_dpe_started', 'ground_school_calendar_viewed', 'ground_school_class_viewed',
-    'ground_school_class_purchased', 'ground_school_full_pack_viewed', 'checkride_prep_viewed',
-    // Checkride Prep retargeting campaign (Aug 2026 Early Access push) --
-    // real trigger in site/checkride-prep.html's CTA click handler.
+    // Marketing site / acquisition
+    'landing_page_viewed', 'pricing_viewed', 'registration_started', 'registration_completed',
+    'product_preview_viewed', 'checkout_started', 'purchase_completed',
     'early_access_cta_click',
+    // Ground School funnel
+    'ground_school_schedule_viewed', 'ground_school_class_selected', 'ground_school_reserve_form_opened',
+    'ground_school_class_purchased',
+    // Readiness Assessment funnel (site/readiness-assessment.html)
+    'readiness_assessment_viewed', 'readiness_assessment_started', 'readiness_question_answered',
+    'readiness_assessment_completed', 'readiness_score_viewed', 'readiness_signup_started',
+    'readiness_signup_completed', 'readiness_checkride_prep_clicked',
+    // Post-purchase activation (portal-login.html)
+    'portal_activation_cta_viewed', 'portal_activation_cta_clicked',
     // Member-upgrade deep link (?upgrade=checkride-prep) -- real triggers
     // in site/portal-stable.js's enforceUpgradeDeepLink().
     'checkride_prep_upgrade_deeplink_viewed', 'checkride_prep_upgrade_modal_opened',
-    // Retention Sprint Tier 3 onboarding redesign -- real triggers in
-    // site/portal-stable.js's showWelcomeOnboarding().
+    // Deep-linked content matching (site/portal-stable.js)
+    'content_deeplink_topic_matched',
+    // Portal activation + onboarding (site/portal-stable.js)
+    'portal_first_login', 'first_lesson_started', 'first_lesson_completed',
     'onboarding_training_goal_saved', 'onboarding_focus_area_saved', 'onboarding_first_training_started',
+    // Free/paid conversion widgets (site/portal-stable.js)
+    'upgrade_prompt_viewed', 'upgrade_prompt_clicked',
     // New Member Activation sequence -- real trigger in
     // site/portal-stable.js's activation-email click-tracking IIFE.
     // The _sent half of this funnel is logged server-side directly to
@@ -67,12 +108,25 @@
 
   var UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
 
-  // Captures utm_source/medium/campaign/content/term on every landing and
-  // remembers them in localStorage under two separate sets of keys:
+  // True only for the exact page load where a fresh utm_ param was seen
+  // in the URL -- distinguishes "this visit is a new tagged touch" from
+  // every other call to utmProps() that's just reading back whatever's
+  // already in localStorage from an earlier visit. syncLastTouchIfFresh()
+  // below uses this so an internal in-app navigation (portal section
+  // switch, plain link click with no tracking params) never gets
+  // mistaken for a new acquisition touch.
+  var freshUtmSeenThisLoad = false;
+
+  // Captures utm_source/medium/campaign/content/term (+ landing page +
+  // timestamp) on every landing and remembers them in localStorage under
+  // two separate sets of keys:
   //   apex_<utm_key>        -- latest touch, overwritten every time a new
   //                             UTM param shows up in the URL. Used for
   //                             "which campaign generated this purchase"
-  //                             (attached to checkout attempts).
+  //                             (attached to checkout attempts) and to
+  //                             keep profiles.last_touch_* current for
+  //                             members who return via a new tagged link
+  //                             after signing up.
   //   apex_<utm_key>_first  -- first touch, written once and never
   //                             overwritten again. Used for "which ad
   //                             generated this member" (attached to
@@ -85,16 +139,21 @@
     var out = {};
     try {
       var params = new URLSearchParams(window.location.search);
-      UTM_KEYS.forEach(function (k) {
-        if (params.has(k)) {
-          var val = params.get(k);
+      var sawFreshUtm = UTM_KEYS.some(function (k) { return params.has(k); });
+      if (sawFreshUtm) {
+        freshUtmSeenThisLoad = true;
+        UTM_KEYS.forEach(function (k) {
+          var val = params.get(k) || '';
           localStorage.setItem('apex_' + k, val);
-          if (!localStorage.getItem('apex_' + k + '_first')) {
-            localStorage.setItem('apex_' + k + '_first', val);
-          }
-        }
-      });
+          if (!localStorage.getItem('apex_' + k + '_first')) localStorage.setItem('apex_' + k + '_first', val);
+        });
+        localStorage.setItem('apex_landing_page', window.location.href);
+        localStorage.setItem('apex_last_touch_at', new Date().toISOString());
+        if (!localStorage.getItem('apex_landing_page_first')) localStorage.setItem('apex_landing_page_first', window.location.href);
+        if (!localStorage.getItem('apex_first_touch_at')) localStorage.setItem('apex_first_touch_at', new Date().toISOString());
+      }
       out.traffic_source = localStorage.getItem('apex_utm_source') || null;
+      out.traffic_medium = localStorage.getItem('apex_utm_medium') || null;
       out.campaign = localStorage.getItem('apex_utm_campaign') || null;
     } catch (e) { /* localStorage unavailable (private mode, etc.) -- fine, just omit */ }
     return out;
@@ -111,6 +170,32 @@
       });
     } catch (e) { /* localStorage unavailable -- omit */ }
     return out;
+  }
+
+  // If (and only if) THIS page load's URL carried a fresh utm_ param,
+  // push the current latest-touch snapshot to the signed-in member's
+  // profile (last_touch_* columns, supabase-portal-schema-v83.sql) so a
+  // member who returns via a new tagged link well after signup doesn't
+  // have that touch stranded in localStorage forever -- profiles.
+  // signup_utm_* stays frozen at first touch on purpose; this is the
+  // separate, updatable "most recent tagged visit" record. No-ops
+  // silently if the visitor isn't signed in yet (pre-signup UTM already
+  // rides along at signup time via getFirstTouchUtm(), below) or if
+  // apexSupabase isn't loaded on this page.
+  function syncLastTouchIfFresh() {
+    try {
+      if (!freshUtmSeenThisLoad || !window.apexSupabase) return;
+      window.apexSupabase.auth.getSession().then(function (res) {
+        var session = res && res.data && res.data.session;
+        if (!session) return;
+        var utm = getUtm();
+        window.apexSupabase.rpc('update_last_touch_attribution', {
+          p_source: utm.source, p_medium: utm.medium, p_campaign: utm.campaign,
+          p_content: utm.content, p_term: utm.term,
+          p_landing_page: localStorage.getItem('apex_landing_page') || window.location.href,
+        }).catch(function () { /* best-effort -- a failed attribution sync must never block the page */ });
+      }).catch(function () { /* no session -- fine, nothing to sync yet */ });
+    } catch (e) { /* localStorage/apexSupabase unavailable -- fine, just skip */ }
   }
 
   // First-touch UTM snapshot, for passing along to create-free-account /
@@ -156,6 +241,27 @@
   function getFirstTouchRef() {
     try { return localStorage.getItem('apex_ref_first') || null; } catch (e) { return null; }
   }
+
+  // First-touch landing page + timestamp, for create-free-account (see
+  // getFirstTouchUtm() above for the matching source/medium/campaign/
+  // content/term -- kept as a separate getter since it's new as of this
+  // release and profiles.signup_utm_* predates it).
+  function getFirstTouchLanding() {
+    try {
+      return {
+        landing_page: localStorage.getItem('apex_landing_page_first') || null,
+        at: localStorage.getItem('apex_first_touch_at') || null,
+      };
+    } catch (e) { return { landing_page: null, at: null }; }
+  }
+
+  // Runs unconditionally at script load (same reasoning as captureRef()
+  // above: a page that never happens to call apexTrack() this session --
+  // e.g. a member landing straight on a portal section with no funnel
+  // event firing yet -- must still capture a fresh utm_ param and sync it
+  // to the profile rather than losing it).
+  utmProps();
+  syncLastTouchIfFresh();
 
   // apexTrack() is called inline in the middle of real signup/checkout
   // handlers (see portal-login.html) -- an uncaught throw here (a stray
@@ -221,4 +327,6 @@
   window.apexGetUtm = getUtm;
   window.apexGetFirstTouchUtm = getFirstTouchUtm;
   window.apexGetFirstTouchRef = getFirstTouchRef;
+  window.apexGetFirstTouchLanding = getFirstTouchLanding;
+  window.apexSyncLastTouchIfFresh = syncLastTouchIfFresh;
 })();

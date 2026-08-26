@@ -18,6 +18,7 @@ const GroundSchedule = lazy(() => import('./pages/GroundSchedule'))
 const Documents = lazy(() => import('./pages/Documents'))
 const Aircraft = lazy(() => import('./pages/Aircraft'))
 const Analytics = lazy(() => import('./pages/Analytics'))
+const MarketingFunnel = lazy(() => import('./pages/MarketingFunnel'))
 const Profile = lazy(() => import('./pages/Profile'))
 const Attend = lazy(() => import('./pages/Attend'))
 const CRM = lazy(() => import('./pages/CRM'))
@@ -66,6 +67,7 @@ export default function App() {
               <Route path="/instructors" element={<ProtectedRoute><Instructors /></ProtectedRoute>} />
               <Route path="/aircraft"    element={<ProtectedRoute><Aircraft /></ProtectedRoute>} />
               <Route path="/analytics"   element={<ProtectedRoute adminOnly><Analytics /></ProtectedRoute>} />
+              <Route path="/marketing-funnel" element={<ProtectedRoute adminOnly><MarketingFunnel /></ProtectedRoute>} />
               <Route path="/profile"     element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/syllabi"     element={<ProtectedRoute><Syllabi /></ProtectedRoute>} />
               <Route path="/schedule"    element={<ProtectedRoute><Schedule /></ProtectedRoute>} />

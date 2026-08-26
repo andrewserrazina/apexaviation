@@ -149,6 +149,32 @@ function sanitizeUtm(utm: any): Record<string, string | null> {
   return out
 }
 
+// The "signup-and-unlock-*" purposes below create a brand-new profile as
+// part of a one-step checkout (no separate create-free-account call at
+// all), which meant every account created this way had signup_utm_*
+// permanently null -- first-touch attribution for anyone who signed up
+// straight into a purchase (arguably the highest-intent signups of all)
+// was silently dropped. Mirrors create-free-account/index.ts's own
+// signup_utm_*/first_touch_*/last_touch_* write, just reusable across
+// both branches below instead of duplicated inline.
+async function applySignupAttribution(supabase: any, profileId: string, utmFirst: any, firstTouchLanding: any) {
+  const safeUtm = sanitizeUtm(utmFirst)
+  const hasUtm = Object.values(safeUtm).some((v) => v !== null)
+  const landingPage = firstTouchLanding && typeof firstTouchLanding.landing_page === 'string' ? firstTouchLanding.landing_page.slice(0, 500) : null
+  const touchAt = firstTouchLanding && typeof firstTouchLanding.at === 'string' ? firstTouchLanding.at : null
+  if (!hasUtm && !landingPage) return
+  await supabase.from('profiles').update({
+    ...(hasUtm ? {
+      signup_utm_source: safeUtm.source, signup_utm_medium: safeUtm.medium, signup_utm_campaign: safeUtm.campaign,
+      signup_utm_content: safeUtm.content, signup_utm_term: safeUtm.term,
+      last_touch_source: safeUtm.source, last_touch_medium: safeUtm.medium, last_touch_campaign: safeUtm.campaign,
+      last_touch_content: safeUtm.content, last_touch_term: safeUtm.term,
+    } : {}),
+    ...(landingPage ? { first_touch_landing_page: landingPage, last_touch_landing_page: landingPage } : {}),
+    ...(touchAt ? { first_touch_at: touchAt, last_touch_at: touchAt } : {}),
+  }).eq('id', profileId)
+}
+
 // Logs every Checkout Session this function creates, regardless of
 // purpose -- the source of truth send-lifecycle-emails' abandoned-
 // checkout recovery job reads from. stripe-webhook stamps completed_at
@@ -310,7 +336,7 @@ serve(async (req) => {
     }
 
     if (purpose === 'signup-and-unlock-checkride-prep') {
-      const { name, email, dest, checkride_timing } = body
+      const { name, email, dest, checkride_timing, utm_first, first_touch_landing } = body
       if (!name || !email) return jsonError('Missing required fields: name, email', 400)
       const safeCheckrideTiming = CHECKRIDE_TIMINGS.includes(checkride_timing) ? checkride_timing : null
 
@@ -334,6 +360,7 @@ serve(async (req) => {
       if (safeCheckrideTiming) {
         await supabase.from('profiles').update({ checkride_timing: safeCheckrideTiming }).eq('id', newProfileId)
       }
+      await applySignupAttribution(supabase, newProfileId, utm_first, first_touch_landing)
 
       // Brand new profile, so this is always founding-or-launch ($29),
       // never standard -- get_checkride_prep_pricing()'s launch window
@@ -531,7 +558,7 @@ serve(async (req) => {
     }
 
     if (purpose === 'signup-and-unlock-ground-school-pack') {
-      const { name, email, dest } = body
+      const { name, email, dest, utm_first, first_touch_landing } = body
       if (!name || !email) return jsonError('Missing required fields: name, email', 400)
 
       const { data: existingProfile } = await supabase
@@ -551,6 +578,7 @@ serve(async (req) => {
       })
       if (createErr) return jsonError(String(createErr), 500)
       const newProfileId = created.user.id
+      await applySignupAttribution(supabase, newProfileId, utm_first, first_touch_landing)
 
       // Same "set your password" email pattern as
       // signup-and-unlock-checkride-prep -- the account is real and
@@ -640,7 +668,12 @@ serve(async (req) => {
           full_name: profile?.full_name || '',
           email: email || '',
         },
-        success_url: `${siteOrigin}/portal.html?mockoral=1#mock-oral`,
+        // session_id was missing here entirely until now -- with no
+        // Stripe session id on the success URL, the client had no way to
+        // dedupe this purchase's tracking on a refresh/bfcache restore,
+        // and no id to attach to the internal purchase_completed event
+        // for the marketing dashboard's revenue-by-product breakdown.
+        success_url: `${siteOrigin}/portal.html?mockoral=1&session_id={CHECKOUT_SESSION_ID}#mock-oral`,
         cancel_url: `${siteOrigin}/portal.html#mock-oral`,
       })
       await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'book-mock-oral', email, profileId, amountCents: MOCK_ORAL_PRICE_CENTS, utm: body.utm })

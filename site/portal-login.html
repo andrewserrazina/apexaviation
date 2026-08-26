@@ -585,7 +585,7 @@
       var entryIntent = (new URLSearchParams(window.location.search)).get('intent') || '';
 
       apexSupabase.functions.invoke('create-free-account', {
-        body: { name: name, email: email, dest: dest, checkride_timing: checkrideTiming || null, utm_first: window.apexGetFirstTouchUtm ? apexGetFirstTouchUtm() : undefined, ref: window.apexGetFirstTouchRef ? apexGetFirstTouchRef() : undefined, source: entrySource || undefined, intent: entryIntent || undefined }
+        body: { name: name, email: email, dest: dest, checkride_timing: checkrideTiming || null, utm_first: window.apexGetFirstTouchUtm ? apexGetFirstTouchUtm() : undefined, first_touch_landing: window.apexGetFirstTouchLanding ? apexGetFirstTouchLanding() : undefined, ref: window.apexGetFirstTouchRef ? apexGetFirstTouchRef() : undefined, source: entrySource || undefined, intent: entryIntent || undefined }
       }).then(function (res) {
         signupSubmit.disabled = false;
         signupSubmit.textContent = 'Create Free Account';
@@ -660,7 +660,7 @@
       var dest = (new URLSearchParams(window.location.search)).get('dest') || '';
 
       apexSupabase.functions.invoke('create-checkout-session', {
-        body: { purpose: 'signup-and-unlock-checkride-prep', name: name, email: email, dest: dest, origin: window.location.origin, checkride_timing: checkrideTiming || null, utm: window.apexGetUtm ? apexGetUtm() : undefined }
+        body: { purpose: 'signup-and-unlock-checkride-prep', name: name, email: email, dest: dest, origin: window.location.origin, checkride_timing: checkrideTiming || null, utm: window.apexGetUtm ? apexGetUtm() : undefined, utm_first: window.apexGetFirstTouchUtm ? apexGetFirstTouchUtm() : undefined, first_touch_landing: window.apexGetFirstTouchLanding ? apexGetFirstTouchLanding() : undefined }
       }).then(function (res) {
         if (res.error || !res.data || !res.data.url) {
           return extractInvokeError(res).then(function (msg) {
@@ -706,7 +706,7 @@
       var gsDest = (new URLSearchParams(window.location.search)).get('dest') || '';
 
       apexSupabase.functions.invoke('create-checkout-session', {
-        body: { purpose: 'signup-and-unlock-ground-school-pack', name: gsName, email: gsEmail, dest: gsDest, origin: window.location.origin, utm: window.apexGetUtm ? apexGetUtm() : undefined }
+        body: { purpose: 'signup-and-unlock-ground-school-pack', name: gsName, email: gsEmail, dest: gsDest, origin: window.location.origin, utm: window.apexGetUtm ? apexGetUtm() : undefined, utm_first: window.apexGetFirstTouchUtm ? apexGetFirstTouchUtm() : undefined, first_touch_landing: window.apexGetFirstTouchLanding ? apexGetFirstTouchLanding() : undefined }
       }).then(function (res) {
         if (res.error || !res.data || !res.data.url) {
           return extractInvokeError(res).then(function (msg) {

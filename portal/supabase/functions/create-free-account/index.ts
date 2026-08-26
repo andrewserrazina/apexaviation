@@ -79,7 +79,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    const { name, email, dest, checkride_timing, utm_first, ref, source, intent } = await req.json()
+    const { name, email, dest, checkride_timing, utm_first, first_touch_landing, ref, source, intent } = await req.json()
     if (!name || !email) {
       return new Response(JSON.stringify({ error: 'Missing required fields: name, email' }), {
         status: 400,
@@ -118,7 +118,16 @@ serve(async (req) => {
     // (admin-created instructors, etc.) also relies on.
     const safeUtm = sanitizeUtm(utm_first)
     const hasUtm = Object.values(safeUtm).some((v) => v !== null)
-    if (safeCheckrideTiming || hasUtm) {
+    // first_touch_landing_page/at are new alongside the existing
+    // signup_utm_* columns (v58) -- last_touch_* is seeded to the SAME
+    // values here (a brand-new signup's first touch and most-recent
+    // touch are, by definition, the same event) so those columns are
+    // never left null until a later tagged visit updates them via
+    // update_last_touch_attribution() (see analytics-events.js's
+    // syncLastTouchIfFresh(), supabase-portal-schema-v83.sql).
+    const landingPage = first_touch_landing && typeof first_touch_landing.landing_page === 'string' ? first_touch_landing.landing_page.slice(0, 500) : null
+    const touchAt = first_touch_landing && typeof first_touch_landing.at === 'string' ? first_touch_landing.at : null
+    if (safeCheckrideTiming || hasUtm || landingPage) {
       await supabase.from('profiles').update({
         ...(safeCheckrideTiming ? { checkride_timing: safeCheckrideTiming } : {}),
         ...(hasUtm ? {
@@ -127,7 +136,14 @@ serve(async (req) => {
           signup_utm_campaign: safeUtm.campaign,
           signup_utm_content: safeUtm.content,
           signup_utm_term: safeUtm.term,
+          last_touch_source: safeUtm.source,
+          last_touch_medium: safeUtm.medium,
+          last_touch_campaign: safeUtm.campaign,
+          last_touch_content: safeUtm.content,
+          last_touch_term: safeUtm.term,
         } : {}),
+        ...(landingPage ? { first_touch_landing_page: landingPage, last_touch_landing_page: landingPage } : {}),
+        ...(touchAt ? { first_touch_at: touchAt, last_touch_at: touchAt } : {}),
       }).eq('id', created.user.id)
     }
 
