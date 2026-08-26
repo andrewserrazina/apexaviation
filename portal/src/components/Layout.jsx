@@ -11,6 +11,7 @@ const navGroups = [
     items: [
       { to: '/dashboard', label: 'Dashboard', roles: ['admin', 'instructor', 'student'] },
       { to: '/analytics', label: 'Analytics',  roles: ['admin'] },
+      { to: '/marketing-funnel', label: 'Marketing & Funnel', roles: ['admin'] },
     ],
   },
   {

@@ -36,7 +36,7 @@
       // call above (a page refresh on ?unlocked=1 must not double-log).
       var funnelDedupeKey = sessionId ? 'apex_funnel_purchase_' + sessionId : null;
       if (window.apexTrack && (!funnelDedupeKey || !localStorage.getItem(funnelDedupeKey))) {
-        apexTrack('purchase_completed', { product: 'checkride_prep', price: value });
+        apexTrack('purchase_completed', { product: 'checkride_prep', price: value, session_id: sessionId || undefined });
         if (funnelDedupeKey) localStorage.setItem(funnelDedupeKey, '1');
       }
     }
@@ -71,7 +71,7 @@
     }
     var funnelDedupeKey = sessionId ? 'apex_funnel_membership_' + sessionId : null;
     if (window.apexTrack && (!funnelDedupeKey || !localStorage.getItem(funnelDedupeKey))) {
-      apexTrack('purchase_completed', { product: 'membership', tier: tier, price: isNaN(amountCents) ? 19 : amountCents / 100 });
+      apexTrack('purchase_completed', { product: 'membership', tier: tier, price: isNaN(amountCents) ? 19 : amountCents / 100, session_id: sessionId || undefined });
       if (funnelDedupeKey) localStorage.setItem(funnelDedupeKey, '1');
     }
   })();
@@ -98,7 +98,7 @@
     }
     var funnelDedupeKey = sessionId ? 'apex_funnel_groundschoolpack_' + sessionId : null;
     if (window.apexTrack && (!funnelDedupeKey || !localStorage.getItem(funnelDedupeKey))) {
-      apexTrack('purchase_completed', { product: 'ground_school_pack', price: value });
+      apexTrack('purchase_completed', { product: 'ground_school_pack', price: value, session_id: sessionId || undefined });
       if (funnelDedupeKey) localStorage.setItem(funnelDedupeKey, '1');
     }
   })();
@@ -1385,8 +1385,26 @@
   }
 
   /* ── Post-Stripe-redirect toasts ────────────────────────────── */
+  // GA4 ecommerce purchase de-dup: every gtag('event','purchase',...) call
+  // below now carries transaction_id (the real Stripe Checkout Session
+  // id, stable for a given sale) AND its own localStorage guard keyed on
+  // that same id -- previously only the adjacent Meta Pixel/apexTrack
+  // calls were deduped this way, so a refresh or bfcache restore of a
+  // ?unlocked=1/?registered=1/?mockoral=1/?groundschoolpack=1 URL could
+  // log the same sale's revenue to GA4 a second (or Nth) time. GA4 also
+  // de-dupes ecommerce events sharing a transaction_id server-side, so
+  // this is a belt-and-suspenders fix, not just the localStorage guard.
   var urlParams = new URLSearchParams(window.location.search);
+  function fireGa4Purchase(sessionId, dedupeKeyPrefix, payload) {
+    var dedupeKey = sessionId ? dedupeKeyPrefix + sessionId : null;
+    if (!window.gtag || (dedupeKey && localStorage.getItem(dedupeKey))) return;
+    payload.transaction_id = sessionId || undefined;
+    gtag('event', 'purchase', payload);
+    if (dedupeKey) localStorage.setItem(dedupeKey, '1');
+  }
+
   if (urlParams.get('unlocked') === '1') {
+    var cpSessionId = urlParams.get('session_id');
     authReady.then(function () {
       apexSupabase.from('profiles').select('checkride_prep_unlocked').eq('id', member.id).single().then(function (res) {
         if (res.data && res.data.checkride_prep_unlocked) {
@@ -1402,7 +1420,7 @@
             .then(function (purchaseRes) {
               var purchase = purchaseRes.data && purchaseRes.data[0];
               var value = purchase ? purchase.amount_cents / 100 : 49;
-              if (window.gtag) gtag('event', 'purchase', {
+              fireGa4Purchase(cpSessionId, 'apex_ga4_purchase_', {
                 currency: 'USD', value: value,
                 items: [{ item_name: 'Checkride Prep Unlock', item_variant: purchase ? purchase.tier : undefined, price: value, quantity: 1 }]
               });
@@ -1415,10 +1433,6 @@
     toast('You\'re registered for ground school!');
     var gsAmountCents = parseInt(urlParams.get('amount_cents'), 10);
     var gsValue = isNaN(gsAmountCents) ? 25 : gsAmountCents / 100;
-    if (window.gtag) gtag('event', 'purchase', {
-      currency: 'USD', value: gsValue,
-      items: [{ item_name: 'Ground School Session', price: gsValue, quantity: 1 }]
-    });
     // Meta Pixel Purchase -- this $25 purchase had no tracking at all
     // before (only the GA4 event above existed). Same session_id dedup
     // pattern as the Checkride Prep/Membership/Ground-School-Pack blocks
@@ -1426,6 +1440,10 @@
     // $25, no allow_promotion_codes), so the quoted amount is always
     // what was actually charged.
     var gsSessionId = urlParams.get('session_id');
+    fireGa4Purchase(gsSessionId, 'apex_ga4_purchase_gs_', {
+      currency: 'USD', value: gsValue,
+      items: [{ item_name: 'Ground School Session', price: gsValue, quantity: 1 }]
+    });
     var gsDedupeKey = gsSessionId ? 'apex_fbq_purchase_gs_' + gsSessionId : null;
     if (window.fbq && (!gsDedupeKey || !localStorage.getItem(gsDedupeKey))) {
       fbq('track', 'Purchase', { value: gsValue, currency: 'USD', content_name: 'Ground School Session' });
@@ -1433,19 +1451,37 @@
     }
     var gsFunnelDedupeKey = gsSessionId ? 'apex_funnel_purchase_gs_' + gsSessionId : null;
     if (window.apexTrack && (!gsFunnelDedupeKey || !localStorage.getItem(gsFunnelDedupeKey))) {
-      apexTrack('purchase_completed', { product: 'ground_school_class', price: gsValue });
+      apexTrack('purchase_completed', { product: 'ground_school_class', price: gsValue, session_id: gsSessionId || undefined });
       apexTrack('ground_school_class_purchased', { price: gsValue });
       if (gsFunnelDedupeKey) localStorage.setItem(gsFunnelDedupeKey, '1');
     }
   }
   if (urlParams.get('mockoral') === '1') {
     toast('Payment received! Andrew will email you to schedule your Mock Oral.');
-    if (window.gtag) gtag('event', 'purchase', {
+    // Previously untracked beyond this one ungated GA4 call -- no
+    // session_id was even in the success_url (see create-checkout-
+    // session's book-mock-oral purpose, now fixed to include one), so
+    // there was no way to dedupe OR to attribute this $99 in the internal
+    // purchase_completed funnel/revenue dashboard. Same three-way
+    // Meta/apexTrack/GA4 pattern as the other three products now.
+    var moSessionId = urlParams.get('session_id');
+    fireGa4Purchase(moSessionId, 'apex_ga4_purchase_mo_', {
       currency: 'USD', value: 99,
       items: [{ item_name: '60-Minute Mock Oral', price: 99, quantity: 1 }]
     });
+    var moFbqDedupeKey = moSessionId ? 'apex_fbq_purchase_mo_' + moSessionId : null;
+    if (window.fbq && (!moFbqDedupeKey || !localStorage.getItem(moFbqDedupeKey))) {
+      fbq('track', 'Purchase', { value: 99, currency: 'USD', content_name: '60-Minute Mock Oral' });
+      if (moFbqDedupeKey) localStorage.setItem(moFbqDedupeKey, '1');
+    }
+    var moFunnelDedupeKey = moSessionId ? 'apex_funnel_purchase_mo_' + moSessionId : null;
+    if (window.apexTrack && (!moFunnelDedupeKey || !localStorage.getItem(moFunnelDedupeKey))) {
+      apexTrack('purchase_completed', { product: 'mock_oral', price: 99, session_id: moSessionId || undefined });
+      if (moFunnelDedupeKey) localStorage.setItem(moFunnelDedupeKey, '1');
+    }
   }
   if (urlParams.get('groundschoolpack') === '1') {
+    var gspSessionId = urlParams.get('session_id');
     authReady.then(function () {
       apexSupabase.from('profiles').select('private_pilot_ground_school_pack_unlocked').eq('id', member.id).single().then(function (res) {
         if (res.data && res.data.private_pilot_ground_school_pack_unlocked) {
@@ -1453,7 +1489,7 @@
           toast('Unlocked! Every Private Pilot ground school class is now included.');
           groundSchoolLoaded = false;
           loadGroundSchool();
-          if (window.gtag) gtag('event', 'purchase', {
+          fireGa4Purchase(gspSessionId, 'apex_ga4_purchase_gsp_', {
             currency: 'USD', value: 400,
             items: [{ item_name: 'Private Pilot Ground School — Full Course', price: 400, quantity: 1 }]
           });
@@ -4363,18 +4399,55 @@
   }
 
   /* ── Lifecycle milestone emails ───────────────────────────────── */
+  // portal_first_login used to be gated on loggedEventTypes['first_login']
+  // -- an in-memory flag seeded once per page load from a SELECT against
+  // portal_events, then set true client-side BEFORE the matching INSERT
+  // was even confirmed. Nothing about that was atomic: two tabs/devices
+  // for the same profile loading the portal within the same window both
+  // ran that SELECT before either INSERT landed, both saw "no first_login
+  // row yet," and both fired -- this is what produced GA4's ~11.5
+  // events-per-user reading for this event. claimFirstPortalLoginOnce()
+  // replaces it with a single conditional UPDATE (claim_first_portal_
+  // login(), supabase-portal-schema-v83.sql) that Postgres guarantees at
+  // most one caller can ever win, across every tab/device/browser for
+  // that profile, forever -- not just within one page session.
+  var firstLoginClaimPromise = null;
+  function claimFirstPortalLoginOnce() {
+    if (!member) return Promise.resolve(false);
+    if (!firstLoginClaimPromise) {
+      // The actual tracking/onboarding side effects live INSIDE this
+      // promise chain, not in a .then() attached by each caller -- that's
+      // what keeps them firing at most once per page load even though
+      // checkLifecycleMilestones() (and therefore this function) gets
+      // called many times per session via renderReadiness().
+      firstLoginClaimPromise = apexSupabase.rpc('claim_first_portal_login', { p_profile_id: member.id })
+        .then(function (res) { return !res.error && res.data === true; })
+        .catch(function () { return false; })
+        .then(function (won) {
+          if (!won) return false;
+          if (window.apexTrack) apexTrack('portal_first_login', { profile_id: member.id });
+          // CompleteRegistration -- fires once, at the member's actual
+          // first login (password set + portal opened for real), not at
+          // account creation (that's Lead, fired in portal-login.html's
+          // signup handler). This is the "portal signup completion"
+          // moment.
+          if (window.apexTrackStandard) apexTrackStandard('CompleteRegistration', { content_name: 'Apex Advantage Portal' });
+          showWelcomeOnboarding();
+          return true;
+        });
+    }
+    return firstLoginClaimPromise;
+  }
+
   function checkLifecycleMilestones() {
     if (!member) return;
 
-    var isFirstLogin = !loggedEventTypes['first_login'];
+    // Kept as a passive historical log only -- nothing reads
+    // loggedEventTypes['first_login'] for the tracking decision anymore
+    // (see claimFirstPortalLoginOnce above), so a slow/failed insert here
+    // can no longer cause a repeat fire.
     logEventOnce('first_login');
-    if (isFirstLogin && window.apexTrack) apexTrack('portal_first_login', { profile_id: member.id });
-    // CompleteRegistration -- fires once, at the member's actual first
-    // login (password set + portal opened for real), not at account
-    // creation (that's Lead, fired in portal-login.html's signup
-    // handler). This is the "portal signup completion" moment.
-    if (isFirstLogin && window.apexTrackStandard) apexTrackStandard('CompleteRegistration', { content_name: 'Apex Advantage Portal' });
-    if (isFirstLogin) showWelcomeOnboarding();
+    claimFirstPortalLoginOnce();
 
     if (DPE_DATA.some(function (d) { return studied[d.id]; })) {
       var wasNew = !loggedEventTypes['first_question_completed'];
