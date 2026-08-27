@@ -7,7 +7,7 @@ import Layout from '../components/Layout'
 // site and this React app to read it automatically, so the data-quality
 // card's "documented" half is this hardcoded count instead. Update it
 // whenever EVENT_ALLOWLIST gains or loses an entry.
-const DOCUMENTED_EVENT_COUNT = 42
+const DOCUMENTED_EVENT_COUNT = 43
 
 const RANGE_PRESETS = [
   { key: 'today', label: 'Today' },

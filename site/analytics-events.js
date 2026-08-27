@@ -84,6 +84,10 @@
     'portal_first_login', 'first_lesson_started', 'first_lesson_completed',
     'onboarding_viewed', 'onboarding_training_goal_saved', 'onboarding_focus_area_saved', 'onboarding_completed',
     'onboarding_first_training_started', 'first_action_presented', 'first_action_completed', 'activation_completed',
+    // Ground School Module Workbook (site/portal-stable.js) -- scored
+    // Knowledge Check quiz, per-module (get-module-companion-content /
+    // module_quiz_attempts, supabase-portal-schema-v88.sql).
+    'module_quiz_completed',
     // Free/paid conversion widgets (site/portal-stable.js)
     'upgrade_prompt_viewed', 'upgrade_prompt_clicked',
     // New Member Activation sequence -- real trigger in

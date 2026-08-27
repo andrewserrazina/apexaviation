@@ -105,3 +105,45 @@ export async function requireCapability(
 
   return { userId: userData.user.id, email: userData.user.email ?? null }
 }
+
+// For Ground School module companion content (module_companion_content,
+// module_quiz_questions) -- entitlement here is per-module, not the
+// single flat checkride_prep_unlocked flag: a member either bought the
+// full private_pilot_ground_school_pack_unlocked, or paid individually
+// for this specific module's scheduled class (scheduled_ground_class_
+// enrollments, payment_status in ('paid','ground_school_pack'), joined
+// through scheduled_ground_classes.lesson_id -- the same real curriculum
+// module id used everywhere else, e.g. 'PPL-M01'). Mirrors the client's
+// own hasModuleAccess() (site/portal-stable.js) exactly, but this is the
+// actual security boundary -- that client check is UI convenience only.
+export async function requireModuleAccess(
+  supabase: ReturnType<typeof createClient>,
+  authHeader: string | null,
+  moduleId: string
+): Promise<CapabilityResult> {
+  const token = (authHeader || '').replace('Bearer ', '').trim()
+  if (!token) throw new PremiumAccessError('Missing Authorization header', 401)
+
+  const { data: userData, error: userErr } = await supabase.auth.getUser(token)
+  if (userErr || !userData?.user) throw new PremiumAccessError('Invalid or expired session', 401)
+
+  const [{ data: profile }, { data: enrollmentRows }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('private_pilot_ground_school_pack_unlocked')
+      .eq('id', userData.user.id)
+      .maybeSingle(),
+    supabase
+      .from('scheduled_ground_class_enrollments')
+      .select('id, payment_status, scheduled_ground_classes!inner(lesson_id)')
+      .eq('profile_id', userData.user.id)
+      .eq('scheduled_ground_classes.lesson_id', moduleId)
+      .in('payment_status', ['paid', 'ground_school_pack'])
+      .limit(1),
+  ])
+
+  const unlocked = !!profile?.private_pilot_ground_school_pack_unlocked || !!enrollmentRows?.length
+  if (!unlocked) throw new PremiumAccessError('This Ground School module is not unlocked on this account', 403)
+
+  return { userId: userData.user.id, email: userData.user.email ?? null }
+}
