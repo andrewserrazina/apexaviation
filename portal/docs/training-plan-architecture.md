@@ -314,3 +314,50 @@ executed against a live Postgres instance. `supabase-portal-schema-v64.sql`
 must be run in the Supabase SQL editor before `myAiDpeSessions` will ever
 contain real data — until then it silently stays an empty array (the RPC
 call fails gracefully, same pattern as every other RPC in `loadProgress()`).
+
+## 11. Module Companion pages: built (later pass, real Module 1 content)
+
+Section 9's "per-module companion pages... UI itself is not [built]" gap is
+now closed for the one module with real authored content. A real Module 1
+("Becoming a Pilot") production package — objectives, guided-notes
+fill-in prompts, key concepts, a scenario worksheet, Checkride Corner
+questions, and a scored 15-question Knowledge Check quiz with an answer
+key — was the first real content to exist for this system, so the
+Guided Notes admin-only preview (section 6 above) became the real,
+student-facing "Module Workbook" nav item/page, gated by `hasModuleAccess()`
+(any module purchased, or the full pack) instead of `role === 'admin'`.
+
+Two content types, two different trust boundaries, same precedent as
+`dpe_categories`/`dpe_questions` (admin-only RLS, served only through an
+entitlement-checked Edge Function):
+
+- `module_companion_content` (`supabase-portal-schema-v88.sql`) — the
+  read-only workbook material, one JSONB blob per module, served through
+  the new `get-module-companion-content` Edge Function, which verifies
+  entitlement server-side via `requireModuleAccess()`
+  (`_shared/premiumAccess.ts`) before returning anything — never trusting
+  the client's own `hasModuleAccess()` convenience check.
+- `module_quiz_questions` / `module_quiz_attempts` — the one genuinely
+  new content type this introduces: a real scored quiz (as opposed to
+  `guided_notes`' free-text-only, no-correct-answer shape). Questions
+  (with the answer key) are served through the same Edge Function —
+  self-study material a paying student is meant to see the explanation
+  for, the same trust model `dpe_questions.model_answer` already uses,
+  not a proctored exam needing server-side grading. Attempts are scored
+  client-side against that same payload and recorded to
+  `module_quiz_attempts` (own-row RLS) for progress tracking.
+
+`guided_notes` itself is unchanged in shape — just opened past the
+admin-only preview policy, the single-line change its own v14 header
+comment already called for. Its existing `GUIDED_NOTES_MODULES` module-id
+convention (`site/portal-stable.js`) predated `GS_MODULE_CONTENT_MAP` and
+used a different id format (e.g. `PPL-M01-Becoming-a-Pilot` instead of the
+real `PPL-M01`) — harmless while admin-only, fixed to the real ids in the
+same change, since `hasModuleAccess()` needs it to match `lesson_id`.
+
+**Still deferred:** the other 19 modules' full workbook structure (only
+Module 1 has real content; the rest still show the lighter single-prompt-
+per-section fallback from section 8 above) and the before/live/after-class
+checklist framing section 5 originally called for — this pass built the
+data model, entitlement, and rendering to take that shape the moment more
+modules' content exists, not a guess at 19 more modules' content.

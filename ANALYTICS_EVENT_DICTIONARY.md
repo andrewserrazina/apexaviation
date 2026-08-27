@@ -178,6 +178,11 @@ addition to* those automatic ones.
 **Properties:** `profile_id`, `training_stage`.
 **Expected frequency:** Exactly 1 per profile, for the lifetime of that profile — same guarantee as `portal_first_login`, via the same atomic-claim mechanism. Also drives the in-app "First Training Session Complete" confirmation card (`showFirstActivationCelebration()`).
 
+### `module_quiz_completed`
+**Trigger:** A member submits the scored Knowledge Check quiz on a Ground School module's companion page (Module Workbook). **New with the Ground School Module Companion pass** (`supabase-portal-schema-v88.sql`).
+**Properties:** `module_id` (e.g. `PPL-M01`), `score`, `total` (multiple-choice questions only — short-answer/scenario questions are self-graded against a shown model answer, not scored numerically).
+**Expected frequency:** Can repeat per profile per module — a member may retake a module's quiz any number of times; each attempt is also recorded in `module_quiz_attempts` for progress tracking.
+
 ### `upgrade_prompt_viewed` / `upgrade_prompt_clicked`
 **Trigger:** A locked-widget upgrade prompt scrolls into view / is clicked anywhere in the portal.
 **Properties:** `widget` (the locked-widget's identifier).

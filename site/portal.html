@@ -90,13 +90,17 @@
           ACS Lessons
           <svg class="portal-nav__lock" data-lock-icon width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
-        <!-- Feature preview, admin-only: renderAdminIfApplicable() is the only
-             thing that ever unhides this. Not a student-facing feature yet —
-             see GUIDED_NOTES_PROMPTS in portal-stable.js for the real access boundary. -->
+        <!-- Real per-module Ground School companion (workbook + scored
+             Knowledge Check quiz). renderModuleWorkbookNavIfApplicable()
+             unhides this the moment the member has access to any module
+             (full pack, or a paid enrollment in that module's scheduled
+             class) -- real enforcement is still server-side, see
+             requireModuleAccess() (portal/supabase/functions/_shared/
+             premiumAccess.ts) and module_companion_content's RLS policy
+             (supabase-portal-schema-v88.sql). -->
         <button class="portal-nav__item" data-section="guided-notes" id="guidedNotesNavItem" hidden>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 7h6M9 11h6M9 15h3M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Guided Notes
-          <span style="margin-left:auto;font-size:9px;font-weight:800;letter-spacing:0.06em;color:#0B1F3A;background:var(--gold);padding:2px 6px;border-radius:100px">TEST</span>
+          Module Workbook
         </button>
 
         <div class="portal-nav__section-label">Practice</div>
@@ -1757,15 +1761,18 @@
 
       <!-- ─────────── GUIDED NOTES (admin-only feature preview) ───────────
            Not linked from anywhere a student can reach: the nav item stays
-           hidden unless renderAdminIfApplicable() unhides it, and
-           showSection() bounces any non-admin who lands on #guided-notes
-           directly back to the dashboard. The real boundary is server-side —
-           see supabase-portal-schema-v14.sql's RLS policy on guided_notes. -->
+           hidden unless the member has real access to at least one module
+           (renderModuleWorkbookNavIfApplicable()), and showSection()
+           bounces anyone without any module access who lands on
+           #guided-notes directly back to the dashboard. The real boundary
+           is server-side -- see requireModuleAccess() and
+           module_companion_content/module_quiz_questions' RLS policies
+           (supabase-portal-schema-v88.sql). -->
       <section class="portal-section" id="section-guided-notes">
         <div class="portal-header">
-          <div class="portal-header__eyebrow">Admin Only · Feature Preview</div>
-          <h1>Guided Notes</h1>
-          <p>Testing the guided notes experience before it opens to students. Not visible or accessible outside admin accounts.</p>
+          <div class="portal-header__eyebrow">Ground School</div>
+          <h1>Module Workbook</h1>
+          <p>Your guided notes, Checkride Corner, and Knowledge Check for each Ground School module you've unlocked.</p>
         </div>
         <div id="guidedNotesRoot"><p style="color:rgba(255,255,255,0.4);font-size:14px">Loading…</p></div>
       </section>

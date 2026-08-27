@@ -350,13 +350,14 @@
       openUnlockModal();
       return;
     }
-    // Guided Notes is an admin-only feature preview -- not just hidden from
-    // the nav. A non-admin who already has member.role loaded (e.g. clicked
-    // a stale link, or called this from the console) gets bounced to the
+    // Module Workbook requires real access to at least one Ground School
+    // module -- a member who hasn't bought anything (e.g. clicked a stale
+    // link, or called this from the console) gets bounced to the
     // dashboard instead of ever seeing the section become active. The other
     // half of this guard is enforceGuidedNotesAccess(), which catches the
-    // same case on first page load, before member.role is known yet.
-    if (id === 'guided-notes' && member && member.role !== 'admin') id = 'dashboard';
+    // same case on first page load, before member data is known yet. Real
+    // enforcement is still server-side -- see requireModuleAccess().
+    if (id === 'guided-notes' && member && !hasAnyModuleAccess()) id = 'dashboard';
     // Apex Advantage Membership isn't public yet -- admin-only preview.
     if (id === 'ask-andrew' && member && member.role !== 'admin') id = 'dashboard';
     sections.forEach(function (s) { s.classList.toggle('active', s.id === 'section-' + id); });
@@ -384,7 +385,7 @@
   // never a duplicate, since the guarded call above never got this far.
   function runSectionEnterEffects(id) {
     if (id === 'admin' && member.role === 'admin') loadAdminDashboard();
-    if (id === 'guided-notes' && member.role === 'admin') loadGuidedNotes();
+    if (id === 'guided-notes' && hasAnyModuleAccess()) loadGuidedNotes();
     if (id === 'success-wall') renderSuccessWall();
     if (id === 'ground-school') {
       loadGroundSchool();
@@ -2673,6 +2674,18 @@
     });
   }
 
+  // Whether the member has real access to ANY Ground School module --
+  // the gate for the Module Workbook nav item existing at all, as
+  // opposed to hasModuleAccess(moduleId) which gates one specific
+  // module's content once inside.
+  function hasAnyModuleAccess() {
+    if (!member) return false;
+    if (member.groundSchoolPackUnlocked) return true;
+    return myScheduledEnrollments.some(function (e) {
+      return e.payment_status === 'paid' || e.payment_status === 'ground_school_pack';
+    });
+  }
+
   function taskCoverage(categories) {
     var done = 0, total = 0;
     categories.forEach(function (cat) {
@@ -3801,22 +3814,32 @@
     // already in flight could silently clobber it or duplicate rows in
     // the rendered list. Found via testing the new CMS, not by inspection.
     document.getElementById('adminNavItem').hidden = false;
-    document.getElementById('guidedNotesNavItem').hidden = false;
-    // Apex Advantage Membership isn't public yet -- same admin-only
-    // feature-preview treatment as Guided Notes above, until it's ready
-    // to launch to real members.
+    // Apex Advantage Membership isn't public yet -- feature preview,
+    // admin-only, until it's ready to launch to real members.
     document.getElementById('askAndrewNavItem').hidden = false;
     document.getElementById('membershipCard').hidden = false;
   }
 
-  // Catches a non-admin who bookmarked or typed #guided-notes directly.
-  // The very first showSection() call (script init, before the Supabase
-  // session/profile resolves) can't check member.role yet -- this runs
-  // once it's known. Real enforcement is still server-side: guided_notes'
-  // RLS policy rejects the query regardless of what the UI shows.
+  // Module Workbook nav item unhides for ANY member with real access to
+  // at least one Ground School module (full pack, or a paid enrollment) --
+  // not admin-gated like renderAdminIfApplicable() above. Separate
+  // function since this needs myScheduledEnrollments/groundSchoolPackUnlocked,
+  // both loaded by loadProgress(), not just member.role.
+  function renderModuleWorkbookNavIfApplicable() {
+    if (!hasAnyModuleAccess()) return;
+    document.getElementById('guidedNotesNavItem').hidden = false;
+  }
+
+  // Catches a member with no Ground School access who bookmarked or typed
+  // #guided-notes directly. The very first showSection() call (script
+  // init, before the Supabase session/profile resolves) can't check
+  // entitlement yet -- this runs once loadProgress() has. Real enforcement
+  // is still server-side: requireModuleAccess() and guided_notes'/
+  // module_companion_content's RLS policies reject the query regardless
+  // of what the UI shows.
   function enforceGuidedNotesAccess() {
     var activeId = (window.location.hash || '#dashboard').replace('#', '');
-    if (activeId === 'guided-notes' && (!member || member.role !== 'admin')) showSection('dashboard');
+    if (activeId === 'guided-notes' && !hasAnyModuleAccess()) showSection('dashboard');
   }
 
   // Same admin-only-preview boundary as enforceGuidedNotesAccess() above,
@@ -3903,37 +3926,36 @@
   }
 
   /* ══════════════════════════════════════════════════════════════
-     GUIDED NOTES — admin-only feature preview.
+     MODULE WORKBOOK (guided notes + Checkride Corner + scored quiz) --
+     real, student-facing Ground School companion content.
 
-     Per-prompt free-text responses a student will eventually fill in on
-     every Apex Advantage module page. Hidden from students entirely for
-     now: the nav item stays `hidden` unless renderAdminIfApplicable()
-     unhides it, and showSection()/enforceGuidedNotesAccess() bounce any
-     non-admin who reaches #guided-notes straight back to the dashboard.
-     None of that is the real security boundary, though -- it's UI
-     convenience on top of the actual one, same as loadPremiumContent()
-     above: guided_notes' RLS policy (supabase-portal-schema-v14.sql)
-     only grants a row to its own profile_id AND a caller whose profile
-     has role = 'admin'. A signed-in student calling the Supabase client
-     directly gets rejected at the database, not just kept off the page.
+     The nav item unhides for any member with real access to at least one
+     module (renderModuleWorkbookNavIfApplicable(), full pack or a paid
+     enrollment), and showSection()/enforceGuidedNotesAccess() bounce
+     anyone without any module access who reaches #guided-notes straight
+     back to the dashboard. None of that is the real security boundary,
+     though -- it's UI convenience on top of the actual one: guided_notes'
+     RLS policy (supabase-portal-schema-v88.sql) scopes every row to its
+     own profile_id, and the richer read-only workbook content (objectives,
+     key concepts, scenario worksheet, Checkride Corner questions, Apex
+     Challenge, quiz) is locked admin-only at rest -- a signed-in student
+     only ever sees it through get-module-companion-content, which
+     verifies real per-module entitlement server-side via
+     requireModuleAccess() before returning anything.
 
-     Opening this to every student later is a single migration (drop the
-     "and exists(...role='admin')" clause from that policy) plus removing
-     the `hidden` attribute from the nav button -- every query here
-     already scopes to the caller's own profile_id, so nothing else in
-     this file needs to change.
-
-     Course/module IDs follow the PPL-M03-Aircraft-Systems convention
-     from the Apex Advantage Content Architecture doc. Each module is
-     just one more entry in GUIDED_NOTES_MODULES below, with its own
-     prompt list -- no schema or rendering changes needed to add the
-     rest of these two modules' guided-notes pages, or any other
-     module in the curriculum. The tab row lets the admin switch
-     between whichever modules exist so far while testing. ── */
+     Course/module IDs match the real PPL-M01..PPL-M20 convention used by
+     privatePilotCurriculum.js/GS_MODULE_CONTENT_MAP/hasModuleAccess()
+     everywhere else. Each module is one more entry in GUIDED_NOTES_MODULES
+     below; only PPL-M01 has the full authored companion content
+     (module_companion_content + module_quiz_questions) as of this pass --
+     every other module falls back to the lighter GUIDED_NOTES_MODULES
+     prompt list until its own full content is authored (see
+     renderGuidedNotes()'s content ? richPath : fallbackPath branch). The
+     tab row only shows modules the member actually has access to. ── */
   var GUIDED_NOTES_MODULES = [
     {
       courseId: 'PPL',
-      moduleId: 'PPL-M01-Becoming-a-Pilot',
+      moduleId: 'PPL-M01',
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 01 · Becoming a Pilot',
       prompts: [
@@ -3946,7 +3968,7 @@
     },
     {
       courseId: 'PPL',
-      moduleId: 'PPL-M02-Aerodynamics',
+      moduleId: 'PPL-M02',
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 02 · Aerodynamics',
       prompts: [
@@ -3960,7 +3982,7 @@
     },
     {
       courseId: 'PPL',
-      moduleId: 'PPL-M03-Aircraft-Systems',
+      moduleId: 'PPL-M03',
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 03 · Aircraft Systems',
       prompts: [
@@ -3974,7 +3996,7 @@
     },
     {
       courseId: 'PPL',
-      moduleId: 'PPL-M04-FARs-Simplified',
+      moduleId: 'PPL-M04',
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 04 · FARs Simplified',
       prompts: [
@@ -3989,7 +4011,7 @@
     },
     {
       courseId: 'PPL',
-      moduleId: 'PPL-M05-Airspace-Mastery',
+      moduleId: 'PPL-M05',
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 05 · Airspace Mastery',
       prompts: [
@@ -4005,7 +4027,7 @@
     },
     {
       courseId: 'PPL',
-      moduleId: 'PPL-M06-Airport-Operations',
+      moduleId: 'PPL-M06',
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 06 · Airport Operations',
       prompts: [
@@ -4019,7 +4041,7 @@
     },
     {
       courseId: 'PPL',
-      moduleId: 'PPL-M07-Sectional-Charts',
+      moduleId: 'PPL-M07',
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 07 · Sectional Charts',
       prompts: [
@@ -4033,7 +4055,7 @@
     },
     {
       courseId: 'PPL',
-      moduleId: 'PPL-M08-Pilotage-Dead-Reckoning',
+      moduleId: 'PPL-M08',
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 08 · Pilotage & Dead Reckoning',
       prompts: [
@@ -4047,7 +4069,7 @@
     },
     {
       courseId: 'PPL',
-      moduleId: 'PPL-M09-Navigation-Systems',
+      moduleId: 'PPL-M09',
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 09 · Navigation Systems',
       prompts: [
@@ -4061,7 +4083,7 @@
     },
     {
       courseId: 'PPL',
-      moduleId: 'PPL-M10-Weather-Theory',
+      moduleId: 'PPL-M10',
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 10 · Weather Theory',
       prompts: [
@@ -4075,7 +4097,7 @@
     },
     {
       courseId: 'PPL',
-      moduleId: 'PPL-M11-Weather-Products',
+      moduleId: 'PPL-M11',
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 11 · Weather Products',
       prompts: [
@@ -4089,7 +4111,7 @@
     },
     {
       courseId: 'PPL',
-      moduleId: 'PPL-M12-Weather-Decision-Making',
+      moduleId: 'PPL-M12',
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 12 · Weather Decision Making',
       prompts: [
@@ -4103,7 +4125,7 @@
     },
     {
       courseId: 'PPL',
-      moduleId: 'PPL-M13-Weight-Balance',
+      moduleId: 'PPL-M13',
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 13 · Weight & Balance',
       prompts: [
@@ -4117,7 +4139,7 @@
     },
     {
       courseId: 'PPL',
-      moduleId: 'PPL-M14-Aircraft-Performance',
+      moduleId: 'PPL-M14',
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 14 · Aircraft Performance',
       prompts: [
@@ -4131,7 +4153,7 @@
     },
     {
       courseId: 'PPL',
-      moduleId: 'PPL-M15-Cross-Country-Planning',
+      moduleId: 'PPL-M15',
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 15 · Cross-Country Planning',
       prompts: [
@@ -4145,7 +4167,7 @@
     },
     {
       courseId: 'PPL',
-      moduleId: 'PPL-M16-Aeronautical-Decision-Making',
+      moduleId: 'PPL-M16',
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 16 · Aeronautical Decision Making',
       prompts: [
@@ -4159,7 +4181,7 @@
     },
     {
       courseId: 'PPL',
-      moduleId: 'PPL-M17-Human-Factors',
+      moduleId: 'PPL-M17',
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 17 · Human Factors',
       prompts: [
@@ -4173,7 +4195,7 @@
     },
     {
       courseId: 'PPL',
-      moduleId: 'PPL-M18-Emergency-Procedures',
+      moduleId: 'PPL-M18',
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 18 · Emergency Procedures',
       prompts: [
@@ -4187,7 +4209,7 @@
     },
     {
       courseId: 'PPL',
-      moduleId: 'PPL-M19-ACS-Mastery',
+      moduleId: 'PPL-M19',
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 19 · ACS Mastery',
       prompts: [
@@ -4200,7 +4222,7 @@
     },
     {
       courseId: 'PPL',
-      moduleId: 'PPL-M20-Mock-Oral-Exam',
+      moduleId: 'PPL-M20',
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 20 · Mock Oral Exam',
       prompts: [
@@ -4214,6 +4236,7 @@
 
   var guidedNotesActiveModuleIndex = 0;
   var guidedNotesSaveTimers = {};
+  var moduleCompanionCache = {}; // 'courseId:moduleId' -> {content, quiz} from get-module-companion-content
 
   // Textarea content is round-tripped back into innerHTML on every render,
   // so a literal "</textarea>" in a saved response would otherwise truncate
@@ -4222,55 +4245,102 @@
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  function loadGuidedNotes() {
-    if (!member || member.role !== 'admin') return;
-    var moduleDef = GUIDED_NOTES_MODULES[guidedNotesActiveModuleIndex];
-    var root = document.getElementById('guidedNotesRoot');
-
-    apexSupabase.from('guided_notes').select('*')
-      .eq('profile_id', member.id)
-      .eq('course_id', moduleDef.courseId)
-      .eq('module_id', moduleDef.moduleId)
-      .then(function (res) {
-        if (res.error) {
-          root.innerHTML = '<p style="color:#ff8b8b;font-size:14px">Could not load guided notes: ' + res.error.message + '</p>';
-          return;
-        }
-        var existingByPrompt = {};
-        (res.data || []).forEach(function (row) { existingByPrompt[row.prompt_id] = row; });
-        renderGuidedNotes(root, existingByPrompt, moduleDef);
-      });
+  // Only modules the member is actually entitled to appear as tabs --
+  // matches the real product (buy Module 1, or the full pack, and that's
+  // what shows up), not the full 20-module catalog regardless of access.
+  function accessibleGuidedNotesModules() {
+    return GUIDED_NOTES_MODULES.filter(function (m) { return hasModuleAccess(m.moduleId); });
   }
 
-  function renderGuidedNotes(root, existingByPrompt, moduleDef) {
+  // The real, entitlement-gated companion content (objectives, key
+  // concepts, scenario worksheet, Checkride Corner questions, Apex
+  // Challenge, quiz) only exists for modules authored so far (PPL-M01
+  // today) -- fetched from get-module-companion-content, which verifies
+  // access server-side via requireModuleAccess() before returning
+  // anything. Modules without authored content yet (companion.data.content
+  // is null) fall back to the lighter GUIDED_NOTES_MODULES prompt list
+  // below, same as before this pass.
+  function fetchModuleCompanionContent(courseId, moduleId) {
+    var cacheKey = courseId + ':' + moduleId;
+    if (moduleCompanionCache[cacheKey]) return Promise.resolve(moduleCompanionCache[cacheKey]);
+    return apexSupabase.functions.invoke('get-module-companion-content', {
+      body: { course_id: courseId, module_id: moduleId },
+      headers: { Authorization: 'Bearer ' + accessToken }
+    }).then(function (res) {
+      if (res.error || !res.data) return null;
+      moduleCompanionCache[cacheKey] = res.data;
+      return res.data;
+    }).catch(function () { return null; });
+  }
+
+  function loadGuidedNotes() {
+    if (!member) return;
+    var modules = accessibleGuidedNotesModules();
+    var root = document.getElementById('guidedNotesRoot');
+    if (!modules.length) {
+      root.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:14px">No Ground School modules unlocked yet.</p>';
+      return;
+    }
+    if (guidedNotesActiveModuleIndex >= modules.length) guidedNotesActiveModuleIndex = 0;
+    var moduleDef = modules[guidedNotesActiveModuleIndex];
+
+    Promise.all([
+      apexSupabase.from('guided_notes').select('*').eq('profile_id', member.id).eq('course_id', moduleDef.courseId).eq('module_id', moduleDef.moduleId),
+      apexSupabase.from('module_quiz_attempts').select('*').eq('profile_id', member.id).eq('course_id', moduleDef.courseId).eq('module_id', moduleDef.moduleId).order('completed_at', { ascending: false }).limit(1),
+      fetchModuleCompanionContent(moduleDef.courseId, moduleDef.moduleId)
+    ]).then(function (results) {
+      var notesRes = results[0], attemptRes = results[1], companion = results[2];
+      if (notesRes.error) {
+        root.innerHTML = '<p style="color:#ff8b8b;font-size:14px">Could not load guided notes: ' + notesRes.error.message + '</p>';
+        return;
+      }
+      var existingByPrompt = {};
+      (notesRes.data || []).forEach(function (row) { existingByPrompt[row.prompt_id] = row; });
+      var latestAttempt = (attemptRes.data && attemptRes.data[0]) || null;
+      renderGuidedNotes(root, modules, existingByPrompt, moduleDef, companion, latestAttempt);
+    });
+  }
+
+  function renderGuidedNotes(root, modules, existingByPrompt, moduleDef, companion, latestAttempt) {
     var tabsHtml = '<div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">' +
-      GUIDED_NOTES_MODULES.map(function (m, i) {
+      modules.map(function (m, i) {
         var isActive = i === guidedNotesActiveModuleIndex;
         return '<button class="btn ' + (isActive ? 'btn--primary' : 'btn--ghost') + '" data-guided-module-tab data-module-index="' + i + '" style="padding:9px 16px;font-size:13px">' + m.moduleLabel + '</button>';
       }).join('') +
       '</div>';
 
+    var content = companion && companion.content;
     var headerHtml = '<div class="portal-card" style="margin-bottom:20px">' +
       '<div class="portal-header__eyebrow" style="margin-bottom:6px">' + moduleDef.courseLabel + ' · ' + moduleDef.moduleLabel.split(' · ')[0] + '</div>' +
-      '<h3 style="color:#fff;font-size:18px;font-weight:700;margin:0">' + moduleDef.moduleLabel.split(' · ')[1] + '</h3>' +
+      '<h3 style="color:#fff;font-size:18px;font-weight:700;margin:0 0 8px">' + moduleDef.moduleLabel.split(' · ')[1] + '</h3>' +
+      (content && content.modulePurpose ? '<p style="color:rgba(255,255,255,0.55);font-size:14px;line-height:1.6;margin:0">' + content.modulePurpose + '</p>' : '') +
       '</div>';
 
-    var cardsHtml = moduleDef.prompts.map(function (p) {
-      var row = existingByPrompt[p.id];
-      var savedValue = row ? escapeForTextarea(row.response_text) : '';
-      var statusText = row && row.response_text ? 'Saved ' + timeAgo(new Date(row.updated_at).getTime()) : 'Not started';
-      return '<div class="portal-card" style="margin-bottom:16px" data-guided-note-card data-prompt-id="' + p.id + '">' +
-        '<div class="portal-header__eyebrow" style="margin-bottom:6px">' + p.section + '</div>' +
-        '<h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:12px">' + p.prompt + '</h3>' +
-        '<textarea data-guided-note-input rows="4" placeholder="Type your response…" style="width:100%;padding:12px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none;resize:vertical;margin-bottom:10px">' + savedValue + '</textarea>' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">' +
-          '<span data-guided-note-status style="font-size:12.5px;color:rgba(255,255,255,0.4)">' + statusText + '</span>' +
-          '<button class="btn btn--ghost" data-guided-note-save style="padding:8px 16px;font-size:13px">Save</button>' +
-        '</div>' +
-      '</div>';
-    }).join('');
+    root.innerHTML = tabsHtml + headerHtml + '<div id="guidedNotesBody"></div>';
+    var body = document.getElementById('guidedNotesBody');
 
-    root.innerHTML = tabsHtml + headerHtml + cardsHtml;
+    if (content) {
+      body.innerHTML = renderModuleCompanionRich(content, existingByPrompt, moduleDef) +
+        renderModuleQuizSection(companion.quiz || [], moduleDef, latestAttempt);
+      wireModuleCompanionRich(body, content, moduleDef);
+      wireModuleQuizSection(body, companion.quiz || [], moduleDef);
+    } else {
+      body.innerHTML = moduleDef.prompts.map(function (p) {
+        var row = existingByPrompt[p.id];
+        var savedValue = row ? escapeForTextarea(row.response_text) : '';
+        var statusText = row && row.response_text ? 'Saved ' + timeAgo(new Date(row.updated_at).getTime()) : 'Not started';
+        return '<div class="portal-card" style="margin-bottom:16px" data-guided-note-card data-prompt-id="' + p.id + '" data-section-id="' + p.section + '">' +
+          '<div class="portal-header__eyebrow" style="margin-bottom:6px">' + p.section + '</div>' +
+          '<h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:12px">' + p.prompt + '</h3>' +
+          '<textarea data-guided-note-input rows="4" placeholder="Type your response…" style="width:100%;padding:12px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none;resize:vertical;margin-bottom:10px">' + savedValue + '</textarea>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">' +
+            '<span data-guided-note-status style="font-size:12.5px;color:rgba(255,255,255,0.4)">' + statusText + '</span>' +
+            '<button class="btn btn--ghost" data-guided-note-save style="padding:8px 16px;font-size:13px">Save</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+      wireGuidedNoteTextCards(body, moduleDef);
+    }
 
     root.querySelectorAll('[data-guided-module-tab]').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -4278,15 +4348,195 @@
         loadGuidedNotes();
       });
     });
-
-    wireGuidedNotesInputs(root, moduleDef);
   }
 
-  function wireGuidedNotesInputs(root, moduleDef) {
+  // Generic free-text card, shared by every rich-content section below
+  // (guided notes, key concepts, scenario worksheet, Checkride Corner
+  // answers, Knowledge Check reflection prompts, reflection questions,
+  // Apex Challenge fields) -- same markup/save contract as the plain
+  // fallback cards above, just parameterized instead of reading from
+  // moduleDef.prompts.
+  function textFieldCard(promptId, sectionId, sectionLabel, promptHtml, existingByPrompt, opts) {
+    opts = opts || {};
+    var row = existingByPrompt[promptId];
+    var savedValue = row ? escapeForTextarea(row.response_text) : '';
+    var statusText = row && row.response_text ? 'Saved ' + timeAgo(new Date(row.updated_at).getTime()) : 'Not started';
+    var inputHtml = opts.singleLine
+      ? '<input type="' + (opts.inputType || 'text') + '" data-guided-note-input placeholder="' + (opts.placeholder || 'Type your response…') + '" value="' + savedValue + '" style="width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none;margin-bottom:10px">'
+      : '<textarea data-guided-note-input rows="' + (opts.rows || 3) + '" placeholder="' + (opts.placeholder || 'Type your response…') + '" style="width:100%;padding:12px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none;resize:vertical;margin-bottom:10px">' + savedValue + '</textarea>';
+    return '<div class="portal-card" style="margin-bottom:14px" data-guided-note-card data-prompt-id="' + promptId + '" data-section-id="' + sectionId + '">' +
+      (sectionLabel ? '<div class="portal-header__eyebrow" style="margin-bottom:6px">' + sectionLabel + '</div>' : '') +
+      '<div style="color:#fff;font-size:14.5px;font-weight:600;margin-bottom:10px;line-height:1.5">' + promptHtml + '</div>' +
+      inputHtml +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">' +
+        '<span data-guided-note-status style="font-size:12.5px;color:rgba(255,255,255,0.4)">' + statusText + '</span>' +
+        '<button class="btn btn--ghost" data-guided-note-save style="padding:8px 16px;font-size:13px">Save</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderModuleCompanionRich(content, existingByPrompt, moduleDef) {
+    var html = '';
+
+    if (content.objectives && content.objectives.length) {
+      html += '<div class="portal-card" style="margin-bottom:20px">' +
+        '<div class="portal-header__eyebrow" style="margin-bottom:10px">Learning Objectives</div>' +
+        '<p style="color:rgba(255,255,255,0.5);font-size:13px;margin:0 0 14px">Check each box as you build confidence in that objective.</p>' +
+        content.objectives.map(function (o) {
+          var row = existingByPrompt[o.id];
+          var checked = row && row.response_text === 'checked';
+          return '<label style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;cursor:pointer;font-size:14px;color:' + (checked ? '#fff' : 'rgba(255,255,255,0.7)') + '">' +
+            '<input type="checkbox" data-objective-checkbox data-objective-id="' + o.id + '" ' + (checked ? 'checked' : '') + ' style="margin-top:3px;accent-color:var(--gold)">' +
+            '<span>' + o.label + '</span>' +
+          '</label>';
+        }).join('') +
+      '</div>';
+    }
+
+    if (content.guidedNotes && content.guidedNotes.length) {
+      html += '<div style="margin-bottom:6px"><div class="portal-header__eyebrow" style="margin:20px 0 10px">Guided Notes</div></div>';
+      html += content.guidedNotes.map(function (gn) {
+        return textFieldCard(gn.id, gn.section, gn.section, gn.prompt, existingByPrompt, { rows: 3 });
+      }).join('');
+    }
+
+    if (content.keyConcepts && content.keyConcepts.length) {
+      html += '<div class="portal-card" style="margin-bottom:20px;margin-top:20px">' +
+        '<div class="portal-header__eyebrow" style="margin-bottom:12px">Key Concepts &amp; Definitions</div>' +
+        content.keyConcepts.map(function (kc) {
+          var promptId = 'keyconcept-' + kc.id;
+          var row = existingByPrompt[promptId];
+          var savedValue = row ? escapeForTextarea(row.response_text) : '';
+          return '<div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.06)" data-guided-note-card data-prompt-id="' + promptId + '" data-section-id="key-concepts">' +
+            '<div style="color:#fff;font-size:14.5px;font-weight:700;margin-bottom:4px">' + kc.term + '</div>' +
+            '<div style="color:rgba(255,255,255,0.55);font-size:13.5px;line-height:1.6;margin-bottom:8px">' + kc.definition + '</div>' +
+            '<input type="text" data-guided-note-input placeholder="In my own words…" value="' + savedValue + '" style="width:100%;padding:9px 12px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:13.5px;color:#fff;background:rgba(11,31,58,0.6);outline:none;margin-bottom:6px">' +
+            '<div style="display:flex;justify-content:flex-end;align-items:center;gap:10px">' +
+              '<span data-guided-note-status style="font-size:12px;color:rgba(255,255,255,0.4)">' + (row && row.response_text ? 'Saved ' + timeAgo(new Date(row.updated_at).getTime()) : 'Not started') + '</span>' +
+              '<button class="btn btn--ghost" data-guided-note-save style="padding:6px 14px;font-size:12.5px">Save</button>' +
+            '</div>' +
+          '</div>';
+        }).join('') +
+      '</div>';
+    }
+
+    if (content.scenario) {
+      html += '<div class="portal-card" style="margin-bottom:20px">' +
+        '<div class="portal-header__eyebrow" style="margin-bottom:10px">Scenario Workshop Worksheet</div>' +
+        '<p style="color:rgba(255,255,255,0.6);font-size:14px;line-height:1.7;font-style:italic;margin:0 0 16px">' + content.scenario.narrative + '</p>' +
+      '</div>';
+      html += content.scenario.prompts.map(function (sp) {
+        return textFieldCard(sp.id, 'scenario-workshop', null, sp.prompt, existingByPrompt, { rows: 3 });
+      }).join('');
+    }
+
+    if (content.checkrideCorner && content.checkrideCorner.length) {
+      html += '<div style="margin:20px 0 10px"><div class="portal-header__eyebrow">Checkride Corner Notes</div>' +
+        '<p style="color:rgba(255,255,255,0.5);font-size:13px;margin:6px 0 0">Fill this in live during or right after class, then self-rate.</p></div>';
+      html += content.checkrideCorner.map(function (cc, i) {
+        var answerId = cc.id + '-answer';
+        var ratingId = cc.id + '-rating';
+        var answerRow = existingByPrompt[answerId];
+        var ratingRow = existingByPrompt[ratingId];
+        var savedAnswer = answerRow ? escapeForTextarea(answerRow.response_text) : '';
+        var rating = ratingRow ? ratingRow.response_text : '';
+        return '<div class="portal-card" style="margin-bottom:14px" data-guided-note-card data-prompt-id="' + answerId + '" data-section-id="checkride-corner">' +
+          '<div style="color:#fff;font-size:14.5px;font-weight:600;margin-bottom:10px">' + (i + 1) + '. ' + cc.question + '</div>' +
+          '<textarea data-guided-note-input rows="3" placeholder="Your answer…" style="width:100%;padding:12px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none;resize:vertical;margin-bottom:10px">' + savedAnswer + '</textarea>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">' +
+            '<span data-guided-note-status style="font-size:12.5px;color:rgba(255,255,255,0.4)">' + (answerRow && answerRow.response_text ? 'Saved ' + timeAgo(new Date(answerRow.updated_at).getTime()) : 'Not started') + '</span>' +
+            '<button class="btn btn--ghost" data-guided-note-save style="padding:8px 16px;font-size:13px">Save</button>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;margin-top:12px" data-rating-group data-rating-id="' + ratingId + '">' +
+            '<button type="button" class="btn ' + (rating === 'confident' ? 'btn--primary' : 'btn--ghost') + '" data-rating-value="confident" style="padding:7px 14px;font-size:12.5px">Confident</button>' +
+            '<button type="button" class="btn ' + (rating === 'needs_review' ? 'btn--primary' : 'btn--ghost') + '" data-rating-value="needs_review" style="padding:7px 14px;font-size:12.5px">Needs Review</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    if (content.knowledgeCheckQuestions && content.knowledgeCheckQuestions.length) {
+      html += '<div class="portal-header__eyebrow" style="margin:20px 0 10px">Knowledge Check Questions</div>';
+      html += content.knowledgeCheckQuestions.map(function (kcq) {
+        return textFieldCard(kcq.id, 'knowledge-check', null, kcq.prompt, existingByPrompt, { rows: 2 });
+      }).join('');
+    }
+
+    if (content.reflectionQuestions && content.reflectionQuestions.length) {
+      html += '<div class="portal-header__eyebrow" style="margin:20px 0 10px">Reflection Questions</div>';
+      html += content.reflectionQuestions.map(function (r) {
+        return textFieldCard(r.id, 'reflection', null, r.prompt, existingByPrompt, { rows: 2 });
+      }).join('');
+    }
+
+    if (content.apexChallenge) {
+      html += '<div class="portal-card" style="margin-bottom:20px;margin-top:20px">' +
+        '<div class="portal-header__eyebrow" style="margin-bottom:10px">Apex Challenge</div>' +
+        '<p style="color:rgba(255,255,255,0.6);font-size:14px;line-height:1.7;margin:0">' + content.apexChallenge.instructions + '</p>' +
+      '</div>';
+      html += content.apexChallenge.fields.map(function (f) {
+        return textFieldCard(f.id, 'apex-challenge', null, f.label, existingByPrompt, {
+          singleLine: f.type !== 'textarea',
+          inputType: f.type === 'date' ? 'date' : 'text',
+          rows: 3
+        });
+      }).join('');
+    }
+
+    return html;
+  }
+
+  function wireModuleCompanionRich(root, content, moduleDef) {
+    wireGuidedNoteTextCards(root, moduleDef);
+
+    root.querySelectorAll('[data-objective-checkbox]').forEach(function (checkbox) {
+      checkbox.addEventListener('change', function () {
+        var objectiveId = checkbox.dataset.objectiveId;
+        apexSupabase.from('guided_notes').upsert({
+          profile_id: member.id,
+          course_id: moduleDef.courseId,
+          module_id: moduleDef.moduleId,
+          section_id: 'objectives',
+          prompt_id: objectiveId,
+          response_text: checkbox.checked ? 'checked' : '',
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'profile_id,course_id,module_id,section_id,prompt_id' });
+      });
+    });
+
+    root.querySelectorAll('[data-rating-group]').forEach(function (group) {
+      var ratingId = group.dataset.ratingId;
+      group.querySelectorAll('[data-rating-value]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var value = btn.dataset.ratingValue;
+          group.querySelectorAll('[data-rating-value]').forEach(function (b) {
+            b.classList.toggle('btn--primary', b === btn);
+            b.classList.toggle('btn--ghost', b !== btn);
+          });
+          apexSupabase.from('guided_notes').upsert({
+            profile_id: member.id,
+            course_id: moduleDef.courseId,
+            module_id: moduleDef.moduleId,
+            section_id: 'checkride-corner',
+            prompt_id: ratingId,
+            response_text: value,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'profile_id,course_id,module_id,section_id,prompt_id' });
+        });
+      });
+    });
+  }
+
+  // Shared save/autosave wiring for every [data-guided-note-card] in a
+  // root element -- both the plain fallback prompt list and every
+  // free-text card rendered by renderModuleCompanionRich() use this same
+  // contract (a data-prompt-id/data-section-id card containing one
+  // data-guided-note-input and a data-guided-note-save button).
+  function wireGuidedNoteTextCards(root, moduleDef) {
     root.querySelectorAll('[data-guided-note-card]').forEach(function (card) {
       var promptId = card.dataset.promptId;
-      var promptDef = moduleDef.prompts.filter(function (p) { return p.id === promptId; })[0];
-      var textarea = card.querySelector('[data-guided-note-input]');
+      var sectionId = card.dataset.sectionId || promptId;
+      var input = card.querySelector('[data-guided-note-input]');
       var status = card.querySelector('[data-guided-note-status]');
       var saveBtn = card.querySelector('[data-guided-note-save]');
       var timerKey = moduleDef.moduleId + ':' + promptId;
@@ -4299,9 +4549,9 @@
           profile_id: member.id,
           course_id: moduleDef.courseId,
           module_id: moduleDef.moduleId,
-          section_id: promptDef ? promptDef.section : promptId,
+          section_id: sectionId,
           prompt_id: promptId,
-          response_text: textarea.value,
+          response_text: input.value,
           updated_at: new Date().toISOString()
         }, { onConflict: 'profile_id,course_id,module_id,section_id,prompt_id' }).then(function (res) {
           saveBtn.disabled = false;
@@ -4317,14 +4567,112 @@
 
       saveBtn.addEventListener('click', save);
 
-      // Autosave 1.5s after the admin stops typing, in addition to the
+      // Autosave 1.5s after the member stops typing, in addition to the
       // manual Save button -- matches the "autosave or manual save"
       // requirement without making the button feel redundant.
-      textarea.addEventListener('input', function () {
+      input.addEventListener('input', function () {
         status.style.color = 'rgba(255,255,255,0.4)';
         status.textContent = 'Unsaved changes…';
         clearTimeout(guidedNotesSaveTimers[timerKey]);
         guidedNotesSaveTimers[timerKey] = setTimeout(save, 1500);
+      });
+    });
+  }
+
+  /* ── Scored Knowledge Check quiz ──────────────────────────────────
+     Self-study, not a proctored exam -- correct answers and
+     explanations arrive with the questions (same trust model as
+     DPE_DATA's model_answer), and the score is computed client-side
+     against that same payload, then recorded to module_quiz_attempts
+     for progress tracking. */
+  function renderModuleQuizSection(quiz, moduleDef, latestAttempt) {
+    if (!quiz.length) return '';
+    var summaryHtml = latestAttempt
+      ? '<p style="color:rgba(255,255,255,0.55);font-size:13.5px;margin:6px 0 0">Last attempt: ' + latestAttempt.score + ' / ' + latestAttempt.total + ' — ' + timeAgo(new Date(latestAttempt.completed_at).getTime()) + '</p>'
+      : '<p style="color:rgba(255,255,255,0.55);font-size:13.5px;margin:6px 0 0">Not attempted yet.</p>';
+
+    var questionsHtml = quiz.map(function (q, i) {
+      var choicesHtml = '';
+      if (q.question_type === 'multiple_choice' && q.choices) {
+        choicesHtml = q.choices.map(function (c) {
+          return '<label style="display:flex;align-items:center;gap:9px;margin-bottom:8px;cursor:pointer;font-size:14px;color:rgba(255,255,255,0.8)">' +
+            '<input type="radio" name="quiz-' + q.id + '" value="' + c.key + '" data-quiz-choice style="accent-color:var(--gold)">' +
+            '<span>' + c.key + ') ' + c.label + '</span>' +
+          '</label>';
+        }).join('');
+      } else {
+        choicesHtml = '<textarea data-quiz-freetext rows="2" placeholder="Your answer (self-graded — the explanation shows once you submit)…" style="width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none;resize:vertical"></textarea>';
+      }
+      return '<div class="portal-card" style="margin-bottom:14px" data-quiz-question data-question-id="' + q.id + '" data-question-type="' + q.question_type + '">' +
+        '<div style="color:#fff;font-size:14.5px;font-weight:600;margin-bottom:10px">' + (i + 1) + '. ' + q.prompt + '</div>' +
+        choicesHtml +
+        '<div data-quiz-result hidden style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08);font-size:13.5px;line-height:1.6;color:rgba(255,255,255,0.6)"></div>' +
+      '</div>';
+    }).join('');
+
+    return '<div style="margin-top:28px">' +
+      '<div class="portal-card" style="margin-bottom:16px">' +
+        '<div class="portal-header__eyebrow" style="margin-bottom:6px">Knowledge Check</div>' +
+        '<h3 style="color:#fff;font-size:16px;font-weight:700;margin:0">Scored self-assessment quiz</h3>' +
+        summaryHtml +
+      '</div>' +
+      '<div id="moduleQuizQuestions">' + questionsHtml + '</div>' +
+      '<button class="btn btn--primary" id="moduleQuizSubmit" style="padding:12px 24px;font-size:14px;margin-top:8px">Submit Quiz</button>' +
+      '<div id="moduleQuizScoreSummary" style="margin-top:14px"></div>' +
+    '</div>';
+  }
+
+  function wireModuleQuizSection(root, quiz, moduleDef) {
+    var submitBtn = root.querySelector('#moduleQuizSubmit');
+    if (!submitBtn || !quiz.length) return;
+
+    submitBtn.addEventListener('click', function () {
+      var answers = {};
+      var score = 0;
+
+      root.querySelectorAll('[data-quiz-question]').forEach(function (card) {
+        var qid = card.dataset.questionId;
+        var qtype = card.dataset.questionType;
+        var q = quiz.filter(function (item) { return item.id === qid; })[0];
+        var resultEl = card.querySelector('[data-quiz-result]');
+        var isCorrect = null;
+
+        if (qtype === 'multiple_choice') {
+          var checked = card.querySelector('[data-quiz-choice]:checked');
+          var chosen = checked ? checked.value : null;
+          answers[qid] = chosen;
+          isCorrect = chosen === q.correct_choice;
+          if (isCorrect) score++;
+        } else {
+          var freetext = card.querySelector('[data-quiz-freetext]');
+          answers[qid] = freetext ? freetext.value : '';
+        }
+
+        resultEl.hidden = false;
+        var resultLabel = isCorrect === true ? '<span style="color:#7ee787;font-weight:700">Correct.</span> '
+          : isCorrect === false ? '<span style="color:#ff8b8b;font-weight:700">Not quite.</span> '
+          : '<span style="color:var(--gold);font-weight:700">Model answer:</span> ';
+        resultEl.innerHTML = resultLabel + q.model_answer;
+      });
+
+      var total = quiz.filter(function (q) { return q.question_type === 'multiple_choice'; }).length;
+      submitBtn.disabled = true;
+      apexSupabase.from('module_quiz_attempts').insert({
+        profile_id: member.id,
+        course_id: moduleDef.courseId,
+        module_id: moduleDef.moduleId,
+        answers: answers,
+        score: score,
+        total: total
+      }).then(function (res) {
+        submitBtn.disabled = false;
+        var summary = document.getElementById('moduleQuizScoreSummary');
+        if (res.error) {
+          summary.innerHTML = '<p style="color:#ff8b8b;font-size:13.5px">Could not save this attempt — your answers above are still shown.</p>';
+          return;
+        }
+        summary.innerHTML = '<p style="color:#fff;font-size:15px;font-weight:700">Scored ' + score + ' / ' + total + ' on the multiple-choice questions.</p>';
+        if (window.apexTrack) apexTrack('module_quiz_completed', { module_id: moduleDef.moduleId, score: score, total: total });
       });
     });
   }
@@ -6487,6 +6835,7 @@
       renderPilotJourney();
       checkAchievements();
       renderAdminIfApplicable();
+      renderModuleWorkbookNavIfApplicable();
       enforceGuidedNotesAccess();
       enforceAskAndrewAccess();
       enforceUpgradeDeepLink();
