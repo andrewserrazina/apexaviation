@@ -4341,15 +4341,24 @@
      path for the two email types with no client-side equivalent at
      all: the 7-day inactivity nudge and the checkride countdown.
      ══════════════════════════════════════════════════════════════ */
+  // Kept in sync manually with portal/supabase/functions/_shared/emailTemplate.ts
+  // (no shared module between client JS and Deno edge functions) — match that
+  // file's markup exactly whenever this one changes, and vice versa.
   function emailTemplate(contentHtml) {
     return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>' +
-      '<body style="margin:0;padding:32px 16px;background:#06080f;font-family:\'Helvetica Neue\',Arial,sans-serif;color:#e0e0e0;">' +
-      '<div style="max-width:560px;margin:0 auto;">' +
-      '<div style="margin-bottom:28px;"><span style="font-size:22px;font-weight:900;letter-spacing:3px;color:#fff;">APEX</span>' +
-      '<span style="font-size:22px;font-style:italic;color:#F4B400;font-family:Georgia,serif;"> Advantage</span></div>' +
+      '<body style="margin:0;padding:0;background:#06080f;font-family:\'Helvetica Neue\',Arial,sans-serif;color:#e0e0e0;">' +
+      '<div style="max-width:560px;margin:0 auto;padding:32px 16px;">' +
+      '<div style="text-align:center;padding-bottom:24px;margin-bottom:28px;border-bottom:2px solid rgba(244,180,0,0.25);">' +
+      '<img src="https://apexaviationtx.com/apexwhite.png" alt="Apex Aviation" width="140" style="display:inline-block;margin-bottom:12px;height:auto;" />' +
+      '<div style="font-size:15px;font-weight:700;letter-spacing:2px;color:#fff;">' +
+      'APEX <span style="font-style:italic;font-weight:400;color:#F4B400;font-family:Georgia,serif;letter-spacing:normal;">Advantage</span>' +
+      '</div></div>' +
       contentHtml +
       '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:32px 0 16px;">' +
-      '<p style="font-size:12px;color:rgba(255,255,255,0.3);margin:0;">Apex Aviation · Austin, TX</p>' +
+      '<p style="font-size:12px;color:rgba(255,255,255,0.35);margin:0 0 4px;text-align:center;">Apex Aviation · Austin, TX</p>' +
+      '<p style="font-size:11px;margin:0;text-align:center;">' +
+      '<a href="https://apexaviationtx.com" style="color:rgba(255,255,255,0.35);text-decoration:underline;">apexaviationtx.com</a>' +
+      '</p>' +
       '</div></body></html>';
   }
 
@@ -4707,7 +4716,7 @@
 
   function emailTemplate1FirstQuestion() {
     return '<h2 style="color:#F4B400;margin:0 0 4px;">First question, done.</h2>' +
-      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">That\'s one down, 71 to go — and every one after this gets a little more familiar. Keep the momentum going.</p>' +
+      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">That\'s one down — and every one after this gets a little more familiar. Keep the momentum going.</p>' +
       '<a href="https://advantage.apexaviationtx.com/portal.html#dpe-library" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Keep Studying →</a>';
   }
   function emailTemplateMilestone(threshold) {
