@@ -645,22 +645,22 @@ begin
   v_cp := public.get_checkride_prep_funnel_stats(now() - interval '90 days', now());
 
   if (v_exec->'acquisition_activation'->>'registration_started')::int > (v_exec->'acquisition_activation'->>'landing_visitors')::int then
-    v_warnings := v_warnings || 'FUNNEL DEFINITION WARNING: Executive Acquisition funnel has a step exceeding 100% of landing visitors.';
+    v_warnings := array_append(v_warnings, 'FUNNEL DEFINITION WARNING: Executive Acquisition funnel has a step exceeding 100% of landing visitors.');
   end if;
   if (v_exec->'monetization'->>'purchase_completed')::int > (v_exec->'monetization'->>'checkout_started')::int then
-    v_warnings := v_warnings || 'FUNNEL DEFINITION WARNING: Executive Monetization funnel has more purchases than checkout starts.';
+    v_warnings := array_append(v_warnings, 'FUNNEL DEFINITION WARNING: Executive Monetization funnel has more purchases than checkout starts.');
   end if;
   if (v_readiness->>'completed')::int > (v_readiness->>'started')::int then
-    v_warnings := v_warnings || 'FUNNEL DEFINITION WARNING: Readiness funnel has more completions than starts.';
+    v_warnings := array_append(v_warnings, 'FUNNEL DEFINITION WARNING: Readiness funnel has more completions than starts.');
   end if;
   if (v_readiness->>'checkride_prep_purchased')::int > (v_readiness->>'checkride_prep_clicked')::int then
-    v_warnings := v_warnings || 'FUNNEL DEFINITION WARNING: Readiness funnel has more Checkride Prep purchases than clicks.';
+    v_warnings := array_append(v_warnings, 'FUNNEL DEFINITION WARNING: Readiness funnel has more Checkride Prep purchases than clicks.');
   end if;
   if (v_cp->>'purchases')::int > (v_cp->>'checkout_started')::int then
-    v_warnings := v_warnings || 'FUNNEL DEFINITION WARNING: Checkride Prep funnel has more purchases than checkout starts.';
+    v_warnings := array_append(v_warnings, 'FUNNEL DEFINITION WARNING: Checkride Prep funnel has more purchases than checkout starts.');
   end if;
   if v_first_login_distinct_profiles > 0 and v_first_login_total > v_first_login_distinct_profiles * 2 then
-    v_warnings := v_warnings || 'FUNNEL DEFINITION WARNING: portal_first_login firing meaningfully more than once per profile on average.';
+    v_warnings := array_append(v_warnings, 'FUNNEL DEFINITION WARNING: portal_first_login firing meaningfully more than once per profile on average.');
   end if;
 
   select jsonb_build_object(
