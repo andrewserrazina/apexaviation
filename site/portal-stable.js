@@ -4576,41 +4576,59 @@
   function checkLifecycleMilestones() {
     if (!member) return;
 
-    // Kept as a passive historical log only -- nothing reads
-    // loggedEventTypes['first_login'] for the tracking decision anymore
-    // (see claimFirstPortalLoginOnce above), so a slow/failed insert here
-    // can no longer cause a repeat fire.
-    logEventOnce('first_login');
-    claimFirstPortalLoginOnce();
-    linkAnalyticsIdentityOnce();
-    maybeShowWelcomeOnboarding();
-    claimActivationCompletedOnce();
+    // checkLifecycleMilestones() runs synchronously inside renderReadiness(),
+    // which itself runs partway through the single big .then() callback
+    // that finishes with showSection(initial-hash) -- the call that
+    // actually loads whatever section the URL landed on, including
+    // loadAdminDashboard() for #admin. An uncaught exception ANYWHERE in
+    // this function would silently abort every statement after it in
+    // that same callback, which is a much bigger blast radius than one
+    // missed milestone email. Everything below is wrapped so a bug in
+    // one milestone check can never take out section loading (or any
+    // other later init step) with it -- same "tracking must never break
+    // the product" principle analytics-events.js's track() already
+    // follows.
+    try {
+      // Kept as a passive historical log only -- nothing reads
+      // loggedEventTypes['first_login'] for the tracking decision anymore
+      // (see claimFirstPortalLoginOnce above), so a slow/failed insert here
+      // can no longer cause a repeat fire.
+      logEventOnce('first_login');
+      claimFirstPortalLoginOnce();
+      linkAnalyticsIdentityOnce();
+      maybeShowWelcomeOnboarding();
+      claimActivationCompletedOnce();
+    } catch (e) { console.error('checkLifecycleMilestones: activation/onboarding step failed, continuing anyway', e); }
 
-    if (hasMeaningfulActivity()) {
-      var wasNew = !loggedEventTypes['first_question_completed'];
-      logEventOnce('first_question_completed');
-      if (wasNew) {
-        sendPortalEmail(member.email, 'You completed your first question 🎉', emailTemplate1FirstQuestion());
-        logEmailSent('first_question_completed');
-        if (window.apexTrack) apexTrack('first_lesson_completed', { profile_id: member.id });
+    try {
+      if (hasMeaningfulActivity()) {
+        var wasNew = !loggedEventTypes['first_question_completed'];
+        logEventOnce('first_question_completed');
+        if (wasNew) {
+          sendPortalEmail(member.email, 'You completed your first question 🎉', emailTemplate1FirstQuestion());
+          logEmailSent('first_question_completed');
+          if (window.apexTrack) apexTrack('first_lesson_completed', { profile_id: member.id });
+        }
       }
-    }
+    } catch (e) { console.error('checkLifecycleMilestones: first-question milestone failed, continuing anyway', e); }
 
-    var score = computeReadiness();
-    [25, 50, 75, 90].forEach(function (threshold) {
-      var key = 'readiness_' + threshold;
-      if (score >= threshold && !loggedEventTypes[key]) {
-        logEventOnce(key);
-        sendPortalEmail(member.email, score + '% Checkride Ready', emailTemplateMilestone(threshold));
-        logEmailSent(key);
+    try {
+      var score = computeReadiness();
+      [25, 50, 75, 90].forEach(function (threshold) {
+        var key = 'readiness_' + threshold;
+        if (score >= threshold && !loggedEventTypes[key]) {
+          logEventOnce(key);
+          sendPortalEmail(member.email, score + '% Checkride Ready', emailTemplateMilestone(threshold));
+          logEmailSent(key);
+        }
+      });
+
+      if (checkrideModeDone && !loggedEventTypes['checkride_mode_completed_email']) {
+        logEventOnce('checkride_mode_completed_email');
+        sendPortalEmail(member.email, 'Checkride Mode: complete', emailTemplateCheckrideModeDone());
+        logEmailSent('checkride_mode_completed_email');
       }
-    });
-
-    if (checkrideModeDone && !loggedEventTypes['checkride_mode_completed_email']) {
-      logEventOnce('checkride_mode_completed_email');
-      sendPortalEmail(member.email, 'Checkride Mode: complete', emailTemplateCheckrideModeDone());
-      logEmailSent('checkride_mode_completed_email');
-    }
+    } catch (e) { console.error('checkLifecycleMilestones: readiness/checkride-mode milestone failed, continuing anyway', e); }
   }
 
   // Lightweight first-session welcome -- shown exactly once (gated on the
