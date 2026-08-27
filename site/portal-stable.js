@@ -4544,6 +4544,40 @@
     return activationClaimPromise;
   }
 
+  // One-time milestone emails (first_question_completed, readiness_25/
+  // 50/75/90, checkride_mode_completed_email, checkride_passed) used to
+  // gate on loggedEventTypes -- the same non-atomic "SELECT to hydrate a
+  // flag, then fire-and-forget INSERT to claim it" pattern documented
+  // above claimFirstPortalLoginOnce, and never given the same atomic fix.
+  // If that INSERT doesn't survive (dropped connection, tab/app
+  // backgrounded mid-request), the next page load's SELECT finds nothing
+  // and re-sends the same congratulatory email. claim_milestone_email()
+  // (supabase-portal-schema-v87.sql) replaces the read with a single
+  // atomic INSERT ... ON CONFLICT that Postgres guarantees at most one
+  // caller can ever win, across every tab/device/page load, forever --
+  // matching claim_first_portal_login/claim_activation_completed above.
+  // sendFn (the actual email + any tracking) lives inside the memoized
+  // promise chain, not in a .then() attached by each caller, so it runs
+  // at most once per page session even though checkLifecycleMilestones()
+  // calls this many times per session via renderReadiness().
+  var milestoneEmailClaimPromises = {};
+  function claimMilestoneEmailOnce(key, sendFn) {
+    if (!member) return Promise.resolve(false);
+    if (!milestoneEmailClaimPromises[key]) {
+      milestoneEmailClaimPromises[key] = apexSupabase.rpc('claim_milestone_email', { p_profile_id: member.id, p_milestone_key: key })
+        .then(function (res) { return !res.error && res.data === true; })
+        .catch(function () { return false; })
+        .then(function (won) {
+          if (!won) return false;
+          logEventOnce(key);
+          sendFn();
+          logEmailSent(key);
+          return true;
+        });
+    }
+    return milestoneEmailClaimPromises[key];
+  }
+
   // Plain, professional confirmation -- per the brief, explicitly not a
   // gamified reward animation. Readiness % is only shown for unlocked
   // members: computeReadiness() is entirely a function of DPE_DATA (the
@@ -4611,13 +4645,10 @@
 
     try {
       if (hasMeaningfulActivity()) {
-        var wasNew = !loggedEventTypes['first_question_completed'];
-        logEventOnce('first_question_completed');
-        if (wasNew) {
+        claimMilestoneEmailOnce('first_question_completed', function () {
           sendPortalEmail(member.email, 'You completed your first question 🎉', emailTemplate1FirstQuestion());
-          logEmailSent('first_question_completed');
           if (window.apexTrack) apexTrack('first_lesson_completed', { profile_id: member.id });
-        }
+        });
       }
     } catch (e) { console.error('checkLifecycleMilestones: first-question milestone failed, continuing anyway', e); }
 
@@ -4625,17 +4656,17 @@
       var score = computeReadiness();
       [25, 50, 75, 90].forEach(function (threshold) {
         var key = 'readiness_' + threshold;
-        if (score >= threshold && !loggedEventTypes[key]) {
-          logEventOnce(key);
-          sendPortalEmail(member.email, score + '% Checkride Ready', emailTemplateMilestone(threshold));
-          logEmailSent(key);
+        if (score >= threshold) {
+          claimMilestoneEmailOnce(key, function () {
+            sendPortalEmail(member.email, score + '% Checkride Ready', emailTemplateMilestone(threshold));
+          });
         }
       });
 
-      if (checkrideModeDone && !loggedEventTypes['checkride_mode_completed_email']) {
-        logEventOnce('checkride_mode_completed_email');
-        sendPortalEmail(member.email, 'Checkride Mode: complete', emailTemplateCheckrideModeDone());
-        logEmailSent('checkride_mode_completed_email');
+      if (checkrideModeDone) {
+        claimMilestoneEmailOnce('checkride_mode_completed_email', function () {
+          sendPortalEmail(member.email, 'Checkride Mode: complete', emailTemplateCheckrideModeDone());
+        });
       }
     } catch (e) { console.error('checkLifecycleMilestones: readiness/checkride-mode milestone failed, continuing anyway', e); }
   }
@@ -5459,8 +5490,9 @@
         checkrideResult = { exam_date: examDate, examiner_name: examiner, aircraft: aircraft, passed: true };
         renderPassedBanner();
         renderSuccessWall();
-        logEventOnce('checkride_passed');
-        sendPortalEmail(member.email, 'Congratulations on passing your checkride! 🎉', emailTemplatePassed());
+        claimMilestoneEmailOnce('checkride_passed', function () {
+          sendPortalEmail(member.email, 'Congratulations on passing your checkride! 🎉', emailTemplatePassed());
+        });
         showCelebration();
       });
     });

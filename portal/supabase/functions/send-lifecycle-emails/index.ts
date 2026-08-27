@@ -251,10 +251,9 @@ async function sendEmail(supabase: any, to: string, subject: string, contentHtml
   await supabase.functions.invoke('send-email', { body: { to, subject, html: template(contentHtml) } })
 }
 
-// Marks a one-time milestone as sent in BOTH portal_events (the dedup
-// flag portal.js already checks) and portal_email_log (the complete
-// audit trail), so whichever side -- client or this job -- gets there
-// first is authoritative for both.
+// Marks a one-time milestone as sent in BOTH portal_events (a passive
+// historical log only -- see claimMilestoneEmail below for the actual
+// dedup decision) and portal_email_log (the complete audit trail).
 async function markMilestoneSent(supabase: any, profileId: string, type: string) {
   await supabase.from('portal_events').insert({ profile_id: profileId, event_type: type })
   await supabase.from('portal_email_log').insert({ profile_id: profileId, email_type: type })
@@ -263,6 +262,22 @@ async function markMilestoneSent(supabase: any, profileId: string, type: string)
 async function hasMilestoneFired(supabase: any, profileId: string, type: string) {
   const { data } = await supabase.from('portal_events').select('id').eq('profile_id', profileId).eq('event_type', type).limit(1)
   return !!(data && data.length)
+}
+
+// Atomic claim for the one-time milestone emails also gated client-side
+// via claimMilestoneEmailOnce() (portal-stable.js) -- both sides insert
+// into the same portal_milestone_emails table (supabase-portal-schema-
+// v87.sql), primary-keyed on (profile_id, milestone_key), so whichever
+// one gets there first is the only one that ever sends. Replaces the old
+// hasMilestoneFired-then-markMilestoneSent pattern for these specific
+// milestones, which read-then-wrote non-atomically and could double-send
+// if the client's own claim insert never landed (dropped connection, the
+// tab/app backgrounded mid-request) by the time this job ran. This client
+// uses the service-role connection, which already bypasses RLS, so no
+// RPC wrapper is needed here the way portal-stable.js needs one.
+async function claimMilestoneEmail(supabase: any, profileId: string, key: string): Promise<boolean> {
+  const { error } = await supabase.from('portal_milestone_emails').insert({ profile_id: profileId, milestone_key: key })
+  return !error
 }
 
 async function daysSinceLastEmail(supabase: any, profileId: string, type: string): Promise<number> {
@@ -652,7 +667,7 @@ async function processSevenDayActive(supabase: any, profile: any, results: any) 
 async function processMilestones(supabase: any, profile: any, questions: Question[], categoryIds: string[], results: any) {
   const { data: qProgress } = await supabase.from('portal_question_progress').select('id').eq('profile_id', profile.id).eq('completed', true).limit(1)
   if (qProgress && qProgress.length) {
-    if (!(await hasMilestoneFired(supabase, profile.id, 'first_question_completed'))) {
+    if (await claimMilestoneEmail(supabase, profile.id, 'first_question_completed')) {
       await sendEmail(supabase, profile.email, 'You completed your first question 🎉', emailTemplate1FirstQuestion())
       await markMilestoneSent(supabase, profile.id, 'first_question_completed')
       results.first_question++
@@ -669,7 +684,7 @@ async function processMilestones(supabase: any, profile: any, questions: Questio
   for (const threshold of [...READINESS_THRESHOLDS].reverse()) {
     if (score < threshold) continue
     const key = 'readiness_' + threshold
-    if (await hasMilestoneFired(supabase, profile.id, key)) continue
+    if (!(await claimMilestoneEmail(supabase, profile.id, key))) continue
     await sendEmail(supabase, profile.email, `${score}% Checkride Ready`, emailTemplateMilestone(threshold))
     await markMilestoneSent(supabase, profile.id, key)
     results.readiness++
@@ -679,7 +694,7 @@ async function processMilestones(supabase: any, profile: any, questions: Questio
   const { data: checkrideAttempts } = await supabase
     .from('portal_practice_attempts')
     .select('id').eq('profile_id', profile.id).eq('mode', 'checkride').not('completed_at', 'is', null).limit(1)
-  if (checkrideAttempts && checkrideAttempts.length && !(await hasMilestoneFired(supabase, profile.id, 'checkride_mode_completed_email'))) {
+  if (checkrideAttempts && checkrideAttempts.length && (await claimMilestoneEmail(supabase, profile.id, 'checkride_mode_completed_email'))) {
     await sendEmail(supabase, profile.email, 'Checkride Mode: complete', emailTemplateCheckrideModeDone())
     await markMilestoneSent(supabase, profile.id, 'checkride_mode_completed_email')
     results.checkride_mode++
