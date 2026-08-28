@@ -1,0 +1,168 @@
+-- Apex Advantage — Module Workbook content: Module 7 (Sectional Chart Mastery) (v93)
+--
+-- Same schema and same adaptations as v92 (Module 6): guidedNotes reuse
+-- the existing GUIDED_NOTES_MODULES PPL-M07 placeholder (this package's
+-- own Section 12 doesn't reproduce fill-in text for all 28 individual
+-- Apex Chart Guide symbols, which would be disproportionate to this
+-- page); the six embedded scenarios are self-contained open prompts,
+-- left unanswered since the Knowledge Check bank (Q20-25) independently
+-- covers the same six with real determinations. No Apex Challenge or
+-- Post-Class Email exist for this module -- both flagged as such in the
+-- source.
+--
+-- Run this in the Supabase SQL editor, after supabase-portal-schema-v92.
+
+insert into public.module_companion_content (course_id, module_id, content) values (
+  'PPL', 'PPL-M07',
+  '{
+    "modulePurpose": "Teach students to read any sectional chart as a working decision-making tool, identifying hazards and applying that information to real navigation and risk-management decisions.",
+    "objectives": [
+      { "id": "obj-purpose", "label": "Explain the purpose of sectional charts." },
+      { "id": "obj-airport-symbols", "label": "Identify airport symbols." },
+      { "id": "obj-info-blocks", "label": "Interpret airport information blocks." },
+      { "id": "obj-airspace-boundaries", "label": "Identify airspace boundaries." },
+      { "id": "obj-terrain-obstacles", "label": "Interpret terrain and obstacle information." },
+      { "id": "obj-navaids", "label": "Identify navigation aids." },
+      { "id": "obj-special-use", "label": "Interpret special use airspace." },
+      { "id": "obj-legends", "label": "Use chart legends effectively." },
+      { "id": "obj-hazards", "label": "Identify hazards along a route." },
+      { "id": "obj-apply", "label": "Apply sectional chart information to real-world decisions." },
+      { "id": "obj-risk-management", "label": "Demonstrate risk management using chart information." },
+      { "id": "obj-defend", "label": "Defend chart interpretation decisions during a checkride." }
+    ],
+    "guidedNotes": [
+      { "id": "airport-symbology", "section": "Airport Symbols", "prompt": "What does an airport symbol''s color and tick marks tell you about whether it''s towered and hard-surfaced, and what does its data block contain?" },
+      { "id": "airspace-boundary-lines", "section": "Airspace Boundaries", "prompt": "What''s the difference between the solid blue, dashed blue, and magenta lines used to depict airspace boundaries on a sectional, and what does magenta vs. blue vignette shading tell you about the Class E floor?" },
+      { "id": "terrain-obstacles", "section": "Terrain & Obstacles", "prompt": "How do contour colors and Maximum Elevation Figures (MEFs) help you judge terrain and obstacle clearance along a route, and what does a filled vs. open dot on an obstacle symbol mean?" },
+      { "id": "special-use-airspace-depiction", "section": "Special Use Airspace", "prompt": "How is special use airspace depicted and labeled on a sectional, and how would you check whether it''s currently active?" },
+      { "id": "navaid-symbology", "section": "Navaid Symbology", "prompt": "What''s the visual difference between a VOR and a VORTAC symbol, and why does the chart print a Morse code identifier beside a navaid?" },
+      { "id": "measuring-tools", "section": "Chart Currency & Route Analysis", "prompt": "Why can a printed sectional chart never be a complete preflight hazard check on its own, and what''s a consistent, systematic order for analyzing an unfamiliar route on a chart?" }
+    ],
+    "scenario": {
+      "narrative": "Six short scenarios testing whether you can apply tonight''s chart-reading knowledge to real decisions, not just recite symbols.",
+      "prompts": [
+        { "id": "scenario-1-hidden-tower", "prompt": "Scenario 1 — The Hidden Tower: A student plans a route and misses a 1,900-foot tower directly along the track. What was missed, and what chart information would have warned them?" },
+        { "id": "scenario-2-surprise-class-d", "prompt": "Scenario 2 — The Surprise Class D: A student enters Class D airspace without realizing it. How could the chart have prevented this?" },
+        { "id": "scenario-3-mountain-route", "prompt": "Scenario 3 — The Mountain Route: Two routes are available — one crosses rising terrain, one avoids it. Choose a route and defend the choice." },
+        { "id": "scenario-4-moa", "prompt": "Scenario 4 — The MOA: A route passes through an active MOA. Do you proceed or avoid it, and what information do you need to decide?" },
+        { "id": "scenario-5-night-flight", "prompt": "Scenario 5 — Night Flight Planning: The same chart shows the same obstacles and terrain, but the flight departs at night. How does risk change even though the chart information is identical?" },
+        { "id": "scenario-6-checkride-review", "prompt": "Scenario 6 — The Checkride Chart Review: A DPE hands you a sectional chart you''ve never seen and asks you to walk through it. What''s your systematic process, start to finish?" }
+      ]
+    },
+    "checkrideCorner": [
+      { "id": "cc-1", "question": "What is the difference between a towered and non-towered airport symbol?" },
+      { "id": "cc-2", "question": "What do the tick marks around an airport symbol indicate?" },
+      { "id": "cc-3", "question": "What does the \"R\" inside an airport symbol mean?" },
+      { "id": "cc-4", "question": "What information is contained in an airport''s data block?" },
+      { "id": "cc-5", "question": "What''s the difference between a solid and dashed blue line on a sectional?" },
+      { "id": "cc-6", "question": "What does magenta vignette shading indicate about Class E airspace?" },
+      { "id": "cc-7", "question": "How do you determine the floor of Class E airspace at a specific point?" },
+      { "id": "cc-8", "question": "What is a Maximum Elevation Figure, and how is it calculated?" },
+      { "id": "cc-9", "question": "How do terrain shading colors differ from contour lines in what they tell you?" },
+      { "id": "cc-10", "question": "What''s the difference between a lighted and unlighted tower symbol?" },
+      { "id": "cc-11", "question": "How would you identify a wind farm on a sectional, and what should you do about it?" },
+      { "id": "cc-12", "question": "What''s the difference between a VOR, a VORTAC, and a TACAN symbol?" },
+      { "id": "cc-13", "question": "Why does the chart show a Morse code identifier next to a navaid?" },
+      { "id": "cc-14", "question": "What''s the difference between a Restricted Area and a Warning Area?" },
+      { "id": "cc-15", "question": "Can a TFR ever appear on a printed sectional chart? Why or why not?" },
+      { "id": "cc-16", "question": "Walk me through your full process for analyzing an unfamiliar route on a sectional." },
+      { "id": "cc-17", "question": "How does risk assessment change for the same route flown at night vs. during the day?" },
+      { "id": "cc-18", "question": "A DPE points to an MOA on your chart. What''s your complete answer?" },
+      { "id": "cc-19", "question": "Why does Apex teach ''what to do,'' not just ''what it looks like,'' for every chart symbol?" },
+      { "id": "cc-20", "question": "What''s the fastest way to confirm you''re using a current sectional chart edition?" }
+    ]
+  }'::jsonb
+)
+on conflict (course_id, module_id) do update set content = excluded.content, updated_at = now();
+
+insert into public.module_quiz_questions (id, course_id, module_id, sort_order, question_type, prompt, choices, correct_choice, model_answer) values
+('PPL-M07-Q01', 'PPL', 'PPL-M07', 1, 'multiple_choice', 'A blue airport symbol with tick marks indicates:',
+  '[{"key":"A","label":"Non-towered, soft surface"},{"key":"B","label":"Towered, hard surface"},{"key":"C","label":"Private, soft surface"},{"key":"D","label":"Military"}]'::jsonb, 'B',
+  'Blue with tick marks indicates a towered airport with hard-surfaced (paved) runways.'),
+('PPL-M07-Q02', 'PPL', 'PPL-M07', 2, 'multiple_choice', 'A magenta airport symbol with no tick marks indicates:',
+  '[{"key":"A","label":"Towered, hard surface"},{"key":"B","label":"Non-towered, soft surface"},{"key":"C","label":"Seaplane base"},{"key":"D","label":"Military"}]'::jsonb, 'B',
+  'Magenta with no tick marks indicates a non-towered airport with soft/unimproved surface runways.'),
+('PPL-M07-Q03', 'PPL', 'PPL-M07', 3, 'multiple_choice', 'An airport symbol with an "R" inside it means:',
+  '[{"key":"A","label":"Restricted airspace nearby"},{"key":"B","label":"Private airport, permission required"},{"key":"C","label":"Runway closed"},{"key":"D","label":"Radar service available"}]'::jsonb, 'B',
+  'An "R" indicates a private-use airport requiring prior permission from the owner before landing.'),
+('PPL-M07-Q04', 'PPL', 'PPL-M07', 4, 'scenario', 'What does an anchor symbol on a sectional represent? Identify the feature.',
+  null, null,
+  'A seaplane base.'),
+('PPL-M07-Q05', 'PPL', 'PPL-M07', 5, 'multiple_choice', 'Which line style depicts Class B airspace?',
+  '[{"key":"A","label":"Dashed magenta"},{"key":"B","label":"Solid blue"},{"key":"C","label":"Solid magenta"},{"key":"D","label":"Dashed blue"}]'::jsonb, 'B',
+  'Solid blue depicts Class B airspace.'),
+('PPL-M07-Q06', 'PPL', 'PPL-M07', 6, 'multiple_choice', 'Which line style depicts Class D airspace?',
+  '[{"key":"A","label":"Solid blue"},{"key":"B","label":"Solid magenta"},{"key":"C","label":"Dashed blue"},{"key":"D","label":"No line"}]'::jsonb, 'C',
+  'Dashed blue depicts Class D airspace.'),
+('PPL-M07-Q07', 'PPL', 'PPL-M07', 7, 'multiple_choice', 'A magenta vignette shading indicates a Class E floor of:',
+  '[{"key":"A","label":"700 ft AGL"},{"key":"B","label":"1,200 ft AGL"},{"key":"C","label":"The surface"},{"key":"D","label":"10,000 ft MSL"}]'::jsonb, 'A',
+  'Magenta vignette shading indicates a Class E floor of 700 ft AGL.'),
+('PPL-M07-Q08', 'PPL', 'PPL-M07', 8, 'multiple_choice', 'A blue vignette shading indicates a Class E floor of:',
+  '[{"key":"A","label":"700 ft AGL"},{"key":"B","label":"1,200 ft AGL"},{"key":"C","label":"The surface"},{"key":"D","label":"18,000 ft MSL"}]'::jsonb, 'B',
+  'Blue vignette shading indicates a Class E floor of 1,200 ft AGL.'),
+('PPL-M07-Q09', 'PPL', 'PPL-M07', 9, 'multiple_choice', 'Class G airspace is depicted on a sectional by:',
+  '[{"key":"A","label":"A dotted green line"},{"key":"B","label":"No boundary line at all"},{"key":"C","label":"A solid brown line"},{"key":"D","label":"A gray shaded box"}]'::jsonb, 'B',
+  'Class G has no boundary line at all — it''s wherever controlled airspace doesn''t exist.'),
+('PPL-M07-Q10', 'PPL', 'PPL-M07', 10, 'multiple_choice', 'A boxed number like "95" printed in a chart quadrant represents:',
+  '[{"key":"A","label":"The chart edition year"},{"key":"B","label":"A Maximum Elevation Figure of 9,500 ft MSL"},{"key":"C","label":"A frequency"},{"key":"D","label":"An airport elevation"}]'::jsonb, 'B',
+  'A boxed number represents a Maximum Elevation Figure, in hundreds of feet MSL.'),
+('PPL-M07-Q11', 'PPL', 'PPL-M07', 11, 'scenario', 'Given an MEF of 9,500 ft MSL for a quadrant on your route, what is the minimum altitude consideration for that segment?',
+  null, null,
+  'Plan your cruise altitude at or above the MEF for that quadrant — it already includes a conservative margin above the highest known feature or obstacle.'),
+('PPL-M07-Q12', 'PPL', 'PPL-M07', 12, 'multiple_choice', 'A filled (solid) dot atop an obstacle symbol indicates:',
+  '[{"key":"A","label":"Unlighted obstacle"},{"key":"B","label":"Lighted obstacle"},{"key":"C","label":"Obstacle under construction"},{"key":"D","label":"Obstacle removed"}]'::jsonb, 'B',
+  'A filled dot indicates a lighted obstacle.'),
+('PPL-M07-Q13', 'PPL', 'PPL-M07', 13, 'multiple_choice', 'A cluster of obstacle symbols close together on a sectional should be treated as:',
+  '[{"key":"A","label":"A single isolated hazard"},{"key":"B","label":"A concentrated hazard area, avoided as a whole"},{"key":"C","label":"Not a real concern if under 500 ft"},{"key":"D","label":"Only relevant at night"}]'::jsonb, 'B',
+  'A cluster should be treated as a concentrated hazard area to avoid as a whole, not navigated between.'),
+('PPL-M07-Q14', 'PPL', 'PPL-M07', 14, 'scenario', 'What chart symbol indicates a wind turbine farm, and what should a pilot do near one? Identify the feature and the required action.',
+  null, null,
+  'A turbine-blade symbol, often in clusters; give the charted area wide lateral and vertical berth rather than threading between towers.'),
+('PPL-M07-Q15', 'PPL', 'PPL-M07', 15, 'multiple_choice', 'What is the key visual difference between a VOR and a VORTAC symbol?',
+  '[{"key":"A","label":"Color"},{"key":"B","label":"A VORTAC adds a DME-style box to the compass rose"},{"key":"C","label":"Size only"},{"key":"D","label":"There is no difference"}]'::jsonb, 'B',
+  'A VORTAC adds a DME-style box to the VOR compass-rose symbol.'),
+('PPL-M07-Q16', 'PPL', 'PPL-M07', 16, 'multiple_choice', 'Why does a sectional chart print a Morse code identifier beside a navaid?',
+  '[{"key":"A","label":"Decoration"},{"key":"B","label":"To confirm the correct station is tuned, since frequencies can be misheard"},{"key":"C","label":"Required by law only for VORTACs"},{"key":"D","label":"To show the navaid''s operating hours"}]'::jsonb, 'B',
+  'The Morse code identifier lets a pilot confirm, by ear, that the correct station has actually been tuned.'),
+('PPL-M07-Q17', 'PPL', 'PPL-M07', 17, 'multiple_choice', 'What does a hatched border around a charted area with an "R-" number indicate?',
+  '[{"key":"A","label":"Restricted Area"},{"key":"B","label":"Warning Area"},{"key":"C","label":"MOA"},{"key":"D","label":"Alert Area"}]'::jsonb, 'A',
+  'A hatched border with an "R-" number indicates a Restricted Area.'),
+('PPL-M07-Q18', 'PPL', 'PPL-M07', 18, 'multiple_choice', 'What''s the key legal difference between a Restricted Area and a Warning Area?',
+  '[{"key":"A","label":"No difference"},{"key":"B","label":"Restricted Areas can legally require permission to enter; Warning Areas (international) can only be warned about"},{"key":"C","label":"Warning Areas are always larger"},{"key":"D","label":"Restricted Areas never contain hazards"}]'::jsonb, 'B',
+  'Restricted Areas are domestic airspace where the FAA can legally require permission to enter; Warning Areas sit in international airspace where the FAA can only warn pilots, not legally restrict entry.'),
+('PPL-M07-Q19', 'PPL', 'PPL-M07', 19, 'multiple_choice', 'Can an active TFR ever be shown on a printed sectional chart?',
+  '[{"key":"A","label":"Yes, always"},{"key":"B","label":"No — TFRs exist only in the NOTAM system"},{"key":"C","label":"Only permanent TFRs"},{"key":"D","label":"Only if published 6 months in advance"}]'::jsonb, 'B',
+  'TFRs exist only in the NOTAM system and can appear on short notice, so a printed or cached chart can never show one.'),
+('PPL-M07-Q20', 'PPL', 'PPL-M07', 20, 'scenario', 'A student plans a cross-country route and misses a 1,900-foot tower directly along the track. What chart information would have prevented this?',
+  null, null,
+  'A careful obstacle scan along the entire route line, including the tower symbol and its charted height, would have flagged this — the planning process must include obstacles, not just airspace and airports.'),
+('PPL-M07-Q21', 'PPL', 'PPL-M07', 21, 'scenario', 'A student enters Class D airspace without realizing it. How could the chart have prevented this?',
+  null, null,
+  'Identifying every airspace boundary crossed during route planning — including dashed blue Class D rings — before departure, not discovering it in flight.'),
+('PPL-M07-Q22', 'PPL', 'PPL-M07', 22, 'scenario', 'Two routes connect the same airports: one crosses a 9,500 ft MEF quadrant, the other stays in a 3,200 ft MEF quadrant with 12 extra minutes of flight time. How do you decide?',
+  null, null,
+  'Consider aircraft performance capability, oxygen requirements at altitude, personal weather/terrain minimums, and true risk versus the time cost — legal minimums alone don''t make the decision for you.'),
+('PPL-M07-Q23', 'PPL', 'PPL-M07', 23, 'scenario', 'A planned route passes through an active MOA. What information do you need before deciding whether to proceed? List what you''d check.',
+  null, null,
+  'Whether the MOA is currently active ("hot") via a briefing source, the altitudes it occupies, and whether your route can be adjusted to avoid it if the risk isn''t acceptable.'),
+('PPL-M07-Q24', 'PPL', 'PPL-M07', 24, 'scenario', 'The same chart and route are flown at night instead of during the day. How does risk change even though the chart information is identical?',
+  null, null,
+  'Obstacles and terrain become harder to see visually at night, making charted information the primary (not secondary) hazard-avoidance tool — altitude margins and route choice deserve extra conservatism after dark.'),
+('PPL-M07-Q25', 'PPL', 'PPL-M07', 25, 'scenario', 'A DPE hands you a sectional chart you''ve never seen and asks you to walk through it. What''s your systematic process, start to finish?',
+  null, null,
+  'A consistent order: identify airports and their type, identify airspace boundaries along a relevant route, identify obstacles and terrain (MEF), identify navaids and frequencies, then identify any special use airspace — narrating reasoning throughout, not just naming symbols.'),
+('PPL-M07-Q26', 'PPL', 'PPL-M07', 26, 'short_answer', 'Explain the difference between terrain shading and a Maximum Elevation Figure, and when you''d use each.',
+  null, null,
+  'Terrain shading gives a fast visual impression of relief for situational awareness; the MEF gives a precise, conservative altitude figure for an entire quadrant, used for actual altitude planning.'),
+('PPL-M07-Q27', 'PPL', 'PPL-M07', 27, 'short_answer', 'Why does Apex teach chart symbols with a ''what to do'' framework instead of memorization alone?',
+  null, null,
+  'Because a DPE and real flying both test application, not recitation — recognizing a symbol only matters if the pilot knows the specific action it requires.'),
+('PPL-M07-Q28', 'PPL', 'PPL-M07', 28, 'short_answer', 'What is the fastest way to confirm you are using a current sectional chart edition?',
+  null, null,
+  'Check the chart''s edition/effective date printed in the margin against the current FAA publication cycle, or confirm currency directly within a digital chart application before relying on it as a primary reference.'),
+('PPL-M07-Q29', 'PPL', 'PPL-M07', 29, 'short_answer', 'Why can a printed sectional chart never be a complete preflight hazard check on its own?',
+  null, null,
+  'Because TFRs, and some other dynamic hazards, are published only through the NOTAM system and are never depicted on the chart itself — a full preflight check always requires a current NOTAM/briefing review in addition to the chart.'),
+('PPL-M07-Q30', 'PPL', 'PPL-M07', 30, 'short_answer', 'Give an example of a situation where the legal answer and the smart answer from chart information might differ, and explain why.',
+  null, null,
+  'Answers will vary (e.g., a legal VFR entry into an active MOA, or a legally sufficient but tight obstacle clearance at night). The core point: chart information tells you what''s legal and possible; judgment, not the chart alone, determines what''s wise.');
