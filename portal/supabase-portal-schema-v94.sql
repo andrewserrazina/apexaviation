@@ -1,0 +1,165 @@
+-- Apex Advantage — Module Workbook content: Module 8 (Pilotage & Dead Reckoning) (v94)
+--
+-- Same schema and adaptations as v92/v93: guidedNotes reuse the existing
+-- GUIDED_NOTES_MODULES PPL-M08 placeholder, checked against this
+-- module's real content. The six required scenarios (plus four embedded
+-- exercises earlier in the deck) are self-contained open prompts in
+-- content.scenario, left unanswered since the Knowledge Check bank
+-- (Q15, Q19, Q21) independently covers the overlapping ones with real
+-- determinations. No Apex Challenge or Post-Class Email exist for this
+-- module -- both flagged as such in the source.
+--
+-- Run this in the Supabase SQL editor, after supabase-portal-schema-v93.
+
+insert into public.module_companion_content (course_id, module_id, content) values (
+  'PPL', 'PPL-M08',
+  '{
+    "modulePurpose": "Teach students to plan, fly, verify, and correct a real VFR route using pilotage and dead reckoning, confidently and independent of GPS.",
+    "objectives": [
+      { "id": "obj-pilotage", "label": "Plan a route using pilotage." },
+      { "id": "obj-dead-reckoning", "label": "Plan a route using dead reckoning." },
+      { "id": "obj-checkpoints", "label": "Select checkpoints." },
+      { "id": "obj-groundspeed", "label": "Calculate groundspeed." },
+      { "id": "obj-eta", "label": "Calculate ETA." },
+      { "id": "obj-errors", "label": "Identify navigation errors." },
+      { "id": "obj-off-course", "label": "Recognize when off course." },
+      { "id": "obj-reestablish", "label": "Re-establish position." },
+      { "id": "obj-corrections", "label": "Make route corrections." },
+      { "id": "obj-defend", "label": "Defend navigation decisions during a checkride." }
+    ],
+    "guidedNotes": [
+      { "id": "course-heading-conversion", "section": "Course to Heading", "prompt": "What is the conversion chain from true course to magnetic course to compass heading, and what gets applied at each step?" },
+      { "id": "wind-correction", "section": "The Apex Navigation Loop & Checkpoints", "prompt": "What are the four stages of the Apex Navigation Loop (PLAN, FLY, VERIFY, CORRECT), and what makes a checkpoint a good one versus a poor one?" },
+      { "id": "groundspeed-ete", "section": "Groundspeed & ETA", "prompt": "How do you calculate time enroute from distance and groundspeed, and what does a checkpoint arriving early or late actually tell you?" },
+      { "id": "fuel-planning-pilotage", "section": "Recalculating After a Discrepancy", "prompt": "When a checkpoint arrives significantly early or late, what specifically do you recalculate, and in what order?" },
+      { "id": "variation-deviation", "section": "Recognizing and Correcting Drift", "prompt": "How do you recognize that you''ve drifted off course from where landmarks appear, and how do you re-intercept the intended course?" },
+      { "id": "lost-procedures", "section": "Lost Procedures", "prompt": "What are the four C''s of lost procedures, in order, and why does Climb come first?" }
+    ],
+    "scenario": {
+      "narrative": "Six required scenarios, plus embedded exercises, testing whether you can apply the Apex Navigation Loop to real in-flight problems, not just recite it.",
+      "prompts": [
+        { "id": "scenario-1-missing-checkpoint", "prompt": "Scenario 1 — The Missing Checkpoint: A checkpoint should appear after 10 minutes. Fifteen minutes later, nothing has appeared. What happened? Which stage of the Navigation Loop are you in right now? What''s your very next action?" },
+        { "id": "scenario-2-fast-tailwind", "prompt": "Scenario 2 — The Fast Tailwind: A checkpoint appears earlier than planned. What does it mean, and what changes?" },
+        { "id": "scenario-3-strong-crosswind", "prompt": "Scenario 3 — The Strong Crosswind: Landmarks consistently appear on one side of the aircraft. How do you recognize drift, and what do you do?" },
+        { "id": "scenario-4-gps-failure", "prompt": "Scenario 4 — The GPS Failure: GPS dies completely. How do you continue using pilotage and dead reckoning?" },
+        { "id": "scenario-5-diversion", "prompt": "Scenario 5 — The Diversion: Your destination closes unexpectedly. How do you develop a new plan?" },
+        { "id": "scenario-6-dpe-route-review", "prompt": "Scenario 6 — The DPE Route Review: An examiner presents a sectional, route, and winds, and asks you to explain your navigation plan cold. Walk through checkpoints, headings, ETA, and corrections." }
+      ]
+    },
+    "checkrideCorner": [
+      { "id": "cc-1", "question": "What is pilotage?" },
+      { "id": "cc-2", "question": "What is dead reckoning?" },
+      { "id": "cc-3", "question": "How do you choose checkpoints?" },
+      { "id": "cc-4", "question": "How do you know you''re off course?" },
+      { "id": "cc-5", "question": "What would you do if GPS failed right now, mid-flight?" },
+      { "id": "cc-6", "question": "Walk me through your navigation process on a cross-country, start to finish." },
+      { "id": "cc-7", "question": "What''s the difference between true course and magnetic heading?" },
+      { "id": "cc-8", "question": "What is magnetic variation?" },
+      { "id": "cc-9", "question": "What is a wind correction angle, and why is it needed?" },
+      { "id": "cc-10", "question": "How do you calculate time enroute given distance and groundspeed?" },
+      { "id": "cc-11", "question": "Your checkpoint arrives 8 minutes early. What does that tell you?" },
+      { "id": "cc-12", "question": "Your checkpoint arrives 12 minutes late. What''s your immediate next action?" },
+      { "id": "cc-13", "question": "What''s the difference between airspeed and groundspeed, and why does it matter for ETA?" },
+      { "id": "cc-14", "question": "Landmarks keep appearing to your right of centerline. What''s happening, and what do you do?" },
+      { "id": "cc-15", "question": "Walk me through the four C''s of lost procedures." },
+      { "id": "cc-16", "question": "How do you re-intercept your intended course after drifting off it?" },
+      { "id": "cc-17", "question": "You''re behind schedule by 15 minutes at your second checkpoint. What do you recalculate, and in what order?" },
+      { "id": "cc-18", "question": "Your destination airport closes unexpectedly 30 minutes out. Walk me through your diversion process." },
+      { "id": "cc-19", "question": "How does the Apex Navigation Loop change, if at all, once you''re truly lost?" },
+      { "id": "cc-20", "question": "What''s the single biggest mistake students make when selecting checkpoints?" }
+    ]
+  }'::jsonb
+)
+on conflict (course_id, module_id) do update set content = excluded.content, updated_at = now();
+
+insert into public.module_quiz_questions (id, course_id, module_id, sort_order, question_type, prompt, choices, correct_choice, model_answer) values
+('PPL-M08-Q01', 'PPL', 'PPL-M08', 1, 'multiple_choice', 'Pilotage is best defined as:',
+  '[{"key":"A","label":"Navigation by time and heading"},{"key":"B","label":"Navigation by reference to visible landmarks"},{"key":"C","label":"Navigation using only GPS"},{"key":"D","label":"Navigation using radio beacons only"}]'::jsonb, 'B',
+  'Pilotage is navigation by reference to visible landmarks on the ground, requiring no electronics.'),
+('PPL-M08-Q02', 'PPL', 'PPL-M08', 2, 'multiple_choice', 'Dead reckoning is based on:',
+  '[{"key":"A","label":"Visible landmarks only"},{"key":"B","label":"Time, distance, and heading"},{"key":"C","label":"ATC radar vectors"},{"key":"D","label":"Magnetic variation only"}]'::jsonb, 'B',
+  'Dead reckoning predicts position using time, distance, and heading, without an outside visual reference.'),
+('PPL-M08-Q03', 'PPL', 'PPL-M08', 3, 'multiple_choice', 'Which best describes a good checkpoint?',
+  '[{"key":"A","label":"A generic field"},{"key":"B","label":"A small pond"},{"key":"C","label":"A unique, easily identifiable feature visible from altitude"},{"key":"D","label":"Any road"}]'::jsonb, 'C',
+  'A good checkpoint is a unique, easily identifiable feature visible from cruising altitude — avoid generic or ambiguous features.'),
+('PPL-M08-Q04', 'PPL', 'PPL-M08', 4, 'multiple_choice', 'In the Apex Navigation Loop, which stage corresponds most directly to pilotage?',
+  '[{"key":"A","label":"PLAN"},{"key":"B","label":"FLY"},{"key":"C","label":"VERIFY"},{"key":"D","label":"CORRECT"}]'::jsonb, 'C',
+  'VERIFY is where pilotage (confirming position against visible landmarks) does its work.'),
+('PPL-M08-Q05', 'PPL', 'PPL-M08', 5, 'multiple_choice', 'True course is measured from:',
+  '[{"key":"A","label":"Magnetic north"},{"key":"B","label":"True north"},{"key":"C","label":"The nearest VOR"},{"key":"D","label":"The destination airport"}]'::jsonb, 'B',
+  'True course is measured from true north on the chart.'),
+('PPL-M08-Q06', 'PPL', 'PPL-M08', 6, 'multiple_choice', 'Magnetic variation is:',
+  '[{"key":"A","label":"A calculation error"},{"key":"B","label":"The difference between true north and magnetic north at a location"},{"key":"C","label":"Wind drift"},{"key":"D","label":"A chart symbol for airports"}]'::jsonb, 'B',
+  'Magnetic variation is the difference between true north and magnetic north at a specific location, printed on the sectional.'),
+('PPL-M08-Q07', 'PPL', 'PPL-M08', 7, 'multiple_choice', 'Wind correction angle compensates for:',
+  '[{"key":"A","label":"Magnetic variation"},{"key":"B","label":"Engine performance"},{"key":"C","label":"Wind drift, to track the intended course over the ground"},{"key":"D","label":"Altimeter error"}]'::jsonb, 'C',
+  'Wind correction angle offsets the aircraft into the wind so the actual ground track matches the intended course.'),
+('PPL-M08-Q08', 'PPL', 'PPL-M08', 8, 'multiple_choice', 'Magnetic heading equals:',
+  '[{"key":"A","label":"True course only"},{"key":"B","label":"True course adjusted for variation and wind correction angle"},{"key":"C","label":"Groundspeed minus airspeed"},{"key":"D","label":"Distance divided by time"}]'::jsonb, 'B',
+  'Magnetic heading is true course adjusted for both magnetic variation and wind correction angle.'),
+('PPL-M08-Q09', 'PPL', 'PPL-M08', 9, 'scenario', 'A route segment is 90 NM and groundspeed is 90 kt. What is the time enroute? Show your work.',
+  null, null,
+  '60 minutes (Time = Distance ÷ Groundspeed = 90 ÷ 90 = 1 hour).'),
+('PPL-M08-Q10', 'PPL', 'PPL-M08', 10, 'scenario', 'A route segment is 60 NM and groundspeed is 120 kt. What is the time enroute? Show your work.',
+  null, null,
+  '30 minutes (60 ÷ 120 = 0.5 hour).'),
+('PPL-M08-Q11', 'PPL', 'PPL-M08', 11, 'multiple_choice', 'At 60 knots groundspeed, approximately how far does an aircraft travel in one minute?',
+  '[{"key":"A","label":"0.5 NM"},{"key":"B","label":"1 NM"},{"key":"C","label":"2 NM"},{"key":"D","label":"6 NM"}]'::jsonb, 'B',
+  'At 60 knots (1 NM per minute), an aircraft travels approximately 1 NM per minute.'),
+('PPL-M08-Q12', 'PPL', 'PPL-M08', 12, 'multiple_choice', 'A checkpoint arrives significantly earlier than planned. This most likely indicates:',
+  '[{"key":"A","label":"Slower than forecast groundspeed"},{"key":"B","label":"Faster than forecast groundspeed (tailwind)"},{"key":"C","label":"A navigation error only"},{"key":"D","label":"Nothing — it can be ignored"}]'::jsonb, 'B',
+  'An early checkpoint most likely indicates a stronger-than-forecast tailwind.'),
+('PPL-M08-Q13', 'PPL', 'PPL-M08', 13, 'multiple_choice', 'A checkpoint arrives significantly later than planned. This most likely indicates:',
+  '[{"key":"A","label":"Faster than forecast groundspeed"},{"key":"B","label":"Slower than forecast groundspeed (headwind)"},{"key":"C","label":"The checkpoint was chosen poorly"},{"key":"D","label":"A chart error"}]'::jsonb, 'B',
+  'A late checkpoint most likely indicates a stronger-than-forecast headwind.'),
+('PPL-M08-Q14', 'PPL', 'PPL-M08', 14, 'multiple_choice', 'A consistent crosswind primarily affects:',
+  '[{"key":"A","label":"Groundspeed"},{"key":"B","label":"Track/position relative to intended course"},{"key":"C","label":"Fuel burn only"},{"key":"D","label":"Nothing measurable"}]'::jsonb, 'B',
+  'A consistent crosswind primarily affects your track/position relative to the intended course (drift).'),
+('PPL-M08-Q15', 'PPL', 'PPL-M08', 15, 'scenario', 'Landmarks keep appearing to the right of your intended track. What is happening, and what should you do?',
+  null, null,
+  'The aircraft is drifting left of course due to wind from the left; the pilot should turn left to intercept the intended course, using a greater correction angle than originally planned, then reduce once re-established.'),
+('PPL-M08-Q16', 'PPL', 'PPL-M08', 16, 'multiple_choice', 'What is the first of the four C''s in lost procedures?',
+  '[{"key":"A","label":"Communicate"},{"key":"B","label":"Confess"},{"key":"C","label":"Comply"},{"key":"D","label":"Climb"}]'::jsonb, 'D',
+  'Climb is the first of the four C''s, to extend radio/radar range and landmark visibility.'),
+('PPL-M08-Q17', 'PPL', 'PPL-M08', 17, 'multiple_choice', 'Why is climbing typically the first action when uncertain of position?',
+  '[{"key":"A","label":"It saves fuel"},{"key":"B","label":"It extends radio/radar range and landmark visibility"},{"key":"C","label":"It''s required by regulation"},{"key":"D","label":"It reduces groundspeed"}]'::jsonb, 'B',
+  'Climbing extends radio/radar range and landmark visibility, giving more tools to re-establish position.'),
+('PPL-M08-Q18', 'PPL', 'PPL-M08', 18, 'multiple_choice', 'In lost procedures, "Confess" means:',
+  '[{"key":"A","label":"Filing a report after landing"},{"key":"B","label":"Stating plainly that you''re uncertain of your position"},{"key":"C","label":"Admitting fault to ATC"},{"key":"D","label":"Declaring an emergency automatically"}]'::jsonb, 'B',
+  'Confess means stating plainly to ATC/Flight Service that you''re uncertain of your position.'),
+('PPL-M08-Q19', 'PPL', 'PPL-M08', 19, 'scenario', 'You cannot identify your location. Walk through your first three actions using the Apex Navigation Loop — explain PLAN, FLY, and VERIFY in this context.',
+  null, null,
+  'PLAN: decide to climb for range/visibility. FLY: execute the climb and any turn toward known terrain. VERIFY: communicate and confess to ATC/Flight Service, and check whether new landmarks or radar confirmation match your estimated position.'),
+('PPL-M08-Q20', 'PPL', 'PPL-M08', 20, 'multiple_choice', 'Which of the following is NOT a common diversion trigger?',
+  '[{"key":"A","label":"Weather"},{"key":"B","label":"Fuel considerations"},{"key":"C","label":"A slightly early checkpoint"},{"key":"D","label":"Unexpected airport closure"}]'::jsonb, 'C',
+  'A slightly early checkpoint is normal variation, not a diversion trigger on its own.'),
+('PPL-M08-Q21', 'PPL', 'PPL-M08', 21, 'scenario', 'Your destination airport closes unexpectedly 30 minutes out. What three things must your new plan include? List and explain.',
+  null, null,
+  'A new suitable alternate airport (evaluated using Module 7 criteria), a new course/heading from your current position, and a new ETA and fuel assessment based on current actual groundspeed.'),
+('PPL-M08-Q22', 'PPL', 'PPL-M08', 22, 'multiple_choice', 'A stronger-than-forecast headwind primarily changes:',
+  '[{"key":"A","label":"True course"},{"key":"B","label":"Groundspeed and ETA"},{"key":"C","label":"Magnetic variation"},{"key":"D","label":"Checkpoint selection criteria"}]'::jsonb, 'B',
+  'A stronger-than-forecast headwind primarily changes groundspeed and ETA.'),
+('PPL-M08-Q23', 'PPL', 'PPL-M08', 23, 'multiple_choice', 'What should a pilot do immediately after discovering an actual groundspeed significantly different from planned?',
+  '[{"key":"A","label":"Ignore it until the next checkpoint"},{"key":"B","label":"Recalculate ETA for all remaining checkpoints and reassess fuel"},{"key":"C","label":"Divert immediately"},{"key":"D","label":"Descend to a lower altitude"}]'::jsonb, 'B',
+  'Recalculate ETA for all remaining checkpoints and reassess fuel reserve against the new numbers.'),
+('PPL-M08-Q24', 'PPL', 'PPL-M08', 24, 'short_answer', 'Explain the difference between dead reckoning and pilotage, and how the Apex Navigation Loop connects them.',
+  null, null,
+  'Dead reckoning predicts where you should be using time, distance, and heading (the PLAN/FLY stages); pilotage confirms where you actually are using visible landmarks (the VERIFY stage). The Loop connects them by requiring VERIFY after FLY, and CORRECT whenever they disagree.'),
+('PPL-M08-Q25', 'PPL', 'PPL-M08', 25, 'short_answer', 'Why does Apex teach dead reckoning as a real skill, even though most students will always have GPS available?',
+  null, null,
+  'Because dead reckoning provides a way to sanity-check GPS information and a full independent navigation method if GPS fails, and because a DPE will test this exact skill on the checkride regardless of what equipment is normally available.'),
+('PPL-M08-Q26', 'PPL', 'PPL-M08', 26, 'short_answer', 'What''s the difference between being behind schedule and being ahead of schedule, in terms of required pilot action?',
+  null, null,
+  'Both require recalculating ETA and cross-checking the reason (typically wind); being behind additionally requires an immediate fuel reserve reassessment, since the flight will take longer and burn more fuel than planned.'),
+('PPL-M08-Q27', 'PPL', 'PPL-M08', 27, 'short_answer', 'Explain why ''course'' and ''heading'' are not the same thing, using your own words.',
+  null, null,
+  'Course is the intended path over the ground, drawn on the chart from true north; heading is the actual direction the aircraft''s nose points, adjusted for wind correction angle and magnetic variation, in order to actually achieve that course over the ground.'),
+('PPL-M08-Q28', 'PPL', 'PPL-M08', 28, 'short_answer', 'Describe a checkpoint timing pattern that should trigger real concern, versus one that shouldn''t.',
+  null, null,
+  'A single checkpoint off by a minute or two is usually just normal variation; a consistent pattern of checkpoints arriving early or late across multiple legs indicates a real groundspeed or wind discrepancy that should trigger an ETA and fuel recalculation.'),
+('PPL-M08-Q29', 'PPL', 'PPL-M08', 29, 'short_answer', 'What is the relationship between the Apex Navigation Loop''s CORRECT stage and its PLAN stage?',
+  null, null,
+  'CORRECT is not the end of the process — once a correction is made, the pilot re-enters the Loop at PLAN with updated information (new checkpoint, new ETA, new heading), making the Loop continuous rather than a one-time fix.'),
+('PPL-M08-Q30', 'PPL', 'PPL-M08', 30, 'short_answer', 'Give an example of a situation where being ''ahead of schedule'' still warrants pilot action, and explain why.',
+  null, null,
+  'Answers will vary (e.g., arriving early might mean an unexpectedly strong tailwind that could also affect fuel planning or airspace timing at the destination). The core point: any deviation from the plan, even a favorable one, should be understood, not just enjoyed.');
