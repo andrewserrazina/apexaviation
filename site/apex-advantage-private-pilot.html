@@ -277,6 +277,31 @@
       padding: 3px 10px;
     }
 
+    /* Curriculum booking UX: module cards stay content-first (module
+       number/name/topics only) -- live date/price/seat data and the
+       booking CTA only appear once a visitor actually asks for them, via
+       this progressive disclosure. Sourced from the same scheduled-class
+       rows already fetched for #upcoming-classes (grouped by module_id
+       client-side, no second network call) and reusing that section's
+       exact reserve/checkout code -- see the JS near the bottom of the
+       page for both. */
+    .module-card__dates { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); }
+    .module-card__dates-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: none; border: none; padding: 12px 4px; margin: -12px -4px;
+      font-family: var(--font); font-size: 13px; font-weight: 700;
+      color: var(--gold); cursor: pointer;
+    }
+    .module-card__dates-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 4px; }
+    .module-card__dates-chevron { transition: transform 0.2s; flex-shrink: 0; }
+    .module-card__dates-btn[aria-expanded="true"] .module-card__dates-chevron { transform: rotate(180deg); }
+    .module-card__dates-panel { margin-top: 14px; }
+    .module-dates-session { padding: 12px 0; border-top: 1px solid rgba(255,255,255,0.06); }
+    .module-dates-session:first-child { border-top: none; padding-top: 0; }
+    .module-dates-session__meta { font-size: 13px; color: rgba(255,255,255,0.8); margin: 0 0 2px; font-weight: 600; }
+    .module-dates-session__seats { font-size: 12px; color: rgba(255,255,255,0.45); margin: 0 0 10px; }
+    .module-dates-empty { font-size: 13px; color: rgba(255,255,255,0.45); margin: 0; line-height: 1.6; }
+
     /* Live-class flow steps (LEARN → APPLY → ANSWER → ASK) — a
        connected numbered flow instead of a plain card grid, to read
        as a sequence rather than four unrelated benefits. */
@@ -1394,23 +1419,44 @@
             <svg class="phase-section__chevron" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
           <div class="phase-section__body">
-            <div class="module-card">
+            <div class="module-card" data-module-id="PPL-M01" data-module-number="1" data-module-name="Becoming a Pilot">
               <div class="module-card__title"><span class="module-card__badge">Module 1</span> Becoming a Pilot</div>
               <ul class="module-topics">
                 <li>Certificates &amp; ratings</li><li>Medical requirements</li><li>Student pilot privileges</li><li>Training process</li><li>Pilot responsibilities</li>
               </ul>
+              <div class="module-card__dates">
+                <button type="button" class="module-card__dates-btn" data-gs-dates-btn aria-expanded="false" aria-controls="gs-dates-panel-PPL-M01">
+                  See Available Dates
+                  <svg class="module-card__dates-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="module-card__dates-panel" id="gs-dates-panel-PPL-M01" data-gs-dates-panel hidden></div>
+              </div>
             </div>
-            <div class="module-card">
+            <div class="module-card" data-module-id="PPL-M02" data-module-number="2" data-module-name="Aerodynamics">
               <div class="module-card__title"><span class="module-card__badge">Module 2</span> Aerodynamics</div>
               <ul class="module-topics">
                 <li>Four forces of flight</li><li>Stability &amp; control</li><li>Stalls &amp; spins</li><li>Load factors</li><li>Aircraft performance fundamentals</li>
               </ul>
+              <div class="module-card__dates">
+                <button type="button" class="module-card__dates-btn" data-gs-dates-btn aria-expanded="false" aria-controls="gs-dates-panel-PPL-M02">
+                  See Available Dates
+                  <svg class="module-card__dates-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="module-card__dates-panel" id="gs-dates-panel-PPL-M02" data-gs-dates-panel hidden></div>
+              </div>
             </div>
-            <div class="module-card">
+            <div class="module-card" data-module-id="PPL-M03" data-module-number="3" data-module-name="Aircraft Systems">
               <div class="module-card__title"><span class="module-card__badge">Module 3</span> Aircraft Systems</div>
               <ul class="module-topics">
                 <li>Engine systems</li><li>Fuel systems</li><li>Electrical systems</li><li>Pitot-static systems</li><li>Gyroscopic instruments</li><li>Propellers</li><li>Aircraft components</li>
               </ul>
+              <div class="module-card__dates">
+                <button type="button" class="module-card__dates-btn" data-gs-dates-btn aria-expanded="false" aria-controls="gs-dates-panel-PPL-M03">
+                  See Available Dates
+                  <svg class="module-card__dates-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="module-card__dates-panel" id="gs-dates-panel-PPL-M03" data-gs-dates-panel hidden></div>
+              </div>
             </div>
           </div>
         </div>
@@ -1426,23 +1472,44 @@
             <svg class="phase-section__chevron" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
           <div class="phase-section__body">
-            <div class="module-card">
+            <div class="module-card" data-module-id="PPL-M04" data-module-number="4" data-module-name="FARs Simplified">
               <div class="module-card__title"><span class="module-card__badge">Module 4</span> FARs Simplified</div>
               <ul class="module-topics">
                 <li>Required documents</li><li>Required inspections</li><li>Required equipment</li><li>Inoperative equipment</li><li>Pilot privileges &amp; limitations</li><li>Practical application</li>
               </ul>
+              <div class="module-card__dates">
+                <button type="button" class="module-card__dates-btn" data-gs-dates-btn aria-expanded="false" aria-controls="gs-dates-panel-PPL-M04">
+                  See Available Dates
+                  <svg class="module-card__dates-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="module-card__dates-panel" id="gs-dates-panel-PPL-M04" data-gs-dates-panel hidden></div>
+              </div>
             </div>
-            <div class="module-card">
+            <div class="module-card" data-module-id="PPL-M05" data-module-number="5" data-module-name="Airspace Mastery">
               <div class="module-card__title"><span class="module-card__badge">Module 5</span> Airspace Mastery</div>
               <ul class="module-topics">
                 <li>Class A, B, C, D, E &amp; G</li><li>Airspace requirements</li><li>Weather minimums</li><li>Airspace transitions</li><li>Real-world scenarios</li>
               </ul>
+              <div class="module-card__dates">
+                <button type="button" class="module-card__dates-btn" data-gs-dates-btn aria-expanded="false" aria-controls="gs-dates-panel-PPL-M05">
+                  See Available Dates
+                  <svg class="module-card__dates-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="module-card__dates-panel" id="gs-dates-panel-PPL-M05" data-gs-dates-panel hidden></div>
+              </div>
             </div>
-            <div class="module-card">
+            <div class="module-card" data-module-id="PPL-M06" data-module-number="6" data-module-name="Airport Operations">
               <div class="module-card__title"><span class="module-card__badge">Module 6</span> Airport Operations</div>
               <ul class="module-topics">
                 <li>Airport signs &amp; markings</li><li>Lighting systems</li><li>Radio communications</li><li>Traffic patterns</li><li>Towered airport ops</li><li>Non-towered airport ops</li>
               </ul>
+              <div class="module-card__dates">
+                <button type="button" class="module-card__dates-btn" data-gs-dates-btn aria-expanded="false" aria-controls="gs-dates-panel-PPL-M06">
+                  See Available Dates
+                  <svg class="module-card__dates-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="module-card__dates-panel" id="gs-dates-panel-PPL-M06" data-gs-dates-panel hidden></div>
+              </div>
             </div>
           </div>
         </div>
@@ -1458,23 +1525,44 @@
             <svg class="phase-section__chevron" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
           <div class="phase-section__body">
-            <div class="module-card">
+            <div class="module-card" data-module-id="PPL-M07" data-module-number="7" data-module-name="Sectional Charts">
               <div class="module-card__title"><span class="module-card__badge">Module 7</span> Sectional Charts</div>
               <ul class="module-topics">
                 <li>Reading sectionals</li><li>Airspace interpretation</li><li>Terrain awareness</li><li>Obstacle identification</li><li>Airport information</li>
               </ul>
+              <div class="module-card__dates">
+                <button type="button" class="module-card__dates-btn" data-gs-dates-btn aria-expanded="false" aria-controls="gs-dates-panel-PPL-M07">
+                  See Available Dates
+                  <svg class="module-card__dates-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="module-card__dates-panel" id="gs-dates-panel-PPL-M07" data-gs-dates-panel hidden></div>
+              </div>
             </div>
-            <div class="module-card">
+            <div class="module-card" data-module-id="PPL-M08" data-module-number="8" data-module-name="Pilotage &amp; Dead Reckoning">
               <div class="module-card__title"><span class="module-card__badge">Module 8</span> Pilotage &amp; Dead Reckoning</div>
               <ul class="module-topics">
                 <li>Flight planning</li><li>Wind correction</li><li>Time &amp; distance calculations</li><li>Fuel planning</li><li>Navigation fundamentals</li>
               </ul>
+              <div class="module-card__dates">
+                <button type="button" class="module-card__dates-btn" data-gs-dates-btn aria-expanded="false" aria-controls="gs-dates-panel-PPL-M08">
+                  See Available Dates
+                  <svg class="module-card__dates-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="module-card__dates-panel" id="gs-dates-panel-PPL-M08" data-gs-dates-panel hidden></div>
+              </div>
             </div>
-            <div class="module-card">
+            <div class="module-card" data-module-id="PPL-M09" data-module-number="9" data-module-name="Navigation Systems">
               <div class="module-card__title"><span class="module-card__badge">Module 9</span> Navigation Systems</div>
               <ul class="module-topics">
                 <li>VOR navigation</li><li>GPS navigation</li><li>ADS-B systems</li><li>Electronic Flight Bags</li><li>Modern cockpit navigation</li>
               </ul>
+              <div class="module-card__dates">
+                <button type="button" class="module-card__dates-btn" data-gs-dates-btn aria-expanded="false" aria-controls="gs-dates-panel-PPL-M09">
+                  See Available Dates
+                  <svg class="module-card__dates-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="module-card__dates-panel" id="gs-dates-panel-PPL-M09" data-gs-dates-panel hidden></div>
+              </div>
             </div>
           </div>
         </div>
@@ -1490,23 +1578,44 @@
             <svg class="phase-section__chevron" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
           <div class="phase-section__body">
-            <div class="module-card">
+            <div class="module-card" data-module-id="PPL-M10" data-module-number="10" data-module-name="Weather Theory">
               <div class="module-card__title"><span class="module-card__badge">Module 10</span> Weather Theory</div>
               <ul class="module-topics">
                 <li>The atmosphere</li><li>Pressure systems</li><li>Fronts</li><li>Stability</li><li>Cloud formation</li><li>Aviation weather concepts</li>
               </ul>
+              <div class="module-card__dates">
+                <button type="button" class="module-card__dates-btn" data-gs-dates-btn aria-expanded="false" aria-controls="gs-dates-panel-PPL-M10">
+                  See Available Dates
+                  <svg class="module-card__dates-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="module-card__dates-panel" id="gs-dates-panel-PPL-M10" data-gs-dates-panel hidden></div>
+              </div>
             </div>
-            <div class="module-card">
+            <div class="module-card" data-module-id="PPL-M11" data-module-number="11" data-module-name="Weather Products">
               <div class="module-card__title"><span class="module-card__badge">Module 11</span> Weather Products</div>
               <ul class="module-topics">
                 <li>METARs</li><li>TAFs</li><li>PIREPs</li><li>AIRMETs</li><li>SIGMETs</li><li>Graphical weather products</li>
               </ul>
+              <div class="module-card__dates">
+                <button type="button" class="module-card__dates-btn" data-gs-dates-btn aria-expanded="false" aria-controls="gs-dates-panel-PPL-M11">
+                  See Available Dates
+                  <svg class="module-card__dates-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="module-card__dates-panel" id="gs-dates-panel-PPL-M11" data-gs-dates-panel hidden></div>
+              </div>
             </div>
-            <div class="module-card">
+            <div class="module-card" data-module-id="PPL-M12" data-module-number="12" data-module-name="Weather Decision Making">
               <div class="module-card__title"><span class="module-card__badge">Module 12</span> Weather Decision Making</div>
               <ul class="module-topics">
                 <li>Go/no-go decisions</li><li>Crosswind evaluation</li><li>Thunderstorm avoidance</li><li>Marginal weather ops</li><li>Real-world scenarios</li>
               </ul>
+              <div class="module-card__dates">
+                <button type="button" class="module-card__dates-btn" data-gs-dates-btn aria-expanded="false" aria-controls="gs-dates-panel-PPL-M12">
+                  See Available Dates
+                  <svg class="module-card__dates-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="module-card__dates-panel" id="gs-dates-panel-PPL-M12" data-gs-dates-panel hidden></div>
+              </div>
             </div>
           </div>
         </div>
@@ -1522,23 +1631,44 @@
             <svg class="phase-section__chevron" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
           <div class="phase-section__body">
-            <div class="module-card">
+            <div class="module-card" data-module-id="PPL-M13" data-module-number="13" data-module-name="Weight &amp; Balance">
               <div class="module-card__title"><span class="module-card__badge">Module 13</span> Weight &amp; Balance</div>
               <ul class="module-topics">
                 <li>Center of gravity</li><li>Loading calculations</li><li>Safety implications</li><li>Practical examples</li>
               </ul>
+              <div class="module-card__dates">
+                <button type="button" class="module-card__dates-btn" data-gs-dates-btn aria-expanded="false" aria-controls="gs-dates-panel-PPL-M13">
+                  See Available Dates
+                  <svg class="module-card__dates-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="module-card__dates-panel" id="gs-dates-panel-PPL-M13" data-gs-dates-panel hidden></div>
+              </div>
             </div>
-            <div class="module-card">
+            <div class="module-card" data-module-id="PPL-M14" data-module-number="14" data-module-name="Aircraft Performance">
               <div class="module-card__title"><span class="module-card__badge">Module 14</span> Aircraft Performance</div>
               <ul class="module-topics">
                 <li>Takeoff performance</li><li>Landing performance</li><li>Climb performance</li><li>Density altitude</li><li>Performance charts</li>
               </ul>
+              <div class="module-card__dates">
+                <button type="button" class="module-card__dates-btn" data-gs-dates-btn aria-expanded="false" aria-controls="gs-dates-panel-PPL-M14">
+                  See Available Dates
+                  <svg class="module-card__dates-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="module-card__dates-panel" id="gs-dates-panel-PPL-M14" data-gs-dates-panel hidden></div>
+              </div>
             </div>
-            <div class="module-card">
+            <div class="module-card" data-module-id="PPL-M15" data-module-number="15" data-module-name="Cross-Country Planning">
               <div class="module-card__title"><span class="module-card__badge">Module 15</span> Cross-Country Planning</div>
               <ul class="module-topics">
                 <li>Route planning</li><li>Weather analysis</li><li>Fuel requirements</li><li>Alternate planning</li><li>Risk assessment</li>
               </ul>
+              <div class="module-card__dates">
+                <button type="button" class="module-card__dates-btn" data-gs-dates-btn aria-expanded="false" aria-controls="gs-dates-panel-PPL-M15">
+                  See Available Dates
+                  <svg class="module-card__dates-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="module-card__dates-panel" id="gs-dates-panel-PPL-M15" data-gs-dates-panel hidden></div>
+              </div>
             </div>
           </div>
         </div>
@@ -1554,23 +1684,44 @@
             <svg class="phase-section__chevron" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
           <div class="phase-section__body">
-            <div class="module-card">
+            <div class="module-card" data-module-id="PPL-M16" data-module-number="16" data-module-name="Aeronautical Decision Making">
               <div class="module-card__title"><span class="module-card__badge">Module 16</span> Aeronautical Decision Making</div>
               <ul class="module-topics">
                 <li>PAVE checklist</li><li>3P Model</li><li>Risk assessment</li><li>Decision-making techniques</li>
               </ul>
+              <div class="module-card__dates">
+                <button type="button" class="module-card__dates-btn" data-gs-dates-btn aria-expanded="false" aria-controls="gs-dates-panel-PPL-M16">
+                  See Available Dates
+                  <svg class="module-card__dates-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="module-card__dates-panel" id="gs-dates-panel-PPL-M16" data-gs-dates-panel hidden></div>
+              </div>
             </div>
-            <div class="module-card">
+            <div class="module-card" data-module-id="PPL-M17" data-module-number="17" data-module-name="Human Factors">
               <div class="module-card__title"><span class="module-card__badge">Module 17</span> Human Factors</div>
               <ul class="module-topics">
                 <li>Fatigue</li><li>Stress</li><li>Situational awareness</li><li>Automation management</li><li>Human performance limits</li>
               </ul>
+              <div class="module-card__dates">
+                <button type="button" class="module-card__dates-btn" data-gs-dates-btn aria-expanded="false" aria-controls="gs-dates-panel-PPL-M17">
+                  See Available Dates
+                  <svg class="module-card__dates-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="module-card__dates-panel" id="gs-dates-panel-PPL-M17" data-gs-dates-panel hidden></div>
+              </div>
             </div>
-            <div class="module-card">
+            <div class="module-card" data-module-id="PPL-M18" data-module-number="18" data-module-name="Emergency Procedures">
               <div class="module-card__title"><span class="module-card__badge">Module 18</span> Emergency Procedures</div>
               <ul class="module-topics">
                 <li>Engine failures</li><li>Electrical failures</li><li>Lost communications</li><li>Diversions</li><li>Inadvertent IMC</li>
               </ul>
+              <div class="module-card__dates">
+                <button type="button" class="module-card__dates-btn" data-gs-dates-btn aria-expanded="false" aria-controls="gs-dates-panel-PPL-M18">
+                  See Available Dates
+                  <svg class="module-card__dates-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="module-card__dates-panel" id="gs-dates-panel-PPL-M18" data-gs-dates-panel hidden></div>
+              </div>
             </div>
           </div>
         </div>
@@ -1586,17 +1737,31 @@
             <svg class="phase-section__chevron" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
           <div class="phase-section__body">
-            <div class="module-card">
+            <div class="module-card" data-module-id="PPL-M19" data-module-number="19" data-module-name="ACS Mastery">
               <div class="module-card__title"><span class="module-card__badge">Module 19</span> ACS Mastery</div>
               <ul class="module-topics">
                 <li>Airman Certification Standards</li><li>Examiner expectations</li><li>Common checkride mistakes</li>
               </ul>
+              <div class="module-card__dates">
+                <button type="button" class="module-card__dates-btn" data-gs-dates-btn aria-expanded="false" aria-controls="gs-dates-panel-PPL-M19">
+                  See Available Dates
+                  <svg class="module-card__dates-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="module-card__dates-panel" id="gs-dates-panel-PPL-M19" data-gs-dates-panel hidden></div>
+              </div>
             </div>
-            <div class="module-card">
+            <div class="module-card" data-module-id="PPL-M20" data-module-number="20" data-module-name="Mock Oral Exam">
               <div class="module-card__title"><span class="module-card__badge">Module 20</span> Mock Oral Exam</div>
               <ul class="module-topics">
                 <li>Structured oral preparation</li><li>Practice scenarios</li><li>Confidence building</li>
               </ul>
+              <div class="module-card__dates">
+                <button type="button" class="module-card__dates-btn" data-gs-dates-btn aria-expanded="false" aria-controls="gs-dates-panel-PPL-M20">
+                  See Available Dates
+                  <svg class="module-card__dates-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="module-card__dates-panel" id="gs-dates-panel-PPL-M20" data-gs-dates-panel hidden></div>
+              </div>
             </div>
           </div>
         </div>
@@ -2388,6 +2553,109 @@
         return card;
       }
 
+      // ── Curriculum module "See Available Dates" — progressive
+      // disclosure so the full curriculum reads as a content catalog
+      // first, live scheduling second. Groups this same fetched `rows`
+      // result by module_id (no second network call, no second source
+      // of truth) and reuses fmtDateTime/realInstructorName/reserveSeat
+      // verbatim -- the booking/checkout path is identical to the class
+      // grid above, just rendered inside the module card that was
+      // already open. ──
+      function renderDateSessionRow(row) {
+        var spotsLeft = (row.capacity != null && row.enrolled_count != null) ? row.capacity - row.enrolled_count : null;
+        var full = spotsLeft !== null && spotsLeft <= 0;
+        var instructor = realInstructorName(row.instructor_name);
+
+        var wrap = document.createElement('div');
+        wrap.className = 'module-dates-session';
+        wrap.innerHTML =
+          '<p class="module-dates-session__meta">' + fmtDateTime(row) + (instructor ? ' · ' + instructor : '') + '</p>' +
+          '<p class="module-dates-session__seats">' + (full ? 'Class full' : (spotsLeft !== null ? spotsLeft + ' spot' + (spotsLeft === 1 ? '' : 's') + ' left · ' : '') + '$25') + '</p>' +
+          (full ? '' : '<button type="button" class="btn btn--primary" data-gs-dates-reserve style="width:100%">Reserve This Class</button>') +
+          (full ? '' :
+            '<div class="gs-reserve-form" data-gs-form>' +
+              '<div data-gs-form-error style="display:none;color:#f87171;font-size:13px;margin-bottom:10px"></div>' +
+              '<input type="text" placeholder="Full name" data-gs-name />' +
+              '<input type="email" placeholder="Email" data-gs-email />' +
+              '<button type="button" class="btn btn--primary" data-gs-submit style="width:100%">Confirm &amp; Pay $25</button>' +
+            '</div>');
+
+        if (!full) {
+          var reserveBtn = wrap.querySelector('[data-gs-dates-reserve]');
+          var formEl = wrap.querySelector('[data-gs-form]');
+          reserveBtn.addEventListener('click', function () {
+            var eventMeta = {
+              class_id: row.id, class_title: row.title, module_id: row.module_id || undefined,
+              module_title: row.module_title || undefined, class_date: row.class_date, topic: topicParam || undefined
+            };
+            // Same events as the class grid's Reserve button -- this is
+            // the same user action (selecting a specific scheduled
+            // class), just reached from the curriculum instead of the
+            // grid, so it reuses the existing events rather than adding
+            // curriculum-specific duplicates.
+            if (window.apexTrack) apexTrack('ground_school_class_selected', eventMeta);
+            formEl.classList.add('open');
+            reserveBtn.style.display = 'none';
+            if (window.apexTrack) apexTrack('ground_school_reserve_form_opened', eventMeta);
+          });
+          wrap.querySelector('[data-gs-submit]').addEventListener('click', function () { reserveSeat(row, formEl); });
+        }
+        return wrap;
+      }
+
+      function renderModuleDatesPanel(panel, sessions) {
+        panel.innerHTML = '';
+        if (!sessions.length) {
+          var empty = document.createElement('p');
+          empty.className = 'module-dates-empty';
+          empty.textContent = 'No upcoming date currently scheduled for this module — check back soon, or view the full class schedule below.';
+          panel.appendChild(empty);
+          return;
+        }
+        sessions.forEach(function (row) { panel.appendChild(renderDateSessionRow(row)); });
+      }
+
+      function populateCurriculumSessions(rows) {
+        var byModule = {};
+        rows.forEach(function (row) {
+          if (!row.module_id) return;
+          (byModule[row.module_id] = byModule[row.module_id] || []).push(row);
+        });
+        document.querySelectorAll('.module-card[data-module-id]').forEach(function (card) {
+          var moduleId = card.dataset.moduleId;
+          var sessions = byModule[moduleId] || [];
+          var btn = card.querySelector('[data-gs-dates-btn]');
+          var panel = card.querySelector('[data-gs-dates-panel]');
+          if (!btn || !panel) return;
+          var rendered = false;
+          var phaseTitleEl = card.closest('.phase-section') && card.closest('.phase-section').querySelector('.phase-section__label-title');
+          btn.addEventListener('click', function () {
+            var isOpen = btn.getAttribute('aria-expanded') === 'true';
+            if (isOpen) {
+              btn.setAttribute('aria-expanded', 'false');
+              panel.hidden = true;
+              return;
+            }
+            if (!rendered) { renderModuleDatesPanel(panel, sessions); rendered = true; }
+            btn.setAttribute('aria-expanded', 'true');
+            panel.hidden = false;
+            if (window.apexTrack) apexTrack('ground_school_available_dates_opened', {
+              module_id: moduleId,
+              module_number: card.dataset.moduleNumber,
+              module_name: card.dataset.moduleName,
+              phase: phaseTitleEl ? phaseTitleEl.textContent : undefined,
+              available_session_count: sessions.length,
+              source_context: 'curriculum'
+            });
+            // Only relevant on mobile, where opening a module can push
+            // its dates panel below the fold within the accordion body.
+            if (window.innerWidth < 640) {
+              setTimeout(function () { panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 60);
+            }
+          });
+        });
+      }
+
       // ── Hero product-visual panel — reuses this same RPC result
       // (no second network call). Shows the topic-matched class when
       // ?topic= resolved to a real one, otherwise the earliest
@@ -2488,6 +2756,10 @@
         if (window.apexTrack) apexTrack('product_preview_viewed', { product: 'ground_school_calendar' });
         var matchedRow = topicParam ? rows.find(function (row) { return matchesTopic(row, topicParam); }) : null;
         renderHeroPreview(rows, matchedRow);
+        // Wired even when rows is empty -- otherwise a site-wide gap in
+        // the schedule would leave every "See Available Dates" button
+        // inert instead of correctly reporting no upcoming date.
+        populateCurriculumSessions(rows);
         if (!rows.length) {
           emptyEl.style.display = 'block';
           return;
