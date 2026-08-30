@@ -314,8 +314,14 @@
     @media (max-width: 720px) {
       .flow-steps { flex-direction: column; gap: 28px; }
       .flow-steps::before { top: 0; bottom: 0; left: 21px; right: auto; width: 2px; height: auto; background: linear-gradient(180deg, rgba(244,180,0,0.05), rgba(244,180,0,0.4), rgba(244,180,0,0.05)); }
-      .flow-step { display: flex; align-items: center; gap: 16px; text-align: left; padding: 0; }
+      /* Was a bug on real devices: .flow-step's label/h3/p were direct
+         flex children here (row layout), so they wrapped as 2-3 narrow
+         columns instead of one column of text ("CHECK / YOURSELF" /
+         "Self- / Assessment"). .flow-step__body groups them into one
+         flex child so they stack normally to the right of the badge. */
+      .flow-step { display: flex; align-items: flex-start; gap: 16px; text-align: left; padding: 0; }
       .flow-step__badge { margin: 0; flex-shrink: 0; }
+      .flow-step__body { flex: 1; min-width: 0; }
     }
 
     /* Class discovery cards */
@@ -480,7 +486,10 @@
       .gs-cal-event span:last-child { display: none; }
     }
 
-    /* Sticky mobile CTA */
+    /* Sticky mobile CTA -- kept slim (~60px total, incl. the 10px+10px
+       container padding) and navigation-oriented rather than price-
+       anchored, so it doesn't keep re-emphasizing the $25 entry price
+       over the $400 complete-course system this page now leads with. */
     .gs-sticky-cta {
       display: none;
       position: fixed;
@@ -490,16 +499,18 @@
       z-index: 500;
       background: #0B1F3A;
       border-top: 1px solid rgba(244,180,0,0.25);
-      padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+      padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
     }
     .gs-sticky-cta a {
       display: block;
       text-align: center;
       width: 100%;
+      padding: 12px 20px;
+      font-size: 14px;
     }
     @media (max-width: 720px) {
       .gs-sticky-cta { display: block; }
-      body { padding-bottom: 68px; }
+      body { padding-bottom: 64px; }
     }
 
     @media (max-width: 640px) {
@@ -632,6 +643,41 @@
     .gs-bonus-callout__title { font-size: 15px; font-weight: 800; color: #fff; margin: 0 0 6px; }
     .gs-bonus-callout__desc { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.6; margin: 0; }
     .gs-bonus-callout__value { display: inline-block; margin-top: 8px; font-size: 12px; font-weight: 800; color: var(--gold); }
+
+    /* ═══════════════════════════════════════════════════════════
+       MOBILE CONVERSION / RESPONSIVE CLEANUP PASS (real-device review)
+       -- desktop is intentionally untouched below; every rule here is
+       scoped to a single page-local id/class inside a mobile media
+       query, so nothing here can affect another page or the desktop
+       layout.
+    ════════════════════════════════════════════════════════════ */
+    @media (max-width: 640px) {
+      /* Hero: get the CTA visible sooner -- shorter subhead copy (see
+         markup) plus tighter type/spacing on the way down to it. */
+      .gs-hero-badge { margin-bottom: 12px; }
+      #gsHeroSub { font-size: 15px; line-height: 1.55; margin: 10px 0 0; }
+      .gs-benefit-strip { margin-top: 14px; }
+      .gs-hero-cta-row { margin-top: 16px !important; }
+      /* The "$400 · Save $100" nudge here duplicated the complete-course
+         pitch that now follows shortly after the training loop (see the
+         mobile reorder script below) -- redundant on a 390-430px screen
+         specifically, kept on desktop where it costs nothing. */
+      .gs-hero-upsell-line { display: none; }
+
+      /* Trust bar restates the hero's own benefit-strip word-for-word
+         ("Live Instructor / Ask Questions in Real Time / Scenario-Based
+         / $25 Per Class") one screen later, right before the value
+         section covers the same ground in more useful detail. Dropped
+         on mobile only; desktop keeps it. */
+      .gs-trust-bar { display: none; }
+
+      /* Trim the two heaviest section paddings on mobile -- both are
+         set inline (desktop-tuned), so an !important override here is
+         the standard way this page already handles a one-off mobile
+         exception to an inline value (see .gs-hero-headline above). */
+      #upcoming-classes { padding: 24px 0 48px !important; }
+      #full-pack { padding: 40px 0 !important; }
+    }
 
     /* Page-local readability bump for the shared .social-proof-strip
        component (pages.css) -- does not affect other pages using it. */
@@ -788,7 +834,7 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="2" stroke="#F4B400" stroke-width="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke="#F4B400" stroke-width="2" stroke-linecap="round"/></svg>
             Starts September 7, 2026
           </div>
-          <p class="page-hero__sub" id="gsHeroSub" style="max-width:520px">Live instructor-led training built to take you from learning the material to actually applying it — real explanations, practical scenarios, and time to ask &ldquo;why?&rdquo;</p>
+          <p class="page-hero__sub" id="gsHeroSub" style="max-width:520px">Live instructor-led training that teaches you to understand, apply, and explain what you're learning — with practical scenarios and real-time Q&amp;A.</p>
 
           <ul class="gs-benefit-strip">
             <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Live Online</li>
@@ -799,11 +845,11 @@
 
           <div class="gs-topic-hero-callout" id="gsHeroTopicCallout"></div>
 
-          <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:24px">
+          <div class="gs-hero-cta-row" style="display:flex;gap:14px;flex-wrap:wrap;margin-top:24px">
             <a href="#upcoming-classes" class="btn btn--primary" id="gsHeroCta" data-apx-cta data-apx-cta-location="hero_cold">View Class Schedule</a>
           </div>
           <p class="gs-hero-reassurance">No subscription · Secure checkout · Live online</p>
-          <p style="margin-top:18px;font-size:13px;color:rgba(255,255,255,0.45)">Want the complete program? <a href="#full-pack" style="color:var(--gold)">All 20 live classes · $400 · Save $100</a></p>
+          <p class="gs-hero-upsell-line" style="margin-top:18px;font-size:13px;color:rgba(255,255,255,0.45)">Want the complete program? <a href="#full-pack" style="color:var(--gold)">All 20 live classes · $400 · Save $100</a></p>
         </div>
 
         <div class="gs-preview-panel" id="gsPreviewPanel">
@@ -913,39 +959,51 @@
       <div class="flow-steps" style="max-width:1100px;margin:0 auto" id="gs-training-loop">
         <div class="flow-step">
           <div class="flow-step__badge">1</div>
-          <div class="flow-step__label">Learn</div>
-          <h3>Live Instruction</h3>
-          <p>The instructor-led module, taught live.</p>
+          <div class="flow-step__body">
+            <div class="flow-step__label">Learn</div>
+            <h3>Live Instruction</h3>
+            <p>The instructor-led module, taught live.</p>
+          </div>
         </div>
         <div class="flow-step">
           <div class="flow-step__badge">2</div>
-          <div class="flow-step__label">Follow Along</div>
-          <h3>Guided Notes</h3>
-          <p>Structured notes built for that lesson.</p>
+          <div class="flow-step__body">
+            <div class="flow-step__label">Follow Along</div>
+            <h3>Guided Notes</h3>
+            <p>Structured notes built for that lesson.</p>
+          </div>
         </div>
         <div class="flow-step">
           <div class="flow-step__badge">3</div>
-          <div class="flow-step__label">Check Yourself</div>
-          <h3>Self-Assessment</h3>
-          <p>Find out what you actually understand.</p>
+          <div class="flow-step__body">
+            <div class="flow-step__label">Check Yourself</div>
+            <h3>Self-Assessment</h3>
+            <p>Find out what you actually understand.</p>
+          </div>
         </div>
         <div class="flow-step">
           <div class="flow-step__badge">4</div>
-          <div class="flow-step__label">Apply It</div>
-          <h3>Proficiency Assignment</h3>
-          <p>Put the concept to work before moving on.</p>
+          <div class="flow-step__body">
+            <div class="flow-step__label">Apply It</div>
+            <h3>Proficiency Assignment</h3>
+            <p>Put the concept to work before moving on.</p>
+          </div>
         </div>
         <div class="flow-step">
           <div class="flow-step__badge">5</div>
-          <div class="flow-step__label">Review</div>
-          <h3>Your Module Workbook</h3>
-          <p>Guided notes and resources you keep.</p>
+          <div class="flow-step__body">
+            <div class="flow-step__label">Review</div>
+            <h3>Your Module Workbook</h3>
+            <p>Guided notes and resources you keep.</p>
+          </div>
         </div>
         <div class="flow-step">
           <div class="flow-step__badge">6</div>
-          <div class="flow-step__label">Prepare</div>
-          <h3>Checkride Prep</h3>
-          <p>Included free with the complete course.</p>
+          <div class="flow-step__body">
+            <div class="flow-step__label">Prepare</div>
+            <h3>Checkride Prep</h3>
+            <p>Included free with the complete course.</p>
+          </div>
         </div>
       </div>
     </div>
@@ -1152,27 +1210,35 @@
       <div class="flow-steps" style="max-width:960px;margin:0 auto">
         <div class="flow-step">
           <div class="flow-step__badge">1</div>
-          <div class="flow-step__label">Learn</div>
-          <h3>Instructor-Led Knowledge</h3>
-          <p>Core concepts taught live, not lectured to a camera.</p>
+          <div class="flow-step__body">
+            <div class="flow-step__label">Learn</div>
+            <h3>Instructor-Led Knowledge</h3>
+            <p>Core concepts taught live, not lectured to a camera.</p>
+          </div>
         </div>
         <div class="flow-step">
           <div class="flow-step__badge">2</div>
-          <div class="flow-step__label">Apply</div>
-          <h3>Scenario Discussion</h3>
-          <p>Work the concept into a realistic aviation situation.</p>
+          <div class="flow-step__body">
+            <div class="flow-step__label">Apply</div>
+            <h3>Scenario Discussion</h3>
+            <p>Work the concept into a realistic aviation situation.</p>
+          </div>
         </div>
         <div class="flow-step">
           <div class="flow-step__badge">3</div>
-          <div class="flow-step__label">Answer</div>
-          <h3>Checkride-Style Questions</h3>
-          <p>Practice explaining it the way a DPE will ask for it.</p>
+          <div class="flow-step__body">
+            <div class="flow-step__label">Answer</div>
+            <h3>Checkride-Style Questions</h3>
+            <p>Practice explaining it the way a DPE will ask for it.</p>
+          </div>
         </div>
         <div class="flow-step">
           <div class="flow-step__badge">4</div>
-          <div class="flow-step__label">Ask</div>
-          <h3>Live Q&amp;A</h3>
-          <p>Get the question you actually have answered, in real time.</p>
+          <div class="flow-step__body">
+            <div class="flow-step__label">Ask</div>
+            <h3>Live Q&amp;A</h3>
+            <p>Get the question you actually have answered, in real time.</p>
+          </div>
         </div>
       </div>
       <div style="max-width:640px;margin:40px auto 0;text-align:center;padding-top:36px;border-top:1px solid rgba(255,255,255,0.08)">
@@ -1783,7 +1849,7 @@
 
   <!-- Sticky mobile CTA -->
   <div class="gs-sticky-cta">
-    <a href="#upcoming-classes" class="btn btn--primary" data-apx-cta data-apx-cta-location="sticky_mobile">View Live Classes · $25</a>
+    <a href="#upcoming-classes" class="btn btn--primary" data-apx-cta data-apx-cta-location="sticky_mobile">View Class Schedule</a>
   </div>
 
   <script>
@@ -1802,6 +1868,28 @@
   <script src="portal-supabase.js"></script>
   <script src="analytics-events.js"></script>
   <script>
+    // Mobile conversion/responsive pass: on real phones the $400
+    // complete-course offer (#full-pack) sits several sections below the
+    // full class calendar (#upcoming-classes), so a visitor who only
+    // reaches the first screen or two never sees it positioned as the
+    // primary system it's meant to be. Moving the actual DOM node (once,
+    // on load, gated to mobile widths) rather than using CSS `order`
+    // keeps visual order and reading/tab order in sync for whichever
+    // layout actually renders -- a flex-order-only reorder would leave
+    // keyboard/screen-reader users encountering it in the old position
+    // while sighted mobile users see it earlier. Desktop never runs this
+    // (matchMedia gate), so its existing section order is untouched.
+    // Same node is moved, not cloned -- no duplicated markup, no lost
+    // listeners, id="full-pack" anchors still resolve correctly.
+    (function () {
+      if (!window.matchMedia || !window.matchMedia('(max-width: 640px)').matches) return;
+      var fullPack = document.getElementById('full-pack');
+      var schedule = document.getElementById('upcoming-classes');
+      if (fullPack && schedule && schedule.parentNode) {
+        schedule.parentNode.insertBefore(fullPack, schedule);
+      }
+    })();
+
     // Curriculum accordion
     document.querySelectorAll('.phase-section__header').forEach(function(header) {
       header.addEventListener('click', function() {
