@@ -63,6 +63,12 @@
     // Ground School funnel
     'ground_school_schedule_viewed', 'ground_school_class_selected', 'ground_school_reserve_form_opened',
     'ground_school_class_purchased',
+    // Ground School conversion-redesign pass (site/apex-advantage-private-
+    // pilot.html) -- IntersectionObservers on the new above-the-fold value
+    // section and the full-course Checkride Prep bonus callout. CTA clicks
+    // on this page already fire via the existing data-apx-cta/gtag()
+    // click-tracking mechanism, so no new "*_cta_clicked" events were added.
+    'ground_school_value_section_viewed', 'ground_school_checkride_bonus_viewed',
     // Readiness Assessment funnel (site/readiness-assessment.html)
     'readiness_assessment_viewed', 'readiness_assessment_started', 'readiness_question_answered',
     'readiness_assessment_completed', 'readiness_score_viewed', 'readiness_signup_started',

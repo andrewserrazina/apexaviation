@@ -210,19 +210,23 @@ async function handleUpgradeGroundSchoolPack(supabase: any, session: Stripe.Chec
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name')
+    .select('full_name, checkride_prep_unlocked')
     .eq('id', profileId)
     .maybeSingle()
   const fullName = profile?.full_name || 'there'
+  // Same full-course Checkride Prep bonus as handleUnlockGroundSchoolPack --
+  // an upgrade payment also results in full-course ownership, so it earns
+  // the same free bonus. See that function's comment for the reasoning.
+  const hadCheckridePrepAlready = !!profile?.checkride_prep_unlocked
 
   const { data: unlockedProfile, error: unlockError } = await supabase
     .from('profiles')
-    .update({ private_pilot_ground_school_pack_unlocked: true })
+    .update({ private_pilot_ground_school_pack_unlocked: true, checkride_prep_unlocked: true })
     .eq('id', profileId)
-    .select('id, private_pilot_ground_school_pack_unlocked')
+    .select('id, private_pilot_ground_school_pack_unlocked, checkride_prep_unlocked')
     .maybeSingle()
 
-  if (unlockError || !unlockedProfile?.private_pilot_ground_school_pack_unlocked) {
+  if (unlockError || !unlockedProfile?.private_pilot_ground_school_pack_unlocked || !unlockedProfile?.checkride_prep_unlocked) {
     if (session.payment_intent) {
       try {
         await stripe.refunds.create({ payment_intent: session.payment_intent as string })
@@ -251,11 +255,23 @@ async function handleUpgradeGroundSchoolPack(supabase: any, session: Stripe.Chec
     metadata: { amount_cents: amountCents, credited_cents: session.metadata?.credited_cents },
   })
 
+  if (!hadCheckridePrepAlready) {
+    await supabase.from('portal_events').insert({
+      profile_id: profileId,
+      event_type: 'checkride_prep_included_with_ground_school',
+      metadata: { amount_cents: amountCents, source: 'ground_school_upgrade_purchase' },
+    })
+  }
+
   if (email) {
+    const bonusLine = hadCheckridePrepAlready
+      ? ''
+      : `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">As a complete-course member, your Apex Advantage Checkride Prep Pack (normally $29) is included free — it's already unlocked on your account.</p>`
     await sendEmail(supabase, email, "You're upgraded — Private Pilot Ground School",
       template(`
         <h2 style="color:#F4B400;margin:0 0 4px;">You're all in, ${fullName.split(' ')[0]}!</h2>
         <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your upgrade payment went through — every Private Pilot ground school class is now unlocked on your account, no per-session charge. Register for any upcoming session from your portal.</p>
+        ${bonusLine}
         <a href="https://advantage.apexaviationtx.com/portal.html#ground-school" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">See Upcoming Classes →</a>
       `))
   }
@@ -270,19 +286,28 @@ async function handleUnlockGroundSchoolPack(supabase: any, session: Stripe.Check
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name')
+    .select('full_name, checkride_prep_unlocked')
     .eq('id', profileId)
     .maybeSingle()
   const fullName = profile?.full_name || 'there'
+  // Full-course bonus: a $400 purchase includes the $29 Checkride Prep
+  // Pack free (individual $25/class purchases do not touch this flag at
+  // all -- see handleGroundSchoolRegistration below). If the member
+  // already owns Checkride Prep from a separate standalone purchase, this
+  // just re-sets the same flag to true (a no-op) rather than creating a
+  // second entitlement -- tracked here only to skip the bonus-specific
+  // event/email copy below so we never imply a purchase or credit that
+  // didn't happen.
+  const hadCheckridePrepAlready = !!profile?.checkride_prep_unlocked
 
   const { data: unlockedProfile, error: unlockError } = await supabase
     .from('profiles')
-    .update({ private_pilot_ground_school_pack_unlocked: true })
+    .update({ private_pilot_ground_school_pack_unlocked: true, checkride_prep_unlocked: true })
     .eq('id', profileId)
-    .select('id, private_pilot_ground_school_pack_unlocked')
+    .select('id, private_pilot_ground_school_pack_unlocked, checkride_prep_unlocked')
     .maybeSingle()
 
-  if (unlockError || !unlockedProfile?.private_pilot_ground_school_pack_unlocked) {
+  if (unlockError || !unlockedProfile?.private_pilot_ground_school_pack_unlocked || !unlockedProfile?.checkride_prep_unlocked) {
     if (session.payment_intent) {
       try {
         await stripe.refunds.create({ payment_intent: session.payment_intent as string })
@@ -311,11 +336,28 @@ async function handleUnlockGroundSchoolPack(supabase: any, session: Stripe.Check
     metadata: { amount_cents: amountCents },
   })
 
+  // Separate, distinctly-named event from 'premium_unlocked' (the standalone
+  // $29 purchase) so the Marketing & Funnel dashboard can tell a paid
+  // Checkride Prep unlock apart from one granted free as part of this
+  // bundle. Not logged (and not mentioned in the email below) when the
+  // member already had Checkride Prep -- nothing new was actually granted.
+  if (!hadCheckridePrepAlready) {
+    await supabase.from('portal_events').insert({
+      profile_id: profileId,
+      event_type: 'checkride_prep_included_with_ground_school',
+      metadata: { amount_cents: amountCents, source: 'ground_school_full_course_purchase' },
+    })
+  }
+
   if (email) {
+    const bonusLine = hadCheckridePrepAlready
+      ? ''
+      : `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">As a complete-course member, your Apex Advantage Checkride Prep Pack (normally $29) is included free — it's already unlocked on your account.</p>`
     await sendEmail(supabase, email, "You're unlocked — Private Pilot Ground School",
       template(`
         <h2 style="color:#F4B400;margin:0 0 4px;">You're in, ${fullName.split(' ')[0]}!</h2>
         <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your payment went through — every Private Pilot ground school class is now unlocked on your account. Register for any upcoming session from your portal, no per-session charge.</p>
+        ${bonusLine}
         <a href="https://advantage.apexaviationtx.com/portal.html#ground-school" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">See Upcoming Classes →</a>
       `))
   }
