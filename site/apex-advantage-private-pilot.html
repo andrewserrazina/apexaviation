@@ -1035,324 +1035,6 @@
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════
-       UPCOMING LIVE CLASSES — real data, no fabricated seat counts.
-       Deep-link support: ?topic=<text> highlights + scrolls to the
-       first matching class (generic substring match against module
-       title/class title, not a hardcoded per-topic map).
-  ════════════════════════════════════════════════════════════ -->
-  <section class="section section--dark" id="upcoming-classes" style="padding:32px 0 80px">
-    <div class="container">
-      <div class="section__header">
-        <div class="section__eyebrow">Live &amp; Instructor-Led</div>
-        <h2 class="section__title">Upcoming<br/><em class="accent">Live Classes.</em></h2>
-        <p class="section__desc" style="max-width:620px">Every class below is live, taught by a real instructor. Reserve a seat for $25 — no account required.</p>
-      </div>
-
-      <div class="gs-start-guide">
-        <div class="gs-start-guide__heading">Not sure where to start?</div>
-        <div class="gs-start-guide__grid">
-          <div class="gs-start-guide__item">
-            <div class="gs-start-guide__label">New to Flight Training</div>
-            <p>Start with Module 1.</p>
-          </div>
-          <div class="gs-start-guide__item">
-            <div class="gs-start-guide__label">Already Training</div>
-            <p>Choose the topic you need most.</p>
-          </div>
-          <div class="gs-start-guide__item">
-            <div class="gs-start-guide__label">Want the Full Course</div>
-            <p>Get all 20 live classes for <a href="#full-pack" style="color:var(--gold)">$400</a>.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="gs-topic-banner" id="gsTopicBanner"></div>
-      <div id="gsClassesError" style="max-width:1080px;margin:0 auto 16px;color:#f87171;font-size:14px;display:none"></div>
-      <div id="gsClassesLoading" style="text-align:center;color:rgba(255,255,255,0.4);font-size:14px">Loading upcoming classes…</div>
-      <div id="gsClassesEmpty" style="display:none;text-align:center;color:rgba(255,255,255,0.5);font-size:14px;max-width:520px;margin:0 auto">
-        No classes are scheduled at the moment — check back soon, or <a href="contact.html" style="color:var(--gold)">contact us</a> to ask about the next one.
-      </div>
-
-      <div class="gs-view-tabs" id="gsViewTabs" style="display:none">
-        <button type="button" class="gs-view-tab active" data-gs-view="calendar">Calendar</button>
-        <button type="button" class="gs-view-tab" data-gs-view="list">List</button>
-      </div>
-
-      <div id="gsCalendarView" style="display:none">
-        <div class="gs-cal-nav">
-          <button type="button" class="gs-cal-nav__btn" id="gsCalPrev" aria-label="Previous month">‹</button>
-          <span class="gs-cal-nav__label" id="gsCalLabel"></span>
-          <button type="button" class="gs-cal-nav__btn" id="gsCalNext" aria-label="Next month">›</button>
-        </div>
-        <div class="gs-calendar" id="gsCalendarGrid"></div>
-        <p class="gs-cal-empty-note" id="gsCalEmptyNote">No classes this month — use the arrows above to check other months, or switch to List view to see everything upcoming.</p>
-      </div>
-
-      <div class="gs-class-grid" id="gsClassGrid" style="display:none"></div>
-    </div>
-  </section>
-
-  <!-- Social proof -->
-  <div class="social-proof-strip">
-    <!-- GS -> Portal Growth Funnel, section 13 -- these stars aren't
-         computed from a real review platform (no aggregate rating count
-         or source anywhere on this page), so aria-label="5 out of 5
-         stars" was asserting a specific, unverifiable rating claim
-         through accessible markup. The real testimonial quote below
-         makes no such claim and is left exactly as it was; the stars
-         are decorative styling around it, not a rating -- marked
-         aria-hidden accordingly. Same pattern exists on 5 other pages
-         (portal.html, spin-awareness.html, weight-balance.html,
-         radio-calls.html, dpe-questions.html), left untouched here since
-         they're outside this sprint's scope.
-
-         Mobile CRO pass (Aug 2026): reduced from 3 quotes to Patricia's
-         single strongest one so the schedule -- moved to right above
-         this block -- isn't followed by a second wall of copy. Victor's
-         and Alex's real quotes weren't deleted: they're now next to the
-         instructor bio further down the page. -->
-    <div class="social-proof-strip__stars" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
-      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
-      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
-      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
-      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
-    </div>
-    <p class="social-proof-strip__caption">Real feedback from Apex Aviation students</p>
-    <div class="social-proof-strip__quotes gs-social-proof-quotes gs-social-proof-quotes--single">
-      <blockquote class="social-proof-strip__quote">
-        <p>"Explains subjects in great detail. Definitely will attend his courses again."</p>
-        <cite>— Patricia M.</cite>
-      </blockquote>
-    </div>
-  </div>
-
-  <!-- ═══════════════════════════════════════════════════════════
-       GS -> Portal Growth Funnel, section 7 -- ONE secondary
-       acquisition exit for visitors who aren't ready to pay yet.
-       Deliberately quiet/subordinate to the $25 CTA above: no gold
-       fill, no large type, no hero placement -- this is the exit
-       path, not competing with the primary offer. data-apx-cta gets
-       the same UTM auto-append + ground_school_cta_click tracking
-       every other CTA on this page already has (see the two IIFEs
-       below), so no separate tracking code was needed here.
-  ════════════════════════════════════════════════════════════ -->
-  <section class="section" style="background:#0b1627;padding:0 0 56px">
-    <div class="container">
-      <div style="max-width:600px;margin:0 auto;text-align:center;padding:28px 32px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:14px">
-        <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:10px">Not Ready For a Live Class Yet?</div>
-        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.6;margin:0 0 14px">Start training free inside Apex Advantage.</p>
-        <p style="color:rgba(255,255,255,0.45);font-size:13px;line-height:1.8;margin:0 0 18px">10 Free DPE Questions · Question of the Day · Free Pilot Resources</p>
-        <a href="portal-login.html?view=signup&source=ground_school&intent=free_training" class="btn btn--ghost" data-apx-cta data-apx-cta-location="gs_free_account_exit">Create Your Free Account</a>
-        <p style="color:rgba(255,255,255,0.35);font-size:12px;margin-top:10px">No Ground School purchase required.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══════════════════════════════════════════════════════════
-       THE PROBLEM — short, high-impact, sets up the hero's transformation
-       claim before the class schedule/offer. Kept tight on purpose: one
-       headline, one line of framing, four short application points.
-  ════════════════════════════════════════════════════════════ -->
-  <section class="section section--light" style="padding:52px 0">
-    <div class="container">
-      <div style="max-width:720px;margin:0 auto;text-align:center">
-        <h2 class="section__title" style="margin-bottom:14px">You can memorize the answer<br/><em class="accent">and still not understand it.</em></h2>
-        <p style="color:rgba(255,255,255,0.65);font-size:16px;line-height:1.8;margin:0 0 32px">Traditional ground school can make it easy to remember acronyms and definitions without learning how to actually apply them. Apex Ground School is built to help you understand:</p>
-      </div>
-      <div class="feature-rows" style="max-width:680px;margin:0 auto">
-        <div class="feature-row">
-          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <div><h3>Why the Answer Is Correct</h3></div>
-        </div>
-        <div class="feature-row">
-          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <div><h3>How It Applies in Flight</h3></div>
-        </div>
-        <div class="feature-row">
-          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <div><h3>How to Explain It Out Loud</h3></div>
-        </div>
-        <div class="feature-row">
-          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <div><h3>What Happens When Conditions Change</h3></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══════════════════════════════════════════════════════════
-       WHY LIVE GROUND SCHOOL FEELS DIFFERENT — concise two-column
-       comparison, replacing the earlier competitor-naming paragraph +
-       4-card grid (the comparison folds their substance into a
-       tighter, more instantly-scannable format for cold traffic).
-  ════════════════════════════════════════════════════════════ -->
-  <section class="section section--light">
-    <div class="container">
-      <div class="section__header">
-        <div class="section__eyebrow">The Difference</div>
-        <h2 class="section__title">Why live ground school<br/><em class="accent">feels different.</em></h2>
-        <p class="section__desc" style="max-width:640px">Prerecorded courses can be useful. Apex Advantage offers a different experience: live instruction, real-time questions, and scenario-based application.</p>
-      </div>
-      <div class="gs-compare-grid">
-        <div class="gs-compare-col">
-          <div class="gs-compare-col__label gs-compare-col__label--muted">Traditional Prerecorded Ground School</div>
-          <ul class="gs-compare-list">
-            <li>Watch videos alone</li>
-            <li>Pause and search when confused</li>
-            <li>Memorize definitions</li>
-            <li>Hope you understand the scenario</li>
-            <li>No real-time feedback</li>
-          </ul>
-        </div>
-        <div class="gs-compare-col gs-compare-col--gold">
-          <div class="gs-compare-col__label">Apex Advantage Live Ground School</div>
-          <ul class="gs-compare-list gs-compare-list--gold">
-            <li>Learn with a real instructor</li>
-            <li>Ask questions immediately</li>
-            <li>Work through scenarios</li>
-            <li>Practice explaining concepts</li>
-            <li>Leave knowing what to study next</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══════════════════════════════════════════════════════════
-       WHAT HAPPENS IN A LIVE CLASS — merged with the former standalone
-       $25 offer section (redundant: hero, class cards, and this
-       section all already sell $25). One continuous section now:
-       format explanation → $25 entry offer → CTA.
-  ════════════════════════════════════════════════════════════ -->
-  <section class="section" style="background:#0b1627;padding:52px 0">
-    <div class="container">
-      <div class="section__header">
-        <div class="section__eyebrow">Class Format</div>
-        <h2 class="section__title">What happens in<br/><em class="accent">a live class?</em></h2>
-        <p class="section__desc" style="max-width:560px">This is the difference: if something doesn't make sense, you can stop and ask.</p>
-      </div>
-      <div class="flow-steps" style="max-width:960px;margin:0 auto">
-        <div class="flow-step">
-          <div class="flow-step__badge">1</div>
-          <div class="flow-step__body">
-            <div class="flow-step__label">Learn</div>
-            <h3>Instructor-Led Knowledge</h3>
-            <p>Core concepts taught live, not lectured to a camera.</p>
-          </div>
-        </div>
-        <div class="flow-step">
-          <div class="flow-step__badge">2</div>
-          <div class="flow-step__body">
-            <div class="flow-step__label">Apply</div>
-            <h3>Scenario Discussion</h3>
-            <p>Work the concept into a realistic aviation situation.</p>
-          </div>
-        </div>
-        <div class="flow-step">
-          <div class="flow-step__badge">3</div>
-          <div class="flow-step__body">
-            <div class="flow-step__label">Answer</div>
-            <h3>Checkride-Style Questions</h3>
-            <p>Practice explaining it the way a DPE will ask for it.</p>
-          </div>
-        </div>
-        <div class="flow-step">
-          <div class="flow-step__badge">4</div>
-          <div class="flow-step__body">
-            <div class="flow-step__label">Ask</div>
-            <h3>Live Q&amp;A</h3>
-            <p>Get the question you actually have answered, in real time.</p>
-          </div>
-        </div>
-      </div>
-      <div style="max-width:640px;margin:40px auto 0;text-align:center;padding-top:36px;border-top:1px solid rgba(255,255,255,0.08)">
-        <h3 style="font-size:22px;font-weight:800;color:#fff;margin:0 0 10px">Start with one live class for $25.</h3>
-        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.75;margin:0 0 22px">No full-program commitment. Choose the topic you need and join live.</p>
-        <a href="#upcoming-classes" class="btn btn--primary" data-apx-cta data-apx-cta-location="class_format_offer">View Upcoming Classes</a>
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══════════════════════════════════════════════════════════
-       GROUND SCHOOL THAT FITS YOUR TRAINING — 3-column flexibility
-       features (was a narrow heading/paragraph-only block).
-  ════════════════════════════════════════════════════════════ -->
-  <section class="section section--light" style="padding:52px 0">
-    <div class="container">
-      <div class="section__header">
-        <div class="section__eyebrow" style="display:flex;justify-content:center">How It Works</div>
-        <h2 class="section__title" style="margin-bottom:12px">Ground School That<br/><em class="accent">Fits Your Training.</em></h2>
-        <p class="section__desc">No cohort to fall behind in. No required starting point.</p>
-      </div>
-      <div class="feature-rows">
-        <div class="feature-row">
-          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 6v6l4 2" stroke="#F4B400" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="10" stroke="#F4B400" stroke-width="2"/></svg></div>
-          <div><h3>Start Anywhere</h3><p>No requirement to begin with Module 1 — join at any point in the schedule.</p></div>
-        </div>
-        <div class="feature-row">
-          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7l6-3 5.447 2.724A1 1 0 0121 7.618v10.764a1 1 0 01-1.447.894L15 17l-6 3z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <div><h3>Choose Your Classes</h3><p>Take only the topics you actually need, whenever they come up on the schedule.</p></div>
-        </div>
-        <div class="feature-row">
-          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <div><h3>Complete the Program</h3><p>Attend all 20 modules when you want the full curriculum, at a discount over paying per class.</p></div>
-        </div>
-      </div>
-      <div class="gs-stat-strip">
-        <div class="gs-stat-strip__item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>20 Live Modules</div>
-        <div class="gs-stat-strip__item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>7 Training Phases</div>
-        <div class="gs-stat-strip__item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Live Online</div>
-        <div class="gs-stat-strip__item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Attend From Anywhere</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══════════════════════════════════════════════════════════
-       WANT THE COMPLETE PROGRAM? — $400 (given more visual authority:
-       a wider, more premium offer card, without overpowering the $25
-       entry offer above it or hiding individual-class purchasing).
-  ════════════════════════════════════════════════════════════ -->
-  <section class="section" style="background:#0b1627;padding:60px 0" id="full-pack">
-    <div class="container">
-      <div class="fullpack-split">
-        <div class="fullpack-split__copy">
-          <div class="section__eyebrow">Complete Training System</div>
-          <h2 class="section__title" style="margin-bottom:14px">20 live modules<br/><em class="accent">— $400.</em></h2>
-          <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.8;margin:0 0 20px;max-width:420px">The $25 individual-class option is always available. The complete program is the best value if you want all 20 — and everything that comes with them.</p>
-          <ul class="gs-compare-list gs-compare-list--gold" style="max-width:420px">
-            <li>Every live Ground School module</li>
-            <li>Guided Notes for each lesson</li>
-            <li>Module self-assessments</li>
-            <li>Proficiency assignments</li>
-            <li>Scenario-based training</li>
-            <li>Live instructor Q&amp;A</li>
-            <li>Apex Advantage Checkride Prep Pack — <strong style="color:#fff">free</strong></li>
-          </ul>
-        </div>
-        <div class="fullpack-split__card">
-          <div class="fullpack-split__ribbon">Best Value</div>
-          <div class="fullpack-split__card-label">Complete Ground School</div>
-          <div style="display:flex;justify-content:space-between;font-size:15px;color:rgba(255,255,255,0.6);margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.08)"><span>20 classes at $25</span><span>$500</span></div>
-          <div style="display:flex;justify-content:space-between;font-size:15px;color:rgba(255,255,255,0.6);margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.08)"><span>Complete program</span><span>$400</span></div>
-          <div style="display:flex;justify-content:space-between;font-size:18px;color:var(--gold);font-weight:800;margin-bottom:24px"><span>You save</span><span>$100 (20%)</span></div>
-          <a href="portal-login.html?view=signup&offer=ground-school-pack" class="btn btn--primary" data-apx-cta data-apx-cta-location="full_pack" style="width:100%;display:block;text-align:center">Enroll in Complete Course</a>
-        </div>
-      </div>
-
-      <div class="gs-bonus-callout" id="gs-checkride-bonus">
-        <div class="gs-bonus-callout__icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="#F4B400" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <div>
-          <div class="gs-bonus-callout__eyebrow">Full Course Bonus</div>
-          <div class="gs-bonus-callout__title">Take your training all the way to checkride prep.</div>
-          <p class="gs-bonus-callout__desc">Enroll in the complete $400 Ground School and get the Apex Advantage Checkride Prep Pack free — 300+ DPE-style questions, AI DPE practice, scenario training, and progress tracking in your member portal.</p>
-          <span class="gs-bonus-callout__value">$29 value — included free</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══════════════════════════════════════════════════════════
        PROGRAM OVERVIEW — 7 PHASES
   ════════════════════════════════════════════════════════════ -->
   <section class="section" style="background:#0b1627">
@@ -1769,6 +1451,325 @@
       </div>
     </div>
   </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       UPCOMING LIVE CLASSES — real data, no fabricated seat counts.
+       Deep-link support: ?topic=<text> highlights + scrolls to the
+       first matching class (generic substring match against module
+       title/class title, not a hardcoded per-topic map).
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--dark" id="upcoming-classes" style="padding:32px 0 80px">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Live &amp; Instructor-Led</div>
+        <h2 class="section__title">Upcoming<br/><em class="accent">Live Classes.</em></h2>
+        <p class="section__desc" style="max-width:620px">Every class below is live, taught by a real instructor. Reserve a seat for $25 — no account required.</p>
+      </div>
+
+      <div class="gs-start-guide">
+        <div class="gs-start-guide__heading">Not sure where to start?</div>
+        <div class="gs-start-guide__grid">
+          <div class="gs-start-guide__item">
+            <div class="gs-start-guide__label">New to Flight Training</div>
+            <p>Start with Module 1.</p>
+          </div>
+          <div class="gs-start-guide__item">
+            <div class="gs-start-guide__label">Already Training</div>
+            <p>Choose the topic you need most.</p>
+          </div>
+          <div class="gs-start-guide__item">
+            <div class="gs-start-guide__label">Want the Full Course</div>
+            <p>Get all 20 live classes for <a href="#full-pack" style="color:var(--gold)">$400</a>.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="gs-topic-banner" id="gsTopicBanner"></div>
+      <div id="gsClassesError" style="max-width:1080px;margin:0 auto 16px;color:#f87171;font-size:14px;display:none"></div>
+      <div id="gsClassesLoading" style="text-align:center;color:rgba(255,255,255,0.4);font-size:14px">Loading upcoming classes…</div>
+      <div id="gsClassesEmpty" style="display:none;text-align:center;color:rgba(255,255,255,0.5);font-size:14px;max-width:520px;margin:0 auto">
+        No classes are scheduled at the moment — check back soon, or <a href="contact.html" style="color:var(--gold)">contact us</a> to ask about the next one.
+      </div>
+
+      <div class="gs-view-tabs" id="gsViewTabs" style="display:none">
+        <button type="button" class="gs-view-tab active" data-gs-view="calendar">Calendar</button>
+        <button type="button" class="gs-view-tab" data-gs-view="list">List</button>
+      </div>
+
+      <div id="gsCalendarView" style="display:none">
+        <div class="gs-cal-nav">
+          <button type="button" class="gs-cal-nav__btn" id="gsCalPrev" aria-label="Previous month">‹</button>
+          <span class="gs-cal-nav__label" id="gsCalLabel"></span>
+          <button type="button" class="gs-cal-nav__btn" id="gsCalNext" aria-label="Next month">›</button>
+        </div>
+        <div class="gs-calendar" id="gsCalendarGrid"></div>
+        <p class="gs-cal-empty-note" id="gsCalEmptyNote">No classes this month — use the arrows above to check other months, or switch to List view to see everything upcoming.</p>
+      </div>
+
+      <div class="gs-class-grid" id="gsClassGrid" style="display:none"></div>
+    </div>
+  </section>
+
+  <!-- Social proof -->
+  <div class="social-proof-strip">
+    <!-- GS -> Portal Growth Funnel, section 13 -- these stars aren't
+         computed from a real review platform (no aggregate rating count
+         or source anywhere on this page), so aria-label="5 out of 5
+         stars" was asserting a specific, unverifiable rating claim
+         through accessible markup. The real testimonial quote below
+         makes no such claim and is left exactly as it was; the stars
+         are decorative styling around it, not a rating -- marked
+         aria-hidden accordingly. Same pattern exists on 5 other pages
+         (portal.html, spin-awareness.html, weight-balance.html,
+         radio-calls.html, dpe-questions.html), left untouched here since
+         they're outside this sprint's scope.
+
+         Mobile CRO pass (Aug 2026): reduced from 3 quotes to Patricia's
+         single strongest one so the schedule -- moved to right above
+         this block -- isn't followed by a second wall of copy. Victor's
+         and Alex's real quotes weren't deleted: they're now next to the
+         instructor bio further down the page. -->
+    <div class="social-proof-strip__stars" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
+      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
+      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
+      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
+      <svg viewBox="0 0 24 24" fill="#F4B400"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
+    </div>
+    <p class="social-proof-strip__caption">Real feedback from Apex Aviation students</p>
+    <div class="social-proof-strip__quotes gs-social-proof-quotes gs-social-proof-quotes--single">
+      <blockquote class="social-proof-strip__quote">
+        <p>"Explains subjects in great detail. Definitely will attend his courses again."</p>
+        <cite>— Patricia M.</cite>
+      </blockquote>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       GS -> Portal Growth Funnel, section 7 -- ONE secondary
+       acquisition exit for visitors who aren't ready to pay yet.
+       Deliberately quiet/subordinate to the $25 CTA above: no gold
+       fill, no large type, no hero placement -- this is the exit
+       path, not competing with the primary offer. data-apx-cta gets
+       the same UTM auto-append + ground_school_cta_click tracking
+       every other CTA on this page already has (see the two IIFEs
+       below), so no separate tracking code was needed here.
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section" style="background:#0b1627;padding:0 0 56px">
+    <div class="container">
+      <div style="max-width:600px;margin:0 auto;text-align:center;padding:28px 32px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:14px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:10px">Not Ready For a Live Class Yet?</div>
+        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.6;margin:0 0 14px">Start training free inside Apex Advantage.</p>
+        <p style="color:rgba(255,255,255,0.45);font-size:13px;line-height:1.8;margin:0 0 18px">10 Free DPE Questions · Question of the Day · Free Pilot Resources</p>
+        <a href="portal-login.html?view=signup&source=ground_school&intent=free_training" class="btn btn--ghost" data-apx-cta data-apx-cta-location="gs_free_account_exit">Create Your Free Account</a>
+        <p style="color:rgba(255,255,255,0.35);font-size:12px;margin-top:10px">No Ground School purchase required.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       THE PROBLEM — short, high-impact, sets up the hero's transformation
+       claim before the class schedule/offer. Kept tight on purpose: one
+       headline, one line of framing, four short application points.
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--light" style="padding:52px 0">
+    <div class="container">
+      <div style="max-width:720px;margin:0 auto;text-align:center">
+        <h2 class="section__title" style="margin-bottom:14px">You can memorize the answer<br/><em class="accent">and still not understand it.</em></h2>
+        <p style="color:rgba(255,255,255,0.65);font-size:16px;line-height:1.8;margin:0 0 32px">Traditional ground school can make it easy to remember acronyms and definitions without learning how to actually apply them. Apex Ground School is built to help you understand:</p>
+      </div>
+      <div class="feature-rows" style="max-width:680px;margin:0 auto">
+        <div class="feature-row">
+          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><h3>Why the Answer Is Correct</h3></div>
+        </div>
+        <div class="feature-row">
+          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><h3>How It Applies in Flight</h3></div>
+        </div>
+        <div class="feature-row">
+          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><h3>How to Explain It Out Loud</h3></div>
+        </div>
+        <div class="feature-row">
+          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><h3>What Happens When Conditions Change</h3></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       WHY LIVE GROUND SCHOOL FEELS DIFFERENT — concise two-column
+       comparison, replacing the earlier competitor-naming paragraph +
+       4-card grid (the comparison folds their substance into a
+       tighter, more instantly-scannable format for cold traffic).
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--light">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">The Difference</div>
+        <h2 class="section__title">Why live ground school<br/><em class="accent">feels different.</em></h2>
+        <p class="section__desc" style="max-width:640px">Prerecorded courses can be useful. Apex Advantage offers a different experience: live instruction, real-time questions, and scenario-based application.</p>
+      </div>
+      <div class="gs-compare-grid">
+        <div class="gs-compare-col">
+          <div class="gs-compare-col__label gs-compare-col__label--muted">Traditional Prerecorded Ground School</div>
+          <ul class="gs-compare-list">
+            <li>Watch videos alone</li>
+            <li>Pause and search when confused</li>
+            <li>Memorize definitions</li>
+            <li>Hope you understand the scenario</li>
+            <li>No real-time feedback</li>
+          </ul>
+        </div>
+        <div class="gs-compare-col gs-compare-col--gold">
+          <div class="gs-compare-col__label">Apex Advantage Live Ground School</div>
+          <ul class="gs-compare-list gs-compare-list--gold">
+            <li>Learn with a real instructor</li>
+            <li>Ask questions immediately</li>
+            <li>Work through scenarios</li>
+            <li>Practice explaining concepts</li>
+            <li>Leave knowing what to study next</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       WHAT HAPPENS IN A LIVE CLASS — merged with the former standalone
+       $25 offer section (redundant: hero, class cards, and this
+       section all already sell $25). One continuous section now:
+       format explanation → $25 entry offer → CTA.
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section" style="background:#0b1627;padding:52px 0">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Class Format</div>
+        <h2 class="section__title">What happens in<br/><em class="accent">a live class?</em></h2>
+        <p class="section__desc" style="max-width:560px">This is the difference: if something doesn't make sense, you can stop and ask.</p>
+      </div>
+      <div class="flow-steps" style="max-width:960px;margin:0 auto">
+        <div class="flow-step">
+          <div class="flow-step__badge">1</div>
+          <div class="flow-step__body">
+            <div class="flow-step__label">Learn</div>
+            <h3>Instructor-Led Knowledge</h3>
+            <p>Core concepts taught live, not lectured to a camera.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step__badge">2</div>
+          <div class="flow-step__body">
+            <div class="flow-step__label">Apply</div>
+            <h3>Scenario Discussion</h3>
+            <p>Work the concept into a realistic aviation situation.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step__badge">3</div>
+          <div class="flow-step__body">
+            <div class="flow-step__label">Answer</div>
+            <h3>Checkride-Style Questions</h3>
+            <p>Practice explaining it the way a DPE will ask for it.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step__badge">4</div>
+          <div class="flow-step__body">
+            <div class="flow-step__label">Ask</div>
+            <h3>Live Q&amp;A</h3>
+            <p>Get the question you actually have answered, in real time.</p>
+          </div>
+        </div>
+      </div>
+      <div style="max-width:640px;margin:40px auto 0;text-align:center;padding-top:36px;border-top:1px solid rgba(255,255,255,0.08)">
+        <h3 style="font-size:22px;font-weight:800;color:#fff;margin:0 0 10px">Start with one live class for $25.</h3>
+        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.75;margin:0 0 22px">No full-program commitment. Choose the topic you need and join live.</p>
+        <a href="#upcoming-classes" class="btn btn--primary" data-apx-cta data-apx-cta-location="class_format_offer">View Upcoming Classes</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       GROUND SCHOOL THAT FITS YOUR TRAINING — 3-column flexibility
+       features (was a narrow heading/paragraph-only block).
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--light" style="padding:52px 0">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow" style="display:flex;justify-content:center">How It Works</div>
+        <h2 class="section__title" style="margin-bottom:12px">Ground School That<br/><em class="accent">Fits Your Training.</em></h2>
+        <p class="section__desc">No cohort to fall behind in. No required starting point.</p>
+      </div>
+      <div class="feature-rows">
+        <div class="feature-row">
+          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 6v6l4 2" stroke="#F4B400" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="10" stroke="#F4B400" stroke-width="2"/></svg></div>
+          <div><h3>Start Anywhere</h3><p>No requirement to begin with Module 1 — join at any point in the schedule.</p></div>
+        </div>
+        <div class="feature-row">
+          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7l6-3 5.447 2.724A1 1 0 0121 7.618v10.764a1 1 0 01-1.447.894L15 17l-6 3z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><h3>Choose Your Classes</h3><p>Take only the topics you actually need, whenever they come up on the schedule.</p></div>
+        </div>
+        <div class="feature-row">
+          <div class="feature-row__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><h3>Complete the Program</h3><p>Attend all 20 modules when you want the full curriculum, at a discount over paying per class.</p></div>
+        </div>
+      </div>
+      <div class="gs-stat-strip">
+        <div class="gs-stat-strip__item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>20 Live Modules</div>
+        <div class="gs-stat-strip__item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>7 Training Phases</div>
+        <div class="gs-stat-strip__item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Live Online</div>
+        <div class="gs-stat-strip__item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#F4B400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Attend From Anywhere</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       WANT THE COMPLETE PROGRAM? — $400 (given more visual authority:
+       a wider, more premium offer card, without overpowering the $25
+       entry offer above it or hiding individual-class purchasing).
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section" style="background:#0b1627;padding:60px 0" id="full-pack">
+    <div class="container">
+      <div class="fullpack-split">
+        <div class="fullpack-split__copy">
+          <div class="section__eyebrow">Complete Training System</div>
+          <h2 class="section__title" style="margin-bottom:14px">20 live modules<br/><em class="accent">— $400.</em></h2>
+          <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.8;margin:0 0 20px;max-width:420px">The $25 individual-class option is always available. The complete program is the best value if you want all 20 — and everything that comes with them.</p>
+          <ul class="gs-compare-list gs-compare-list--gold" style="max-width:420px">
+            <li>Every live Ground School module</li>
+            <li>Guided Notes for each lesson</li>
+            <li>Module self-assessments</li>
+            <li>Proficiency assignments</li>
+            <li>Scenario-based training</li>
+            <li>Live instructor Q&amp;A</li>
+            <li>Apex Advantage Checkride Prep Pack — <strong style="color:#fff">free</strong></li>
+          </ul>
+        </div>
+        <div class="fullpack-split__card">
+          <div class="fullpack-split__ribbon">Best Value</div>
+          <div class="fullpack-split__card-label">Complete Ground School</div>
+          <div style="display:flex;justify-content:space-between;font-size:15px;color:rgba(255,255,255,0.6);margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.08)"><span>20 classes at $25</span><span>$500</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:15px;color:rgba(255,255,255,0.6);margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.08)"><span>Complete program</span><span>$400</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:18px;color:var(--gold);font-weight:800;margin-bottom:24px"><span>You save</span><span>$100 (20%)</span></div>
+          <a href="portal-login.html?view=signup&offer=ground-school-pack" class="btn btn--primary" data-apx-cta data-apx-cta-location="full_pack" style="width:100%;display:block;text-align:center">Enroll in Complete Course</a>
+        </div>
+      </div>
+
+      <div class="gs-bonus-callout" id="gs-checkride-bonus">
+        <div class="gs-bonus-callout__icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="#F4B400" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div>
+          <div class="gs-bonus-callout__eyebrow">Full Course Bonus</div>
+          <div class="gs-bonus-callout__title">Take your training all the way to checkride prep.</div>
+          <p class="gs-bonus-callout__desc">Enroll in the complete $400 Ground School and get the Apex Advantage Checkride Prep Pack free — 300+ DPE-style questions, AI DPE practice, scenario training, and progress tracking in your member portal.</p>
+          <span class="gs-bonus-callout__value">$29 value — included free</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
 
   <!-- ═══════════════════════════════════════════════════════════
        LEARN FROM A REAL FLIGHT INSTRUCTOR
