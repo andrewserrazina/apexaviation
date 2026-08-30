@@ -69,6 +69,13 @@
     // on this page already fire via the existing data-apx-cta/gtag()
     // click-tracking mechanism, so no new "*_cta_clicked" events were added.
     'ground_school_value_section_viewed', 'ground_school_checkride_bonus_viewed',
+    // Curriculum booking UX pass (same file) -- fires when a visitor
+    // actually opens a module's "See Available Dates" panel. Selecting a
+    // session from that panel reuses the existing ground_school_class_
+    // selected/ground_school_reserve_form_opened events verbatim (same
+    // user action as the class grid), so only this one new event was
+    // needed to complete the funnel.
+    'ground_school_available_dates_opened',
     // Readiness Assessment funnel (site/readiness-assessment.html)
     'readiness_assessment_viewed', 'readiness_assessment_started', 'readiness_question_answered',
     'readiness_assessment_completed', 'readiness_score_viewed', 'readiness_signup_started',

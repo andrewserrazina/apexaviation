@@ -103,6 +103,11 @@ addition to* those automatic ones.
 **Properties:** `product: 'ground_school_private_pilot'`.
 **Expected frequency:** ~1 per page load that scrolls to the full-course section. CTA clicks near this callout are already covered by the existing `data-apx-cta`/`ground_school_cta_click` GA4 click-tracking mechanism — no separate click event was added for it.
 
+### `ground_school_available_dates_opened`
+**Trigger:** Added in the curriculum-booking UX pass. Fires when a visitor clicks a curriculum module's "See Available Dates" button and it actually opens (not on close, not on page render — each of the 20 module cards in `#curriculum` is wired on load, but the event only fires on the click that expands the panel).
+**Properties:** `module_id` (e.g. `PPL-M05`), `module_number`, `module_name`, `phase` (the module's phase title, e.g. "Pilot Foundations"), `available_session_count` (real count of currently-scheduled sessions for that module, 0 included), `source_context: 'curriculum'`.
+**Expected frequency:** Once per module-open interaction; can repeat if a visitor opens multiple modules or reopens the same one. This is the one new step needed to complete the curriculum funnel: `landing_page_viewed` → `ground_school_available_dates_opened` → `ground_school_class_selected` → `ground_school_reserve_form_opened` → `checkout_started` → `purchase_completed`. Selecting a specific session from the opened panel reuses `ground_school_class_selected`/`ground_school_reserve_form_opened` verbatim (identical event shape to the same actions on the `#upcoming-classes` class grid) — same user action, same source of truth (`get_upcoming_ground_school_classes`), so no separate "session selected from curriculum" event was added.
+
 ### `readiness_assessment_viewed`
 **Trigger:** `readiness-assessment.html` page load.
 **Properties:** UTM/source context (`getUtmAndSource()`).

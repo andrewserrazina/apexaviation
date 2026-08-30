@@ -298,3 +298,54 @@ If this is non-zero, decide explicitly whether to retroactively grant
 does **not** do so automatically, since it's a business decision (whether
 a bonus tied to a specific new offer should apply to past purchases), not
 a bug fix.
+
+## Curriculum booking UX pass (Ground School page)
+
+Each of the 20 curriculum module cards in `#curriculum` gained a "See
+Available Dates" progressive disclosure, so browsing the curriculum
+doesn't read as an immediate-purchase flow. No new data source: the same
+`get_upcoming_ground_school_classes` rows already fetched for
+`#upcoming-classes` are grouped client-side by `module_id` and rendered
+into whichever module card's panel a visitor opens. Selecting a session
+from that panel reuses the exact same `reserveSeat()` checkout call, and
+the exact same `ground_school_class_selected`/`ground_school_reserve_
+form_opened` events, as the pre-existing `#upcoming-classes` class grid —
+only one new event was needed, `ground_school_available_dates_opened`
+(see `ANALYTICS_EVENT_DICTIONARY.md`).
+
+### Test 8 — Curriculum "See Available Dates"
+1. Load the page, expand a curriculum phase, confirm each module card
+   shows module number/name/topics only — no date, price, seat count, or
+   booking CTA in the collapsed state.
+2. Click "See Available Dates" on a module with one real upcoming
+   session. Confirm the panel expands in place (no navigation, no page
+   jump), shows the correct date/time/timezone/price/seats for that
+   specific module (cross-check against `#upcoming-classes` for the same
+   module_id), and `ground_school_available_dates_opened` fires once with
+   `available_session_count: 1`.
+3. Click it again on a module with multiple scheduled sessions. Confirm
+   all real sessions render (no fabricated dates), sorted soonest-first.
+4. Click it on a module with zero scheduled sessions. Confirm it shows
+   "No upcoming date currently scheduled..." with no Reserve CTA, and
+   `available_session_count: 0` on the fired event.
+5. Click "Reserve This Class" on a session inside an opened panel.
+   Confirm `ground_school_class_selected` and `ground_school_reserve_
+   form_opened` fire with the correct `class_id`/`module_id`, matching
+   exactly what the same class's card in `#upcoming-classes` would fire.
+   Submit the inline form and confirm `checkout_started` fires and the
+   browser is redirected to a real Stripe Checkout URL (same
+   `create-checkout-session` call, `purpose: 'ground-school-registration'`,
+   as the existing class grid — not a separate checkout path).
+6. Toggle a module's panel closed and reopen it. Confirm no duplicate
+   network request (data was already in memory) and the event fires again
+   on the reopen (each open is a real, separate user interaction).
+7. Keyboard-only: confirm each "See Available Dates" button is reachable
+   via Tab, toggles on Enter/Space (native `<button>`, no custom keydown
+   needed), and `aria-expanded`/`aria-controls` update correctly.
+8. Confirm the top "Next Live Class" preview panel near the hero is
+   completely unchanged — still shows a specific date/price/seats/Reserve
+   CTA directly, with no "See Available Dates" step.
+9. Repeat step 2 on a 390–430px viewport: confirm the tap target is
+   comfortable, the expanded panel doesn't need horizontal scrolling, and
+   opening a module scrolls the newly-opened panel into view without
+   jumping past it.
