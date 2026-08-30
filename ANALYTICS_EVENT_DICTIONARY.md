@@ -93,6 +93,16 @@ addition to* those automatic ones.
 **Trigger:** The "reserve seat" form modal is opened for a selected class.
 **Expected frequency:** ~1 per real reservation attempt, can repeat if abandoned and reopened.
 
+### `ground_school_value_section_viewed`
+**Trigger:** Added in the Sept 2026 conversion-redesign pass. IntersectionObserver (`threshold: 0.4`, disconnects after first fire) on the new "More than a ground school. A complete training system." value section, which now sits directly below the hero/trust bar — i.e. within the first 10–20% of the mobile page, the zone Clarity data showed heavy early drop-off from.
+**Properties:** `product: 'ground_school_private_pilot'`.
+**Expected frequency:** ~1 per page load that scrolls past the hero. Compare against `landing_page_viewed` to gauge how many visitors now get past the point Clarity flagged as the abandonment zone.
+
+### `ground_school_checkride_bonus_viewed`
+**Trigger:** Added in the same pass. IntersectionObserver (`threshold: 0.4`, disconnects after first fire) on the compact "Full Course Bonus" callout (free Checkride Prep Pack with the $400 complete course), inside the `#full-pack` section.
+**Properties:** `product: 'ground_school_private_pilot'`.
+**Expected frequency:** ~1 per page load that scrolls to the full-course section. CTA clicks near this callout are already covered by the existing `data-apx-cta`/`ground_school_cta_click` GA4 click-tracking mechanism — no separate click event was added for it.
+
 ### `readiness_assessment_viewed`
 **Trigger:** `readiness-assessment.html` page load.
 **Properties:** UTM/source context (`getUtmAndSource()`).

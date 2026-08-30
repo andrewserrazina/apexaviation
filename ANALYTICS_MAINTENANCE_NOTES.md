@@ -216,3 +216,85 @@ should equal the dashboard's "Landing Visitors" figure for that same
 range. Repeat for a few other steps/funnels to confirm the RPCs
 (`get_marketing_executive_funnel`, `get_readiness_funnel_stats`, etc.,
 `supabase-portal-schema-v83.sql`) aren't silently miscounting.
+
+## Ground School conversion-redesign pass (Sept 2026 launch)
+
+Rebuilt the above-the-fold mobile experience on
+`site/apex-advantage-private-pilot.html` in response to Clarity data
+showing most mobile visitors abandoned before 20% scroll depth (a new
+value section + training-loop diagram now sit directly under the hero,
+before the existing schedule/curriculum/FAQ content). Also closed a real
+entitlement gap: full-course ($400) purchases did not previously grant
+the Checkride Prep Pack, despite that being the intended new bonus offer.
+No schema changes — reuses the existing `checkride_prep_unlocked` and
+`private_pilot_ground_school_pack_unlocked` boolean flags on `profiles`.
+
+**Events added:** `ground_school_value_section_viewed`,
+`ground_school_checkride_bonus_viewed` — see
+`ANALYTICS_EVENT_DICTIONARY.md`. CTA clicks were deliberately NOT given
+new event names; every new/changed CTA on this page kept its existing
+`data-apx-cta`/`data-apx-cta-location` attributes, so the page's existing
+delegated click handler and `ground_school_cta_click` GA4 event cover
+them with no additional wiring.
+
+**New `portal_events` type:** `checkride_prep_included_with_ground_school`
+— logged once per profile, only the first time the bonus is genuinely
+granted (i.e. skipped if the member already owned Checkride Prep before
+buying the full course), from both `handleUnlockGroundSchoolPack` and
+`handleUpgradeGroundSchoolPack` in `stripe-webhook/index.ts`. Distinct
+from `premiumUnlocked`/`ground_school_pack_purchased`/
+`ground_school_pack_upgraded` so the free bonus grant can be reported on
+separately from a standalone paid Checkride Prep purchase.
+
+### Test 6 — Ground School value section + bonus callout
+1. Load `apex-advantage-private-pilot.html` on a 390–430px viewport.
+   Confirm the hero, start-date line, and CTA are visible without
+   scrolling, and that the new value-system section + training-loop
+   diagram appear directly below the hero/trust bar — before the class
+   schedule, not after it.
+2. Scroll to the new value section; confirm `ground_school_value_section_viewed`
+   fires exactly once (check `analytics_events` or the network tab), and
+   does not re-fire on further scrolling up/down.
+3. Scroll to the `#full-pack` section; confirm `ground_school_checkride_bonus_viewed`
+   fires exactly once.
+4. Click the $400 tier CTA and the $25 schedule CTA; confirm
+   `ground_school_cta_click` (GA4) still fires for both with the correct
+   `location` value — this pass changed button copy/markup but not the
+   `data-apx-cta*` attributes, so no new click-tracking wiring should be
+   needed.
+
+### Test 7 — Full-course Checkride Prep entitlement (manual QA required — not run in this environment)
+1. Purchase the $400 complete course as a brand-new member. Confirm on
+   the resulting profile row: `private_pilot_ground_school_pack_unlocked
+   = true` AND `checkride_prep_unlocked = true`, exactly one
+   `ground_school_pack_purchased` `portal_events` row, and exactly one
+   `checkride_prep_included_with_ground_school` row.
+2. Refresh/revisit the checkout success page several times. Confirm no
+   duplicate `portal_access_purchases`/`invoices` rows, and the two
+   `portal_events` rows from step 1 are still exactly one each (webhook
+   idempotency is via `stripe_webhook_events`, upstream of this logic —
+   see that table's dedup comment in `stripe-webhook/index.ts`).
+3. Purchase a single $25 class. Confirm `checkride_prep_unlocked` is
+   **not** set and no `checkride_prep_included_with_ground_school` event
+   is logged.
+4. As a member who already separately purchased standalone Checkride Prep
+   ($29), purchase the $400 complete course. Confirm Ground School access
+   is granted normally, `checkride_prep_unlocked` stays `true` (no error,
+   no duplicate `portal_access_purchases` row), and **no**
+   `checkride_prep_included_with_ground_school` event fires (nothing new
+   was actually granted) — the confirmation email also omits the bonus
+   line in this case.
+5. As an existing $25-per-class member, pay to upgrade to the full
+   course. Confirm the same outcome as step 1 via
+   `handleUpgradeGroundSchoolPack`.
+
+**Existing full-course purchasers as of this pass:** not queried from
+this environment (no live Supabase access). Before launch, run:
+```sql
+select count(*) from profiles where private_pilot_ground_school_pack_unlocked = true;
+```
+If this is non-zero, decide explicitly whether to retroactively grant
+`checkride_prep_unlocked = true` to that cohort — this pass deliberately
+does **not** do so automatically, since it's a business decision (whether
+a bonus tied to a specific new offer should apply to past purchases), not
+a bug fix.
