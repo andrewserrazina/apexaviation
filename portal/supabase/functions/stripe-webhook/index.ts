@@ -271,6 +271,7 @@ async function handleUpgradeGroundSchoolPack(supabase: any, session: Stripe.Chec
       template(`
         <h2 style="color:#F4B400;margin:0 0 4px;">You're all in, ${fullName.split(' ')[0]}!</h2>
         <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your upgrade payment went through — every Private Pilot ground school class is now unlocked on your account, no per-session charge. Register for any upcoming session from your portal.</p>
+        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">As a complete-course member, you'll also have access to recordings of every class in your portal — including ones you can't make live.</p>
         ${bonusLine}
         <a href="https://advantage.apexaviationtx.com/portal.html#ground-school" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">See Upcoming Classes →</a>
       `))
@@ -357,6 +358,7 @@ async function handleUnlockGroundSchoolPack(supabase: any, session: Stripe.Check
       template(`
         <h2 style="color:#F4B400;margin:0 0 4px;">You're in, ${fullName.split(' ')[0]}!</h2>
         <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your payment went through — every Private Pilot ground school class is now unlocked on your account. Register for any upcoming session from your portal, no per-session charge.</p>
+        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">As a complete-course member, you'll also have access to recordings of every class in your portal — including ones you can't make live.</p>
         ${bonusLine}
         <a href="https://advantage.apexaviationtx.com/portal.html#ground-school" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">See Upcoming Classes →</a>
       `))
@@ -484,6 +486,7 @@ async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Che
       template(`
         <h2 style="color:#F4B400;margin:0 0 4px;">You're confirmed, ${fullName.split(' ')[0]}!</h2>
         <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">You're registered for <strong style="color:#fff">${title}</strong> on ${when}. See you there.</p>
+        <p style="color:rgba(255,255,255,0.45);font-size:13px;line-height:1.7;">Live classes may be recorded so registered students can review them later in the portal.</p>
         ${joinLinkHtml}
         <hr style="border:none;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0;" />
         <h3 style="color:#fff;margin:0 0 8px;font-size:17px;">Your Free Student Portal</h3>

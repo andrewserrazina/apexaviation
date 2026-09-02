@@ -1271,6 +1271,12 @@
              portal-stable.js) -- real enrollment/attendance data only. -->
         <div class="portal-card" id="groundSchoolProgressCard" hidden style="margin-bottom:20px"></div>
 
+        <!-- Class recordings -- hidden entirely for a member with no
+             recording access at all (no full-course unlock, no paid
+             single-class history). See renderGroundSchoolRecordings() in
+             portal-stable.js and get_my_ground_school_recordings (v96). -->
+        <div class="portal-card" id="groundSchoolRecordingsCard" hidden style="margin-bottom:20px"></div>
+
         <!-- Full-course pack -- an alternative to $25/session, not a
              replacement for it. Hidden once unlocked (see
              renderGroundSchoolPackCard() in portal-stable.js); the

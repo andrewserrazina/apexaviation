@@ -1626,6 +1626,7 @@
   var myScheduledEnrollments = []; // scheduled_ground_classes-based registrations (v58 get_my_ground_school_enrollments), separate from the legacy myGroundRegistrations above
   var groundSchoolModuleCount = 0; // total published PPL modules -- denominator for Ground School Progress
   var myAiDpeSessions = []; // most-recent-first, from get_my_recent_ai_dpe_sessions (v64) -- feeds Training Plan + future AI DPE History view
+  var myGroundSchoolRecordings = []; // get_my_ground_school_recordings (v96) -- full-course members get every past class here, $25 buyers only the ones they paid for; server-side entitlement, not filtered client-side
 
   function loadProgress() {
     return Promise.all([
@@ -1648,7 +1649,8 @@
       apexSupabase.from('ground_registrations').select('*, session:ground_sessions(*)').eq('profile_id', member.id),
       apexSupabase.rpc('get_my_ground_school_enrollments'),
       apexSupabase.rpc('get_ground_school_module_count', { p_course_id: 'PPL' }),
-      apexSupabase.rpc('get_my_recent_ai_dpe_sessions', { p_limit: 10 })
+      apexSupabase.rpc('get_my_recent_ai_dpe_sessions', { p_limit: 10 }),
+      apexSupabase.rpc('get_my_ground_school_recordings')
     ]).then(function (results) {
       (results[0].data || []).forEach(function (r) {
         studied[r.question_id] = r.completed;
@@ -1691,6 +1693,7 @@
       myScheduledEnrollments = results[17].data || [];
       groundSchoolModuleCount = typeof results[18].data === 'number' ? results[18].data : 0;
       myAiDpeSessions = results[19].data || [];
+      myGroundSchoolRecordings = results[20].data || [];
     }).catch(function (e) { console.error('Failed to load portal progress', e); });
   }
 
@@ -6236,6 +6239,40 @@
       nextHtml;
   }
 
+  // Class recordings -- entitlement is entirely server-side
+  // (get_my_ground_school_recordings, v96): a full-course member's rows
+  // cover every past published/completed PPL class regardless of
+  // whether they personally registered for it, a per-class buyer's rows
+  // cover only the specific classes they paid for. Nothing here re-
+  // derives or second-guesses that split client-side. A row with no
+  // recording_url yet (class happened, Drive link not posted) still
+  // shows so the member knows it's coming -- never a fake/dead link.
+  function renderGroundSchoolRecordings() {
+    var el = document.getElementById('groundSchoolRecordingsCard');
+    if (!el) return;
+    if (!member || !myGroundSchoolRecordings.length) { el.hidden = true; return; }
+    el.hidden = false;
+
+    var rows = myGroundSchoolRecordings.map(function (r) {
+      var when = zonedWallClockToUtc(r.class_date, r.start_time, r.timezone).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      return '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid rgba(255,255,255,0.08)">' +
+        '<div style="min-width:0">' +
+          '<p style="color:#fff;font-size:14px;font-weight:600;margin:0 0 2px">' + r.title + '</p>' +
+          '<p style="color:rgba(255,255,255,0.45);font-size:12.5px;margin:0">' + when + (r.instructor_name ? ' · ' + r.instructor_name : '') + '</p>' +
+        '</div>' +
+        (r.recording_url
+          ? '<a href="' + r.recording_url + '" target="_blank" rel="noopener" style="color:#fff;text-decoration:underline;font-size:13px;font-weight:600;white-space:nowrap;flex-shrink:0">Watch Recording</a>'
+          : '<span style="color:rgba(255,255,255,0.35);font-size:12.5px;white-space:nowrap;flex-shrink:0">Not yet posted</span>') +
+      '</div>';
+    }).join('');
+
+    el.innerHTML =
+      '<div class="portal-header__eyebrow" style="margin-bottom:8px">Class Recordings</div>' +
+      '<h3 style="color:#fff;font-size:18px;font-weight:800;margin-bottom:4px">Missed a class? Catch up here.</h3>' +
+      '<p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:4px">' + myGroundSchoolRecordings.length + ' class' + (myGroundSchoolRecordings.length === 1 ? '' : 'es') + ' available.</p>' +
+      '<div style="max-height:340px;overflow-y:auto">' + rows + '</div>';
+  }
+
   /* ══════════════════════════════════════════════════════════════
      MY TRAINING — "what should I study today" panel + study plan.
      Every recommendation here is derived live from real progress data
@@ -6826,6 +6863,7 @@
       renderAiDpeHistory();
       renderRecommendedNextStep();
       renderGroundSchoolProgress();
+      renderGroundSchoolRecordings();
       renderGroundSchoolRegistrationSuccess();
       renderAchievements();
       loadAchievementRarity();

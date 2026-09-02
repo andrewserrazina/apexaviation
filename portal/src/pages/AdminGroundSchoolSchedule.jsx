@@ -55,6 +55,7 @@ const BLANK_FORM = {
   instructor_id: '',
   instructor_name: '',
   meeting_url: '',
+  recording_url: '',
   // Framework's own Student Capacity Recommendation: 4-10 students per
   // cohort, 8 is the sweet spot for a single-instructor Austin cohort.
   capacity: 8,
@@ -205,6 +206,7 @@ export default function AdminGroundSchoolSchedule() {
       instructor_id: row.instructor_id ?? '',
       instructor_name: row.instructor_name ?? '',
       meeting_url: row.meeting_url ?? '',
+      recording_url: row.recording_url ?? '',
       capacity: row.capacity ?? 8,
       status: row.status ?? 'draft',
     })
@@ -239,6 +241,7 @@ export default function AdminGroundSchoolSchedule() {
       instructor_id: form.instructor_id || null,
       instructor_name: form.instructor_name.trim() || null,
       meeting_url: form.meeting_url.trim() || null,
+      recording_url: form.recording_url.trim() || null,
       capacity: Number(form.capacity),
       status: targetStatus,
     }
@@ -517,6 +520,13 @@ export default function AdminGroundSchoolSchedule() {
               <div className="form-group">
                 <label>Meeting Link</label>
                 <input type="url" value={form.meeting_url} onChange={e => field('meeting_url', e.target.value)} placeholder="Required before publishing" />
+              </div>
+            )}
+
+            {!quickMode && (
+              <div className="form-group">
+                <label>Recording Link</label>
+                <input type="url" value={form.recording_url} onChange={e => field('recording_url', e.target.value)} placeholder="Paste the Google Drive share link after class, once it's ready" />
               </div>
             )}
 
