@@ -335,6 +335,33 @@ em { font-family: 'Playfair Display', serif; font-style: italic; }
 .badge--green { background: rgba(52,211,153,0.15); color: #34d399; }
 .badge--red   { background: rgba(239,68,68,0.15);  color: #f87171; }
 .badge--yellow{ background: rgba(244,180,0,0.15);  color: var(--gold); }
+.badge--blue  { background: rgba(96,165,250,0.15); color: #60a5fa; }
+
+/* status-badge/admin-table/table-scroll/empty-state-block were already
+   referenced by MockOralRequests.jsx but never actually defined --
+   filled in here (used by it and the new Mock Oral dashboard pages)
+   rather than left silently unstyled. */
+.status-badge {
+  display: inline-block; padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  background: rgba(255,255,255,0.07); color: var(--text);
+}
+.status-badge--success { background: rgba(52,211,153,0.15); color: #34d399; }
+.status-badge--warning { background: rgba(244,180,0,0.15); color: var(--gold); }
+
+.table-scroll { overflow-x: auto; }
+.admin-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.admin-table th {
+  text-align: left; padding: 10px 12px; color: var(--muted); font-weight: 700;
+  text-transform: uppercase; font-size: 11px; letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border);
+}
+.admin-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+
+.empty-state-block {
+  text-align: center; padding: 48px 24px; color: var(--muted);
+}
+.empty-state-block h3 { color: var(--text); margin-bottom: 8px; }
 
 /* ─── INPUTS ─────────────────────────────────── */
 .search-input,

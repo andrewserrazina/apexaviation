@@ -602,35 +602,439 @@
     });
   });
 
-  /* ── Mock Oral booking ──────────────────────────────────────── */
-  var mockOralBookBtn = document.getElementById('mockOralBookBtn');
-  var mockOralError = document.getElementById('mockOralError');
+  /* ══════════════════════════════════════════════════════════════
+     APEX ADVANTAGE MOCK ORALS ($129/2-hour, ACS-based) — distinct
+     product from the legacy $99/60-minute request-queue flow (that
+     system, mock_oral_requests/handleMockOralBooking, is untouched;
+     only the customer-facing "Book a Mock Oral" entry points now lead
+     here instead). Real slot-based scheduling
+     (get_mock_oral_availability), server-verified checkout
+     (book-mock-oral-v2, stripe-webhook), intake, and a persisted
+     report (get_my_mock_oral_report). See supabase-portal-schema-
+     v97.sql for the full data model and the double-booking-safety
+     reasoning.
+     ══════════════════════════════════════════════════════════════ */
+  var moProducts = [];
+  var moBookings = [];
+  var moRescheduleBookingId = null;
+  var moIntakeBookingId = null;
 
-  mockOralBookBtn.addEventListener('click', function () {
-    mockOralError.classList.remove('show');
-    mockOralBookBtn.disabled = true;
-    mockOralBookBtn.textContent = 'Redirecting to secure checkout…';
+  var MO_TZ_ABBR = { 'America/Chicago': 'CT', 'America/New_York': 'ET', 'America/Denver': 'MT', 'America/Los_Angeles': 'PT', 'UTC': 'UTC' };
+  function moFmtDateTime(row) {
+    var start = zonedWallClockToUtc(row.class_date, row.start_time, row.timezone);
+    var date = start.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+    var time = start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    var tz = MO_TZ_ABBR[row.timezone] || row.timezone || '';
+    return date + ' · ' + time + (tz ? ' ' + tz : '');
+  }
+  function moPrice(cents) { return '$' + (cents / 100).toFixed(0); }
 
+  function loadMockOralProducts() {
+    return apexSupabase.from('mock_oral_products').select('*').eq('active', true).order('sort_order').then(function (res) {
+      moProducts = res.data || [];
+    });
+  }
+  function loadMockOralBookings() {
+    return apexSupabase.rpc('get_my_mock_oral_bookings').then(function (res) {
+      moBookings = res.data || [];
+    });
+  }
+  function refreshMockOral() {
+    return Promise.all([loadMockOralProducts(), loadMockOralBookings()]).then(renderMockOralSection);
+  }
+
+  function renderMockOralProducts() {
+    var el = document.getElementById('mockOralProducts');
+    if (!el) return;
+    el.style.display = '';
+    el.innerHTML = moProducts.map(function (p) {
+      return '<div class="mo-product-card' + (p.badge ? ' mo-product-card--featured' : '') + '">' +
+        (p.badge ? '<div class="mo-product-card__badge">' + p.badge + '</div>' : '') +
+        '<h3>' + p.name + '</h3>' +
+        '<p class="mo-product-card__desc">' + p.short_description + '</p>' +
+        '<div class="mo-product-card__meta">Up to ' + Math.round(p.duration_minutes / 60) + ' hours</div>' +
+        '<div class="mo-product-card__price">' + moPrice(p.price_cents) + '</div>' +
+        '<button type="button" class="btn btn--primary" data-mo-select-product="' + p.id + '" style="width:100%">Select</button>' +
+        '</div>';
+    }).join('');
+    el.querySelectorAll('[data-mo-select-product]').forEach(function (btn) {
+      btn.addEventListener('click', function () { selectMockOralProduct(btn.dataset.moSelectProduct); });
+    });
+  }
+
+  function selectMockOralProduct(productId) {
+    var scheduleWrap = document.getElementById('mockOralScheduleWrap');
+    var slotsEl = document.getElementById('mockOralSlots');
+    var errorEl = document.getElementById('mockOralError');
+    errorEl.textContent = ''; errorEl.classList.remove('show');
+    scheduleWrap.hidden = false;
+    slotsEl.innerHTML = '<p style="color:rgba(255,255,255,0.4)">Loading available times…</p>';
+    apexSupabase.rpc('get_mock_oral_availability', { p_certificate_type: 'private_pilot' }).then(function (res) {
+      var slots = res.data || [];
+      if (!slots.length) {
+        slotsEl.innerHTML = '<p style="color:rgba(255,255,255,0.5)">No upcoming times are open right now — check back soon, or <a href="contact.html" style="color:var(--gold)">contact us</a>.</p>';
+        return;
+      }
+      slotsEl.innerHTML = slots.map(function (s) {
+        return '<button type="button" class="mo-slot" data-mo-slot="' + s.id + '">' + moFmtDateTime(s) + '</button>';
+      }).join('');
+      slotsEl.querySelectorAll('[data-mo-slot]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (moRescheduleBookingId) rescheduleMockOralTo(btn.dataset.moSlot);
+          else bookMockOralSlot(productId, btn.dataset.moSlot);
+        });
+      });
+    });
+  }
+
+  function bookMockOralSlot(productId, slotId) {
+    var errorEl = document.getElementById('mockOralError');
+    var slotsEl = document.getElementById('mockOralSlots');
+    errorEl.textContent = ''; errorEl.classList.remove('show');
+    slotsEl.querySelectorAll('.mo-slot').forEach(function (b) { b.disabled = true; });
+    var product = moProducts.find(function (p) { return p.id === productId; });
+    if (window.apexTrack) apexTrack('mock_oral_checkout_started', { product: productId, price: product ? product.price_cents / 100 : undefined, certificate_type: 'private_pilot' });
     apexSupabase.functions.invoke('create-checkout-session', {
-      body: { purpose: 'book-mock-oral', origin: window.location.origin, utm: window.apexGetUtm ? apexGetUtm() : undefined },
+      body: { purpose: 'book-mock-oral-v2', productId: productId, availabilityId: slotId, origin: window.location.origin, utm: window.apexGetUtm ? apexGetUtm() : undefined },
       headers: { Authorization: 'Bearer ' + accessToken }
     }).then(function (res) {
       if (res.error || !res.data || !res.data.url) {
         return extractInvokeError(res).then(function (msg) {
-          mockOralBookBtn.disabled = false;
-          mockOralBookBtn.textContent = 'Book Now — $99';
-          mockOralError.textContent = msg;
-          mockOralError.classList.add('show');
+          errorEl.textContent = msg;
+          errorEl.classList.add('show');
+          selectMockOralProduct(productId);
         });
       }
-      if (window.apexTrackStandard) apexTrackStandard('InitiateCheckout', { content_name: '60-Minute Mock Oral', value: 99, currency: 'USD' });
+      if (window.apexTrackStandard) apexTrackStandard('InitiateCheckout', { content_name: product ? product.name : 'Mock Oral', value: product ? product.price_cents / 100 : undefined, currency: 'USD' });
       window.location.href = res.data.url;
     }).catch(function () {
-      mockOralBookBtn.disabled = false;
-      mockOralBookBtn.textContent = 'Book Now — $99';
-      mockOralError.textContent = 'Could not start checkout. Please try again.';
-      mockOralError.classList.add('show');
+      errorEl.textContent = 'Could not start checkout. Please try again.';
+      errorEl.classList.add('show');
+      selectMockOralProduct(productId);
     });
+  }
+
+  function startMockOralReschedule(bookingId) {
+    var booking = moBookings.find(function (b) { return b.id === bookingId; });
+    if (!booking) return;
+    moRescheduleBookingId = bookingId;
+    document.getElementById('mockOralBookings').style.display = 'none';
+    document.getElementById('mockOralBookingFlow').hidden = false;
+    document.getElementById('mockOralProducts').style.display = 'none';
+    selectMockOralProduct(booking.product_id);
+  }
+
+  function rescheduleMockOralTo(newSlotId) {
+    var errorEl = document.getElementById('mockOralError');
+    apexSupabase.rpc('reschedule_mock_oral_booking', { p_booking_id: moRescheduleBookingId, p_new_availability_id: newSlotId }).then(function (res) {
+      if (res.error || res.data !== true) {
+        errorEl.textContent = 'That time was just taken, or could not be rescheduled. Please choose another.';
+        errorEl.classList.add('show');
+        return;
+      }
+      moRescheduleBookingId = null;
+      toast('Your Mock Oral has been rescheduled.');
+      document.getElementById('mockOralBookingFlow').hidden = true;
+      document.getElementById('mockOralBookings').style.display = '';
+      refreshMockOral();
+    });
+  }
+
+  function cancelMockOralBooking(bookingId) {
+    if (!window.confirm('Cancel this Mock Oral booking? This cannot be undone from the portal.')) return;
+    apexSupabase.rpc('cancel_mock_oral_booking', { p_booking_id: bookingId }).then(function (res) {
+      if (res.error) { toast('Could not cancel. Please try again.'); return; }
+      toast('Your Mock Oral has been canceled.');
+      refreshMockOral();
+    });
+  }
+
+  function openMockOralIntake(bookingId) {
+    moIntakeBookingId = bookingId;
+    document.getElementById('mockOralBookingFlow').hidden = true;
+    document.getElementById('mockOralBookings').style.display = 'none';
+    var formEl = document.getElementById('mockOralIntakeForm');
+    formEl.hidden = false;
+    document.getElementById('mockOralIntakeError').textContent = '';
+    apexSupabase.from('mock_oral_intakes').select('*').eq('booking_id', bookingId).maybeSingle().then(function (res) {
+      var i = res.data || {};
+      var setVal = function (id, val) { var el = document.getElementById(id); if (el) el.value = val || ''; };
+      setVal('moiCheckrideDate', i.checkride_date);
+      setVal('moiDpeName', i.dpe_name);
+      setVal('moiDpeLocation', i.dpe_location);
+      setVal('moiFlightSchool', i.flight_school);
+      setVal('moiInstructorName', i.primary_instructor_name);
+      setVal('moiAircraftMake', i.aircraft_make);
+      setVal('moiAircraftModel', i.aircraft_model);
+      setVal('moiAircraftYear', i.aircraft_year);
+      setVal('moiTailNumber', i.tail_number);
+      setVal('moiAvionicsType', i.avionics_type);
+      setVal('moiAvionicsNotes', i.avionics_notes);
+      setVal('moiFlightHours', i.flight_hours);
+      setVal('moiKnowledgeScore', i.knowledge_test_score);
+      setVal('moiStrongest', i.strongest_areas);
+      setVal('moiWeakest', i.weakest_areas);
+      setVal('moiSpecialRequests', i.special_requests);
+    });
+  }
+
+  var moIntakeSaveBtn = document.getElementById('mockOralIntakeSaveBtn');
+  if (moIntakeSaveBtn) {
+    moIntakeSaveBtn.addEventListener('click', function () {
+      var btn = moIntakeSaveBtn;
+      var errEl = document.getElementById('mockOralIntakeError');
+      errEl.textContent = ''; errEl.classList.remove('show');
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+
+      var getVal = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; };
+      var payload = {
+        booking_id: moIntakeBookingId,
+        certificate_sought: 'private_pilot',
+        checkride_date: getVal('moiCheckrideDate') || null,
+        dpe_name: getVal('moiDpeName') || null,
+        dpe_location: getVal('moiDpeLocation') || null,
+        flight_school: getVal('moiFlightSchool') || null,
+        primary_instructor_name: getVal('moiInstructorName') || null,
+        aircraft_make: getVal('moiAircraftMake') || null,
+        aircraft_model: getVal('moiAircraftModel') || null,
+        aircraft_year: getVal('moiAircraftYear') || null,
+        tail_number: getVal('moiTailNumber') || null,
+        avionics_type: getVal('moiAvionicsType') || null,
+        avionics_notes: getVal('moiAvionicsNotes') || null,
+        flight_hours: getVal('moiFlightHours') ? Number(getVal('moiFlightHours')) : null,
+        knowledge_test_score: getVal('moiKnowledgeScore') ? Number(getVal('moiKnowledgeScore')) : null,
+        strongest_areas: getVal('moiStrongest') || null,
+        weakest_areas: getVal('moiWeakest') || null,
+        special_requests: getVal('moiSpecialRequests') || null,
+      };
+      var phone = getVal('moiPhone');
+      if (phone) apexSupabase.from('mock_oral_bookings').update({ phone: phone }).eq('id', moIntakeBookingId);
+
+      function finishSave(reportPath) {
+        if (reportPath) payload.knowledge_test_report_path = reportPath;
+        apexSupabase.from('mock_oral_intakes').upsert(payload, { onConflict: 'booking_id' }).then(function (res) {
+          btn.disabled = false;
+          btn.textContent = 'Save Intake';
+          if (res.error) { errEl.textContent = res.error.message; errEl.classList.add('show'); return; }
+          if (window.apexTrack) apexTrack('mock_oral_intake_completed', { certificate_type: 'private_pilot' });
+          toast('Intake saved.');
+          document.getElementById('mockOralIntakeForm').hidden = true;
+          document.getElementById('mockOralBookings').style.display = '';
+          refreshMockOral();
+        });
+      }
+
+      var fileInput = document.getElementById('moiKtrFile');
+      var file = fileInput && fileInput.files[0];
+      if (file) {
+        var path = moIntakeBookingId + '/' + Date.now() + '_' + file.name;
+        apexSupabase.storage.from('mock-oral-uploads').upload(path, file, { upsert: false }).then(function (res) {
+          if (res.error) { btn.disabled = false; btn.textContent = 'Save Intake'; errEl.textContent = res.error.message; errEl.classList.add('show'); return; }
+          finishSave(path);
+        });
+      } else {
+        finishSave(null);
+      }
+    });
+  }
+  var moIntakeCancelBtn = document.getElementById('mockOralIntakeCancelBtn');
+  if (moIntakeCancelBtn) {
+    moIntakeCancelBtn.addEventListener('click', function () {
+      document.getElementById('mockOralIntakeForm').hidden = true;
+      document.getElementById('mockOralBookings').style.display = '';
+    });
+  }
+
+  var MO_READINESS_LABEL = { checkride_ready: 'Checkride Ready', nearly_ready: 'Nearly Ready', needs_targeted_review: 'Needs Targeted Review', not_yet_ready: 'Not Yet Ready' };
+  var MO_CATEGORY_LABEL = {
+    pilot_qualifications: 'Pilot Qualifications', airworthiness: 'Airworthiness Requirements', weather: 'Weather',
+    cross_country_planning: 'Cross-Country Flight Planning', national_airspace_system: 'National Airspace System',
+    aircraft_systems: 'Aircraft Systems', performance_limitations: 'Performance & Limitations',
+    aerodynamics: 'Aerodynamics', airport_operations: 'Airport Operations', regulations: 'Regulations',
+    aeronautical_decision_making: 'Aeronautical Decision Making / Risk Management', emergency_abnormal: 'Emergency / Abnormal Scenarios'
+  };
+  var MO_RATING_LABEL = { strong: 'Strong', satisfactory: 'Satisfactory', needs_review: 'Needs Review', unsatisfactory: 'Unsatisfactory' };
+
+  function viewMockOralReport(bookingId) {
+    document.getElementById('mockOralBookingFlow').hidden = true;
+    document.getElementById('mockOralBookings').style.display = 'none';
+    var reportEl = document.getElementById('mockOralReportView');
+    reportEl.hidden = false;
+    reportEl.innerHTML = '<p style="color:rgba(255,255,255,0.4)">Loading your report…</p>';
+    if (window.apexTrack) apexTrack('mock_oral_report_viewed', {});
+
+    function wireBack() {
+      var back = document.getElementById('moReportBack');
+      if (back) back.addEventListener('click', function () {
+        reportEl.hidden = true;
+        document.getElementById('mockOralBookings').style.display = '';
+      });
+    }
+
+    apexSupabase.rpc('get_my_mock_oral_report', { p_booking_id: bookingId }).then(function (res) {
+      var r = res.data;
+      if (!r) {
+        reportEl.innerHTML = '<div class="portal-card"><p style="color:rgba(255,255,255,0.5)">Your report isn\'t ready yet — your instructor is still finalizing it.</p><button type="button" class="btn btn--ghost" id="moReportBack" style="margin-top:12px">Back</button></div>';
+        wireBack();
+        return;
+      }
+      var categoriesHtml = (r.categories || []).map(function (c) {
+        return '<div class="mo-report-cat"><div class="mo-report-cat__head"><strong>' + (MO_CATEGORY_LABEL[c.category] || c.category) + '</strong><span class="mo-rating mo-rating--' + c.rating + '">' + (MO_RATING_LABEL[c.rating] || c.rating) + '</span></div>' +
+          (c.notes ? '<p>' + c.notes + '</p>' : '') + '</div>';
+      }).join('');
+      var stepsHtml = (r.recommended_next_steps || []).map(function (s) {
+        return '<li>' + (s.url ? '<a href="' + s.url + '" style="color:var(--gold)">' + s.label + '</a>' : s.label) + '</li>';
+      }).join('');
+
+      // Recheck eligibility: the product this booking was purchased
+      // under includes a recheck, and no recheck has been booked
+      // against it yet (moBookings already holds every booking for this
+      // member, including any existing recheck via original_booking_id).
+      var thisBooking = moBookings.find(function (b) { return b.id === bookingId; });
+      var product = moProducts.find(function (p) { return p.id === (thisBooking && thisBooking.product_id); });
+      var hasRecheckAlready = moBookings.some(function (b) { return b.original_booking_id === bookingId; });
+      var recheckEligible = product && product.includes_recheck && !hasRecheckAlready;
+
+      reportEl.innerHTML =
+        '<div class="portal-card mo-report">' +
+        '<div class="portal-header__eyebrow">Apex Advantage · Private Pilot Mock Oral</div>' +
+        '<h2 style="color:#fff;font-size:20px;font-weight:800;margin:4px 0 18px">Performance Report</h2>' +
+        '<p style="color:rgba(255,255,255,0.6);font-size:13px">' + (r.student_name || '') + (r.assessment_date ? ' · ' + new Date(r.assessment_date).toLocaleDateString() : '') + (r.instructor_name ? ' · ' + r.instructor_name : '') + (r.aircraft ? ' · ' + r.aircraft : '') + '</p>' +
+        '<div class="mo-readiness mo-readiness--' + (r.overall_readiness || 'pending') + '"><span>Overall Readiness</span><strong>' + (MO_READINESS_LABEL[r.overall_readiness] || 'Pending') + '</strong></div>' +
+        (categoriesHtml ? '<h3 style="color:#fff;margin:24px 0 10px">Category Performance</h3>' + categoriesHtml : '') +
+        (r.strongest_areas ? '<h3 style="color:#fff;margin:24px 0 8px">Your Strongest Areas</h3><p style="color:rgba(255,255,255,0.6)">' + r.strongest_areas + '</p>' : '') +
+        (r.priority_review_areas ? '<h3 style="color:#fff;margin:24px 0 8px">Priority Review Areas</h3><p style="color:rgba(255,255,255,0.6)">' + r.priority_review_areas + '</p>' : '') +
+        (stepsHtml ? '<h3 style="color:#fff;margin:24px 0 8px">Recommended Next Steps</h3><ul style="color:rgba(255,255,255,0.6);padding-left:20px">' + stepsHtml + '</ul>' : '') +
+        '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0" />' +
+        '<p style="color:rgba(255,255,255,0.35);font-size:12px;line-height:1.6">This assessment represents Apex Aviation\'s training opinion based on the material evaluated during this Mock Oral. It does not guarantee practical-test performance or replace required instructor endorsements.</p>' +
+        (recheckEligible ? '<button type="button" class="btn btn--primary" id="moBookRecheckBtn" style="margin-top:18px;margin-right:12px">Book My Recheck</button>' : '') +
+        '<button type="button" class="btn btn--ghost" id="moReportBack" style="margin-top:18px">Back</button>' +
+        '<div id="moRecheckSlots" class="mo-slot-list" style="margin-top:16px"></div>' +
+        '<p id="moRecheckError" class="portal-modal__error"></p>' +
+        '</div>';
+      wireBack();
+
+      var recheckBtn = document.getElementById('moBookRecheckBtn');
+      if (recheckBtn) {
+        recheckBtn.addEventListener('click', function () {
+          if (window.apexTrack) apexTrack('mock_oral_recheck_clicked', {});
+          var slotsWrap = document.getElementById('moRecheckSlots');
+          slotsWrap.innerHTML = '<p style="color:rgba(255,255,255,0.4)">Loading available times…</p>';
+          apexSupabase.rpc('get_mock_oral_availability', { p_certificate_type: 'private_pilot' }).then(function (slotRes) {
+            var openSlots = slotRes.data || [];
+            if (!openSlots.length) { slotsWrap.innerHTML = '<p style="color:rgba(255,255,255,0.5)">No upcoming times are open right now — check back soon.</p>'; return; }
+            slotsWrap.innerHTML = openSlots.map(function (s) {
+              return '<button type="button" class="mo-slot" data-recheck-slot="' + s.id + '">' + moFmtDateTime(s) + '</button>';
+            }).join('');
+            slotsWrap.querySelectorAll('[data-recheck-slot]').forEach(function (slotBtn) {
+              slotBtn.addEventListener('click', function () {
+                apexSupabase.rpc('book_mock_oral_recheck', { p_original_booking_id: bookingId, p_availability_id: slotBtn.dataset.recheckSlot }).then(function (rpcRes) {
+                  var errEl = document.getElementById('moRecheckError');
+                  if (rpcRes.error || !rpcRes.data) {
+                    errEl.textContent = rpcRes.error ? rpcRes.error.message : 'That time was just taken. Please choose another.';
+                    errEl.classList.add('show');
+                    return;
+                  }
+                  if (window.apexTrack) apexTrack('mock_oral_recheck_purchased', {});
+                  toast('Your recheck is booked.');
+                  reportEl.hidden = true;
+                  document.getElementById('mockOralBookings').style.display = '';
+                  refreshMockOral();
+                });
+              });
+            });
+          });
+        });
+      }
+    });
+  }
+
+  function wireMockOralBookingActions() {
+    document.querySelectorAll('#mockOralBookings [data-mo-action]').forEach(function (btn) {
+      var bookingId = btn.dataset.booking;
+      btn.addEventListener('click', function () {
+        var action = btn.dataset.moAction;
+        if (action === 'intake' || action === 'view-intake') openMockOralIntake(bookingId);
+        else if (action === 'report') viewMockOralReport(bookingId);
+        else if (action === 'reschedule') startMockOralReschedule(bookingId);
+        else if (action === 'cancel') cancelMockOralBooking(bookingId);
+      });
+    });
+  }
+
+  function renderMockOralSection() {
+    var bookingsEl = document.getElementById('mockOralBookings');
+    var flowEl = document.getElementById('mockOralBookingFlow');
+    if (!bookingsEl || !flowEl) return;
+    document.getElementById('mockOralIntakeForm').hidden = true;
+    document.getElementById('mockOralReportView').hidden = true;
+    bookingsEl.style.display = '';
+
+    // Most recent non-canceled booking (rows are already ordered
+    // newest-first by get_my_mock_oral_bookings). A canceled booking is
+    // never shown as "your booking" -- the student falls back to the
+    // product picker, same as never having booked at all.
+    var active = moBookings.find(function (b) { return b.status !== 'canceled'; });
+
+    if (!active) {
+      bookingsEl.innerHTML = '';
+      flowEl.hidden = false;
+      document.getElementById('mockOralProducts').style.display = '';
+      document.getElementById('mockOralScheduleWrap').hidden = true;
+      renderMockOralProducts();
+      return;
+    }
+
+    flowEl.hidden = true;
+
+    var start = zonedWallClockToUtc(active.class_date, active.start_time, active.timezone);
+    var end = zonedWallClockToUtc(active.class_date, active.end_time, active.timezone);
+    var now = new Date();
+    var joinWindowStart = new Date(start.getTime() - 15 * 60000);
+    var canJoin = active.meeting_url && active.status === 'confirmed' && now >= joinWindowStart && now <= end;
+    var isPast = now > end;
+    var statusLabel = active.has_report ? 'COMPLETED' : (isPast ? 'AWAITING RESULTS' : 'CONFIRMED');
+
+    bookingsEl.innerHTML =
+      '<div class="portal-card mo-booking-card">' +
+      '<div class="portal-header__eyebrow" style="margin-bottom:8px">Your Mock Oral' + (active.original_booking_id ? ' (Recheck)' : '') + '</div>' +
+      '<h3 style="color:#fff;font-size:19px;font-weight:800;margin-bottom:4px">' + moFmtDateTime(active) + '</h3>' +
+      '<p style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:4px">' + (active.product_name || 'Private Pilot Mock Oral') + ' · Instructor: ' + (active.instructor_name || 'TBD') + '</p>' +
+      '<p style="color:var(--gold);font-size:12px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:18px">' + statusLabel + '</p>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:10px">' +
+      (active.has_report
+        ? '<button type="button" class="btn btn--primary" data-mo-action="report" data-booking="' + active.id + '">View My Report</button>'
+        : (active.has_intake
+          ? '<button type="button" class="btn btn--ghost" data-mo-action="view-intake" data-booking="' + active.id + '">View Intake</button>'
+          : '<button type="button" class="btn btn--primary" data-mo-action="intake" data-booking="' + active.id + '">Complete Intake</button>')) +
+      (canJoin ? '<a class="btn btn--primary" href="' + active.meeting_url + '" target="_blank" rel="noopener">Join Session</a>' : '') +
+      (!isPast && !active.has_report ? '<button type="button" class="btn btn--ghost" data-mo-action="reschedule" data-booking="' + active.id + '">Reschedule</button>' : '') +
+      (!isPast && !active.has_report ? '<button type="button" class="btn btn--ghost" data-mo-action="cancel" data-booking="' + active.id + '">Cancel</button>' : '') +
+      '</div></div>';
+    wireMockOralBookingActions();
+
+    // Dashboard quicklink card: swap to a results-focused pitch once a
+    // report exists, matching the Ground-School-progress-card pattern.
+    var dashCard = document.getElementById('mockOralDashboardCard');
+    if (dashCard && active.has_report) {
+      dashCard.innerHTML =
+        '<div class="portal-header__eyebrow" style="margin-bottom:8px">Your Mock Oral Results</div>' +
+        '<h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Readiness: ' + (MO_READINESS_LABEL[active.overall_readiness] || 'View your report') + '</h3>' +
+        '<button type="button" class="btn btn--primary" id="mockOralDashResultsBtn">View Report</button>';
+      // Dynamically-injected, so the one-time page-load [data-goto]
+      // delegated wiring (portal-stable.js's showSection dispatch) never
+      // reaches this button -- wire it directly instead.
+      var dashResultsBtn = document.getElementById('mockOralDashResultsBtn');
+      if (dashResultsBtn) dashResultsBtn.addEventListener('click', function () {
+        if (window.apexTrack) apexTrack('mock_oral_page_view', {});
+        showSection('mock-oral');
+      });
+    }
+  }
+
+  document.querySelectorAll('[data-section="mock-oral"], [data-goto="mock-oral"]').forEach(function (el) {
+    el.addEventListener('click', function () { if (window.apexTrack) apexTrack('mock_oral_page_view', {}); });
   });
 
   /* ── AI DPE Practice (simulated oral exam) ─────────────────────
@@ -1482,6 +1886,30 @@
       if (moFunnelDedupeKey) localStorage.setItem(moFunnelDedupeKey, '1');
     }
   }
+  // Apex Advantage Mock Orals ($129/2-hour) -- distinct product key
+  // ('mock_oral_v2') from the legacy $99 flow above so the revenue
+  // dashboard can tell them apart. Same three-way GA4/Meta/apexTrack
+  // dedup-by-session_id pattern as every other product on this page.
+  if (urlParams.get('mockoralv2') === '1') {
+    toast('Payment received! Your Mock Oral is booked.');
+    var mo2SessionId = urlParams.get('session_id');
+    fireGa4Purchase(mo2SessionId, 'apex_ga4_purchase_mo2_', {
+      currency: 'USD', value: 129,
+      items: [{ item_name: 'Private Pilot Mock Oral', price: 129, quantity: 1 }]
+    });
+    var mo2FbqDedupeKey = mo2SessionId ? 'apex_fbq_purchase_mo2_' + mo2SessionId : null;
+    if (window.fbq && (!mo2FbqDedupeKey || !localStorage.getItem(mo2FbqDedupeKey))) {
+      fbq('track', 'Purchase', { value: 129, currency: 'USD', content_name: 'Private Pilot Mock Oral' });
+      if (mo2FbqDedupeKey) localStorage.setItem(mo2FbqDedupeKey, '1');
+    }
+    var mo2FunnelDedupeKey = mo2SessionId ? 'apex_funnel_purchase_mo2_' + mo2SessionId : null;
+    if (window.apexTrack && (!mo2FunnelDedupeKey || !localStorage.getItem(mo2FunnelDedupeKey))) {
+      apexTrack('purchase_completed', { product: 'mock_oral_v2', price: 129, session_id: mo2SessionId || undefined });
+      apexTrack('mock_oral_purchase_completed', { price: 129, session_id: mo2SessionId || undefined });
+      apexTrack('mock_oral_booking_completed', { certificate_type: 'private_pilot' });
+      if (mo2FunnelDedupeKey) localStorage.setItem(mo2FunnelDedupeKey, '1');
+    }
+  }
   if (urlParams.get('groundschoolpack') === '1') {
     var gspSessionId = urlParams.get('session_id');
     authReady.then(function () {
@@ -1626,6 +2054,7 @@
   var myScheduledEnrollments = []; // scheduled_ground_classes-based registrations (v58 get_my_ground_school_enrollments), separate from the legacy myGroundRegistrations above
   var groundSchoolModuleCount = 0; // total published PPL modules -- denominator for Ground School Progress
   var myAiDpeSessions = []; // most-recent-first, from get_my_recent_ai_dpe_sessions (v64) -- feeds Training Plan + future AI DPE History view
+  var myGroundSchoolRecordings = []; // get_my_ground_school_recordings (v96) -- full-course members get every past class here, $25 buyers only the ones they paid for; server-side entitlement, not filtered client-side
 
   function loadProgress() {
     return Promise.all([
@@ -1648,7 +2077,8 @@
       apexSupabase.from('ground_registrations').select('*, session:ground_sessions(*)').eq('profile_id', member.id),
       apexSupabase.rpc('get_my_ground_school_enrollments'),
       apexSupabase.rpc('get_ground_school_module_count', { p_course_id: 'PPL' }),
-      apexSupabase.rpc('get_my_recent_ai_dpe_sessions', { p_limit: 10 })
+      apexSupabase.rpc('get_my_recent_ai_dpe_sessions', { p_limit: 10 }),
+      apexSupabase.rpc('get_my_ground_school_recordings')
     ]).then(function (results) {
       (results[0].data || []).forEach(function (r) {
         studied[r.question_id] = r.completed;
@@ -1691,6 +2121,7 @@
       myScheduledEnrollments = results[17].data || [];
       groundSchoolModuleCount = typeof results[18].data === 'number' ? results[18].data : 0;
       myAiDpeSessions = results[19].data || [];
+      myGroundSchoolRecordings = results[20].data || [];
     }).catch(function (e) { console.error('Failed to load portal progress', e); });
   }
 
@@ -5364,24 +5795,6 @@
   });
 
   /* ══════════════════════════════════════════════════════════════
-     MOCK ORAL BOOKING
-     ══════════════════════════════════════════════════════════════ */
-  // Set this once a Calendly (or other scheduling) link exists.
-  var MOCK_ORAL_BOOKING_URL = '';
-
-  document.getElementById('bookMockOralBtn').addEventListener('click', function () {
-    if (member) {
-      apexSupabase.from('portal_mock_oral_bookings').insert({ profile_id: member.id });
-      logEventOnce('mock_oral_requested_' + Date.now(), {}); // always log the request itself (not deduped)
-    }
-    if (MOCK_ORAL_BOOKING_URL) {
-      window.open(MOCK_ORAL_BOOKING_URL, '_blank', 'noopener');
-    } else {
-      window.location.href = 'contact.html';
-    }
-  });
-
-  /* ══════════════════════════════════════════════════════════════
      MEMBERSHIP + BILLING HISTORY (Account Management)
      ══════════════════════════════════════════════════════════════ */
   function formatCents(cents) {
@@ -6236,6 +6649,40 @@
       nextHtml;
   }
 
+  // Class recordings -- entitlement is entirely server-side
+  // (get_my_ground_school_recordings, v96): a full-course member's rows
+  // cover every past published/completed PPL class regardless of
+  // whether they personally registered for it, a per-class buyer's rows
+  // cover only the specific classes they paid for. Nothing here re-
+  // derives or second-guesses that split client-side. A row with no
+  // recording_url yet (class happened, Drive link not posted) still
+  // shows so the member knows it's coming -- never a fake/dead link.
+  function renderGroundSchoolRecordings() {
+    var el = document.getElementById('groundSchoolRecordingsCard');
+    if (!el) return;
+    if (!member || !myGroundSchoolRecordings.length) { el.hidden = true; return; }
+    el.hidden = false;
+
+    var rows = myGroundSchoolRecordings.map(function (r) {
+      var when = zonedWallClockToUtc(r.class_date, r.start_time, r.timezone).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      return '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid rgba(255,255,255,0.08)">' +
+        '<div style="min-width:0">' +
+          '<p style="color:#fff;font-size:14px;font-weight:600;margin:0 0 2px">' + r.title + '</p>' +
+          '<p style="color:rgba(255,255,255,0.45);font-size:12.5px;margin:0">' + when + (r.instructor_name ? ' · ' + r.instructor_name : '') + '</p>' +
+        '</div>' +
+        (r.recording_url
+          ? '<a href="' + r.recording_url + '" target="_blank" rel="noopener" style="color:#fff;text-decoration:underline;font-size:13px;font-weight:600;white-space:nowrap;flex-shrink:0">Watch Recording</a>'
+          : '<span style="color:rgba(255,255,255,0.35);font-size:12.5px;white-space:nowrap;flex-shrink:0">Not yet posted</span>') +
+      '</div>';
+    }).join('');
+
+    el.innerHTML =
+      '<div class="portal-header__eyebrow" style="margin-bottom:8px">Class Recordings</div>' +
+      '<h3 style="color:#fff;font-size:18px;font-weight:800;margin-bottom:4px">Missed a class? Catch up here.</h3>' +
+      '<p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:4px">' + myGroundSchoolRecordings.length + ' class' + (myGroundSchoolRecordings.length === 1 ? '' : 'es') + ' available.</p>' +
+      '<div style="max-height:340px;overflow-y:auto">' + rows + '</div>';
+  }
+
   /* ══════════════════════════════════════════════════════════════
      MY TRAINING — "what should I study today" panel + study plan.
      Every recommendation here is derived live from real progress data
@@ -6826,7 +7273,9 @@
       renderAiDpeHistory();
       renderRecommendedNextStep();
       renderGroundSchoolProgress();
+      renderGroundSchoolRecordings();
       renderGroundSchoolRegistrationSuccess();
+      refreshMockOral();
       renderAchievements();
       loadAchievementRarity();
       renderStudyHeatmap();

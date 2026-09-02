@@ -18,6 +18,14 @@
 //     coordinated -- there's no calendar/slot system for this, just a
 //     paid request queue.
 //
+//   'book-mock-oral-v2' — Apex Advantage Mock Orals (the $129/2-hour
+//     ACS-based product). Atomically claims the specific mock_oral_
+//     availability slot (a single conditional UPDATE ... WHERE
+//     status='open') and creates the mock_oral_bookings row -- this is
+//     the entire double-booking safeguard. A lost race is refunded and
+//     the student told plainly, same tone as Ground School hitting
+//     capacity. See supabase-portal-schema-v97.sql.
+//
 //   'join-membership' — the one purpose that's mode:'subscription', not
 //     mode:'payment'. Writes member_subscriptions from the real Stripe
 //     subscription object (retrieved directly, not inferred from the
@@ -271,6 +279,7 @@ async function handleUpgradeGroundSchoolPack(supabase: any, session: Stripe.Chec
       template(`
         <h2 style="color:#F4B400;margin:0 0 4px;">You're all in, ${fullName.split(' ')[0]}!</h2>
         <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your upgrade payment went through — every Private Pilot ground school class is now unlocked on your account, no per-session charge. Register for any upcoming session from your portal.</p>
+        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">As a complete-course member, you'll also have access to recordings of every class in your portal — including ones you can't make live.</p>
         ${bonusLine}
         <a href="https://advantage.apexaviationtx.com/portal.html#ground-school" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">See Upcoming Classes →</a>
       `))
@@ -357,6 +366,7 @@ async function handleUnlockGroundSchoolPack(supabase: any, session: Stripe.Check
       template(`
         <h2 style="color:#F4B400;margin:0 0 4px;">You're in, ${fullName.split(' ')[0]}!</h2>
         <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your payment went through — every Private Pilot ground school class is now unlocked on your account. Register for any upcoming session from your portal, no per-session charge.</p>
+        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">As a complete-course member, you'll also have access to recordings of every class in your portal — including ones you can't make live.</p>
         ${bonusLine}
         <a href="https://advantage.apexaviationtx.com/portal.html#ground-school" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">See Upcoming Classes →</a>
       `))
@@ -484,6 +494,7 @@ async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Che
       template(`
         <h2 style="color:#F4B400;margin:0 0 4px;">You're confirmed, ${fullName.split(' ')[0]}!</h2>
         <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">You're registered for <strong style="color:#fff">${title}</strong> on ${when}. See you there.</p>
+        <p style="color:rgba(255,255,255,0.45);font-size:13px;line-height:1.7;">Live classes may be recorded so registered students can review them later in the portal.</p>
         ${joinLinkHtml}
         <hr style="border:none;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0;" />
         <h3 style="color:#fff;margin:0 0 8px;font-size:17px;">Your Free Student Portal</h3>
@@ -584,6 +595,114 @@ async function handleMockOralBooking(supabase: any, session: Stripe.Checkout.Ses
       <h2 style="color:#F4B400;margin:0 0 4px;">New Mock Oral request</h2>
       <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;"><strong style="color:#fff">${fullName}</strong> (${email}) just paid for a 60-Minute Mock Oral. Schedule a time with them and update the request in the CRM under Mock Oral Requests.</p>
     `))
+}
+
+// Apex Advantage Mock Orals ($129/2-hour, distinct from the 60-minute
+// request-queue product above). The atomic slot claim below is the
+// entire double-booking safeguard for this product -- see
+// supabase-portal-schema-v97.sql's header comment for the full
+// reasoning. A claim failure here is the ordinary, expected outcome of
+// two students racing for the same slot (like Ground School hitting
+// capacity) -- refund and tell the student plainly, no admin alert.
+// Any OTHER failure after a successful claim (e.g. the booking insert
+// itself failing) is a genuine incident -- refund AND alert admin,
+// matching handleGroundSchoolRegistration's non-capacity branch.
+async function handleMockOralBookingV2(supabase: any, session: Stripe.Checkout.Session) {
+  const profileId = (session.metadata?.profile_id as string) || null
+  const productId = session.metadata?.product_id as string
+  const availabilityId = session.metadata?.availability_id as string
+  const fullName = (session.metadata?.full_name as string) || 'Student'
+  const email = (session.metadata?.email as string) || session.customer_details?.email || session.customer_email
+  const amountCents = session.amount_total ?? 0
+
+  if (!email) throw new Error('No email on checkout session')
+  if (!profileId || !productId || !availabilityId) throw new Error('Missing mock oral metadata on checkout session')
+
+  async function refundAndNotifyFull() {
+    if (session.payment_intent) {
+      try {
+        await stripe.refunds.create({ payment_intent: session.payment_intent as string })
+      } catch (refundErr) {
+        console.error('stripe-webhook: refund failed after mock oral slot claim loss', refundErr)
+      }
+    }
+    await sendEmail(supabase, email, 'That time slot was just taken — you have been refunded',
+      template(`
+        <h2 style="color:#F4B400;margin:0 0 4px;">Sorry, ${fullName.split(' ')[0]} — that time was just booked</h2>
+        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Someone booked that exact time right as your payment came through. You have not been booked, and your payment has been fully refunded. Head back to the Mock Oral page to pick another time.</p>
+      `))
+  }
+
+  // The single atomic operation this whole flow depends on: only
+  // succeeds if the slot is still 'open' at this exact moment, and the
+  // UPDATE's row lock means two simultaneous webhook deliveries for the
+  // same slot can never both succeed.
+  const { data: claimedSlot, error: claimError } = await supabase
+    .from('mock_oral_availability')
+    .update({ status: 'booked', updated_at: new Date().toISOString() })
+    .eq('id', availabilityId)
+    .eq('status', 'open')
+    .select('id, instructor_id, class_date, start_time, timezone')
+    .maybeSingle()
+
+  if (claimError) {
+    if (session.payment_intent) {
+      try { await stripe.refunds.create({ payment_intent: session.payment_intent as string }) } catch (e) { console.error('stripe-webhook: refund failed after mock oral claim error', e) }
+    }
+    await sendEmail(supabase, ADMIN_NOTIFICATION_EMAIL, 'ACTION NEEDED: Mock Oral slot claim failed after payment',
+      template(`<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">${email} paid for Mock Oral product ${productId}, slot ${availabilityId}, but claiming the slot errored: ${claimError.message}. Refund attempted automatically. Check mock_oral_availability manually.</p>`))
+    throw claimError
+  }
+
+  if (!claimedSlot) {
+    await refundAndNotifyFull()
+    return
+  }
+
+  const { data: profile } = await supabase.from('profiles').select('phone').eq('id', profileId).maybeSingle()
+  const { error: bookingError } = await supabase.from('mock_oral_bookings').insert({
+    product_id: productId,
+    profile_id: profileId,
+    instructor_id: claimedSlot.instructor_id,
+    availability_id: claimedSlot.id,
+    full_name: fullName,
+    email,
+    phone: profile?.phone || null,
+    stripe_session_id: session.id,
+    amount_cents: amountCents,
+  })
+
+  if (bookingError) {
+    // The slot is already claimed but the booking row failed to write --
+    // release the slot back to open so it isn't permanently stuck
+    // 'booked' with nothing behind it, then refund and alert admin like
+    // any other genuine fulfillment failure.
+    await supabase.from('mock_oral_availability').update({ status: 'open', updated_at: new Date().toISOString() }).eq('id', claimedSlot.id)
+    if (session.payment_intent) {
+      try { await stripe.refunds.create({ payment_intent: session.payment_intent as string }) } catch (e) { console.error('stripe-webhook: refund failed after mock oral booking insert error', e) }
+    }
+    await sendEmail(supabase, ADMIN_NOTIFICATION_EMAIL, 'ACTION NEEDED: Mock Oral booking failed after payment',
+      template(`<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">${email} paid for Mock Oral product ${productId}, but the booking record failed to save: ${bookingError.message}. The slot has been released and a refund attempted automatically. Check manually and follow up with the customer.</p>`))
+    throw bookingError
+  }
+
+  const when = new Date(`${claimedSlot.class_date}T${claimedSlot.start_time}`).toLocaleString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit',
+  })
+  const tzAbbr = ({ 'America/Chicago': 'CT', 'America/New_York': 'ET', 'America/Denver': 'MT', 'America/Los_Angeles': 'PT', 'UTC': 'UTC' } as Record<string, string>)[claimedSlot.timezone] || claimedSlot.timezone
+
+  await sendEmail(supabase, email, 'Your Apex Advantage Mock Oral Is Booked',
+    template(`
+      <h2 style="color:#F4B400;margin:0 0 4px;">You're booked, ${fullName.split(' ')[0]}!</h2>
+      <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your Private Pilot Mock Oral is confirmed for <strong style="color:#fff">${when} ${tzAbbr}</strong> — up to 2 hours, live 1:1 with an Apex Advantage instructor.</p>
+      <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Next step: complete your intake questionnaire so your instructor can tailor the session to your aircraft and training.</p>
+      <a href="https://advantage.apexaviationtx.com/portal.html#mock-oral" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Complete Intake →</a>
+      <hr style="border:none;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0;" />
+      <p style="color:rgba(255,255,255,0.5);font-size:13px;line-height:1.7;">Have ready if applicable: your student pilot certificate and medical, your aircraft's POH/AFM, a current sectional or EFB, and your Knowledge Test Report if you have one (you can also upload it during intake).</p>
+    `))
+
+  await sendEmail(supabase, ADMIN_NOTIFICATION_EMAIL, `New Mock Oral booking — ${fullName}`,
+    template(`<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;"><strong style="color:#fff">${fullName}</strong> (${email}) booked a Mock Oral for ${when} ${tzAbbr}. ${claimedSlot.instructor_id ? 'Instructor already assigned.' : 'No instructor assigned to this slot yet — assign one from the Mock Oral admin dashboard.'}</p>`))
 }
 
 // Stripe's real subscription statuses don't map 1:1 onto
@@ -738,6 +857,8 @@ serve(async (req) => {
       await handleGroundSchoolRegistration(supabase, session)
     } else if (purpose === 'book-mock-oral') {
       await handleMockOralBooking(supabase, session)
+    } else if (purpose === 'book-mock-oral-v2') {
+      await handleMockOralBookingV2(supabase, session)
     } else if (purpose === 'join-membership') {
       await handleJoinMembership(supabase, session)
     } else if (purpose === 'unlock-ground-school-pack') {
