@@ -988,6 +988,58 @@ async function processReadinessAssessmentFollowup(supabase: any, results: any) {
 // attempt whose password was never set) and "already signed in"
 // (auto-redirects straight past the login form) correctly today -- see
 // its existing apexSupabase.auth.getSession() check.
+// Apex Advantage Mock Orals -- 24-hour reminder. One-time per booking
+// (dedup via mock_oral_bookings.reminder_sent_at directly on the row,
+// same dedupe-on-the-row pattern as checkout_session_attempts and
+// readiness_assessment_leads above), sent once the class start time is
+// within the next 24 hours and hasn't passed yet.
+const MOCK_ORAL_REMINDER_WINDOW_HOURS = 24
+
+function moTzAbbr(tz: string): string {
+  return ({ 'America/Chicago': 'CT', 'America/New_York': 'ET', 'America/Denver': 'MT', 'America/Los_Angeles': 'PT', 'UTC': 'UTC' } as Record<string, string>)[tz] || tz
+}
+
+async function processMockOralReminders(supabase: any, results: any) {
+  const windowEnd = new Date(Date.now() + MOCK_ORAL_REMINDER_WINDOW_HOURS * 3600000)
+  const { data: bookings } = await supabase
+    .from('mock_oral_bookings')
+    .select('id, full_name, email, meeting_url, reminder_sent_at, availability:mock_oral_availability(class_date, start_time, timezone)')
+    .eq('status', 'confirmed')
+    .is('reminder_sent_at', null)
+
+  for (const b of bookings ?? []) {
+    if (!b.email || !b.availability) continue
+    try {
+      const startAt = new Date(`${b.availability.class_date}T${b.availability.start_time}`)
+      if (startAt > windowEnd || startAt < new Date()) continue
+
+      const when = startAt.toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+      const tz = moTzAbbr(b.availability.timezone)
+      const joinLine = b.meeting_url
+        ? `<a href="${b.meeting_url}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Join Instructions →</a>`
+        : `<p style="color:rgba(255,255,255,0.5);font-size:13px;">Your join link will be available in your portal shortly before the session.</p>`
+
+      const { error: markError } = await supabase
+        .from('mock_oral_bookings')
+        .update({ reminder_sent_at: new Date().toISOString() })
+        .eq('id', b.id)
+        .is('reminder_sent_at', null)
+      if (markError) { results.errors.push(`mock_oral_reminder_mark:${b.id}:${markError.message}`); continue }
+
+      await sendEmail(supabase, b.email, 'Your Apex Mock Oral is tomorrow',
+        template(`
+          <h2 style="color:#F4B400;margin:0 0 4px;">See you soon, ${b.full_name.split(' ')[0]}!</h2>
+          <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your Mock Oral is coming up: <strong style="color:#fff">${when} ${tz}</strong>.</p>
+          ${joinLine}
+          <p style="color:rgba(255,255,255,0.5);font-size:13px;line-height:1.7;margin-top:16px;">Have ready if applicable: your student pilot certificate and medical, your aircraft's POH/AFM, a current sectional or EFB, and your Knowledge Test Report.</p>
+        `))
+      results.mock_oral_reminder++
+    } catch (err) {
+      results.errors.push(`mock_oral_reminder:${b.id}: ${err}`)
+    }
+  }
+}
+
 async function processAbandonedCheckouts(supabase: any, results: any) {
   const minAge = new Date(Date.now() - ABANDONED_CHECKOUT_MIN_HOURS * 3600000).toISOString()
   const maxAge = new Date(Date.now() - ABANDONED_CHECKOUT_MAX_DAYS * 86400000).toISOString()
@@ -1326,7 +1378,7 @@ serve(async (req) => {
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
-  const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, checkride_upsell: 0, ground_followup: 0, abandoned_checkout: 0, seven_day_active: 0, readiness_assessment_followup: 0, recovery_sortie_notified: 0, reactivation_inactive: 0, weekly_progress: 0, new_member_activation: 0, activation_email_1_catchup: 0, errors: [] as string[] }
+  const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, checkride_upsell: 0, ground_followup: 0, abandoned_checkout: 0, seven_day_active: 0, readiness_assessment_followup: 0, recovery_sortie_notified: 0, reactivation_inactive: 0, weekly_progress: 0, new_member_activation: 0, activation_email_1_catchup: 0, mock_oral_reminder: 0, errors: [] as string[] }
 
   // exam_type hard-coded to 'private_pilot' — see get-premium-content
   // for why instrument content must never be reachable this way yet.
@@ -1367,6 +1419,7 @@ serve(async (req) => {
   }
 
   await processGroundSchoolFollowUps(supabase, results)
+  await processMockOralReminders(supabase, results)
   await processAbandonedCheckouts(supabase, results)
   await processReadinessAssessmentFollowup(supabase, results)
 

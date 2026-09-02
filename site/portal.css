@@ -1140,3 +1140,74 @@ a[href="#learning-path"],
 }
 .gs-week-row__title { font-size: 14px; font-weight: 700; color: #fff; }
 .gs-week-row__time { font-size: 12px; color: rgba(255,255,255,0.4); margin-left: 8px; }
+
+/* ─── Apex Advantage Mock Orals ─────────────────────────────────── */
+.mo-product-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;
+}
+.mo-product-card {
+  position: relative; background: #101f38; border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-lg); padding: 24px;
+}
+.mo-product-card--featured { border-color: rgba(244,180,0,0.4); background: rgba(244,180,0,0.05); }
+.mo-product-card__badge {
+  position: absolute; top: -11px; left: 20px; background: #F4B400; color: #0B1F3A;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 4px 12px; border-radius: 100px;
+}
+.mo-product-card h3 { color: #fff; font-size: 17px; font-weight: 800; margin: 6px 0 8px; }
+.mo-product-card__desc { color: rgba(255,255,255,0.55); font-size: 13.5px; line-height: 1.6; margin-bottom: 14px; min-height: 42px; }
+.mo-product-card__meta { color: rgba(255,255,255,0.4); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 10px; }
+.mo-product-card__price { color: #F4B400; font-size: 26px; font-weight: 800; margin-bottom: 16px; }
+
+.mo-slot-list { display: flex; flex-wrap: wrap; gap: 10px; }
+.mo-slot {
+  background: #101f38; border: 1.5px solid rgba(255,255,255,0.12); border-radius: 8px;
+  color: #fff; font-size: 13.5px; font-weight: 600; padding: 10px 16px; cursor: pointer;
+}
+.mo-slot:hover:not(:disabled) { border-color: #F4B400; }
+.mo-slot:disabled { opacity: 0.5; cursor: default; }
+
+.mo-form-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;
+}
+.mo-form-grid label, #mockOralIntakeForm > label {
+  display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 700;
+  color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 0.03em;
+}
+.mo-form-grid input, .mo-form-grid select,
+#mockOralIntakeForm input, #mockOralIntakeForm select, #mockOralIntakeForm textarea {
+  background: rgba(11,31,58,0.6); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 8px;
+  padding: 10px 12px; color: #fff; font-family: var(--font); font-size: 14px; font-weight: 400;
+  text-transform: none; letter-spacing: normal;
+}
+
+.mo-booking-card { max-width: 640px; }
+
+.mo-readiness {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: rgba(244,180,0,0.08); border: 1px solid rgba(244,180,0,0.25); border-radius: 10px;
+  padding: 14px 18px; margin: 6px 0 8px;
+}
+.mo-readiness span { color: rgba(255,255,255,0.55); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+.mo-readiness strong { color: #F4B400; font-size: 17px; font-weight: 800; }
+.mo-readiness--not_yet_ready { background: rgba(248,113,113,0.08); border-color: rgba(248,113,113,0.3); }
+.mo-readiness--not_yet_ready strong { color: #f87171; }
+.mo-readiness--needs_targeted_review strong { color: #fbbf24; }
+
+.mo-report { max-width: 720px; }
+.mo-report-cat {
+  border-top: 1px solid rgba(255,255,255,0.08); padding: 12px 0;
+}
+.mo-report-cat:first-of-type { border-top: none; }
+.mo-report-cat__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.mo-report-cat__head strong { color: #fff; font-size: 14px; }
+.mo-report-cat p { color: rgba(255,255,255,0.55); font-size: 13.5px; line-height: 1.6; margin: 0; }
+.mo-rating {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 3px 10px; border-radius: 100px; white-space: nowrap;
+}
+.mo-rating--strong { background: rgba(74,222,128,0.15); color: #4ade80; }
+.mo-rating--satisfactory { background: rgba(96,165,250,0.15); color: #60a5fa; }
+.mo-rating--needs_review { background: rgba(251,191,36,0.15); color: #fbbf24; }
+.mo-rating--unsatisfactory { background: rgba(248,113,113,0.15); color: #f87171; }

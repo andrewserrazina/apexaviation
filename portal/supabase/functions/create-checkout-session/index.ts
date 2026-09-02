@@ -46,6 +46,19 @@
 //     creates a request row (handled in stripe-webhook) for admin to
 //     actually schedule a time with the student.
 //
+//   purpose: 'book-mock-oral-v2'
+//     Apex Advantage Mock Orals (the $129/2-hour ACS-based product,
+//     distinct from the older $99/60-minute 'book-mock-oral' request
+//     queue above). Requires the caller's access token, an active
+//     mock_oral_products row (productId), and an OPEN mock_oral_
+//     availability slot (availabilityId) -- price is read from the
+//     product row, never trusted from the client. The slot is NOT
+//     marked 'booked' here: that only happens inside stripe-webhook's
+//     handler, via a single atomic conditional UPDATE, which is what
+//     actually makes double-booking impossible. The open-status check
+//     here is just an early, non-atomic UX check so a student doesn't
+//     even reach Stripe for a slot someone else just took.
+//
 //   purpose: 'unlock-ground-school-pack' / 'signup-and-unlock-ground-school-pack'
 //     $400 flat one-time purchase granting unlimited free registration to
 //     every Private Pilot ground school class (scheduled_ground_classes
@@ -793,6 +806,73 @@ serve(async (req) => {
       await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'ground-school-registration', email, amountCents: GROUND_SCHOOL_PRICE_CENTS, utm: body.utm })
 
       return new Response(JSON.stringify({ url: session.url, amount: GROUND_SCHOOL_PRICE_CENTS }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (purpose === 'book-mock-oral-v2') {
+      const authHeader = req.headers.get('Authorization') || ''
+      const token = authHeader.replace('Bearer ', '').trim()
+      if (!token) return jsonError('Missing Authorization header', 401)
+
+      const { data: userData, error: userErr } = await supabase.auth.getUser(token)
+      if (userErr || !userData?.user) return jsonError('Invalid or expired session', 401)
+
+      const profileId = userData.user.id
+      const email = userData.user.email
+      const productId = body.productId as string
+      const availabilityId = body.availabilityId as string
+      if (!productId || !availabilityId) return jsonError('Missing productId or availabilityId', 400)
+
+      const { data: product } = await supabase
+        .from('mock_oral_products')
+        .select('id, name, short_description, price_cents, active')
+        .eq('id', productId)
+        .maybeSingle()
+      if (!product || !product.active) return jsonError('That product is not currently available', 400)
+
+      const { data: slot } = await supabase
+        .from('mock_oral_availability')
+        .select('id, status, class_date, start_time, timezone')
+        .eq('id', availabilityId)
+        .maybeSingle()
+      if (!slot) return jsonError('That time slot no longer exists', 404)
+      if (slot.status !== 'open') return jsonError('That time slot was just booked by someone else. Please choose another.', 409)
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, phone')
+        .eq('id', profileId)
+        .maybeSingle()
+
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        customer_email: email,
+        line_items: [{
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: product.name,
+              description: product.short_description,
+            },
+            unit_amount: product.price_cents,
+          },
+          quantity: 1,
+        }],
+        metadata: {
+          purpose: 'book-mock-oral-v2',
+          profile_id: profileId,
+          product_id: product.id,
+          availability_id: slot.id,
+          full_name: profile?.full_name || '',
+          email: email || '',
+        },
+        success_url: `${siteOrigin}/portal.html?mockoralv2=1&session_id={CHECKOUT_SESSION_ID}#mock-oral`,
+        cancel_url: `${siteOrigin}/apex-advantage-mock-oral.html#schedule`,
+      })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'book-mock-oral-v2', email, profileId, amountCents: product.price_cents, utm: body.utm })
+
+      return new Response(JSON.stringify({ url: session.url, amount: product.price_cents }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }

@@ -209,6 +209,44 @@ addition to* those automatic ones.
 
 ---
 
+## Apex Advantage Mock Orals ($129/2-hour ACS-based product)
+
+Landing page: `site/apex-advantage-mock-oral.html`. Booking/intake/report:
+`portal.html`'s `#mock-oral` section (`portal-stable.js`). Distinct from
+the older $99/60-minute request-queue product, which has no dedicated
+funnel instrumentation beyond the generic `checkout_started`/
+`purchase_completed` (`product: 'mock_oral'`) already in place.
+
+### `mock_oral_page_view`
+**Trigger:** Landing page load, and clicking into the portal's Mock Oral nav/dashboard-card entry points.
+**Expected frequency:** Can repeat per visit/session — no dedup, matching `landing_page_viewed`'s own convention.
+
+### `mock_oral_checkout_started`
+**Trigger:** A signed-in member clicks a specific open time slot to book it.
+**Properties:** `product`, `price`, `certificate_type`.
+
+### `mock_oral_purchase_completed` / `mock_oral_booking_completed`
+**Trigger:** Both fire together on the `?mockoralv2=1` success redirect, deduped by `session_id` via the same `localStorage`-keyed pattern as every other product's purchase confirmation on this page. `purchase_completed` (`product: 'mock_oral_v2'`) feeds the revenue-by-product dashboard; `mock_oral_booking_completed` is the funnel-specific milestone.
+**Expected frequency:** Exactly 1 per real booking.
+
+### `mock_oral_intake_completed`
+**Trigger:** Student saves the Mock Oral intake form (`mock_oral_intakes` upsert succeeds).
+**Properties:** `certificate_type`.
+**Expected frequency:** Can re-fire if a student edits and re-saves their intake — not currently deduped, since re-saving is a legitimate, expected action.
+
+### `mock_oral_report_viewed`
+**Trigger:** Student opens their completed Performance Report.
+**Expected frequency:** Can repeat per visit.
+
+### `mock_oral_recheck_clicked` / `mock_oral_recheck_purchased`
+**Trigger:** `_clicked` fires when a "Book My Recheck" button is clicked (report view); `_purchased` fires once `book_mock_oral_recheck()` actually succeeds. Not a real Stripe purchase — a recheck is already paid for as part of an `includes_recheck` product, so this is a direct slot claim, not a second checkout.
+
+### `mock_oral_session_started` / `mock_oral_session_completed`
+**Trigger:** Instructor clicks "Begin Mock Oral" / "Finish Assessment" in the React admin app (`portal/src/pages/MockOralAssessment.jsx`).
+**Note:** That app doesn't load `site/analytics-events.js`, so these are inserted directly into `analytics_events` with the same `{event_name, profile_id, properties}` shape `apexTrack()` itself writes, rather than through the client helper — they exist in the same table and are queryable the same way, just not listed in `EVENT_ALLOWLIST` (which only governs the browser-side helper).
+
+---
+
 ## Meta-only standard events (via `apexTrackStandard()`) — never reach GA4 or the DB
 
 Deliberately separate from the funnel system above: Meta's Ads Manager

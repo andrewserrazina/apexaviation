@@ -76,6 +76,18 @@
     // user action as the class grid), so only this one new event was
     // needed to complete the funnel.
     'ground_school_available_dates_opened',
+    // Apex Advantage Mock Orals ($129/2-hour ACS-based product --
+    // site/apex-advantage-mock-oral.html, portal.html's #mock-oral
+    // section). mock_oral_session_started/mock_oral_session_completed
+    // are instructor-side actions in the separate React admin app
+    // (portal/src), which doesn't load this file -- those write to the
+    // same analytics_events table directly instead of through
+    // apexTrack(), so they exist in the data but not in this JS
+    // allowlist. Documented together with these in
+    // ANALYTICS_EVENT_DICTIONARY.md.
+    'mock_oral_page_view', 'mock_oral_checkout_started', 'mock_oral_purchase_completed',
+    'mock_oral_booking_completed', 'mock_oral_intake_completed', 'mock_oral_report_viewed',
+    'mock_oral_recheck_clicked', 'mock_oral_recheck_purchased',
     // Readiness Assessment funnel (site/readiness-assessment.html)
     'readiness_assessment_viewed', 'readiness_assessment_started', 'readiness_question_answered',
     'readiness_assessment_completed', 'readiness_score_viewed', 'readiness_signup_started',

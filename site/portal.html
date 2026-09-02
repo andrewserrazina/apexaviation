@@ -493,11 +493,11 @@
             <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
             <div><h3>Scenario Training</h3><p>Work through real-world decision scenarios</p></div>
           </button>
-          <div class="portal-card portal-mockoral">
+          <div class="portal-card portal-mockoral" id="mockOralDashboardCard">
             <div class="portal-header__eyebrow" style="margin-bottom:8px">Mock Oral Exam</div>
-            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Book a Mock Oral</h3>
-            <p style="color:rgba(255,255,255,0.55);font-size:14px;line-height:1.6;margin-bottom:16px">Sit a full practice oral exam with an Apex instructor before the real thing.</p>
-            <button class="btn btn--primary" id="bookMockOralBtn">Book a Mock Oral</button>
+            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Think you're ready for your checkride?</h3>
+            <p style="color:rgba(255,255,255,0.55);font-size:14px;line-height:1.6;margin-bottom:16px">Find out before your DPE does. Up to 2-hour Private Pilot Mock Oral — $129.</p>
+            <button class="btn btn--primary" data-goto="mock-oral">Book Now</button>
           </div>
         </div>
 
@@ -1353,18 +1353,78 @@
       <!-- ─────────── MOCK ORAL BOOKING ─────────── -->
       <section class="portal-section" id="section-mock-oral">
         <div class="portal-header">
-          <div class="portal-header__eyebrow">1:1 With an Instructor</div>
-          <h1>Book a Mock Oral</h1>
-          <p>A live 60-minute mock oral exam with an Apex Advantage instructor — real DPE-style questioning, real feedback, no labels or hints. The closest thing to checkride day before checkride day.</p>
+          <div class="portal-header__eyebrow">Apex Advantage Mock Orals</div>
+          <h1>Find out before your DPE does.</h1>
+          <p>A realistic, ACS-based Private Pilot Mock Oral with an Apex Advantage instructor — up to 2 hours, live 1:1, with a written Performance Report afterward.</p>
         </div>
 
-        <div class="portal-card" style="max-width:480px">
-          <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">60-Minute Mock Oral</h3>
-          <p style="color:rgba(255,255,255,0.55);font-size:14px;line-height:1.65;margin-bottom:18px">Pay now to reserve your spot. Andrew will email you within a day or two to schedule the exact time.</p>
-          <div style="font-size:28px;font-weight:800;color:var(--gold);margin-bottom:16px">$99</div>
-          <button class="btn btn--primary" id="mockOralBookBtn">Book Now — $99</button>
-          <p id="mockOralError" class="portal-modal__error"></p>
+        <!-- Existing confirmed booking(s) -- rendered by renderMockOralSection() -->
+        <div id="mockOralBookings"></div>
+
+        <!-- Product selection + scheduling -- hidden once at least one
+             confirmed, non-completed booking exists (a student books one
+             session at a time; a recheck is booked separately from the
+             report view once available). -->
+        <div id="mockOralBookingFlow">
+          <div class="mo-product-grid" id="mockOralProducts"></div>
+
+          <div id="mockOralScheduleWrap" hidden>
+            <h3 style="color:#fff;font-size:16px;font-weight:700;margin:28px 0 4px">Choose a time</h3>
+            <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:16px">Up to 2 hours. All times shown in your instructor's local time zone.</p>
+            <div id="mockOralSlots" class="mo-slot-list"></div>
+            <p id="mockOralError" class="portal-modal__error"></p>
+          </div>
         </div>
+
+        <!-- Intake form -- shown for a confirmed booking with no intake yet -->
+        <div class="portal-card" id="mockOralIntakeForm" hidden style="max-width:640px">
+          <h3 style="color:#fff;font-size:17px;font-weight:800;margin-bottom:4px">Mock Oral Intake</h3>
+          <p style="color:rgba(255,255,255,0.55);font-size:13.5px;line-height:1.6;margin-bottom:20px">Help your instructor tailor the session to your aircraft and training. Everything here is optional except certificate sought — the more you share, the more useful the session.</p>
+
+          <div class="mo-form-grid">
+            <label>Checkride date<input type="date" id="moiCheckrideDate" /></label>
+            <label>Phone<input type="tel" id="moiPhone" placeholder="Optional" /></label>
+            <label>DPE name<input type="text" id="moiDpeName" placeholder="Optional" /></label>
+            <label>DPE location<input type="text" id="moiDpeLocation" placeholder="Optional" /></label>
+            <label>Flight school<input type="text" id="moiFlightSchool" placeholder="Optional" /></label>
+            <label>Primary instructor<input type="text" id="moiInstructorName" placeholder="Optional" /></label>
+            <label>Aircraft make<input type="text" id="moiAircraftMake" placeholder="e.g. Piper" /></label>
+            <label>Aircraft model<input type="text" id="moiAircraftModel" placeholder="e.g. PA-28-181 Archer" /></label>
+            <label>Aircraft year<input type="text" id="moiAircraftYear" placeholder="Optional" /></label>
+            <label>Tail number<input type="text" id="moiTailNumber" placeholder="Optional" /></label>
+            <label>Avionics
+              <select id="moiAvionicsType">
+                <option value="">Select…</option>
+                <option value="six_pack">Traditional six-pack</option>
+                <option value="g1000">Garmin G1000</option>
+                <option value="g500_g5">Garmin G500/G5</option>
+                <option value="gns430_530">Garmin GNS430/530</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+            <label>Approx. flight hours<input type="number" min="0" step="0.1" id="moiFlightHours" /></label>
+            <label>Knowledge Test score<input type="number" min="0" max="100" id="moiKnowledgeScore" /></label>
+          </div>
+          <label style="display:block;margin-top:14px">Avionics notes / clarification<textarea id="moiAvionicsNotes" rows="2" placeholder="Optional"></textarea></label>
+          <label style="display:block;margin-top:14px">Strongest knowledge areas<textarea id="moiStrongest" rows="2" placeholder="Optional"></textarea></label>
+          <label style="display:block;margin-top:14px">Weakest knowledge areas<textarea id="moiWeakest" rows="2" placeholder="Optional"></textarea></label>
+          <label style="display:block;margin-top:14px">Anything specific you want evaluated?<textarea id="moiSpecialRequests" rows="2" placeholder="Optional"></textarea></label>
+
+          <label style="display:block;margin-top:18px">
+            Knowledge Test Report (optional)
+            <input type="file" id="moiKtrFile" accept=".pdf,.jpg,.jpeg,.png" style="margin-top:6px" />
+          </label>
+          <p style="color:rgba(255,255,255,0.4);font-size:12px;margin-top:4px">Uploading your report lets your instructor consider applicable ACS knowledge-test deficiency areas. PDF, JPG, or PNG. Not required to book.</p>
+
+          <div style="display:flex;gap:12px;margin-top:24px">
+            <button class="btn btn--primary" id="mockOralIntakeSaveBtn">Save Intake</button>
+            <button class="btn btn--ghost" id="mockOralIntakeCancelBtn" type="button">Back</button>
+          </div>
+          <p id="mockOralIntakeError" class="portal-modal__error"></p>
+        </div>
+
+        <!-- Report view -->
+        <div id="mockOralReportView" hidden></div>
       </section>
 
       <!-- ─────────── DPE QUESTIONS LIBRARY ─────────── -->
