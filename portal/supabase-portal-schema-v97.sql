@@ -345,12 +345,17 @@ create table public.mock_oral_questions (
   acs_code           text,
   difficulty         integer not null check (difficulty between 1 and 4),
   certificate_type   text not null default 'private_pilot',
-  question           text not null,
+  -- Nullable: a scenario-only prompt (the difficulty-4 "scenario /
+  -- judgment" rows) carries its full prompt in `scenario` and leaves
+  -- `question` blank -- the check below just guarantees every row has
+  -- *some* prompt text, in either column.
+  question           text,
   follow_ups         text[] not null default '{}',
   scenario           text,
   instructor_notes   text,
   active             boolean not null default true,
-  created_at         timestamptz not null default now()
+  created_at         timestamptz not null default now(),
+  check (question is not null or scenario is not null)
 );
 
 create index mock_oral_questions_lookup_idx on public.mock_oral_questions (certificate_type, category, active);
