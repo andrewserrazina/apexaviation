@@ -1857,8 +1857,14 @@
       <div class="portal-modal__icon">
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="#F4B400" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round"/></svg>
       </div>
-      <h2>Unlock the Checkride Prep System</h2>
-      <p>300+ DPE-style questions, 10 real-world scenarios, Checkride Mode, AI Oral Exam Practice, progress tracking, and everything else in the sidebar — unlocked instantly.</p>
+      <div class="portal-modal__readiness-context" id="unlockModalReadinessContext" hidden>
+        <div class="portal-modal__readiness-eyebrow">From Your Readiness Assessment</div>
+        <div class="portal-modal__readiness-score" id="unlockModalReadinessScore"></div>
+        <p class="portal-modal__readiness-summary" id="unlockModalReadinessSummary"></p>
+        <button type="button" class="portal-modal__readiness-free-action" id="unlockModalFreeActionBtn">Try today's free oral exam question first</button>
+      </div>
+      <h2 id="unlockModalHeading">Unlock the Checkride Prep System</h2>
+      <p id="unlockModalIntro">300+ DPE-style questions, 10 real-world scenarios, Checkride Mode, AI Oral Exam Practice, progress tracking, and everything else in the sidebar — unlocked instantly.</p>
       <div class="portal-modal__price-row">
         <span class="portal-modal__price" id="unlockModalPrice">$29</span>
       </div>
