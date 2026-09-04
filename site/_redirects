@@ -1,2 +1,4 @@
+/  /home.html  301!
+/index.html  /home.html  301!
 /operations/*  /portal.html#operations 302
 /*  /404.html  404
