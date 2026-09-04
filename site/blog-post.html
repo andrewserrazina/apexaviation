@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title id="pageTitle">Blog | Apex Aviation</title>
   <meta name="description" id="pageDesc" content="Apex Aviation blog — pilot tips, training guides, and Texas flying." />
+  <link rel="canonical" id="pageCanonical" href="https://apexaviationtx.com/blog.html" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -246,6 +247,7 @@
 
         document.getElementById('pageTitle').textContent = (meta.title || 'Blog Post') + ' | Apex Aviation';
         document.getElementById('pageDesc').setAttribute('content', meta.excerpt || '');
+        document.getElementById('pageCanonical').setAttribute('href', 'https://apexaviationtx.com/blog-post.html?post=' + encodeURIComponent(slug));
         document.getElementById('postTitle').textContent = meta.title || '';
         document.getElementById('postDate').textContent = meta.date ? formatDate(meta.date) : '';
         document.getElementById('postCategory').textContent = CATEGORY_LABELS[meta.category] || meta.category || '';
