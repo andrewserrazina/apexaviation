@@ -228,6 +228,13 @@
       populateMember();
       applyUnlockState();
       applyUnlockPricing();
+      // Fire-and-forget: loads this member's own readiness-assessment
+      // result (if any) as early as possible in the session, so every
+      // unlock-modal trigger point -- not just the one-shot
+      // ?upgrade=checkride-prep deep link -- can show the personalized
+      // "train your weak areas" pitch instead of the generic one. See
+      // loadMemberReadinessContext()/openUnlockModal().
+      loadMemberReadinessContext();
       // Fire-and-forget: feeds the 7-day inactivity nudge
       // (send-lifecycle-emails, Phase 3) a real "last seen" signal.
       // Once per page load is enough — this isn't a click-tracking beacon.
@@ -589,22 +596,63 @@
   // param below).
   var unlockModalCtaLabel = 'Unlock Now';
 
-  // readinessContext (optional): { score, band, weakestCats, weakestLabels }
-  // from the caller's own readiness_assessment_leads row. Only passed by
-  // enforceUpgradeDeepLink() today (the ?upgrade=checkride-prep path a
-  // brand-new Readiness Assessment signup lands on) -- every other call
-  // site still calls this with no argument and gets the exact same
-  // generic modal as before. Real data only: weakestCats/weakestLabels
-  // come straight from that member's own stored assessment result, never
-  // invented, and the block is fully hidden when there's no real data.
+  // memberReadinessContext: { score, band, weakestCats, weakestLabels },
+  // loaded once per session (loadMemberReadinessContext(), called right
+  // after `member` populates) from the member's own most recent
+  // readiness_assessment_leads row. This used to be fetched ONLY inside
+  // enforceUpgradeDeepLink()'s one-shot ?upgrade=checkride-prep handler,
+  // which made the personalized pitch a single, race-prone chance tied to
+  // the very first post-signup page load -- real data showed it firing
+  // for only 1 of 14 real "saw the unlock modal" sessions, with no
+  // opportunity to ever show it again on any later login or any other
+  // unlock trigger (sidebar locked items, Training Plan tasks, etc., all
+  // of which call openUnlockModal() with no argument). Caching it here
+  // instead means every trigger point shows the real score/weak-areas
+  // pitch to any member with a linked assessment result, every time, not
+  // just a single deep-link visit.
+  var memberReadinessContext = null;
+  var memberReadinessContextPromise = null;
+  function loadMemberReadinessContext() {
+    if (!member || member.checkridePrepUnlocked) return Promise.resolve(null);
+    if (memberReadinessContextPromise) return memberReadinessContextPromise;
+    memberReadinessContextPromise = apexSupabase.from('readiness_assessment_leads')
+      .select('score, readiness_level, weakest_category_1, weakest_category_2')
+      .eq('profile_id', member.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .then(function (res) {
+        var lead = res && res.data && res.data[0];
+        var weakestCats = lead ? [lead.weakest_category_1, lead.weakest_category_2].filter(Boolean) : [];
+        if (lead && weakestCats.length) {
+          memberReadinessContext = {
+            score: lead.score,
+            band: lead.readiness_level,
+            weakestCats: weakestCats,
+            weakestLabels: weakestCats.map(function (c) { return READINESS_CATEGORY_LABELS[c] || c; })
+          };
+        }
+        return memberReadinessContext;
+      }, function () { return null; });
+    return memberReadinessContextPromise;
+  }
+
+  // readinessContext (optional): { score, band, weakestCats, weakestLabels }.
+  // Explicit callers (enforceUpgradeDeepLink()) can still pass this
+  // directly; every other call site passes nothing and now falls back to
+  // memberReadinessContext automatically, so the personalized pitch shows
+  // any time it's available -- not just on the one original deep link.
+  // Real data only: weakestCats/weakestLabels come straight from that
+  // member's own stored assessment result, never invented, and the block
+  // is fully hidden when there's no real data.
   function openUnlockModal(readinessContext) {
     unlockModalError.classList.remove('show');
     var ctxEl = document.getElementById('unlockModalReadinessContext');
     var headingEl = document.getElementById('unlockModalHeading');
-    var weakLabels = readinessContext && readinessContext.weakestLabels ? readinessContext.weakestLabels.filter(Boolean) : [];
-    if (readinessContext && weakLabels.length) {
+    var effectiveContext = readinessContext || (member && !member.checkridePrepUnlocked ? memberReadinessContext : null);
+    var weakLabels = effectiveContext && effectiveContext.weakestLabels ? effectiveContext.weakestLabels.filter(Boolean) : [];
+    if (effectiveContext && weakLabels.length) {
       document.getElementById('unlockModalReadinessScore').textContent =
-        'Your Readiness Score: ' + readinessContext.score + '% (' + readinessContext.band + ')';
+        'Your Readiness Score: ' + effectiveContext.score + '% (' + effectiveContext.band + ')';
       document.getElementById('unlockModalReadinessSummary').textContent =
         weakLabels.join(' and ') + ' scored lowest on your assessment -- Checkride Prep gives you unlimited DPE-style questions and scenario practice targeted at exactly that.';
       ctxEl.hidden = false;
@@ -613,9 +661,9 @@
       if (window.apexTrack) {
         apexTrack('readiness_checkride_prep_offer_viewed', {
           profile_id: member ? member.id : null,
-          score: readinessContext.score,
-          weakest_category_1: readinessContext.weakestCats[0] || null,
-          weakest_category_2: readinessContext.weakestCats[1] || null
+          score: effectiveContext.score,
+          weakest_category_1: effectiveContext.weakestCats[0] || null,
+          weakest_category_2: effectiveContext.weakestCats[1] || null
         });
       }
     } else {
@@ -4589,6 +4637,7 @@
 
     if (window.apexTrack) {
       apexTrack('checkride_prep_upgrade_deeplink_viewed', {
+        profile_id: member ? member.id : null,
         source: params.get('utm_source') || null,
         campaign: params.get('utm_campaign') || null,
         content: params.get('utm_content') || null,
@@ -4599,31 +4648,16 @@
     // reaches the portal for the first time (readiness-assessment.html's
     // dest: 'checkride-prep', threaded through create-free-account and
     // portal-reset-password.html's enforceUpgradeDeepLink() special
-    // case). Look up that visitor's own most recent readiness result
-    // (RLS-scoped to their own profile_id, same table
-    // renderReadinessBaseline() already reads) so the pitch they land on
-    // can reference their real score and weak areas instead of the
-    // generic pitch every other unlock trigger shows.
-    apexSupabase.from('readiness_assessment_leads')
-      .select('score, readiness_level, weakest_category_1, weakest_category_2')
-      .eq('profile_id', member.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .then(function (res) {
-        var lead = res && res.data && res.data[0];
-        var weakestCats = lead ? [lead.weakest_category_1, lead.weakest_category_2].filter(Boolean) : [];
-        if (lead && weakestCats.length) {
-          openUnlockModal({
-            score: lead.score,
-            band: lead.readiness_level,
-            weakestCats: weakestCats,
-            weakestLabels: weakestCats.map(function (c) { return READINESS_CATEGORY_LABELS[c] || c; })
-          });
-        } else {
-          openUnlockModal();
-        }
-        if (window.apexTrack) apexTrack('checkride_prep_upgrade_modal_opened', { trigger: 'deeplink' });
-      });
+    // case). loadMemberReadinessContext() looks up that visitor's own
+    // most recent readiness result and caches it for the rest of the
+    // session; openUnlockModal() (called with no argument here) already
+    // falls back to that cache automatically, so this no longer needs its
+    // own separate fetch/argument-passing -- it just has to make sure the
+    // cache is loaded before opening.
+    loadMemberReadinessContext().then(function () {
+      openUnlockModal();
+      if (window.apexTrack) apexTrack('checkride_prep_upgrade_modal_opened', { profile_id: member ? member.id : null, trigger: 'deeplink' });
+    });
     if (history.replaceState) history.replaceState(null, '', cleanedUrl);
   }
 
