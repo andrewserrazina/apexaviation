@@ -5518,7 +5518,7 @@
     if (!identityLinkPromise) {
       var anon = window.apexGetAnonId();
       identityLinkPromise = anon
-        ? apexSupabase.rpc('link_analytics_identity', { p_anon_id: anon }).catch(function () { /* best-effort */ })
+        ? apexSupabase.rpc('link_analytics_identity', { p_anon_id: anon }).then(function () {}, function () { /* best-effort */ })
         : Promise.resolve();
     }
     return identityLinkPromise;
@@ -7824,7 +7824,7 @@
     var lesson = content.lessons[index];
     if (!lesson || !spLessonUnlocked(index)) { renderStudyPackHome(); return; }
 
-    apexSupabase.rpc('upsert_study_pack_lesson_progress', { p_pack_id: studyPacksState.packId, p_lesson_id: lesson.id, p_completed: false }).catch(function () {});
+    apexSupabase.rpc('upsert_study_pack_lesson_progress', { p_pack_id: studyPacksState.packId, p_lesson_id: lesson.id, p_completed: false }).then(function () {}, function () {});
     if (window.apexTrack) apexTrack('study_pack_lesson_started', { profile_id: member.id, pack_id: studyPacksState.packId, lesson_id: lesson.id });
 
     var sectionsHtml = Object.keys(SP_LESSON_SECTION_LABELS).map(function (key) {
