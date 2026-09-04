@@ -4791,12 +4791,13 @@
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 10 · Weather Theory',
       prompts: [
-        { id: 'atmosphere-pressure', section: 'Atmosphere & Pressure', prompt: 'What is the standard lapse rate, and how do pressure and temperature change with altitude in the standard atmosphere?' },
-        { id: 'fronts', section: 'Air Masses & Fronts', prompt: 'What weather is typically associated with a cold front versus a warm front?' },
-        { id: 'stability', section: 'Stability & Cloud Formation', prompt: 'What’s the difference between a stable and an unstable air mass, and how does cloud type indicate which one you’re in?' },
-        { id: 'thunderstorm-lifecycle', section: 'Thunderstorms', prompt: 'What are the three stages of a thunderstorm’s life cycle, and what hazard is most associated with each?' },
-        { id: 'icing', section: 'Icing', prompt: 'What conditions are most favorable for structural icing, and what’s the difference between rime, clear, and mixed ice?' },
-        { id: 'density-altitude-windshear', section: 'Density Altitude & Wind Shear', prompt: 'What is density altitude and how does it affect performance, and what are the main sources of wind shear a VFR pilot might encounter?' }
+        { id: 'apex-weather-chain', section: 'The Apex Weather Chain', prompt: 'What are the six sequential steps of the Apex Weather Chain, from Energy through Weather, and how do you use it to reason through what part of the chain is driving the weather you’re seeing?' },
+        { id: 'atmosphere-heating', section: 'Atmosphere & Heating', prompt: 'What is the atmosphere’s basic composition, and why is the surface — not sunlight passing directly through the air — what actually heats the atmosphere?' },
+        { id: 'pressure-wind-coriolis', section: 'Pressure & Wind', prompt: 'How do pressure gradients drive wind speed, and how do the Coriolis effect and surface friction together explain why wind spirals around a pressure system instead of flowing straight from high to low pressure?' },
+        { id: 'stability-clouds', section: 'Moisture, Stability & Clouds', prompt: 'What does a small, shrinking temperature/dew point spread predict, and how does knowing only whether the air is stable or unstable let you predict cloud type, ride quality, and precipitation pattern?' },
+        { id: 'lifting-mechanisms-fronts', section: 'Lifting Mechanisms & Fronts', prompt: 'What are the four lifting mechanisms that force air upward, and how do cold, warm, stationary, and occluded fronts differ in speed of movement and associated weather?' },
+        { id: 'thunderstorms-turbulence-icing', section: 'Thunderstorms, Turbulence & Icing', prompt: 'What are the three stages of thunderstorm development and which stage holds the greatest hazard concentration, what are the four causes of turbulence, and what two conditions must occur together for structural icing to form?' },
+        { id: 'apex-weather-decision-model', section: 'The Apex Weather Decision Model', prompt: 'What are the four questions of the Apex Weather Decision Model, and why does deciding your exit strategy before departure matter as much as the first three questions?' }
       ]
     },
     {
@@ -4805,12 +4806,14 @@
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 11 · Weather Products',
       prompts: [
-        { id: 'metar-taf', section: 'METAR & TAF', prompt: 'How do you fully decode a METAR and a TAF without a reference card?' },
-        { id: 'surface-analysis', section: 'Surface Analysis Chart', prompt: 'What do the symbols on a surface analysis chart tell you about fronts and pressure systems along your route?' },
-        { id: 'airmet-sigmet', section: 'AIRMETs & SIGMETs', prompt: 'What’s the difference between an AIRMET, a SIGMET, and a convective SIGMET, and what does each warn about?' },
-        { id: 'gfa', section: 'Graphical Forecast for Aviation', prompt: 'How do you use the GFA’s clouds/weather and turbulence/icing panels to plan a route?' },
-        { id: 'pirep', section: 'PIREPs', prompt: 'What information does a PIREP give you that a forecast alone can’t, and what would you include if filing one?' },
-        { id: 'briefing-sources', section: 'Getting a Briefing', prompt: 'What are the standard sources for obtaining a weather briefing before a cross-country flight?' }
+        { id: 'apex-weather-briefing-flow', section: 'The Apex Weather Briefing Flow', prompt: 'What are the four steps of the Apex Weather Briefing Flow, and why must a complete briefing work through all four in order?' },
+        { id: 'metar-speci', section: 'METARs & SPECI Reports', prompt: 'What does a full METAR report, field by field, and what triggers a SPECI between routine hourly reports?' },
+        { id: 'taf-decode', section: 'TAFs', prompt: 'What is the difference between a TAF’s FM, TEMPO, PROB30/PROB40, and BECMG groups, and how should forecast confidence change with how far into the period a segment falls?' },
+        { id: 'pireps', section: 'PIREPs', prompt: 'What is the difference between a UA and a UUA PIREP, and why doesn’t a lack of PIREPs confirm safe conditions?' },
+        { id: 'airmets-sigmets', section: 'AIRMETs & SIGMETs', prompt: 'What does each of AIRMET Sierra, Tango, and Zulu cover, and how does a SIGMET (or Convective SIGMET specifically) differ in severity and required response?' },
+        { id: 'charts-imagery', section: 'Charts & Imagery', prompt: 'What does a surface analysis chart show, what does radar actually measure (and what does it NOT show), and when does satellite imagery — visible, infrared, or water vapor — beat radar?' },
+        { id: 'winds-aloft-briefing-tools', section: 'Winds Aloft & AviationWeather.gov', prompt: 'How do you decode a winds aloft report, and how should wind direction relative to your course — not just raw wind speed — drive your cruise altitude selection?' },
+        { id: 'apex-weather-decision-matrix', section: 'The Apex Weather Decision Matrix', prompt: 'What do Green, Yellow, Orange, and Red mean on the Apex Weather Decision Matrix, and why is the more conservative color the right call when you’re genuinely torn between two?' }
       ]
     },
     {
@@ -4819,12 +4822,14 @@
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 12 · Weather Decision Making',
       prompts: [
-        { id: 'personal-minimums', section: 'Personal Minimums', prompt: 'What are personal minimums, and why might they be more conservative than legal VFR minimums?' },
-        { id: 'deteriorating-weather', section: 'Recognizing Deteriorating Weather', prompt: 'What in-flight cues tell you conditions are deteriorating, and what triggers a 180-degree turn decision?' },
-        { id: 'diversion', section: 'Diversion Planning', prompt: 'What does the decision process for a precautionary landing or diversion actually look like?' },
-        { id: 'vfr-into-imc', section: 'VFR-into-IMC Risk', prompt: 'Why is VFR-into-IMC one of the highest-fatality accident categories, and what human factors typically lead a pilot into it?' },
-        { id: 'risk-frameworks', section: 'Risk Assessment Frameworks', prompt: 'How would you apply the PAVE checklist or the 3P model specifically to a weather go/no-go decision?' },
-        { id: 'scud-running', section: 'Scud Running & Get-There-Itis', prompt: 'What is scud running, and why is “get-there-itis” considered a weather-specific hazardous attitude?' }
+        { id: 'apex-weather-decision-loop', section: 'The Apex Weather Decision Loop', prompt: 'What are the five steps of the Apex Weather Decision Loop, from What Exists to What Is the Safest Decision, and why should every real weather decision work through all five in order?' },
+        { id: 'legal-vs-safe-minimums', section: 'Legal vs. Safe & Personal Minimums', prompt: 'What is the difference between legal weather minimums and personal minimums, and what factors belong on a written personal minimums worksheet?' },
+        { id: 'hazardous-trends', section: 'Recognizing Hazardous Trends', prompt: 'Why does a consistent trend across successive reports matter more than any single data point, and what specific signs indicate a real hazardous trend developing?' },
+        { id: 'human-factors-weather', section: 'Human Factors and Weather', prompt: 'What are get-there-itis, confirmation bias, plan continuation bias, and optimism bias, and why do they operate below conscious awareness in a real weather decision?' },
+        { id: 'risk-management-models', section: 'Risk Management Models', prompt: 'How do PAVE, 5P, DECIDE, and CARE each apply specifically to a weather decision, and when would you reach for the fast CARE gut-check instead of a more detailed model?' },
+        { id: 'five-questions-go-no-go', section: 'Go/No-Go: The Five Questions', prompt: 'What are the five go/no-go questions in order, and why do the last two — would you recommend this flight to a student, would you defend it to a DPE — matter as much as the legal and safety questions?' },
+        { id: 'in-flight-decisions-xc-planning', section: 'In-Flight Decisions & Cross-Country Planning', prompt: 'Why is turning around early never a failure, and what weather-specific decision points, fuel reserves, and alternate airports should be identified during planning rather than improvised in flight?' },
+        { id: 'learning-from-accidents', section: 'Learning from Weather Accidents', prompt: 'What are the five recurring weather accident patterns, and why is the earliest point in an accident chain almost always the easiest one to break?' }
       ]
     },
     {
@@ -4833,12 +4838,13 @@
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 13 · Weight & Balance',
       prompts: [
-        { id: 'wb-terminology', section: 'Weight & Balance Terminology', prompt: 'What is the difference between empty weight, useful load, ramp weight, and moment?' },
-        { id: 'wb-methods', section: 'Calculation Methods', prompt: 'How do the POH computation method and the graphical method each arrive at your loaded CG?' },
-        { id: 'cg-effects', section: 'CG Aerodynamic Effects', prompt: 'What happens aerodynamically if you’re loaded outside the forward or aft CG limit?' },
-        { id: 'cg-envelope', section: 'CG Envelope', prompt: 'How do you read a CG envelope graph to determine if a loading is legal?' },
-        { id: 'fuel-burnoff', section: 'Fuel Burn-Off Shift', prompt: 'How does your CG shift as fuel burns off during a flight, and why does that matter for a flight near the CG limit?' },
-        { id: 'wb-records', section: 'Aircraft Records', prompt: 'Where do you find your specific aircraft’s empty weight and moment, and why can’t you assume it matches another aircraft of the same model?' }
+        { id: 'apex-loading-framework', section: 'The Apex Loading Framework', prompt: 'What are the five questions of the Apex Loading Framework, in order, and why does the last question — would you put your own family in this airplane — matter as much as the legal question?' },
+        { id: 'fundamental-terms', section: 'Fundamental Terms', prompt: 'What is the difference between datum, station, arm, moment, and moment index, and how do empty weight, useful load, payload, and the several defined weight categories relate to each other?' },
+        { id: 'understanding-cg', section: 'Understanding CG', prompt: 'Using the seesaw metaphor, what is CG conceptually, and why does adding weight anywhere other than the current CG shift the balance point?' },
+        { id: 'cg-flight-effects', section: 'How CG Changes Flight Characteristics', prompt: 'What are the specific advantages and disadvantages of a forward CG versus an aft CG, and why do the aft CG disadvantages compound each other into a genuinely dangerous combination?' },
+        { id: 'calculations-six-step', section: 'Weight & Balance Calculations', prompt: 'What are the six steps of the computation method, in order, and how does interpolating a loading table differ from reading a loading graph?' },
+        { id: 'cg-envelope', section: 'CG Envelope Interpretation', prompt: 'What sets the forward CG limit versus the aft CG limit, and why must you check both takeoff and landing CG separately as fuel burns?' },
+        { id: 'wb-risk-management', section: 'Weight & Balance and Risk Management', prompt: 'Why is being “inside the envelope” not automatically the same as being safe, and what specific factors build real margin beyond the legal minimum?' }
       ]
     },
     {
