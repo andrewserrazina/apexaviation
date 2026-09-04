@@ -26,6 +26,11 @@
 //     the student told plainly, same tone as Ground School hitting
 //     capacity. See supabase-portal-schema-v97.sql.
 //
+//   'unlock-study-pack' — Apex Advantage Study Packs (generic engine,
+//     Airspace Mastery is Pack #1, $19 lifetime). Inserts a
+//     study_pack_entitlements row -- the sole grant path. See
+//     supabase-portal-schema-v99.sql.
+//
 //   'join-membership' — the one purpose that's mode:'subscription', not
 //     mode:'payment'. Writes member_subscriptions from the real Stripe
 //     subscription object (retrieved directly, not inferred from the
@@ -62,7 +67,32 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 // create-checkout-session/index.ts. Same crash, same fix, same function
 // family (both call the Stripe SDK the same way).
 import Stripe from 'https://esm.sh/stripe@14?target=denonext'
-import { emailTemplate as template } from '../_shared/emailTemplate.ts'
+
+// Inlined (not imported from ../_shared/emailTemplate.ts) because the
+// Supabase deploy path used for this function cannot resolve a relative
+// import that reaches outside this function's own directory. Must be
+// kept byte-identical to _shared/emailTemplate.ts's own copy -- the
+// other functions that still import it normally (create-free-account,
+// send-lifecycle-emails) are unaffected.
+function template(content: string): string {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#06080f;font-family:'Helvetica Neue',Arial,sans-serif;color:#e0e0e0;">
+  <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
+    <div style="text-align:center;padding-bottom:24px;margin-bottom:28px;border-bottom:2px solid rgba(244,180,0,0.25);">
+      <img src="https://apexaviationtx.com/apexwhite.png" alt="Apex Aviation" width="140" style="display:inline-block;margin-bottom:12px;height:auto;" />
+      <div style="font-size:15px;font-weight:700;letter-spacing:2px;color:#fff;">
+        APEX <span style="font-style:italic;font-weight:400;color:#F4B400;font-family:Georgia,serif;letter-spacing:normal;">Advantage</span>
+      </div>
+    </div>
+    ${content}
+    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:32px 0 16px;">
+    <p style="font-size:12px;color:rgba(255,255,255,0.35);margin:0 0 4px;text-align:center;">Apex Aviation · Austin, TX</p>
+    <p style="font-size:11px;margin:0;text-align:center;">
+      <a href="https://apexaviationtx.com" style="color:rgba(255,255,255,0.35);text-decoration:underline;">apexaviationtx.com</a>
+    </p>
+  </div>
+</body></html>`
+}
 
 const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY')!
 const STRIPE_WEBHOOK_SECRET = Deno.env.get('STRIPE_WEBHOOK_SECRET')!
@@ -166,6 +196,94 @@ async function handleUnlockCheckridePrep(supabase: any, session: Stripe.Checkout
         <h2 style="color:#F4B400;margin:0 0 4px;">You're in, ${fullName.split(' ')[0]}!</h2>
         <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your payment went through and the full Checkride Prep System is unlocked — DPE question library, scenario training, Checkride Mode, progress tracking, and everything else in the sidebar.</p>
         <a href="https://advantage.apexaviationtx.com/portal.html#checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Start Studying →</a>
+      `))
+  }
+}
+
+// Apex Advantage Study Packs -- generic engine, Airspace Mastery is Pack
+// #1. Entitlement is a real row in study_pack_entitlements, inserted
+// only here (never by create-checkout-session or a success-URL client
+// call) -- this is the sole grant path, matching every other purchase
+// handler in this file. See supabase-portal-schema-v99.sql.
+//
+// Two distinct failure modes on insert, both real Postgres unique-
+// violations (23505) but requiring different responses:
+//   - stripe_session_id collision: this exact session was already
+//     fulfilled (a true idempotent replay -- the outer event.id dedupe
+//     above should already prevent this, but the table-level constraint
+//     is the actual guarantee, not just a convenience). No refund; the
+//     customer already has what they paid for.
+//   - the (profile_id, pack_id) active-entitlement collision: a
+//     DIFFERENT session paid for a pack this profile already owns (e.g.
+//     two tabs racing past create-checkout-session's own "already owned"
+//     check). This one really did charge twice for one lifetime
+//     entitlement, so it's refunded, same tone as the Mock Oral
+//     lost-race refund above.
+async function handleUnlockStudyPack(supabase: any, session: Stripe.Checkout.Session) {
+  const profileId = session.metadata?.profile_id as string
+  const packId = session.metadata?.pack_id as string
+  const amountCents = session.amount_total ?? 0
+  const email = session.customer_details?.email || session.customer_email
+
+  if (!profileId || !packId) throw new Error('No profile_id/pack_id on checkout session metadata')
+
+  const { data: pack } = await supabase.from('study_packs').select('name').eq('id', packId).maybeSingle()
+  const packName = pack?.name || 'your Study Pack'
+
+  const { error: insertError } = await supabase.from('study_pack_entitlements').insert({
+    profile_id: profileId,
+    pack_id: packId,
+    source: 'stripe_purchase',
+    stripe_session_id: session.id,
+    amount_cents: amountCents,
+  })
+
+  if (insertError) {
+    if (insertError.code === '23505' && insertError.message?.includes('stripe_session_id')) {
+      // Already fulfilled this exact session -- nothing to do.
+      return
+    }
+    if (insertError.code === '23505' && insertError.message?.includes('study_pack_entitlements_active_unique')) {
+      if (session.payment_intent) {
+        try {
+          await stripe.refunds.create({ payment_intent: session.payment_intent as string })
+        } catch (refundErr) {
+          console.error('stripe-webhook: refund failed after study pack double-purchase', refundErr)
+        }
+      }
+      if (email) {
+        await sendEmail(supabase, email, `You already own ${packName} — refunded`,
+          template(`
+            <h2 style="color:#F4B400;margin:0 0 4px;">You're already covered</h2>
+            <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your account already had lifetime access to ${packName} before this payment came through, so you've been refunded in full. Head to My Study Packs in your portal to pick up where you left off.</p>
+          `))
+      }
+      return
+    }
+    // Any other insert failure is a genuine fulfillment problem after a
+    // captured payment -- refund and alert an admin, same pattern as
+    // handleUnlockCheckridePrep above.
+    if (session.payment_intent) {
+      try {
+        await stripe.refunds.create({ payment_intent: session.payment_intent as string })
+      } catch (refundErr) {
+        console.error('stripe-webhook: refund failed after study pack unlock failure', refundErr)
+      }
+    }
+    await sendEmail(supabase, ADMIN_NOTIFICATION_EMAIL, 'ACTION NEEDED: Study Pack unlock failed after payment',
+      template(`
+        <h2 style="color:#F4B400;margin:0 0 4px;">A paid unlock failed to apply</h2>
+        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">profile_id ${profileId} (${email ?? 'no email on session'}) paid for ${packName}, but the entitlement could not be created: ${insertError.message}. A refund has been attempted automatically. Check Stripe and study_pack_entitlements to confirm and follow up with the customer.</p>
+      `))
+    throw insertError
+  }
+
+  if (email) {
+    await sendEmail(supabase, email, `You're in — ${packName}`,
+      template(`
+        <h2 style="color:#F4B400;margin:0 0 4px;">Your payment went through!</h2>
+        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">${packName} is unlocked for life on your Apex Advantage account -- lessons, Scenario Lab, Checkride Corner, and the Mastery Check are all ready whenever you are.</p>
+        <a href="https://advantage.apexaviationtx.com/portal.html#study-packs" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Start Studying →</a>
       `))
   }
 }
@@ -859,6 +977,8 @@ serve(async (req) => {
       await handleMockOralBooking(supabase, session)
     } else if (purpose === 'book-mock-oral-v2') {
       await handleMockOralBookingV2(supabase, session)
+    } else if (purpose === 'unlock-study-pack') {
+      await handleUnlockStudyPack(supabase, session)
     } else if (purpose === 'join-membership') {
       await handleJoinMembership(supabase, session)
     } else if (purpose === 'unlock-ground-school-pack') {

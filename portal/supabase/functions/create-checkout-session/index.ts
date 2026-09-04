@@ -8,7 +8,7 @@
 //     System (DPE library, scenarios, progress tracking, etc). Priced
 //     via get_checkride_prep_pricing() (founding/launch/standard tiers,
 //     decided server-side from portal_access_purchases and the caller's
-//     own profiles.created_at — never trusted from the client). Requires
+//     own profiles.created_at -- never trusted from the client). Requires
 //     the caller's Supabase access token so we know *which* profile to
 //     unlock; never trust a client-supplied id.
 //
@@ -27,15 +27,15 @@
 //     checkout in a single request, for a visitor who already knows they
 //     want it rather than making them come back later from the
 //     dashboard. Always prices at the founding/launch discount since the
-//     account is (by construction) brand new at the moment this runs —
+//     account is (by construction) brand new at the moment this runs --
 //     see get_checkride_prep_pricing()'s launch-window rule. No auth
-//     token available yet (the account doesn't have a password set) —
+//     token available yet (the account doesn't have a password set) --
 //     the new profile id comes directly from auth.admin.createUser's
 //     result, not from a client-supplied value.
 //
 //   purpose: 'ground-school-registration'
 //     Registering (and paying $25) for a specific live ground school
-//     session. Anonymous-friendly — no login required, same as the old
+//     session. Anonymous-friendly -- no login required, same as the old
 //     cash-at-door flow, just paid online now.
 //
 //   purpose: 'book-mock-oral'
@@ -58,6 +58,14 @@
 //     actually makes double-booking impossible. The open-status check
 //     here is just an early, non-atomic UX check so a student doesn't
 //     even reach Stripe for a slot someone else just took.
+//
+//   purpose: 'unlock-study-pack'
+//     Apex Advantage Study Packs -- generic engine, Airspace Mastery
+//     ($19, lifetime) is Pack #1. Requires the caller's access token;
+//     price is resolved server-side from the study_packs row (never
+//     trusted from the client). See supabase-portal-schema-v99.sql for
+//     the entitlement/content-versioning model and
+//     get-study-pack-content for the protected-content read path.
 //
 //   purpose: 'unlock-ground-school-pack' / 'signup-and-unlock-ground-school-pack'
 //     $400 flat one-time purchase granting unlimited free registration to
@@ -87,7 +95,32 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 // function logs. `denonext` is esm.sh's build target for this exact
 // runtime and doesn't hit that code path.
 import Stripe from 'https://esm.sh/stripe@14?target=denonext'
-import { emailTemplate } from '../_shared/emailTemplate.ts'
+
+// Inlined (not imported from ../_shared/emailTemplate.ts) because the
+// Supabase deploy path used for this function cannot resolve a relative
+// import that reaches outside this function's own directory. Must be
+// kept byte-identical to _shared/emailTemplate.ts's own copy -- the
+// other functions that still import it normally (create-free-account,
+// send-lifecycle-emails) are unaffected.
+function emailTemplate(content: string): string {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#06080f;font-family:'Helvetica Neue',Arial,sans-serif;color:#e0e0e0;">
+  <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
+    <div style="text-align:center;padding-bottom:24px;margin-bottom:28px;border-bottom:2px solid rgba(244,180,0,0.25);">
+      <img src="https://apexaviationtx.com/apexwhite.png" alt="Apex Aviation" width="140" style="display:inline-block;margin-bottom:12px;height:auto;" />
+      <div style="font-size:15px;font-weight:700;letter-spacing:2px;color:#fff;">
+        APEX <span style="font-style:italic;font-weight:400;color:#F4B400;font-family:Georgia,serif;letter-spacing:normal;">Advantage</span>
+      </div>
+    </div>
+    ${content}
+    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:32px 0 16px;">
+    <p style="font-size:12px;color:rgba(255,255,255,0.35);margin:0 0 4px;text-align:center;">Apex Aviation · Austin, TX</p>
+    <p style="font-size:11px;margin:0;text-align:center;">
+      <a href="https://apexaviationtx.com" style="color:rgba(255,255,255,0.35);text-decoration:underline;">apexaviationtx.com</a>
+    </p>
+  </div>
+</body></html>`
+}
 
 const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY')!
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -873,6 +906,61 @@ serve(async (req) => {
       await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'book-mock-oral-v2', email, profileId, amountCents: product.price_cents, utm: body.utm })
 
       return new Response(JSON.stringify({ url: session.url, amount: product.price_cents }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // purpose: 'unlock-study-pack'
+    //   Apex Advantage Study Packs (Airspace Mastery is Pack #1, $19,
+    //   lifetime). Requires the caller's access token, same as
+    //   unlock-checkride-prep -- price is always resolved here from the
+    //   study_packs row (never trusted from the client), and entitlement
+    //   is only ever granted by stripe-webhook on a verified payment, not
+    //   by this function or the success URL.
+    if (purpose === 'unlock-study-pack') {
+      const authHeader = req.headers.get('Authorization') || ''
+      const token = authHeader.replace('Bearer ', '').trim()
+      if (!token) return jsonError('Missing Authorization header', 401)
+
+      const { data: userData, error: userErr } = await supabase.auth.getUser(token)
+      if (userErr || !userData?.user) return jsonError('Invalid or expired session', 401)
+
+      const profileId = userData.user.id
+      const email = userData.user.email
+      const packId = body.packId as string
+      if (!packId) return jsonError('Missing packId', 400)
+
+      const { data: pack } = await supabase
+        .from('study_packs')
+        .select('id, name, subtitle, price_cents, active')
+        .eq('id', packId)
+        .maybeSingle()
+      if (!pack || !pack.active) return jsonError('That Study Pack is not currently available', 400)
+
+      const { data: alreadyOwned } = await supabase.rpc('has_study_pack_entitlement', { p_profile_id: profileId, p_pack_id: packId })
+      if (alreadyOwned) return jsonError('You already own this Study Pack', 400)
+
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        customer_email: email,
+        line_items: [{
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: pack.name,
+              description: pack.subtitle || undefined,
+            },
+            unit_amount: pack.price_cents,
+          },
+          quantity: 1,
+        }],
+        metadata: { purpose: 'unlock-study-pack', profile_id: profileId, pack_id: pack.id },
+        success_url: `${siteOrigin}/portal.html?studypackunlocked=1&pack=${encodeURIComponent(pack.id)}&amount_cents=${pack.price_cents}&session_id={CHECKOUT_SESSION_ID}#study-packs`,
+        cancel_url: `${siteOrigin}/portal.html#study-packs`,
+      })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'unlock-study-pack', email, profileId, amountCents: pack.price_cents, utm: body.utm })
+
+      return new Response(JSON.stringify({ url: session.url, amount: pack.price_cents }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }

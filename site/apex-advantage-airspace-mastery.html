@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Airspace Mastery | Apex Advantage</title>
+  <meta name="description" content="Stop memorizing airspace. Start understanding it. A focused, lifetime-access Apex Advantage Study Pack covering every airspace class, Special VFR, TFRs, and equipment requirements -- built for the Private Pilot checkride oral." />
+  <meta property="og:title" content="Airspace Mastery | Apex Advantage" />
+  <meta property="og:description" content="Stop memorizing airspace. Start understanding it. 9 lessons, a Scenario Lab, 25 Checkride Corner questions, and a Mastery Check -- $19, lifetime access." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://apexaviationtx.com/apex-advantage-airspace-mastery" />
+  <meta property="og:image" content="https://apexaviationtx.com/apexwhite.png" />
+  <meta property="og:site_name" content="Apex Aviation" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Airspace Mastery | Apex Advantage" />
+  <meta name="twitter:description" content="Stop memorizing airspace. Start understanding it. $19, lifetime access." />
+  <meta name="twitter:image" content="https://apexaviationtx.com/apexwhite.png" />
+  <link rel="canonical" href="https://apexaviationtx.com/apex-advantage-airspace-mastery" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="pages.css" />
+  <!-- Google Analytics 4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-JFPBCF2GXE"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-JFPBCF2GXE');
+  </script>
+  <style>
+    /* ── Page-specific additions, scoped with am- prefix ── */
+    .am-hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--gold); color: #080f1e;
+      font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 14px; border-radius: 100px; margin-bottom: 18px;
+    }
+    .am-hero-sub {
+      font-size: clamp(20px, 2.6vw, 28px); font-weight: 700; color: var(--gold);
+      margin: 10px 0 18px; font-family: Georgia, serif; font-style: italic;
+    }
+    .am-trust-line {
+      display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 22px; justify-content: center;
+      font-size: 13px; color: rgba(255,255,255,0.6); font-weight: 600;
+    }
+    .am-includes-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
+      max-width: 900px; margin: 32px auto 0;
+    }
+    .am-includes-item {
+      background: #101f38; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
+      padding: 18px 20px;
+    }
+    .am-includes-item h3 { color: #fff; font-size: 14.5px; font-weight: 800; margin: 0 0 6px; }
+    .am-includes-item p { color: rgba(255,255,255,0.55); font-size: 13.5px; line-height: 1.6; margin: 0; }
+    @media (max-width: 640px) { .am-includes-grid { grid-template-columns: 1fr; } }
+
+    .am-lesson-list { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; }
+    .am-lesson-row {
+      display: flex; align-items: baseline; gap: 12px;
+      background: #101f38; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
+      padding: 12px 18px;
+    }
+    .am-lesson-row__num { color: var(--gold); font-weight: 800; font-size: 13px; min-width: 18px; }
+    .am-lesson-row__title { color: #fff; font-size: 14px; font-weight: 600; flex: 1; }
+    .am-lesson-row__time { color: rgba(255,255,255,0.4); font-size: 12px; font-weight: 700; white-space: nowrap; }
+
+    .am-pricing-card {
+      max-width: 420px; margin: 0 auto; position: relative;
+      background: rgba(244,180,0,0.05); border: 1px solid rgba(244,180,0,0.4);
+      border-radius: 14px; padding: 34px 30px; text-align: center;
+    }
+    .am-pricing-card__price { color: var(--gold); font-size: 44px; font-weight: 800; margin-bottom: 4px; }
+    .am-pricing-card__note { color: rgba(255,255,255,0.4); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 22px; }
+    .am-pricing-card ul { list-style: none; padding: 0; margin: 0 0 24px; display: flex; flex-direction: column; gap: 10px; text-align: left; }
+    .am-pricing-card li { font-size: 13.5px; color: rgba(255,255,255,0.75); padding-left: 22px; position: relative; line-height: 1.5; }
+    .am-pricing-card li::before { content: '✓'; color: var(--gold); position: absolute; left: 0; font-weight: 800; }
+
+    .am-avoid-strip {
+      max-width: 680px; margin: 40px auto 0; padding: 18px 22px;
+      background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px;
+      text-align: center;
+    }
+    .am-avoid-strip p { color: rgba(255,255,255,0.45); font-size: 12.5px; line-height: 1.7; margin: 0; }
+
+    .am-sticky-cta {
+      display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 500;
+      background: #0B1F3A; border-top: 1px solid rgba(244,180,0,0.25);
+      padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    }
+    .am-sticky-cta a { display: block; text-align: center; width: 100%; padding: 12px 20px; font-size: 14px; }
+    @media (max-width: 720px) {
+      .am-sticky-cta { display: block; }
+      body { padding-bottom: 64px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav" id="nav">
+    <div class="container nav__inner">
+      <a href="home.html" class="nav__logo">
+        <img src="apexwhite.png" alt="Apex Aviation" height="40" style="display:block;width:auto" />
+      </a>
+      <nav class="nav__links">
+        <a href="apex-advantage.html" class="btn btn--nav-outline">Apex Advantage</a>
+        <a href="portal-login.html" style="font-size:13px;color:rgba(255,255,255,0.55)">Already registered? <span style="color:var(--gold);font-weight:600">Log in</span></a>
+      </nav>
+      <button class="nav__hamburger" id="hamburger" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <div class="nav__mobile" id="mobileMenu">
+      <a href="apex-advantage.html">Apex Advantage</a>
+      <a href="portal-login.html">Already registered? Log in</a>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       HERO
+  ════════════════════════════════════════════════════════════ -->
+  <section class="page-hero" style="padding-top:92px;padding-bottom:56px">
+    <div class="container page-hero__inner" style="max-width:760px;text-align:center;margin:0 auto">
+      <div class="am-hero-badge">Apex Advantage · Study Packs</div>
+      <h1 class="page-hero__title" style="margin:0 auto">STOP MEMORIZING AIRSPACE.</h1>
+      <p class="am-hero-sub">Start understanding it.</p>
+      <p class="page-hero__sub" style="max-width:560px;margin:0 auto">Every airspace class, Special VFR, equipment requirements, TFRs, and special use airspace -- taught so you can reason through a sectional you've never seen before, not just recite numbers.</p>
+      <div style="margin-top:26px">
+        <a href="#pricing" class="btn btn--primary" id="amHeroCta" data-apx-cta data-apx-cta-location="hero">MASTER AIRSPACE — $19</a>
+      </div>
+      <div class="am-trust-line">
+        <span>9 Lessons</span><span>·</span><span>5 Scenario Labs</span><span>·</span><span>25 Checkride Corner Questions</span><span>·</span><span>20-Question Mastery Check</span><span>·</span><span>Lifetime Access</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       WHAT'S INCLUDED
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--light">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">What's Included</div>
+        <h2 class="section__title">Built the way<br/><em class="accent">a DPE actually tests it.</em></h2>
+        <p class="section__desc" style="max-width:640px">Airspace is one of the most heavily tested oral exam topics -- foundational, precisely definable, and easy to get wrong under pressure. This pack is built to fix that.</p>
+      </div>
+      <div class="am-includes-grid">
+        <div class="am-includes-item"><h3>Classes A Through G</h3><p>Dimensions, VFR weather minimums, communication and clearance requirements, and equipment rules for every airspace class.</p></div>
+        <div class="am-includes-item"><h3>Special VFR</h3><p>Minimums, night restrictions, and the specific list of airports where fixed-wing Special VFR isn't available.</p></div>
+        <div class="am-includes-item"><h3>Equipment Requirements</h3><p>The Mode C veil and ADS-B Out requirements, including exactly where the two rules do -- and don't -- overlap.</p></div>
+        <div class="am-includes-item"><h3>Special Use Airspace & TFRs</h3><p>Prohibited, Restricted, Warning, MOA, Alert, and National Security Areas, plus the real process for checking an active TFR.</p></div>
+        <div class="am-includes-item"><h3>5 Scenario Labs</h3><p>Real cross-country planning situations -- you commit to a plan before the discussion is revealed, then self-rate your understanding.</p></div>
+        <div class="am-includes-item"><h3>25 Checkride Corner Questions</h3><p>DPE-style questions across four difficulty levels, each with a model answer, a common mistake, and a real DPE follow-up.</p></div>
+      </div>
+      <p style="text-align:center;color:rgba(255,255,255,0.4);font-size:12.5px;margin-top:24px;max-width:600px;margin-left:auto;margin-right:auto">This is a study diagnostic and learning tool, not a guarantee of checkride performance -- and we can't know exactly what your specific DPE will ask.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       LESSON LIST
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section" style="background:#0b1627">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">The 9 Lessons</div>
+        <h2 class="section__title">Roughly<br/><em class="accent">2.5 to 3 hours, self-paced.</em></h2>
+      </div>
+      <div class="am-lesson-list">
+        <div class="am-lesson-row"><span class="am-lesson-row__num">1</span><span class="am-lesson-row__title">The Big Picture — Why Airspace Exists</span><span class="am-lesson-row__time">15 min</span></div>
+        <div class="am-lesson-row"><span class="am-lesson-row__num">2</span><span class="am-lesson-row__title">Class G — Uncontrolled Airspace</span><span class="am-lesson-row__time">12 min</span></div>
+        <div class="am-lesson-row"><span class="am-lesson-row__num">3</span><span class="am-lesson-row__title">Class E — The Default Controlled Layer</span><span class="am-lesson-row__time">15 min</span></div>
+        <div class="am-lesson-row"><span class="am-lesson-row__num">4</span><span class="am-lesson-row__title">Class D — Towered Airspace</span><span class="am-lesson-row__time">15 min</span></div>
+        <div class="am-lesson-row"><span class="am-lesson-row__num">5</span><span class="am-lesson-row__title">Class C — Two-Shelf Radar Service</span><span class="am-lesson-row__time">15 min</span></div>
+        <div class="am-lesson-row"><span class="am-lesson-row__num">6</span><span class="am-lesson-row__title">Class B — Clearance Required</span><span class="am-lesson-row__time">15 min</span></div>
+        <div class="am-lesson-row"><span class="am-lesson-row__num">7</span><span class="am-lesson-row__title">Class A — The IFR-Only Ceiling</span><span class="am-lesson-row__time">8 min</span></div>
+        <div class="am-lesson-row"><span class="am-lesson-row__num">8</span><span class="am-lesson-row__title">Special Use Airspace & TFRs</span><span class="am-lesson-row__time">20 min</span></div>
+        <div class="am-lesson-row"><span class="am-lesson-row__num">9</span><span class="am-lesson-row__title">Special VFR & Equipment Requirements</span><span class="am-lesson-row__time">18 min</span></div>
+      </div>
+      <p style="text-align:center;color:rgba(255,255,255,0.4);font-size:12.5px;margin-top:20px">Each lesson includes a short Knowledge Check. Complete all 9, work through the Scenario Lab, then pass the 20-question Mastery Check (80%) for your Certificate of Completion.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PRICING
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--light" id="pricing">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Lifetime Access</div>
+        <h2 class="section__title">One price.<br/><em class="accent">Yours for good.</em></h2>
+      </div>
+      <div id="amPricingCard">
+        <p style="text-align:center;color:rgba(255,255,255,0.4)">Loading…</p>
+      </div>
+      <p style="text-align:center;color:rgba(255,255,255,0.4);font-size:12.5px;margin-top:22px">You'll sign in or create a free Apex Advantage account to unlock it.</p>
+    </div>
+  </section>
+
+  <div class="am-avoid-strip" style="margin-top:0;margin-bottom:56px">
+    <p>The Apex Readiness Score and every study tool in this pack are diagnostics, not predictions or guarantees of checkride performance. Apex Advantage does not claim to know what your specific DPE will ask.</p>
+  </div>
+
+  <footer class="footer">
+    <div class="container footer__inner">
+      <div class="footer__brand">
+        <a href="home.html" class="nav__logo">
+          <img src="apexwhite.png" alt="Apex Aviation" height="40" style="display:block;width:auto" />
+        </a>
+        <p>Train Beyond the Checkride. Premium simulator-based aviation training opening in Austin, Texas — January 2027.</p>
+      </div>
+      <div class="footer__links">
+        <div>
+          <h4>Training</h4>
+          <a href="apex-advantage.html">Apex Advantage</a>
+          <a href="apex-advantage-private-pilot.html">Virtual Ground School</a>
+          <a href="checkride-prep.html">Checkride Prep</a>
+          <a href="apex-advantage-mock-oral.html">Mock Orals</a>
+        </div>
+        <div>
+          <h4>Company</h4>
+          <a href="about.html">About Apex</a>
+          <a href="instructors.html">Our Instructors</a>
+          <a href="portal-login.html?view=signup">Create Free Account</a>
+        </div>
+        <div>
+          <h4>Contact</h4>
+          <a href="mailto:info@apexaviationtx.com">info@apexaviationtx.com</a>
+          <span style="color:var(--gray-2);font-size:14px">Austin, Texas</span>
+        </div>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <div class="container">
+        <p>&copy; 2026 Apex Aviation. All rights reserved. · <a href="privacy.html" style="color:var(--gray-2)">Privacy Policy</a></p>
+        <p>Train Beyond the Checkride. · Austin, Texas</p>
+      </div>
+    </div>
+  </footer>
+
+  <div class="am-sticky-cta">
+    <a href="#pricing" class="btn btn--primary" data-apx-cta data-apx-cta-location="sticky_mobile">Master Airspace — $19</a>
+  </div>
+
+  <script src="script.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="portal-supabase.js"></script>
+  <script src="analytics-events.js"></script>
+  <script>
+    if (window.apexTrack) apexTrack('study_pack_sales_page_view', { pack_id: 'airspace_mastery', surface: 'landing_page' });
+
+    document.querySelectorAll('[data-apx-cta]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        if (window.gtag) gtag('event', 'study_pack_cta_click', { pack_id: 'airspace_mastery', location: el.dataset.apxCtaLocation || 'unknown' });
+      });
+    });
+
+    // Pricing card -- real, admin-togglable product (study_packs,
+    // active=true), not hardcoded copy. A visitor who clicks the CTA
+    // while already signed in goes straight into the portal's Study
+    // Packs section; otherwise they're sent to sign in/create a free
+    // account first, landing back on that same section afterward --
+    // same dest= pattern already used for Ground School/Mock Oral.
+    function amCtaHref() {
+      return 'portal-login.html?view=signup&dest=study-packs&source=study_pack_airspace_mastery' +
+        (window.apexGetUtm ? '&' + Object.entries(apexGetUtm() || {}).filter(function (e) { return e[1]; }).map(function (e) { return e[0] + '=' + encodeURIComponent(e[1]); }).join('&') : '');
+    }
+
+    apexSupabase.from('study_packs').select('*').eq('id', 'airspace_mastery').eq('active', true).maybeSingle().then(function (res) {
+      var pack = res.data;
+      var wrap = document.getElementById('amPricingCard');
+      if (!pack) { wrap.innerHTML = '<p style="text-align:center;color:rgba(255,255,255,0.4)">Not currently available.</p>'; return; }
+
+      apexSupabase.auth.getSession().then(function (sessionRes) {
+        var isSignedIn = !!(sessionRes.data && sessionRes.data.session);
+        var href = isSignedIn ? 'portal.html#study-packs' : amCtaHref();
+        var priceText = '$' + (pack.price_cents / 100).toFixed(0);
+
+        wrap.innerHTML =
+          '<div class="am-pricing-card">' +
+            '<div class="am-pricing-card__price">' + priceText + '</div>' +
+            '<div class="am-pricing-card__note">Lifetime Access</div>' +
+            '<ul>' +
+              '<li>9 lessons covering every airspace class</li>' +
+              '<li>5 Scenario Lab exercises</li>' +
+              '<li>25 Checkride Corner DPE-style questions</li>' +
+              '<li>20-question Mastery Check with unlimited retakes</li>' +
+              '<li>Quick Reference, available any time</li>' +
+              '<li>Certificate of Completion on passing</li>' +
+            '</ul>' +
+            '<a href="' + href + '" class="btn btn--primary" style="width:100%;text-align:center;display:block" data-apx-cta data-apx-cta-location="pricing_card">MASTER AIRSPACE — ' + priceText + '</a>' +
+          '</div>';
+
+        wrap.querySelectorAll('[data-apx-cta]').forEach(function (el) {
+          el.addEventListener('click', function () {
+            if (window.gtag) gtag('event', 'study_pack_cta_click', { pack_id: 'airspace_mastery', location: el.dataset.apxCtaLocation || 'unknown' });
+          });
+        });
+
+        var heroCta = document.getElementById('amHeroCta');
+        if (heroCta) heroCta.href = href;
+      });
+    });
+  </script>
+</body>
+</html>
