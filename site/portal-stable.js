@@ -554,14 +554,62 @@
   var unlockModalCta = document.getElementById('unlockModalCta');
   var unlockModalError = document.getElementById('unlockModalError');
 
-  function openUnlockModal() {
+  // unlockModalCtaLabel tracks the CTA's resting-state text so the
+  // checkout-error recovery path below (which resets the button after a
+  // failed create-checkout-session call) restores the right label --
+  // "Unlock Now" normally, or the readiness-aware label when this open
+  // was triggered with real assessment context (see readinessContext
+  // param below).
+  var unlockModalCtaLabel = 'Unlock Now';
+
+  // readinessContext (optional): { score, band, weakestCats, weakestLabels }
+  // from the caller's own readiness_assessment_leads row. Only passed by
+  // enforceUpgradeDeepLink() today (the ?upgrade=checkride-prep path a
+  // brand-new Readiness Assessment signup lands on) -- every other call
+  // site still calls this with no argument and gets the exact same
+  // generic modal as before. Real data only: weakestCats/weakestLabels
+  // come straight from that member's own stored assessment result, never
+  // invented, and the block is fully hidden when there's no real data.
+  function openUnlockModal(readinessContext) {
     unlockModalError.classList.remove('show');
+    var ctxEl = document.getElementById('unlockModalReadinessContext');
+    var headingEl = document.getElementById('unlockModalHeading');
+    var weakLabels = readinessContext && readinessContext.weakestLabels ? readinessContext.weakestLabels.filter(Boolean) : [];
+    if (readinessContext && weakLabels.length) {
+      document.getElementById('unlockModalReadinessScore').textContent =
+        'Your Readiness Score: ' + readinessContext.score + '% (' + readinessContext.band + ')';
+      document.getElementById('unlockModalReadinessSummary').textContent =
+        weakLabels.join(' and ') + ' scored lowest on your assessment -- Checkride Prep gives you unlimited DPE-style questions and scenario practice targeted at exactly that.';
+      ctxEl.hidden = false;
+      headingEl.textContent = 'Train Your Weak Areas';
+      unlockModalCtaLabel = 'Train My Weak Areas';
+      if (window.apexTrack) {
+        apexTrack('readiness_checkride_prep_offer_viewed', {
+          profile_id: member ? member.id : null,
+          score: readinessContext.score,
+          weakest_category_1: readinessContext.weakestCats[0] || null,
+          weakest_category_2: readinessContext.weakestCats[1] || null
+        });
+      }
+    } else {
+      ctxEl.hidden = true;
+      headingEl.textContent = 'Unlock the Checkride Prep System';
+      unlockModalCtaLabel = 'Unlock Now';
+    }
+    unlockModalCta.textContent = unlockModalCtaLabel;
     unlockModalOverlay.classList.add('show');
   }
   function closeUnlockModal() { unlockModalOverlay.classList.remove('show'); }
 
   document.getElementById('unlockModalClose').addEventListener('click', closeUnlockModal);
   unlockModalOverlay.addEventListener('click', function (e) { if (e.target === unlockModalOverlay) closeUnlockModal(); });
+  document.getElementById('unlockModalFreeActionBtn').addEventListener('click', function () {
+    if (window.apexTrack) apexTrack('readiness_free_action_clicked', { profile_id: member ? member.id : null });
+    closeUnlockModal();
+    showSection('dashboard');
+    var qotdEl = document.getElementById('qotdRevealBtn');
+    if (qotdEl) setTimeout(function () { qotdEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 150);
+  });
 
   // #passedOverlay is shared by openMilestoneForm/openDeleteAccountConfirm/
   // openPassedForm/openReadinessReportModal -- each only wires its own inner
@@ -587,7 +635,7 @@
       if (res.error || !res.data || !res.data.url) {
         return extractInvokeError(res).then(function (msg) {
           unlockModalCta.disabled = false;
-          unlockModalCta.textContent = 'Unlock Now';
+          unlockModalCta.textContent = unlockModalCtaLabel;
           unlockModalError.textContent = msg;
           unlockModalError.classList.add('show');
         });
@@ -596,7 +644,7 @@
       window.location.href = res.data.url;
     }).catch(function () {
       unlockModalCta.disabled = false;
-      unlockModalCta.textContent = 'Unlock Now';
+      unlockModalCta.textContent = unlockModalCtaLabel;
       unlockModalError.textContent = 'Could not start checkout. Please try again.';
       unlockModalError.classList.add('show');
     });
@@ -4351,8 +4399,35 @@
         member_state: member ? (member.role || 'student') : 'unknown'
       });
     }
-    openUnlockModal();
-    if (window.apexTrack) apexTrack('checkride_prep_upgrade_modal_opened', { trigger: 'deeplink' });
+    // This deep link is how a brand-new Readiness Assessment signup
+    // reaches the portal for the first time (readiness-assessment.html's
+    // dest: 'checkride-prep', threaded through create-free-account and
+    // portal-reset-password.html's enforceUpgradeDeepLink() special
+    // case). Look up that visitor's own most recent readiness result
+    // (RLS-scoped to their own profile_id, same table
+    // renderReadinessBaseline() already reads) so the pitch they land on
+    // can reference their real score and weak areas instead of the
+    // generic pitch every other unlock trigger shows.
+    apexSupabase.from('readiness_assessment_leads')
+      .select('score, readiness_level, weakest_category_1, weakest_category_2')
+      .eq('profile_id', member.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .then(function (res) {
+        var lead = res && res.data && res.data[0];
+        var weakestCats = lead ? [lead.weakest_category_1, lead.weakest_category_2].filter(Boolean) : [];
+        if (lead && weakestCats.length) {
+          openUnlockModal({
+            score: lead.score,
+            band: lead.readiness_level,
+            weakestCats: weakestCats,
+            weakestLabels: weakestCats.map(function (c) { return READINESS_CATEGORY_LABELS[c] || c; })
+          });
+        } else {
+          openUnlockModal();
+        }
+        if (window.apexTrack) apexTrack('checkride_prep_upgrade_modal_opened', { trigger: 'deeplink' });
+      });
     if (history.replaceState) history.replaceState(null, '', cleanedUrl);
   }
 
@@ -5481,7 +5556,14 @@
       btn.addEventListener('click', function () {
         var value = btn.dataset.value;
         apexSupabase.from('profiles').update({ training_stage: value }).eq('id', member.id);
-        if (window.apexTrack) apexTrack('onboarding_training_goal_saved', { training_stage: value });
+        // Was missing -- the focus-area handler just below updates
+        // member.primaryFocusArea locally, but this handler never did the
+        // same for trainingStage. onboarding_completed (fired from that
+        // next step) read member.trainingStage for its event property, so
+        // every real completion logged training_stage: null even though
+        // the member had just picked one two clicks earlier.
+        member.trainingStage = value;
+        if (window.apexTrack) apexTrack('onboarding_training_goal_saved', { profile_id: member.id, training_stage: value });
         step1.hidden = true;
         step2.hidden = false;
       });
@@ -5492,7 +5574,7 @@
         var value = btn.dataset.value;
         apexSupabase.from('profiles').update({ primary_focus_area: value }).eq('id', member.id);
         member.primaryFocusArea = value;
-        if (window.apexTrack) apexTrack('onboarding_focus_area_saved', { primary_focus_area: value });
+        if (window.apexTrack) apexTrack('onboarding_focus_area_saved', { profile_id: member.id, primary_focus_area: value });
         step2.hidden = true;
         step3.hidden = false;
 
@@ -5508,12 +5590,12 @@
         // the two questions is a funnel step, not activation (Phase 10 --
         // activation is real training activity, never onboarding
         // completion or a click alone).
-        if (window.apexTrack) apexTrack('onboarding_completed', { training_stage: member.trainingStage || null, primary_focus_area: value });
-        if (window.apexTrack) apexTrack('first_action_presented', { recommended_action: firstTask ? firstTask.label : null, training_stage: member.trainingStage || null });
+        if (window.apexTrack) apexTrack('onboarding_completed', { profile_id: member.id, training_stage: member.trainingStage || null, primary_focus_area: value });
+        if (window.apexTrack) apexTrack('first_action_presented', { profile_id: member.id, recommended_action: firstTask ? firstTask.label : null, training_stage: member.trainingStage || null });
 
         var startFirstTask = function () {
           card.hidden = true;
-          if (window.apexTrack) apexTrack('onboarding_first_training_started', { task: firstTask ? firstTask.label : null });
+          if (window.apexTrack) apexTrack('onboarding_first_training_started', { profile_id: member.id, task: firstTask ? firstTask.label : null });
           goFn();
         };
         var taskBtn = document.getElementById('welcomeOnboardingFirstTask');

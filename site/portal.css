@@ -922,6 +922,24 @@
 .portal-modal__stars svg { width: 15px; height: 15px; }
 .portal-modal__quote { font-size: 12.5px; line-height: 1.6; color: rgba(255,255,255,0.5); font-style: italic; margin: 0; }
 .portal-modal__quote cite { display: block; margin-top: 4px; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.4); font-style: normal; }
+.portal-modal__readiness-context {
+  background: rgba(244,180,0,0.08);
+  border: 1px solid rgba(244,180,0,0.25);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+.portal-modal__readiness-eyebrow { font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
+.portal-modal__readiness-score { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+.portal-modal__readiness-summary { font-size: 13px; line-height: 1.6; color: rgba(255,255,255,0.65); margin: 0 0 12px; }
+.portal-modal__readiness-free-action {
+  display: inline-block;
+  background: none; border: none; padding: 0;
+  font-size: 12.5px; font-weight: 700; color: var(--gold);
+  text-decoration: underline; cursor: pointer;
+}
+.portal-modal__readiness-free-action:hover { color: #fff; }
 
 /* ─── AI DPE Practice — chat + debrief ──────────────────────────── */
 .portal-chat {

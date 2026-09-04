@@ -347,6 +347,16 @@ export default function MarketingFunnel() {
                 <p className="stat-card__value">{readiness.gate_login_completed}</p>
                 <p className="stat-card__sub">existing members re-authenticating to retake the assessment — not a new account, kept separate from Account Created above</p>
               </div>
+              <div className="stat-card">
+                <p className="stat-card__label">Prep Offer Personalized</p>
+                <p className="stat-card__value">{readiness.prep_offer_personalized}</p>
+                <p className="stat-card__sub">of Checkride Prep Clicked above, how many saw their own score/weak areas in the pitch rather than the generic unlock modal (v98 bridge)</p>
+              </div>
+              <div className="stat-card">
+                <p className="stat-card__label">Tried Free Action First</p>
+                <p className="stat-card__value">{readiness.prep_free_action_clicked}</p>
+                <p className="stat-card__sub">took the free oral-exam-question off-ramp instead of purchasing immediately — expected to stay well below Prep Offer Personalized</p>
+              </div>
             </div>
           )}
 

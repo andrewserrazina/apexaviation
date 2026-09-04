@@ -153,6 +153,16 @@ addition to* those automatic ones.
 **Trigger:** A member arrives on the portal via `?upgrade=checkride-prep` (`enforceUpgradeDeepLink()`, `site/portal-stable.js`); the second fires when that same deep link auto-opens the unlock modal.
 **Expected frequency:** ~1 each per real deep-link visit.
 
+### `readiness_checkride_prep_offer_viewed`
+**Trigger:** `openUnlockModal()` is opened with real readiness context (the caller's own `readiness_assessment_leads` row exists) -- currently only reachable via `enforceUpgradeDeepLink()`'s `?upgrade=checkride-prep` path, so in practice this fires once per personalized-pitch view for a Readiness Assessment signup. Every other `openUnlockModal()` call site (sidebar locked items, Training Plan tasks, etc.) still opens the generic modal and does not fire this event.
+**Properties:** `profile_id`, `score`, `weakest_category_1`, `weakest_category_2` -- all read from that member's real stored result, never hardcoded.
+**Expected frequency:** ~1 per real personalized-pitch view. This is the event the Readiness → Checkride Prep bridge's "did they actually see their own result before the ask" step is built on.
+
+### `readiness_free_action_clicked`
+**Trigger:** The "Try today's free oral exam question first" secondary link inside the personalized unlock modal is clicked (only rendered when `readiness_checkride_prep_offer_viewed` also fires).
+**Properties:** `profile_id`.
+**Expected frequency:** Should be well below `readiness_checkride_prep_offer_viewed`'s count -- this is the "give value before the ask" off-ramp, not the primary path.
+
 ### `content_deeplink_topic_matched`
 **Trigger:** A `?topic=` deep link successfully matches a known content category.
 **Properties:** `topic`, `category`.

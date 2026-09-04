@@ -92,6 +92,14 @@
     'readiness_assessment_viewed', 'readiness_assessment_started', 'readiness_question_answered',
     'readiness_assessment_completed', 'readiness_score_viewed', 'readiness_signup_started',
     'readiness_signup_completed', 'readiness_checkride_prep_clicked',
+    // Readiness -> Checkride Prep bridge (site/portal-stable.js,
+    // enforceUpgradeDeepLink()/openUnlockModal()): fires only when a
+    // member's own readiness_assessment_leads row exists, so the pitch
+    // they see references their real score/weak areas. _offer_viewed is
+    // the personalized-pitch equivalent of checkride_prep_upgrade_
+    // modal_opened; _free_action_clicked is the "try something free
+    // first" secondary link inside that same pitch.
+    'readiness_checkride_prep_offer_viewed', 'readiness_free_action_clicked',
     // Post-purchase activation (portal-login.html)
     'portal_activation_cta_viewed', 'portal_activation_cta_clicked',
     // Member-upgrade deep link (?upgrade=checkride-prep) -- real triggers
