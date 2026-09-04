@@ -15,7 +15,68 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { requireModuleAccess, PremiumAccessError } from '../_shared/premiumAccess.ts'
+
+// Inlined (not imported from ../_shared/premiumAccess.ts) because the
+// Supabase deploy path used for this function cannot resolve a relative
+// import that reaches outside this function's own directory -- same
+// issue and same fix as create-checkout-session/stripe-webhook's
+// emailTemplate inlining. Must be kept in sync with _shared/
+// premiumAccess.ts's own PremiumAccessError/requireModuleAccess if that
+// file ever changes.
+class PremiumAccessError extends Error {
+  status: number
+  constructor(message: string, status = 403) {
+    super(message)
+    this.status = status
+  }
+}
+
+interface CapabilityResult {
+  userId: string
+  email: string | null
+}
+
+// For Ground School module companion content (module_companion_content,
+// module_quiz_questions) -- entitlement here is per-module, not a flat
+// flag: a member either bought the full private_pilot_ground_school_
+// pack_unlocked, or paid individually for this specific module's
+// scheduled class (scheduled_ground_class_enrollments, payment_status in
+// ('paid','ground_school_pack'), joined through scheduled_ground_classes.
+// lesson_id -- the same real curriculum module id used everywhere else,
+// e.g. 'PPL-M01'). Mirrors the client's own hasModuleAccess() (site/
+// portal-stable.js) exactly, but this is the actual security boundary --
+// that client check is UI convenience only.
+async function requireModuleAccess(
+  supabase: ReturnType<typeof createClient>,
+  authHeader: string | null,
+  moduleId: string
+): Promise<CapabilityResult> {
+  const token = (authHeader || '').replace('Bearer ', '').trim()
+  if (!token) throw new PremiumAccessError('Missing Authorization header', 401)
+
+  const { data: userData, error: userErr } = await supabase.auth.getUser(token)
+  if (userErr || !userData?.user) throw new PremiumAccessError('Invalid or expired session', 401)
+
+  const [{ data: profile }, { data: enrollmentRows }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('private_pilot_ground_school_pack_unlocked')
+      .eq('id', userData.user.id)
+      .maybeSingle(),
+    supabase
+      .from('scheduled_ground_class_enrollments')
+      .select('id, payment_status, scheduled_ground_classes!inner(lesson_id)')
+      .eq('profile_id', userData.user.id)
+      .eq('scheduled_ground_classes.lesson_id', moduleId)
+      .in('payment_status', ['paid', 'ground_school_pack'])
+      .limit(1),
+  ])
+
+  const unlocked = !!profile?.private_pilot_ground_school_pack_unlocked || !!enrollmentRows?.length
+  if (!unlocked) throw new PremiumAccessError('This Ground School module is not unlocked on this account', 403)
+
+  return { userId: userData.user.id, email: userData.user.email ?? null }
+}
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
