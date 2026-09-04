@@ -4853,12 +4853,13 @@
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 14 · Aircraft Performance',
       prompts: [
-        { id: 'poh-charts', section: 'POH Performance Charts', prompt: 'How do you read a POH performance chart in table versus graph format to find takeoff and landing distance?' },
-        { id: 'density-altitude-performance', section: 'Density Altitude Effects', prompt: 'How does density altitude affect your takeoff roll, climb rate, and landing distance?' },
-        { id: 'wind-components', section: 'Wind Component Calculations', prompt: 'How do you calculate the headwind and crosswind components for a given wind and runway?' },
-        { id: 'runway-considerations', section: 'Runway Considerations', prompt: 'How do runway surface, slope, and contamination each change your takeoff and landing performance?' },
-        { id: 'climb-performance', section: 'Climb Performance', prompt: 'What factors degrade climb performance, and what does service ceiling actually mean?' },
-        { id: 'cruise-performance', section: 'Cruise Performance', prompt: 'How do you plan cruise performance — power setting, true airspeed, and fuel flow — for a given leg?' }
+        { id: 'apex-performance-pyramid', section: 'The Apex Performance Pyramid', prompt: 'What are the five levels of the Apex Performance Pyramid, bottom to top, and why is it evaluated in that order for every flight?' },
+        { id: 'performance-fundamentals', section: 'Performance Fundamentals', prompt: 'How do power available and power required each change with altitude and airspeed, and why does the gap between them determine climb capability?' },
+        { id: 'takeoff-landing-performance', section: 'Takeoff & Landing Performance', prompt: 'What is the difference between ground roll and total distance to clear a 50-ft obstacle, and what does landing distance depend on beyond the POH’s idealized figures?' },
+        { id: 'density-altitude', section: 'Density Altitude', prompt: 'How do you calculate density altitude from pressure altitude and OAT, and why is it the connective tissue behind nearly every other performance calculation in this module?' },
+        { id: 'performance-charts-interpolation', section: 'Aircraft Performance Charts', prompt: 'How do you correctly interpolate between two listed values on a takeoff, landing, or climb performance chart instead of rounding to the nearest one?' },
+        { id: 'environmental-factors', section: 'Environmental Factors', prompt: 'How do headwind versus tailwind, runway slope, runway surface, and elevation each modify the POH’s idealized baseline distance and climb figures?' },
+        { id: 'performance-planning-risk-management', section: 'Performance Planning & Risk Management', prompt: 'Why is a technically legal performance calculation not automatically a safe one, and what specifically builds real margin beyond the legal floor?' }
       ]
     },
     {
@@ -4867,12 +4868,14 @@
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 15 · Cross-Country Planning',
       prompts: [
-        { id: 'nav-log', section: 'Navigation Log', prompt: 'What does a complete navigation log include for each leg of a cross-country flight?' },
-        { id: 'cruising-altitude', section: 'Cruising Altitude Selection', prompt: 'How do the hemispheric rule, terrain, and airspace each factor into your choice of cruising altitude?' },
-        { id: 'total-fuel-planning', section: 'Total Fuel Planning', prompt: 'What goes into your total fuel required for a full cross-country route, including reserves?' },
-        { id: 'alternate-selection', section: 'Alternates & Contingencies', prompt: 'What criteria would you use to select an alternate or contingency airport along your route?' },
-        { id: 'vfr-flight-plan', section: 'Filing a VFR Flight Plan', prompt: 'Why is filing a VFR flight plan good practice even though it isn’t required, and what do activation and closing actually involve?' },
-        { id: 'cross-country-integration', section: 'Putting It Together', prompt: 'How does a complete cross-country plan integrate navigation, weather, performance, and regulatory knowledge into one package?' }
+        { id: 'apex-flight-planning-cycle', section: 'The Apex Flight Planning Cycle', prompt: 'What are the eight steps of the Apex Flight Planning Cycle, in order, and why does a Delay or Cancel decision restart the cycle rather than end it?' },
+        { id: 'planning-the-flight', section: 'Planning the Flight', prompt: 'What goes into mission analysis, aircraft capability review, and airport/route selection before any calculation begins?' },
+        { id: 'navigation-planning', section: 'Navigation Planning', prompt: 'How do checkpoints, true course, magnetic variation, wind correction angle, groundspeed, and estimated time en route all build into a navigation log?' },
+        { id: 'weather-planning-xc', section: 'Weather Planning', prompt: 'What products make up a complete weather briefing for a cross-country flight, and why must it be re-checked throughout planning and the flight itself?' },
+        { id: 'fuel-planning-xc', section: 'Fuel Planning', prompt: 'What goes into your total fuel required for a complete cross-country route, and why should fuel status be recalculated at every checkpoint?' },
+        { id: 'performance-integration', section: 'Performance Integration', prompt: 'Why must weight and balance and takeoff/landing performance be verified for the actual planned loading and conditions at every airport on the route, not assumed from a prior flight?' },
+        { id: 'navigation-log', section: 'The Navigation Log', prompt: 'What columns make up a complete navigation log, and how are running totals updated leg by leg throughout the flight?' },
+        { id: 'risk-management-xc', section: 'Risk Management', prompt: 'How do PAVE, personal minimums, passenger pressure, lost procedures, and backup plans combine into the Apex Cycle’s “Know Your Risks” and “Build Backup Plans” steps?' }
       ]
     },
     {
@@ -4881,12 +4884,14 @@
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 16 · Aeronautical Decision Making',
       prompts: [
-        { id: 'pave-checklist', section: 'PAVE Checklist', prompt: 'What are the four components of the PAVE checklist, and how would you apply it to today’s flight?' },
-        { id: '3p-model', section: '3P Model', prompt: 'What do Perceive, Process, and Perform each mean in the 3P decision-making model?' },
-        { id: 'hazardous-attitudes', section: 'Hazardous Attitudes', prompt: 'What are the five hazardous attitudes, and what’s the antidote to each?' },
-        { id: 'imsafe', section: 'IMSAFE', prompt: 'What does IMSAFE stand for, and how would you use it before a flight?' },
-        { id: 'srm', section: 'Single-Pilot Resource Management', prompt: 'What is single-pilot resource management, and how does it apply when you’re flying alone?' },
-        { id: 'external-pressures', section: 'External Pressures', prompt: 'What are common sources of external pressure on a pilot’s decisions, and how can they distort judgment?' }
+        { id: 'apex-decision-loop', section: 'The Apex Decision Loop', prompt: 'What are the six steps of the Apex Decision Loop, and why is it an Apex teaching tool built on FAA-standard frameworks rather than FAA terminology itself?' },
+        { id: 'hazard-vs-risk-accident-chain', section: 'Hazard vs. Risk & the Accident Chain', prompt: 'What is the difference between a hazard and a risk, and how does the Apex Risk Stack show why individually manageable hazards can combine into real danger?' },
+        { id: 'pave-imsafe', section: 'PAVE & IMSAFE', prompt: 'What are the four elements of PAVE and the six letters of IMSAFE, and how would you run both honestly before today’s flight?' },
+        { id: 'personal-minimums-adm', section: 'Personal Minimums', prompt: 'What is the difference between a legal minimum and a personal minimum, and how should personal minimums be built and allowed to evolve over time?' },
+        { id: 'five-p-decide-3p', section: '5P, DECIDE & 3P', prompt: 'How do the 5P model, the DECIDE model, and the 3P model (with CARE and TEAM) differ in when and how you’d actually use each one?' },
+        { id: 'hazardous-attitudes', section: 'Hazardous Attitudes', prompt: 'What are the five hazardous attitudes, and what is the correct FAA-standard antidote for each?' },
+        { id: 'external-pressure-continuation-bias', section: 'External Pressure & Continuation Bias', prompt: 'What is continuation bias, why does an earlier decision change the options still available later, and what is an “Apex Out”?' },
+        { id: 'decision-triggers-outcome-bias', section: 'Decision Triggers & Outcome Bias', prompt: 'Why should a decision trigger be set as a specific, objective number before the flight, and why doesn’t a good outcome automatically prove a decision was good?' }
       ]
     },
     {
@@ -4895,12 +4900,14 @@
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 17 · Human Factors',
       prompts: [
-        { id: 'hypoxia', section: 'Hypoxia', prompt: 'What are the types of hypoxia, and at what altitudes should a pilot start being concerned?' },
-        { id: 'spatial-disorientation', section: 'Spatial Disorientation', prompt: 'What illusions can cause spatial disorientation, and why are they dangerous even to an experienced pilot?' },
-        { id: 'fatigue', section: 'Fatigue', prompt: 'What’s the difference between acute and chronic fatigue, and how does each affect decision-making and reaction time?' },
-        { id: 'alcohol-drugs', section: 'Alcohol, Drugs & Medications', prompt: 'What is the FAA’s rule on alcohol and flying, and why can even an over-the-counter medication ground you?' },
-        { id: 'stress-tunneling', section: 'Stress & Cognitive Tunneling', prompt: 'How does stress affect cognitive performance, and what does “tunneling” under workload look like in the cockpit?' },
-        { id: 'co-poisoning', section: 'Carbon Monoxide', prompt: 'How can carbon monoxide enter the cabin of a piston aircraft, and how would you detect it?' }
+        { id: 'apex-silent-six', section: 'The Apex Silent Six', prompt: 'What are the six factors in the Apex Silent Six, and why is each one described as a threat that degrades performance quietly?' },
+        { id: 'shell-swiss-cheese-models', section: 'SHELL & Swiss Cheese Models', prompt: 'What are the four components of the SHELL model, and how does the Swiss Cheese Model explain how minor gaps in separate layers can align into a real accident?' },
+        { id: 'hypoxia', section: 'Hypoxia', prompt: 'What are the four types of hypoxia, what does Time of Useful Consciousness tell you, and why is early hypoxia often described as pleasant rather than alarming?' },
+        { id: 'spatial-disorientation-iceflags', section: 'Spatial Disorientation (ICEFLAGS)', prompt: 'What are the eight ICEFLAGS illusions, and why do instruments beat your instincts when one of them is actively occurring?' },
+        { id: 'fatigue', section: 'Fatigue', prompt: 'What is the difference between acute and chronic fatigue, and how do circadian effects degrade performance independent of raw hours slept?' },
+        { id: 'alcohol-drugs-medications', section: 'Alcohol, Drugs & Medications', prompt: 'What are the three independent conditions of 14 CFR 91.17, and why can even a “non-drowsy” over-the-counter medication still be disqualifying?' },
+        { id: 'stress-cognitive-tunneling', section: 'Stress & Cognitive Tunneling', prompt: 'What is cognitive tunneling, and how does acute versus chronic stress each affect a pilot’s cognitive performance and attention?' },
+        { id: 'carbon-monoxide', section: 'Carbon Monoxide', prompt: 'How can carbon monoxide enter the cabin of a piston aircraft, why is skin discoloration an unreliable warning sign, and what’s the correct immediate response if you suspect it?' }
       ]
     },
     {
