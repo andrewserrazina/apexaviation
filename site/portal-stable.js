@@ -4775,12 +4775,14 @@
       courseLabel: 'Private Pilot',
       moduleLabel: 'Module 09 · Navigation Systems',
       prompts: [
-        { id: 'gps-waas-fundamentals', section: 'GPS & WAAS Fundamentals', prompt: 'What does WAAS add to basic GPS accuracy, and what does a RAIM/GPS integrity warning mean to a pilot?' },
-        { id: 'gps-programming', section: 'GPS Programming', prompt: 'How do you program a direct-to or a full flight plan route in a G1000/GNS430-class unit, and how would you verify it’s correct before trusting it?' },
-        { id: 'vor-theory', section: 'VOR Theory', prompt: 'What do radials, the TO/FROM flag, and CDI sensitivity each tell you when navigating by VOR?' },
-        { id: 'vor-accuracy-checks', section: 'VOR Accuracy Checks', prompt: 'What are the ways to check VOR receiver accuracy, and how often is a check required?' },
-        { id: 'dme-autopilot', section: 'DME & Autopilot', prompt: 'What does DME slant range actually measure, and what do the basic autopilot modes — heading, nav, altitude hold — each do?' },
-        { id: 'nav-system-failures', section: 'System Failure Indications', prompt: 'What indications tell you a GPS or VOR system has failed or degraded, and what’s your backup?' }
+        { id: 'apex-navigation-pyramid', section: 'The Apex Navigation Pyramid', prompt: 'What are the four levels of the Apex Navigation Pyramid, from base to apex, and why does the order matter — what\'s the real goal of understanding it?' },
+        { id: 'vor-fundamentals', section: 'VOR Fundamentals', prompt: 'What is a radial, how is it measured, and what\'s the difference between what TO and FROM actually tell you about your position relative to the station?' },
+        { id: 'obs-cdi-tracking', section: 'Using the OBS and Tracking a Course', prompt: 'What does the OBS actually do (and not do), and how do you track a VOR course using small, continuous corrections?' },
+        { id: 'vor-limitations', section: 'VOR Limitations & Service Volumes', prompt: 'Why can a fully functional VOR station still be unreceivable, and what does a published service volume actually guarantee?' },
+        { id: 'dme-fundamentals', section: 'DME Fundamentals', prompt: 'What does DME actually measure, and when is slant-range error the largest?' },
+        { id: 'gps-waas', section: 'GPS & WAAS', prompt: 'How does GPS determine your position conceptually, and what does WAAS specifically improve?' },
+        { id: 'gps-limitations-raim', section: 'GPS Limitations & RAIM', prompt: 'What is RAIM, what should you do if you get a RAIM warning, and what\'s the single most common cause of GPS-related navigation errors?' },
+        { id: 'adsb-redundancy', section: 'ADS-B & Navigation Redundancy', prompt: 'Why is ADS-B not considered a primary navigation source, and what should a complete navigation redundancy plan include before departure?' }
       ]
     },
     {
