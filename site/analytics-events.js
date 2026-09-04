@@ -129,7 +129,16 @@
     // analytics_events (create-free-account/index.ts and
     // send-lifecycle-emails/index.ts's processNewMemberActivation), so
     // it deliberately isn't in this client-side allowlist.
-    'activation_email_1_clicked', 'activation_email_2_clicked', 'activation_email_3_clicked', 'activation_email_4_clicked'
+    'activation_email_1_clicked', 'activation_email_2_clicked', 'activation_email_3_clicked', 'activation_email_4_clicked',
+    // Apex Advantage Study Packs (site/apex-advantage-airspace-mastery.html,
+    // portal.html's #study-packs section) -- generic study pack engine,
+    // Airspace Mastery is Pack #1. Real triggers in site/portal-stable.js's
+    // Study Pack module and the purchase-pixel IIFE for ?studypackunlocked=1.
+    'study_pack_sales_page_view', 'study_pack_checkout_started', 'study_pack_purchase_completed',
+    'study_pack_opened', 'study_pack_lesson_started', 'study_pack_lesson_completed',
+    'study_pack_knowledge_check_completed', 'study_pack_scenario_submitted',
+    'study_pack_checkride_corner_viewed', 'study_pack_mastery_attempted', 'study_pack_mastery_passed',
+    'study_pack_resource_downloaded'
   ];
 
   // readiness-assessment.html/checkride-prep.html/apex-advantage.html etc.

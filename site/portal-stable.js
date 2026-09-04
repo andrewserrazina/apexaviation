@@ -103,6 +103,32 @@
     }
   })();
 
+  /* ── Meta Pixel Purchase event — Study Packs ──────────────────────
+     Same dedupe-by-session_id pattern as the blocks above, for the
+     ?studypackunlocked=1&pack=<id> success_url (unlock-study-pack
+     purpose, create-checkout-session). pack id rides along so the
+     funnel-coherence purchase_completed event can be attributed to the
+     specific pack even once more than one exists. */
+  (function () {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('studypackunlocked') !== '1') return;
+    var sessionId = params.get('session_id');
+    var packId = params.get('pack') || 'unknown_pack';
+    var amountCents = parseInt(params.get('amount_cents'), 10);
+    var value = isNaN(amountCents) ? 19 : amountCents / 100;
+    var dedupeKey = sessionId ? 'apex_fbq_studypack_' + sessionId : null;
+    if (window.fbq && (!dedupeKey || !localStorage.getItem(dedupeKey))) {
+      fbq('track', 'Purchase', { value: value, currency: 'USD', content_name: 'Apex Advantage Study Pack: ' + packId });
+      if (dedupeKey) localStorage.setItem(dedupeKey, '1');
+    }
+    var funnelDedupeKey = sessionId ? 'apex_funnel_studypack_' + sessionId : null;
+    if (window.apexTrack && (!funnelDedupeKey || !localStorage.getItem(funnelDedupeKey))) {
+      apexTrack('purchase_completed', { product: 'study_pack', pack_id: packId, price: value, session_id: sessionId || undefined });
+      apexTrack('study_pack_purchase_completed', { pack_id: packId, price: value, session_id: sessionId || undefined });
+      if (funnelDedupeKey) localStorage.setItem(funnelDedupeKey, '1');
+    }
+  })();
+
   /* ── New Member Activation email click tracking ───────────────
      activation_email_N_sent is logged server-side (create-free-account
      and send-lifecycle-emails' processNewMemberActivation both write
@@ -399,6 +425,7 @@
     }
     if (id === 'ai-dpe-practice' && window.apexTrack) apexTrack('first_lesson_started', { profile_id: member.id, feature: 'ai_dpe_practice' });
     if (id === 'ask-andrew') loadAskAndrewHistory();
+    if (id === 'study-packs') loadStudyPacksCatalog();
   }
 
   function openSidebar() { sidebar.classList.add('open'); overlay.classList.add('show'); }
@@ -3994,6 +4021,11 @@
         '<div class="portal-card" style="margin-top:20px"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:14px">Testimonials Awaiting Approval (' + pendingTestimonials.length + ')</h3><div id="adminTestimonialInbox"></div></div>' +
         '<div class="portal-card" style="margin-top:20px"><h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:14px">Recent Referrals</h3><div id="adminReferralList"></div></div>' +
         '<div class="portal-card" style="margin-top:20px">' +
+          '<h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">Study Packs</h3>' +
+          '<p style="color:rgba(255,255,255,0.4);font-size:12.5px;margin-bottom:14px">Toggle availability, look up who owns a pack, and manually grant or revoke access (e.g. refunds, support cases, bundles).</p>' +
+          '<div id="adminStudyPacksPanel"><p style="color:rgba(255,255,255,0.4);font-size:13px">Loading…</p></div>' +
+        '</div>' +
+        '<div class="portal-card" style="margin-top:20px">' +
           '<h3 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px">DPE Question Library (Content Management)</h3>' +
           '<p style="color:rgba(255,255,255,0.4);font-size:12.5px;margin-bottom:14px">Add, edit, or remove questions from the Checkride Prep question bank. Changes appear for members next time they load the portal.</p>' +
           '<div id="cmsCategoryBar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center"></div>' +
@@ -4007,6 +4039,7 @@
       renderCmsCategoryBar();
       renderCmsCategoryInfo();
       renderCmsQuestionList();
+      loadAdminStudyPacksPanel();
     }).catch(function (e) {
       el.innerHTML = '<p style="color:#ff8b8b;font-size:14px">Could not load admin data: ' + e.message + '</p>';
     });
@@ -4104,6 +4137,169 @@
             }
           }
           toast('Referral updated.');
+        });
+      });
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     STUDY PACKS ADMIN PANEL -- list packs, toggle active/inactive,
+     look up who owns a pack, and manually grant/revoke access.
+     admin_grant_study_pack_entitlement()/admin_revoke_study_pack_
+     entitlement() are the real enforcement (both check is_admin()
+     server-side, supabase-portal-schema-v99.sql) -- this UI is
+     convenience, not the security boundary. Every grant/revoke is
+     already audit-trailed by the entitlements table itself (source,
+     granted_by/revoked_by, granted_at/revoked_at) with no extra log
+     needed here.
+     ══════════════════════════════════════════════════════════════ */
+  var adminStudyPacksExpanded = null;
+
+  // Mirrors create-checkout-session's own escapeIlike() -- an
+  // unescaped % or _ typed into the grant-by-email box would otherwise
+  // turn this into a wildcard search instead of an exact-email lookup.
+  function spAdminEscapeIlike(value) {
+    return value.replace(/[\\%_]/g, function (c) { return '\\' + c; });
+  }
+
+  function loadAdminStudyPacksPanel() {
+    var el = document.getElementById('adminStudyPacksPanel');
+    Promise.all([
+      apexSupabase.from('study_packs').select('id, name, subtitle, price_cents, active, published_version, sort_order').order('sort_order'),
+      apexSupabase.from('study_pack_entitlements').select('pack_id, amount_cents, revoked_at')
+    ]).then(function (results) {
+      var packs = results[0].data || [];
+      var entitlements = results[1].data || [];
+      var statsByPack = {};
+      entitlements.forEach(function (e) {
+        if (!statsByPack[e.pack_id]) statsByPack[e.pack_id] = { active: 0, revenueCents: 0 };
+        if (!e.revoked_at) {
+          statsByPack[e.pack_id].active++;
+          statsByPack[e.pack_id].revenueCents += e.amount_cents || 0;
+        }
+      });
+      renderAdminStudyPacksPanel(packs, statsByPack);
+    }).catch(function (e) {
+      el.innerHTML = '<p style="color:#ff8b8b;font-size:13px">Could not load Study Packs: ' + e.message + '</p>';
+    });
+  }
+
+  function renderAdminStudyPacksPanel(packs, statsByPack) {
+    var el = document.getElementById('adminStudyPacksPanel');
+    if (!packs.length) { el.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:13px">No Study Packs yet.</p>'; return; }
+
+    el.innerHTML = packs.map(function (p) {
+      var stats = statsByPack[p.id] || { active: 0, revenueCents: 0 };
+      var expanded = adminStudyPacksExpanded === p.id;
+      return '<div class="portal-card" style="margin-bottom:12px;background:rgba(255,255,255,0.02)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">' +
+          '<div>' +
+            '<h4 style="color:#fff;font-size:14.5px;font-weight:800;margin-bottom:2px">' + escapeHtmlSafe(p.name) + ' <span style="color:rgba(255,255,255,0.35);font-weight:400;font-size:12px">(' + escapeHtmlSafe(p.id) + ')</span></h4>' +
+            '<p style="color:rgba(255,255,255,0.45);font-size:12.5px;margin-bottom:6px">' + escapeHtmlSafe(p.subtitle || '') + '</p>' +
+            '<p style="color:rgba(255,255,255,0.5);font-size:12px;margin:0">$' + (p.price_cents / 100).toFixed(0) + ' · v' + escapeHtmlSafe(p.published_version || '—') + ' · ' + stats.active + ' active owner' + (stats.active === 1 ? '' : 's') + ' ($' + (stats.revenueCents / 100).toLocaleString() + ')</p>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;align-items:center">' +
+            '<span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;padding:3px 9px;border-radius:100px;' + (p.active ? 'background:rgba(74,222,128,0.15);color:#4ade80' : 'background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.4)') + '">' + (p.active ? 'Active' : 'Inactive') + '</span>' +
+            '<button type="button" class="btn btn--ghost" style="padding:6px 12px;font-size:12px" data-sp-admin-toggle="' + p.id + '" data-next="' + (!p.active) + '">' + (p.active ? 'Deactivate' : 'Activate') + '</button>' +
+            '<button type="button" class="btn btn--ghost" style="padding:6px 12px;font-size:12px" data-sp-admin-expand="' + p.id + '">' + (expanded ? 'Hide Entitlements' : 'Manage Entitlements') + '</button>' +
+          '</div>' +
+        '</div>' +
+        (expanded ? '<div style="margin-top:14px;border-top:1px solid rgba(255,255,255,0.08);padding-top:14px" id="spAdminEntitlements-' + p.id + '"><p style="color:rgba(255,255,255,0.4);font-size:12.5px">Loading…</p></div>' : '') +
+      '</div>';
+    }).join('');
+
+    el.querySelectorAll('[data-sp-admin-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var packId = btn.dataset.spAdminToggle;
+        var next = btn.dataset.next === 'true';
+        btn.disabled = true;
+        apexSupabase.from('study_packs').update({ active: next }).eq('id', packId).then(function (res) {
+          if (res.error) { toast('Could not update: ' + res.error.message); btn.disabled = false; return; }
+          toast(next ? 'Study Pack activated.' : 'Study Pack deactivated.');
+          loadAdminStudyPacksPanel();
+        });
+      });
+    });
+    el.querySelectorAll('[data-sp-admin-expand]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var packId = btn.dataset.spAdminExpand;
+        adminStudyPacksExpanded = adminStudyPacksExpanded === packId ? null : packId;
+        renderAdminStudyPacksPanel(packs, statsByPack);
+        if (adminStudyPacksExpanded === packId) loadAdminStudyPackEntitlements(packId);
+      });
+    });
+  }
+
+  function loadAdminStudyPackEntitlements(packId) {
+    apexSupabase.rpc('admin_list_study_pack_entitlements', { p_pack_id: packId }).then(function (res) {
+      var el = document.getElementById('spAdminEntitlements-' + packId);
+      if (!el) return;
+      if (res.error) { el.innerHTML = '<p style="color:#ff8b8b;font-size:12.5px">Could not load entitlements: ' + res.error.message + '</p>'; return; }
+      renderAdminStudyPackEntitlements(packId, res.data || []);
+    });
+  }
+
+  function renderAdminStudyPackEntitlements(packId, rows) {
+    var el = document.getElementById('spAdminEntitlements-' + packId);
+    if (!el) return;
+    var rowsHtml = rows.length ? rows.map(function (r) {
+      var isActive = !r.revoked_at;
+      return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06)">' +
+        '<div>' +
+          '<p style="color:#fff;font-size:13px;margin:0">' + escapeHtmlSafe(r.full_name || r.email) + ' <span style="color:rgba(255,255,255,0.4);font-size:11.5px">' + escapeHtmlSafe(r.email) + '</span></p>' +
+          '<p style="color:rgba(255,255,255,0.4);font-size:11.5px;margin:0">' + escapeHtmlSafe(r.source) + (r.amount_cents ? ' · $' + (r.amount_cents / 100).toFixed(0) : '') + ' · granted ' + new Date(r.granted_at).toLocaleDateString() + (isActive ? '' : ' · revoked ' + new Date(r.revoked_at).toLocaleDateString()) + '</p>' +
+        '</div>' +
+        (isActive ? '<button type="button" class="btn btn--ghost" style="padding:5px 12px;font-size:11.5px;color:#f87171" data-sp-admin-revoke="' + r.entitlement_id + '">Revoke</button>' : '<span style="color:rgba(255,255,255,0.3);font-size:11.5px;font-weight:700;text-transform:uppercase">Revoked</span>') +
+      '</div>';
+    }).join('') : '<p style="color:rgba(255,255,255,0.4);font-size:12.5px">No entitlements yet.</p>';
+
+    el.innerHTML =
+      '<div style="display:flex;gap:8px;margin-bottom:14px">' +
+        '<input type="email" id="spAdminGrantEmail-' + packId + '" placeholder="student@email.com" style="flex:1;background:#0d1e35;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;padding:8px 12px;font-size:13px" />' +
+        '<button type="button" class="btn btn--primary" style="padding:8px 16px;font-size:12.5px;white-space:nowrap" data-sp-admin-grant="' + packId + '">Grant Access</button>' +
+      '</div>' +
+      '<p id="spAdminGrantError-' + packId + '" class="portal-modal__error"></p>' +
+      rowsHtml;
+
+    var grantBtn = el.querySelector('[data-sp-admin-grant]');
+    grantBtn.addEventListener('click', function () {
+      var input = document.getElementById('spAdminGrantEmail-' + packId);
+      var errorEl = document.getElementById('spAdminGrantError-' + packId);
+      var email = input.value.trim();
+      errorEl.textContent = '';
+      errorEl.classList.remove('show');
+      if (!email) { errorEl.textContent = 'Enter a student email.'; errorEl.classList.add('show'); return; }
+      grantBtn.disabled = true;
+      grantBtn.textContent = 'Granting…';
+      apexSupabase.from('profiles').select('id, full_name, email').ilike('email', spAdminEscapeIlike(email)).maybeSingle().then(function (profRes) {
+        if (profRes.error || !profRes.data) {
+          grantBtn.disabled = false;
+          grantBtn.textContent = 'Grant Access';
+          errorEl.textContent = 'No account found with that email.';
+          errorEl.classList.add('show');
+          return;
+        }
+        apexSupabase.rpc('admin_grant_study_pack_entitlement', { p_profile_id: profRes.data.id, p_pack_id: packId }).then(function (res) {
+          grantBtn.disabled = false;
+          grantBtn.textContent = 'Grant Access';
+          if (res.error) { errorEl.textContent = res.error.message; errorEl.classList.add('show'); return; }
+          input.value = '';
+          toast('Access granted to ' + (profRes.data.full_name || profRes.data.email) + '.');
+          loadAdminStudyPackEntitlements(packId);
+          loadAdminStudyPacksPanel();
+        });
+      });
+    });
+
+    el.querySelectorAll('[data-sp-admin-revoke]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (!window.confirm('Revoke this student\'s access to this Study Pack?')) return;
+        btn.disabled = true;
+        apexSupabase.rpc('admin_revoke_study_pack_entitlement', { p_entitlement_id: btn.dataset.spAdminRevoke }).then(function (res) {
+          if (res.error) { toast('Could not revoke: ' + res.error.message); btn.disabled = false; return; }
+          toast('Access revoked.');
+          loadAdminStudyPackEntitlements(packId);
+          loadAdminStudyPacksPanel();
         });
       });
     });
@@ -7396,5 +7592,582 @@
       // this point, so this is the real first execution, not a duplicate.
       showSection((window.location.hash || '#dashboard').replace('#', ''));
     });
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     STUDY PACKS -- generic engine (Airspace Mastery is Pack #1)
+
+     Content (lessons/scenarios/checkride_corner/mastery_check/
+     quick_reference) is entirely data-driven from study_pack_versions.
+     content, fetched per-pack from get-study-pack-content (server-side
+     entitlement check -- see supabase-portal-schema-v99.sql). Nothing
+     here is Airspace-specific; a future pack works through the exact
+     same renderers as long as its content JSON matches this shape.
+
+     Known limitation (documented, not a security gap): Mastery Check
+     grading is computed client-side and submitted as a score/total pair
+     -- submit_study_pack_attempt() trusts that score rather than
+     re-deriving it server-side from correct_option. This differs from
+     the paid-content boundary itself (which IS strictly server-
+     enforced, see get-study-pack-content) -- an owner who already has
+     the full content JSON (including every correct_option) could in
+     principle fabricate a passing score for their own completion
+     certificate. Accepted for V1 because the certificate is not itself
+     a security or payment boundary; flagged here for anyone extending
+     this later with a real per-question server-side grading pass.
+     ══════════════════════════════════════════════════════════════ */
+  var studyPacksState = {
+    packId: null,
+    content: null,
+    lessonProgress: {},
+    scenarioProgress: {},
+    attempts: [],
+    masteryOrder: null,
+    masteryAnswers: {}
+  };
+
+  var SP_LESSON_SECTION_LABELS = {
+    what_is_it: 'What Is It?',
+    why_it_matters: 'Why It Matters',
+    flight_operations: 'How It Affects Flight Operations',
+    adm_legal_vs_wise: 'Legal vs. Wise',
+    checkride_connection: 'How This Could Appear on Your Checkride',
+    safety_connection: 'Safety Connection'
+  };
+  // portal_presentation_guidance is deliberately NOT in this list --
+  // it's internal content-team direction for how to build this exact
+  // renderer, never student-facing copy.
+
+  function spEscape(s) { return escapeHtmlSafe(s); }
+
+  function spParagraphs(arr) {
+    return (arr || []).map(function (p) { return '<p style="color:rgba(255,255,255,0.65);font-size:14px;line-height:1.7;margin-bottom:10px">' + spEscape(p).replace(/\n\n/g, '</p><p style="color:rgba(255,255,255,0.65);font-size:14px;line-height:1.7;margin-bottom:10px">') + '</p>'; }).join('');
+  }
+
+  function loadStudyPacksCatalog() {
+    var root = document.getElementById('studyPacksRoot');
+    if (!root) return;
+    root.innerHTML = '<p style="color:rgba(255,255,255,0.4)">Loading Study Packs…</p>';
+    if (window.apexTrack) apexTrack('study_pack_sales_page_view', { profile_id: member.id, surface: 'portal_catalog' });
+    Promise.all([
+      apexSupabase.from('study_packs').select('id, name, subtitle, price_cents, estimated_minutes_min, estimated_minutes_max').eq('active', true).order('sort_order'),
+      apexSupabase.rpc('get_my_study_packs')
+    ]).then(function (results) {
+      var packs = (results[0] && results[0].data) || [];
+      var owned = {};
+      ((results[1] && results[1].data) || []).forEach(function (o) { owned[o.pack_id] = o; });
+      renderStudyPacksCatalog(packs, owned);
+    });
+  }
+
+  function renderStudyPacksCatalog(packs, owned) {
+    var root = document.getElementById('studyPacksRoot');
+    if (!packs.length) {
+      root.innerHTML = '<div class="portal-header"><div class="portal-header__eyebrow">Study Packs</div><h1>Nothing available yet</h1><p>Check back soon -- new standalone study packs are on the way.</p></div>';
+      return;
+    }
+    var cardsHtml = packs.map(function (p) {
+      var ownedRow = owned[p.id];
+      var priceText = '$' + (p.price_cents / 100).toFixed(0);
+      var timeText = (p.estimated_minutes_min && p.estimated_minutes_max) ? (p.estimated_minutes_min + '–' + p.estimated_minutes_max + ' min' ) : '';
+      if (ownedRow) {
+        var pct = ownedRow.lessons_total > 0 ? Math.round((ownedRow.lessons_completed / ownedRow.lessons_total) * 100) : 0;
+        return '<div class="portal-card" style="margin-bottom:16px">' +
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">' +
+            '<div>' +
+              '<h3 style="color:#fff;font-size:17px;font-weight:800;margin-bottom:4px">' + spEscape(p.name) + '</h3>' +
+              '<p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:10px">' + spEscape(p.subtitle || '') + '</p>' +
+            '</div>' +
+            (ownedRow.mastery_passed ? '<span style="background:rgba(74,222,128,0.15);color:#4ade80;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;padding:4px 10px;border-radius:100px;white-space:nowrap">Completed</span>' : '') +
+          '</div>' +
+          '<div style="height:6px;border-radius:100px;background:rgba(255,255,255,0.08);overflow:hidden;margin-bottom:6px"><div style="height:100%;border-radius:100px;background:#F4B400;width:' + pct + '%"></div></div>' +
+          '<p style="color:rgba(255,255,255,0.4);font-size:12.5px;margin-bottom:16px">' + ownedRow.lessons_completed + ' / ' + ownedRow.lessons_total + ' lessons complete</p>' +
+          '<button type="button" class="btn btn--primary" data-sp-open="' + p.id + '">' + (pct > 0 ? 'Continue' : 'Start') + '</button>' +
+        '</div>';
+      }
+      return '<div class="portal-card" style="margin-bottom:16px">' +
+        '<h3 style="color:#fff;font-size:17px;font-weight:800;margin-bottom:4px">' + spEscape(p.name) + '</h3>' +
+        '<p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:10px">' + spEscape(p.subtitle || '') + '</p>' +
+        (timeText ? '<p style="color:rgba(255,255,255,0.35);font-size:12px;margin-bottom:14px">' + timeText + ' · Lifetime access</p>' : '') +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">' +
+          '<span style="color:#F4B400;font-size:22px;font-weight:800">' + priceText + '</span>' +
+          '<button type="button" class="btn btn--primary" data-sp-unlock="' + p.id + '">Unlock — ' + priceText + '</button>' +
+        '</div>' +
+        '<p class="portal-modal__error" data-sp-error="' + p.id + '"></p>' +
+      '</div>';
+    }).join('');
+
+    root.innerHTML =
+      '<div class="portal-header"><div class="portal-header__eyebrow">Study Packs</div><h1>Standalone Study Packs</h1><p>Focused, lifetime-access study packs on a single topic -- lessons, a Scenario Lab, Checkride Corner, and a Mastery Check with a completion certificate.</p></div>' +
+      cardsHtml;
+
+    root.querySelectorAll('[data-sp-open]').forEach(function (btn) {
+      btn.addEventListener('click', function () { openStudyPack(btn.dataset.spOpen); });
+    });
+    root.querySelectorAll('[data-sp-unlock]').forEach(function (btn) {
+      btn.addEventListener('click', function () { unlockStudyPack(btn.dataset.spUnlock, btn); });
+    });
+  }
+
+  function unlockStudyPack(packId, btnEl) {
+    var errorEl = document.querySelector('[data-sp-error="' + packId + '"]');
+    if (errorEl) { errorEl.textContent = ''; errorEl.classList.remove('show'); }
+    if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Redirecting to secure checkout…'; }
+    if (window.apexTrack) apexTrack('study_pack_checkout_started', { profile_id: member.id, pack_id: packId });
+    apexSupabase.functions.invoke('create-checkout-session', {
+      body: { purpose: 'unlock-study-pack', packId: packId, origin: window.location.origin, utm: window.apexGetUtm ? apexGetUtm() : undefined },
+      headers: { Authorization: 'Bearer ' + accessToken }
+    }).then(function (res) {
+      if (res.error || !res.data || !res.data.url) {
+        return extractInvokeError(res).then(function (msg) {
+          if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Unlock Now'; }
+          if (errorEl) { errorEl.textContent = msg; errorEl.classList.add('show'); }
+        });
+      }
+      if (window.apexTrackStandard) apexTrackStandard('InitiateCheckout', { content_name: 'Apex Advantage Study Pack' });
+      window.location.href = res.data.url;
+    }).catch(function () {
+      if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Unlock Now'; }
+      if (errorEl) { errorEl.textContent = 'Could not start checkout. Please try again.'; errorEl.classList.add('show'); }
+    });
+  }
+
+  function openStudyPack(packId) {
+    var root = document.getElementById('studyPacksRoot');
+    root.innerHTML = '<p style="color:rgba(255,255,255,0.4)">Loading…</p>';
+    Promise.all([
+      apexSupabase.functions.invoke('get-study-pack-content', { body: { pack_id: packId }, headers: { Authorization: 'Bearer ' + accessToken } }),
+      apexSupabase.from('study_pack_lesson_progress').select('lesson_id, completed').eq('pack_id', packId),
+      apexSupabase.from('study_pack_scenario_progress').select('scenario_id, student_commitment, revealed_at, self_rating').eq('pack_id', packId),
+      apexSupabase.from('study_pack_attempts').select('attempt_type, lesson_id, score, total, passed, completed_at').eq('pack_id', packId).order('completed_at', { ascending: false })
+    ]).then(function (results) {
+      var contentRes = results[0];
+      if (contentRes.error || !contentRes.data || !contentRes.data.content) {
+        root.innerHTML = '<p style="color:#f87171">This Study Pack is not unlocked on this account, or could not be loaded. <a href="#" data-goto="study-packs" style="color:var(--gold)">Back to Study Packs</a></p>';
+        root.querySelectorAll('[data-goto]').forEach(function (el) { el.addEventListener('click', function (e) { e.preventDefault(); showSection('study-packs'); }); });
+        return;
+      }
+      studyPacksState.packId = packId;
+      studyPacksState.content = contentRes.data.content;
+      studyPacksState.lessonProgress = {};
+      (results[1].data || []).forEach(function (r) { studyPacksState.lessonProgress[r.lesson_id] = r; });
+      studyPacksState.scenarioProgress = {};
+      (results[2].data || []).forEach(function (r) { studyPacksState.scenarioProgress[r.scenario_id] = r; });
+      studyPacksState.attempts = results[3].data || [];
+      if (window.apexTrack) apexTrack('study_pack_opened', { profile_id: member.id, pack_id: packId });
+      renderStudyPackHome();
+    });
+  }
+
+  function spLessonUnlocked(index) {
+    var lessons = studyPacksState.content.lessons;
+    if (index === 0) return true;
+    var prev = lessons[index - 1];
+    var prog = studyPacksState.lessonProgress[prev.id];
+    return !!(prog && prog.completed);
+  }
+
+  function spMasteryPassed() {
+    return studyPacksState.attempts.some(function (a) { return a.attempt_type === 'mastery_check' && a.passed; });
+  }
+
+  function renderStudyPackHome() {
+    var content = studyPacksState.content;
+    var lessons = content.lessons || [];
+    var completedCount = lessons.filter(function (l) { return studyPacksState.lessonProgress[l.id] && studyPacksState.lessonProgress[l.id].completed; }).length;
+    var scenariosDone = (content.scenarios || []).filter(function (s) { return studyPacksState.scenarioProgress[s.id] && studyPacksState.scenarioProgress[s.id].self_rating; }).length;
+    var masteryPassed = spMasteryPassed();
+    var lastMastery = studyPacksState.attempts.filter(function (a) { return a.attempt_type === 'mastery_check'; })[0];
+
+    var lessonRows = lessons.map(function (l, i) {
+      var unlocked = spLessonUnlocked(i);
+      var done = studyPacksState.lessonProgress[l.id] && studyPacksState.lessonProgress[l.id].completed;
+      return '<button type="button" class="btn btn--ghost" data-sp-lesson="' + i + '" ' + (unlocked ? '' : 'disabled') + ' style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:12px 16px' + (unlocked ? '' : ';opacity:0.45') + '">' +
+        '<span>' + (i + 1) + '. ' + spEscape(l.title) + '</span>' +
+        '<span style="font-size:12px;color:' + (done ? '#4ade80' : 'rgba(255,255,255,0.4)') + '">' + (done ? '✓ Complete' : (unlocked ? l.estimated_time : 'Locked')) + '</span>' +
+      '</button>';
+    }).join('');
+
+    var root = document.getElementById('studyPacksRoot');
+    root.innerHTML =
+      '<button type="button" class="btn btn--ghost" data-sp-back style="margin-bottom:16px">← All Study Packs</button>' +
+      '<div class="portal-header"><div class="portal-header__eyebrow">' + spEscape(content.product.brand || 'Apex Advantage') + '</div><h1>' + spEscape(content.product.name) + '</h1><p>' + spEscape(content.product.primary_promise || '') + '</p></div>' +
+      (masteryPassed ? '<div class="portal-card" style="margin-bottom:20px;border-color:rgba(74,222,128,0.35);background:rgba(74,222,128,0.06)"><h3 style="color:#4ade80;font-size:16px;font-weight:800;margin-bottom:4px">✓ Completed — ' + lastMastery.score + '/' + lastMastery.total + ' on the Mastery Check</h3><p style="color:rgba(255,255,255,0.55);font-size:13px;margin:0">You can keep revisiting lessons, the Scenario Lab, and the Quick Reference any time before your checkride.</p></div>' : '') +
+      '<div class="portal-card" style="margin-bottom:20px">' +
+        '<h3 style="color:#fff;font-size:16px;font-weight:800;margin-bottom:12px">Lessons</h3>' +
+        lessonRows +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">' +
+        '<button type="button" class="btn btn--ghost" data-sp-nav="scenario-lab" style="text-align:left;padding:16px">Scenario Lab<br><span style="font-size:12px;color:rgba(255,255,255,0.4)">' + scenariosDone + ' / ' + (content.scenarios || []).length + ' rated</span></button>' +
+        '<button type="button" class="btn btn--ghost" data-sp-nav="checkride-corner" style="text-align:left;padding:16px">Checkride Corner<br><span style="font-size:12px;color:rgba(255,255,255,0.4)">' + (content.checkride_corner || []).length + ' DPE-style questions</span></button>' +
+        '<button type="button" class="btn btn--ghost" data-sp-nav="mastery-check" style="text-align:left;padding:16px">Mastery Check<br><span style="font-size:12px;color:rgba(255,255,255,0.4)">' + (masteryPassed ? 'Passed — retake any time' : ((content.mastery_check.questions || []).length + ' questions, ' + content.mastery_check.passing_percent + '% to pass')) + '</span></button>' +
+        '<button type="button" class="btn btn--ghost" data-sp-nav="quick-reference" style="text-align:left;padding:16px">Quick Reference<br><span style="font-size:12px;color:rgba(255,255,255,0.4)">Available any time</span></button>' +
+      '</div>';
+
+    root.querySelector('[data-sp-back]').addEventListener('click', function () { studyPacksState.packId = null; loadStudyPacksCatalog(); });
+    root.querySelectorAll('[data-sp-lesson]').forEach(function (btn) {
+      btn.addEventListener('click', function () { renderStudyPackLesson(parseInt(btn.dataset.spLesson, 10)); });
+    });
+    root.querySelectorAll('[data-sp-nav]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var view = btn.dataset.spNav;
+        if (view === 'scenario-lab') renderStudyPackScenarioLab();
+        else if (view === 'checkride-corner') renderStudyPackCheckrideCorner();
+        else if (view === 'mastery-check') renderStudyPackMasteryIntro();
+        else if (view === 'quick-reference') renderStudyPackQuickReference();
+      });
+    });
+  }
+
+  function renderStudyPackLesson(index) {
+    var content = studyPacksState.content;
+    var lesson = content.lessons[index];
+    if (!lesson || !spLessonUnlocked(index)) { renderStudyPackHome(); return; }
+
+    apexSupabase.rpc('upsert_study_pack_lesson_progress', { p_pack_id: studyPacksState.packId, p_lesson_id: lesson.id, p_completed: false }).catch(function () {});
+    if (window.apexTrack) apexTrack('study_pack_lesson_started', { profile_id: member.id, pack_id: studyPacksState.packId, lesson_id: lesson.id });
+
+    var sectionsHtml = Object.keys(SP_LESSON_SECTION_LABELS).map(function (key) {
+      var arr = lesson.sections && lesson.sections[key];
+      if (!arr || !arr.length) return '';
+      return '<div style="margin-bottom:20px"><h4 style="color:#F4B400;font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px">' + SP_LESSON_SECTION_LABELS[key] + '</h4>' + spParagraphs(arr) + '</div>';
+    }).join('');
+
+    var kcHtml = (lesson.knowledge_check || []).map(function (q, qi) {
+      return '<div class="portal-card" style="margin-bottom:12px">' +
+        '<p style="color:#fff;font-size:14px;font-weight:600;margin-bottom:10px">' + (qi + 1) + '. ' + spEscape(q.question) + '</p>' +
+        '<button type="button" class="btn btn--ghost" data-sp-kc-reveal="' + qi + '" style="margin-bottom:10px">Reveal Answer</button>' +
+        '<div data-sp-kc-answer="' + qi + '" hidden>' +
+          '<p style="color:#4ade80;font-size:13.5px;margin-bottom:6px"><strong>Answer:</strong> ' + spEscape(q.correct_answer) + '</p>' +
+          '<p style="color:rgba(255,255,255,0.6);font-size:13px;margin-bottom:6px">' + spEscape(q.explanation) + '</p>' +
+          (q.common_mistake ? '<p style="color:#f87171;font-size:12.5px;margin:0"><strong>Common mistake:</strong> ' + spEscape(q.common_mistake) + '</p>' : '') +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    var alreadyDone = studyPacksState.lessonProgress[lesson.id] && studyPacksState.lessonProgress[lesson.id].completed;
+
+    var root = document.getElementById('studyPacksRoot');
+    root.innerHTML =
+      '<button type="button" class="btn btn--ghost" data-sp-back-home style="margin-bottom:16px">← ' + spEscape(content.product.name) + '</button>' +
+      '<div class="portal-header"><div class="portal-header__eyebrow">Lesson ' + lesson.lesson_number + ' of ' + content.lessons.length + '</div><h1>' + spEscape(lesson.title) + '</h1></div>' +
+      sectionsHtml +
+      '<h3 style="color:#fff;font-size:16px;font-weight:800;margin:24px 0 12px">Knowledge Check</h3>' +
+      kcHtml +
+      (alreadyDone
+        ? '<div style="display:flex;gap:12px"><span style="color:#4ade80;font-size:13px;font-weight:700;padding:12px 0">✓ Already completed</span>' + (index < content.lessons.length - 1 ? '<button type="button" class="btn btn--primary" data-sp-next-lesson>Next Lesson →</button>' : '<button type="button" class="btn btn--primary" data-sp-back-home-2>Back to ' + spEscape(content.product.name) + '</button>') + '</div>'
+        : '<button type="button" class="btn btn--primary" id="spMarkLessonComplete">I\'ve Reviewed These — Mark Lesson Complete</button>');
+
+    root.querySelectorAll('[data-sp-back-home], [data-sp-back-home-2]').forEach(function (b) { b.addEventListener('click', renderStudyPackHome); });
+    root.querySelectorAll('[data-sp-kc-reveal]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var i = btn.dataset.spKcReveal;
+        document.querySelector('[data-sp-kc-answer="' + i + '"]').hidden = false;
+        btn.hidden = true;
+      });
+    });
+    var nextBtn = root.querySelector('[data-sp-next-lesson]');
+    if (nextBtn) nextBtn.addEventListener('click', function () { renderStudyPackLesson(index + 1); });
+    var markBtn = document.getElementById('spMarkLessonComplete');
+    if (markBtn) {
+      markBtn.addEventListener('click', function () {
+        markBtn.disabled = true;
+        markBtn.textContent = 'Saving…';
+        var kcCount = (lesson.knowledge_check || []).length;
+        apexSupabase.rpc('submit_study_pack_attempt', {
+          p_pack_id: studyPacksState.packId,
+          p_attempt_type: 'knowledge_check',
+          p_lesson_id: lesson.id,
+          p_question_ids: (lesson.knowledge_check || []).map(function (q) { return q.id; }),
+          p_answers: {},
+          p_score: kcCount,
+          p_total: kcCount,
+          p_started_at: new Date().toISOString()
+        }).then(function (res) {
+          if (res.error) {
+            markBtn.disabled = false;
+            markBtn.textContent = "I've Reviewed These — Mark Lesson Complete";
+            return;
+          }
+          studyPacksState.lessonProgress[lesson.id] = { lesson_id: lesson.id, completed: true };
+          if (window.apexTrack) {
+            apexTrack('study_pack_knowledge_check_completed', { profile_id: member.id, pack_id: studyPacksState.packId, lesson_id: lesson.id });
+            apexTrack('study_pack_lesson_completed', { profile_id: member.id, pack_id: studyPacksState.packId, lesson_id: lesson.id });
+          }
+          if (index < content.lessons.length - 1) renderStudyPackLesson(index + 1);
+          else renderStudyPackHome();
+        });
+      });
+    }
+  }
+
+  function renderStudyPackScenarioLab() {
+    var content = studyPacksState.content;
+    var rows = (content.scenarios || []).map(function (s, i) {
+      var prog = studyPacksState.scenarioProgress[s.id];
+      var status = prog && prog.self_rating ? (prog.self_rating === 'confident' ? '✓ Confident' : '↻ Needs Review') : 'Not started';
+      var statusColor = prog && prog.self_rating ? (prog.self_rating === 'confident' ? '#4ade80' : '#F4B400') : 'rgba(255,255,255,0.4)';
+      return '<button type="button" class="btn btn--ghost" data-sp-scenario="' + i + '" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:12px 16px">' +
+        '<span>Scenario ' + s.scenario_number + ': ' + spEscape(s.title) + '</span>' +
+        '<span style="font-size:12px;color:' + statusColor + '">' + status + '</span>' +
+      '</button>';
+    }).join('');
+    var root = document.getElementById('studyPacksRoot');
+    root.innerHTML =
+      '<button type="button" class="btn btn--ghost" data-sp-back-home style="margin-bottom:16px">← ' + spEscape(content.product.name) + '</button>' +
+      '<div class="portal-header"><div class="portal-header__eyebrow">Scenario Lab</div><h1>Apply what you\'ve learned</h1><p>Write your own plan before revealing the discussion -- that\'s what makes this useful, not just reading the answer first.</p></div>' +
+      rows;
+    root.querySelector('[data-sp-back-home]').addEventListener('click', renderStudyPackHome);
+    root.querySelectorAll('[data-sp-scenario]').forEach(function (btn) {
+      btn.addEventListener('click', function () { renderStudyPackScenarioDetail(parseInt(btn.dataset.spScenario, 10)); });
+    });
+  }
+
+  function renderStudyPackScenarioDetail(index) {
+    var content = studyPacksState.content;
+    var scenario = content.scenarios[index];
+    var prog = studyPacksState.scenarioProgress[scenario.id];
+    var revealed = !!(prog && prog.revealed_at);
+
+    var root = document.getElementById('studyPacksRoot');
+    root.innerHTML =
+      '<button type="button" class="btn btn--ghost" data-sp-back-lab style="margin-bottom:16px">← Scenario Lab</button>' +
+      '<div class="portal-header"><div class="portal-header__eyebrow">Scenario ' + scenario.scenario_number + '</div><h1>' + spEscape(scenario.title) + '</h1></div>' +
+      '<div class="portal-card" style="margin-bottom:16px"><h4 style="color:#F4B400;font-size:12.5px;font-weight:800;text-transform:uppercase;margin-bottom:8px">Situation</h4><p style="color:rgba(255,255,255,0.65);font-size:14px;line-height:1.7">' + spEscape(scenario.situation) + '</p></div>' +
+      '<div class="portal-card" style="margin-bottom:16px"><h4 style="color:#F4B400;font-size:12.5px;font-weight:800;text-transform:uppercase;margin-bottom:8px">Decision Point</h4><p style="color:rgba(255,255,255,0.65);font-size:14px;line-height:1.7">' + spEscape(scenario.decision_point) + '</p></div>' +
+      '<div class="portal-card" style="margin-bottom:16px">' +
+        '<h4 style="color:#F4B400;font-size:12.5px;font-weight:800;text-transform:uppercase;margin-bottom:8px">Your Commitment</h4>' +
+        '<p style="color:rgba(255,255,255,0.5);font-size:12.5px;margin-bottom:10px">' + spEscape(scenario.student_commitment_prompt) + '</p>' +
+        '<textarea id="spScenarioCommitment" rows="5" style="width:100%;background:#0d1e35;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;padding:12px;font-size:14px" ' + (revealed ? 'readonly' : '') + '>' + spEscape((prog && prog.student_commitment) || '') + '</textarea>' +
+        (revealed ? '' : '<button type="button" class="btn btn--primary" id="spRevealScenarioBtn" style="margin-top:12px">Reveal Discussion</button>') +
+      '</div>' +
+      '<div id="spScenarioReveal"' + (revealed ? '' : ' hidden') + '>' +
+        '<div class="portal-card" style="margin-bottom:16px"><h4 style="color:#F4B400;font-size:12.5px;font-weight:800;text-transform:uppercase;margin-bottom:8px">Discussion</h4><p style="color:rgba(255,255,255,0.65);font-size:14px;line-height:1.7">' + spEscape(scenario.reveal_discussion) + '</p></div>' +
+        '<div class="portal-card" style="margin-bottom:16px"><h4 style="color:#F4B400;font-size:12.5px;font-weight:800;text-transform:uppercase;margin-bottom:8px">Recommended Action</h4><p style="color:rgba(255,255,255,0.65);font-size:14px;line-height:1.7">' + spEscape(scenario.recommended_action) + '</p></div>' +
+        '<div class="portal-card" style="margin-bottom:16px"><h4 style="color:#F4B400;font-size:12.5px;font-weight:800;text-transform:uppercase;margin-bottom:8px">Debrief</h4><p style="color:rgba(255,255,255,0.65);font-size:14px;line-height:1.7">' + spEscape(scenario.debrief) + '</p></div>' +
+        '<div class="portal-card">' +
+          '<h4 style="color:#F4B400;font-size:12.5px;font-weight:800;text-transform:uppercase;margin-bottom:10px">Self-Rating</h4>' +
+          '<div style="display:flex;gap:12px">' +
+            '<button type="button" class="btn ' + (prog && prog.self_rating === 'confident' ? 'btn--primary' : 'btn--ghost') + '" data-sp-rating="confident">Confident</button>' +
+            '<button type="button" class="btn ' + (prog && prog.self_rating === 'needs_review' ? 'btn--primary' : 'btn--ghost') + '" data-sp-rating="needs_review">Needs Review</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    root.querySelector('[data-sp-back-lab]').addEventListener('click', renderStudyPackScenarioLab);
+    var revealBtn = document.getElementById('spRevealScenarioBtn');
+    if (revealBtn) {
+      revealBtn.addEventListener('click', function () {
+        var commitment = document.getElementById('spScenarioCommitment').value.trim();
+        if (!commitment) { document.getElementById('spScenarioCommitment').focus(); return; }
+        revealBtn.disabled = true;
+        apexSupabase.rpc('submit_study_pack_scenario', {
+          p_pack_id: studyPacksState.packId, p_scenario_id: scenario.id, p_student_commitment: commitment, p_self_rating: null
+        }).then(function () {
+          studyPacksState.scenarioProgress[scenario.id] = { scenario_id: scenario.id, student_commitment: commitment, revealed_at: new Date().toISOString(), self_rating: null };
+          if (window.apexTrack) apexTrack('study_pack_scenario_submitted', { profile_id: member.id, pack_id: studyPacksState.packId, scenario_id: scenario.id });
+          document.getElementById('spScenarioCommitment').setAttribute('readonly', 'readonly');
+          document.getElementById('spScenarioReveal').hidden = false;
+          revealBtn.hidden = true;
+        });
+      });
+    }
+    root.querySelectorAll('[data-sp-rating]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var rating = btn.dataset.spRating;
+        apexSupabase.rpc('submit_study_pack_scenario', {
+          p_pack_id: studyPacksState.packId, p_scenario_id: scenario.id, p_student_commitment: (studyPacksState.scenarioProgress[scenario.id] || {}).student_commitment || '', p_self_rating: rating
+        }).then(function () {
+          studyPacksState.scenarioProgress[scenario.id] = studyPacksState.scenarioProgress[scenario.id] || { scenario_id: scenario.id };
+          studyPacksState.scenarioProgress[scenario.id].self_rating = rating;
+          renderStudyPackScenarioDetail(index);
+        });
+      });
+    });
+  }
+
+  function renderStudyPackCheckrideCorner() {
+    var content = studyPacksState.content;
+    var byDifficulty = {};
+    var order = [];
+    (content.checkride_corner || []).forEach(function (q) {
+      if (!byDifficulty[q.difficulty_label]) { byDifficulty[q.difficulty_label] = []; order.push(q.difficulty_label); }
+      byDifficulty[q.difficulty_label].push(q);
+    });
+    var html = order.map(function (label) {
+      var itemsHtml = byDifficulty[label].map(function (q, qi) {
+        var uid = label.replace(/\W/g, '') + qi;
+        return '<div class="portal-card" style="margin-bottom:12px">' +
+          '<p style="color:rgba(255,255,255,0.4);font-size:11px;font-weight:700;text-transform:uppercase;margin-bottom:6px">' + spEscape(q.topic) + '</p>' +
+          '<p style="color:#fff;font-size:14px;font-weight:600;margin-bottom:10px">' + spEscape(q.question) + '</p>' +
+          '<button type="button" class="btn btn--ghost" data-sp-cc-reveal="' + uid + '" style="margin-bottom:10px">Show Answer</button>' +
+          '<div data-sp-cc-answer="' + uid + '" hidden>' +
+            '<p style="color:#4ade80;font-size:13.5px;margin-bottom:8px">' + spEscape(q.model_answer) + '</p>' +
+            '<p style="color:#f87171;font-size:12.5px;margin-bottom:8px"><strong>Common mistake:</strong> ' + spEscape(q.common_student_mistake) + '</p>' +
+            (q.dpe_follow_up ? '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:4px"><strong>DPE follow-up:</strong> ' + spEscape(q.dpe_follow_up) + '</p>' : '') +
+            (q.strong_follow_up_answer ? '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin:0">' + spEscape(q.strong_follow_up_answer) + '</p>' : '') +
+          '</div>' +
+        '</div>';
+      }).join('');
+      return '<h3 style="color:#fff;font-size:15px;font-weight:800;margin:24px 0 12px">' + spEscape(label) + '</h3>' + itemsHtml;
+    }).join('');
+
+    var root = document.getElementById('studyPacksRoot');
+    root.innerHTML =
+      '<button type="button" class="btn btn--ghost" data-sp-back-home style="margin-bottom:16px">← ' + spEscape(content.product.name) + '</button>' +
+      '<div class="portal-header"><div class="portal-header__eyebrow">Checkride Corner</div><h1>DPE-style questions</h1><p>' + (content.checkride_corner || []).length + ' questions across four difficulty levels, with model answers, common mistakes, and DPE follow-ups.</p></div>' +
+      html;
+    root.querySelector('[data-sp-back-home]').addEventListener('click', renderStudyPackHome);
+    if (window.apexTrack) apexTrack('study_pack_checkride_corner_viewed', { profile_id: member.id, pack_id: studyPacksState.packId });
+    root.querySelectorAll('[data-sp-cc-reveal]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelector('[data-sp-cc-answer="' + btn.dataset.spCcReveal + '"]').hidden = false;
+        btn.hidden = true;
+      });
+    });
+  }
+
+  function renderStudyPackMasteryIntro() {
+    var content = studyPacksState.content;
+    var passed = spMasteryPassed();
+    var priorAttempts = studyPacksState.attempts.filter(function (a) { return a.attempt_type === 'mastery_check'; });
+    var root = document.getElementById('studyPacksRoot');
+    root.innerHTML =
+      '<button type="button" class="btn btn--ghost" data-sp-back-home style="margin-bottom:16px">← ' + spEscape(content.product.name) + '</button>' +
+      '<div class="portal-header"><div class="portal-header__eyebrow">Mastery Check</div><h1>' + (passed ? 'Passed!' : 'Ready when you are') + '</h1><p>' + content.mastery_check.questions.length + ' questions, randomized order, ' + content.mastery_check.passing_percent + '% to pass. Unlimited retakes.</p></div>' +
+      (priorAttempts.length ? '<div class="portal-card" style="margin-bottom:16px"><h4 style="color:#fff;font-size:14px;font-weight:700;margin-bottom:8px">Attempt History</h4>' + priorAttempts.slice(0, 5).map(function (a) { return '<p style="color:' + (a.passed ? '#4ade80' : 'rgba(255,255,255,0.5)') + ';font-size:13px;margin:0 0 4px">' + (a.passed ? '✓ Passed' : 'Not passed') + ' — ' + a.score + '/' + a.total + '</p>'; }).join('') + '</div>' : '') +
+      '<button type="button" class="btn btn--primary" id="spStartMastery">' + (priorAttempts.length ? 'Retake Mastery Check' : 'Start Mastery Check') + '</button>';
+    root.querySelector('[data-sp-back-home]').addEventListener('click', renderStudyPackHome);
+    document.getElementById('spStartMastery').addEventListener('click', renderStudyPackMasteryQuiz);
+  }
+
+  function spShuffle(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+    }
+    return a;
+  }
+
+  function renderStudyPackMasteryQuiz() {
+    var content = studyPacksState.content;
+    studyPacksState.masteryOrder = spShuffle(content.mastery_check.questions);
+    studyPacksState.masteryAnswers = {};
+    if (window.apexTrack) apexTrack('study_pack_mastery_attempted', { profile_id: member.id, pack_id: studyPacksState.packId });
+
+    var qHtml = studyPacksState.masteryOrder.map(function (q, qi) {
+      var optsHtml = q.options.map(function (opt) {
+        return '<label style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;cursor:pointer;color:rgba(255,255,255,0.75);font-size:13.5px">' +
+          '<input type="radio" name="spmc-' + qi + '" value="' + opt.key + '" style="margin-top:3px" />' +
+          '<span>' + spEscape(opt.text) + '</span>' +
+        '</label>';
+      }).join('');
+      return '<div class="portal-card" style="margin-bottom:12px" data-sp-mc-question="' + qi + '">' +
+        '<p style="color:#fff;font-size:14px;font-weight:600;margin-bottom:10px">' + (qi + 1) + '. ' + spEscape(q.question) + '</p>' +
+        optsHtml +
+      '</div>';
+    }).join('');
+
+    var root = document.getElementById('studyPacksRoot');
+    root.innerHTML =
+      '<div class="portal-header"><div class="portal-header__eyebrow">Mastery Check</div><h1>Answer all ' + studyPacksState.masteryOrder.length + ' questions</h1></div>' +
+      qHtml +
+      '<p id="spMasteryError" class="portal-modal__error"></p>' +
+      '<button type="button" class="btn btn--primary" id="spSubmitMastery">Submit Mastery Check</button>';
+
+    document.getElementById('spSubmitMastery').addEventListener('click', function () {
+      var answers = {};
+      var unanswered = 0;
+      studyPacksState.masteryOrder.forEach(function (q, qi) {
+        var checked = document.querySelector('input[name="spmc-' + qi + '"]:checked');
+        if (!checked) { unanswered++; return; }
+        answers[q.id] = checked.value;
+      });
+      var errorEl = document.getElementById('spMasteryError');
+      if (unanswered > 0) {
+        errorEl.textContent = 'Answer all questions before submitting (' + unanswered + ' remaining).';
+        errorEl.classList.add('show');
+        return;
+      }
+      var score = 0;
+      studyPacksState.masteryOrder.forEach(function (q) { if (answers[q.id] === q.correct_option) score++; });
+      var total = studyPacksState.masteryOrder.length;
+      this.disabled = true;
+      this.textContent = 'Submitting…';
+      apexSupabase.rpc('submit_study_pack_attempt', {
+        p_pack_id: studyPacksState.packId,
+        p_attempt_type: 'mastery_check',
+        p_lesson_id: null,
+        p_question_ids: studyPacksState.masteryOrder.map(function (q) { return q.id; }),
+        p_answers: answers,
+        p_score: score,
+        p_total: total,
+        p_started_at: new Date().toISOString()
+      }).then(function (res) {
+        if (res.error || !res.data || !res.data[0]) return;
+        var passed = res.data[0].passed;
+        studyPacksState.attempts.unshift({ attempt_type: 'mastery_check', score: score, total: total, passed: passed, completed_at: new Date().toISOString() });
+        if (window.apexTrack && passed) apexTrack('study_pack_mastery_passed', { profile_id: member.id, pack_id: studyPacksState.packId, score: score, total: total });
+        renderStudyPackMasteryResults(score, total, passed, answers);
+      });
+    });
+  }
+
+  function renderStudyPackMasteryResults(score, total, passed, answers) {
+    var content = studyPacksState.content;
+    var pct = Math.round((score / total) * 100);
+    var reviewHtml = studyPacksState.masteryOrder.map(function (q, qi) {
+      var yourKey = answers[q.id];
+      var correct = yourKey === q.correct_option;
+      var yourText = (q.options.filter(function (o) { return o.key === yourKey; })[0] || {}).text || '(no answer)';
+      var correctText = (q.options.filter(function (o) { return o.key === q.correct_option; })[0] || {}).text || '';
+      return '<div class="portal-card" style="margin-bottom:10px">' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:rgba(255,255,255,0.4);font-size:11.5px;font-weight:700;text-transform:uppercase">Question ' + (qi + 1) + '</span><span style="color:' + (correct ? '#4ade80' : '#f87171') + ';font-size:12px;font-weight:700">' + (correct ? '✓ Correct' : '✗ Incorrect') + '</span></div>' +
+        '<p style="color:#fff;font-size:13.5px;font-weight:600;margin-bottom:6px">' + spEscape(q.question) + '</p>' +
+        '<p style="color:rgba(255,255,255,0.6);font-size:13px;margin-bottom:4px">Your answer: ' + spEscape(yourText) + '</p>' +
+        (correct ? '' : '<p style="color:#4ade80;font-size:13px;margin-bottom:4px">Correct answer: ' + spEscape(correctText) + '</p>') +
+        '<p style="color:rgba(255,255,255,0.45);font-size:12.5px;margin:0">' + spEscape(q.explanation) + '</p>' +
+      '</div>';
+    }).join('');
+
+    var root = document.getElementById('studyPacksRoot');
+    root.innerHTML =
+      '<div class="portal-header"><div class="portal-header__eyebrow">Mastery Check Results</div><h1 style="color:' + (passed ? '#4ade80' : '#fff') + '">' + pct + '% — ' + (passed ? 'Passed' : 'Not Yet') + '</h1><p>' + score + ' of ' + total + ' correct (' + content.mastery_check.passing_percent + '% required).</p></div>' +
+      (passed
+        ? '<div class="portal-card" style="margin-bottom:20px;border-color:rgba(74,222,128,0.35);background:rgba(74,222,128,0.06)"><h3 style="color:#4ade80;font-size:16px;font-weight:800;margin-bottom:6px">Certificate of Completion</h3><p style="color:rgba(255,255,255,0.6);font-size:13.5px;margin-bottom:4px">' + spEscape(member.name) + ' — ' + spEscape(content.product.name) + '</p><p style="color:rgba(255,255,255,0.4);font-size:12.5px;margin:0">Completed ' + new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) + '</p></div>'
+        : '<button type="button" class="btn btn--primary" id="spRetakeMastery" style="margin-bottom:20px">Retake Mastery Check</button>') +
+      '<h3 style="color:#fff;font-size:15px;font-weight:800;margin-bottom:12px">Question by Question</h3>' +
+      reviewHtml +
+      '<button type="button" class="btn btn--ghost" data-sp-back-home style="margin-top:16px">← ' + spEscape(content.product.name) + '</button>';
+
+    root.querySelector('[data-sp-back-home]').addEventListener('click', renderStudyPackHome);
+    var retakeBtn = document.getElementById('spRetakeMastery');
+    if (retakeBtn) retakeBtn.addEventListener('click', renderStudyPackMasteryQuiz);
+  }
+
+  function renderStudyPackQuickReference() {
+    var content = studyPacksState.content;
+    var qr = content.quick_reference || { sections: [] };
+    var html = (qr.sections || []).map(function (sec) {
+      var tablesHtml = (sec.tables || []).map(function (t) {
+        if (!t.rows || !t.rows.length) return '';
+        var headerRow = t.rows[0];
+        var bodyRows = t.rows.slice(1);
+        return '<div style="overflow-x:auto;margin-bottom:16px"><table style="width:100%;border-collapse:collapse;font-size:12.5px">' +
+          '<thead><tr>' + headerRow.map(function (h) { return '<th style="text-align:left;padding:8px;border-bottom:2px solid rgba(255,255,255,0.15);color:#F4B400;white-space:nowrap">' + spEscape(h) + '</th>'; }).join('') + '</tr></thead>' +
+          '<tbody>' + bodyRows.map(function (row) { return '<tr>' + row.map(function (cell) { return '<td style="padding:8px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.7)">' + spEscape(cell) + '</td>'; }).join('') + '</tr>'; }).join('') +
+          '</tbody></table></div>';
+      }).join('');
+      return '<div class="portal-card" style="margin-bottom:16px"><h3 style="color:#fff;font-size:15px;font-weight:800;margin-bottom:12px">' + spEscape(sec.title) + '</h3>' + tablesHtml + spParagraphs(sec.paragraphs) + '</div>';
+    }).join('');
+
+    var root = document.getElementById('studyPacksRoot');
+    root.innerHTML =
+      '<button type="button" class="btn btn--ghost" data-sp-back-home style="margin-bottom:16px">← ' + spEscape(content.product.name) + '</button>' +
+      '<div class="portal-header"><div class="portal-header__eyebrow">Quick Reference</div><h1>Always available</h1></div>' +
+      html;
+    root.querySelector('[data-sp-back-home]').addEventListener('click', renderStudyPackHome);
+    if (window.apexTrack) apexTrack('study_pack_resource_downloaded', { profile_id: member.id, pack_id: studyPacksState.packId, resource: 'quick_reference' });
   }
 })();
