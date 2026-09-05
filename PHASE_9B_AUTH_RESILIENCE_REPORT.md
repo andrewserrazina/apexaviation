@@ -293,3 +293,212 @@ nothing at runtime); removing them entirely is also safe if ever desired.
    not fixed.
 
 PHASE 9B AUTH RESILIENCE FIX READY — AWAITING REVIEW
+
+---
+
+# Phase 9B.1 Addendum — Static Apex Advantage Portal (`site/portal-stable.js`)
+
+Source-controlled only. Not deployed. Applies the same recovery semantics
+approved in Phase 9B to the finding flagged in that report's section 11:
+the live, static "Apex Advantage" member portal has the identical
+unhandled-`getSession()`-error gap, using a separate Supabase client.
+
+## A.1 Root Cause
+
+`site/portal-stable.js`'s auth-guard bootstrap:
+
+```js
+var authReady = apexSupabase.auth.getSession().then(function (res) {
+  var session = res.data.session;
+  if (!session) {
+    // ... build loginUrl preserving dest/UTMs/registration context ...
+    window.location.href = loginUrl;
+    return Promise.reject('no-session');
+  }
+  ...
+```
+
+discarded `res.error` exactly like the React `AuthContext.jsx` did before
+Phase 9B. Same consequence: a stale/dead refresh token was never
+explicitly cleaned up client-side, so it kept re-attempting (and
+re-failing) against the Auth server on every subsequent page load /
+background refresh tick until a fresh password login overwrote it.
+
+## A.2 Files Changed
+
+- **`site/portal-stable.js`** — the auth-guard block (lines ~156–320)
+  refactored in place:
+  - The existing no-session → login-redirect logic (building `loginUrl`
+    from `?upgrade=checkride-prep`, `?registered=1` + its Ground School
+    fields, a `#hash`, and every `utm_*` param) was extracted verbatim,
+    unmodified, into a small local function,
+    `redirectToLoginPreservingContext()` — same logic, just given a name
+    so both the ordinary no-session path and the new stale-token recovery
+    path call the exact same code instead of duplicating it.
+  - Added `isStaleRefreshTokenError(error)`, a local reimplementation of
+    the exact same narrow classifier semantics already reviewed in
+    `portal/src/lib/authErrors.js` (same two documented codes, same
+    public `AuthApiError` shape check via `.name`/`.code`/`.message`).
+    Reimplemented rather than imported: this file is a classic non-module
+    browser script with no bundler, and introducing one solely to share
+    ~10 lines would be a larger architectural change than the fix itself
+    — consistent with "do not introduce a new framework or bundler merely
+    to share the helper."
+  - The `getSession().then(...)` callback now branches: `!session &&
+    isStaleRefreshTokenError(res.error)` → `signOut({ scope: 'local' })`
+    → `redirectToLoginPreservingContext()`; plain `!session` (which also
+    covers a transient/network error, since that isn't classified stale)
+    → `redirectToLoginPreservingContext()` directly, no `signOut` call.
+  - Nothing else in the file was touched. Entitlement logic, profile
+    loading, premium-content loading, the `onAuthStateChange` listener,
+    and the explicit sign-out button handlers are all unchanged.
+- **`portal/test/staticPortalAuth.test.js`** (new) — see A.5.
+
+## A.3 Exact Recovery Path
+
+```
+VALID SESSION             → existing bootstrap continues unchanged
+NO SESSION                → existing redirectToLoginPreservingContext()
+                             (same as today: dest/UTM/registration context
+                             preserved exactly as before)
+CONFIRMED STALE REFRESH    → signOut({ scope: 'local' })
+  TOKEN (recognized code)     → redirectToLoginPreservingContext()
+                             (identical redirect/context preservation as
+                             the ordinary no-session path — same function)
+                             no raw Supabase error shown, no retry loop
+TRANSIENT / NETWORK /      → NOT classified stale; no signOut call;
+  UNRELATED AUTH ERROR        falls through to the ordinary no-session
+                             redirect (existing safe behavior, unchanged)
+```
+
+`redirectToLoginPreservingContext()` is called from exactly two places,
+both producing the identical URL for identical input query
+params/hash — the recovery path never diverges from the existing
+behavior visitors already experience today for a plain logged-out visit.
+
+## A.4 Complete Static-Site Auth Audit
+
+Searched all of `site/portal*.js` and `site/portal*.html` for `getSession`,
+`getUser`, `refreshSession`, `signOut`, `onAuthStateChange`, `setSession`:
+
+| File | Location | Finding |
+|---|---|---|
+| `site/portal-stable.js` | auth-guard bootstrap (~line 159, now ~212) | **Fixed by this change** — the target. |
+| `site/portal-stable.js` | `apexSupabase.auth.onAuthStateChange(...)` (~line 332) | Redirects to login on `SIGNED_OUT`; receives no error, unaffected. |
+| `site/portal-stable.js` | `signOut()` (manual Sign Out button, ~line 458) and the account-deletion flow (~line 6543) | Explicit **user-initiated** actions (`.then()` with no `.catch()`), not a bootstrap path that silently swallows a session-load error. Out of this fix's scope — not touched, noted here per the audit requirement. |
+| `site/portal-login.html` | "Already signed in? Skip straight to the portal." (~line 507): `apexSupabase.auth.getSession().then(function (res) { if (res.data.session) window.location.href = portalDestUrl(); });` | **Also ignores `res.error`.** Its current behavior is already the safe fallback for a stale token by accident (`res.data.session` is `null`, so it just falls through to showing the normal login form — no `signOut` call exists here to make destructive either way), so there is no defect to fix, but it was **not** modified: the task named `site/portal-stable.js` specifically, and this is a different file. Flagged per "do not fix unrelated auth behavior without reporting it first." |
+| `site/portal-reset-password.html` | — | No matches for any of the six searched methods. |
+| `site/portal-signup-success.html` | — | No matches for any of the six searched methods. |
+| `site/portal.html` | Sign-out button element ids only (`signOutBtn`, `signOutBtn2`) | No Supabase auth calls directly in this file — the actual `signOut()` implementation lives in `portal-stable.js` (a separate `<script>` include), already covered above. |
+
+No other independently-erroring bootstrap path was found. No direct
+`localStorage` `sb-*-auth-token` manipulation exists anywhere in `site/`.
+
+## A.5 Tests Added and Results
+
+`site/` has no build tooling or test runner of its own (no `package.json`
+under `site/`). Rather than add one there, `portal/test/staticPortalAuth.test.js`
+(using the `vitest` already installed for Phase 9B) extracts the **real**
+auth-guard source directly out of `site/portal-stable.js` at test-run time
+(between two stable anchor strings) and executes that exact source in a
+sandboxed Node `vm` context with mocked `apexSupabase`/`window` globals —
+this tests the actual shipped code, not a hand-copied reimplementation
+that could silently drift from it. The handful of downstream functions the
+"session present" branch calls (`populateMember`, `loadPremiumContent`,
+etc. — defined ~8,000 lines away, deep in DOM-bound portal UI code) are
+stubbed by name as no-ops, since exercising them is out of scope for
+testing the auth-guard branching logic itself.
+
+| Test | Proves |
+|---|---|
+| A | Valid session continues the existing bootstrap; no `signOut` call |
+| B | Ordinary no-session → `portal-login.html` with no query params, unchanged |
+| C | `refresh_token_not_found` → exactly one `signOut({scope:'local'})`, then the login redirect, `getSession` called once (no retry loop) |
+| D | `refresh_token_already_used` → identical recovery behavior |
+| E | A transient `AuthRetryableFetchError` is NOT classified stale; no `signOut` call |
+| F | Stale recovery with `?upgrade=checkride-prep` → `dest=checkride-prep` preserved |
+| G | Stale recovery with `?registered=1&amount_cents=...&class_title=...` → all Ground School purchase fields preserved |
+| H | Stale recovery with `#dpe-library` → `dest=dpe-library` preserved |
+| I | UTM params survive stale recovery **identically** to the ordinary no-session path (asserted byte-for-byte equal against a side-by-side run of both) |
+
+```
+$ npx vitest run
+ Test Files  3 passed (3)
+      Tests  23 passed (23)
+```
+
+(14 from Phase 9B's React tests, re-run to confirm zero regression — no
+changes were made to `AuthContext.jsx`/`authErrors.js`, and their tests
+pass identically — plus 9 new tests above.)
+
+## A.6 Build / Static Validation
+
+`site/` has no build step (deployed as static files as-is). Validated
+instead with:
+
+```
+$ node --check site/portal-stable.js
+(no output -- valid syntax)
+$ npx oxlint site/portal-stable.js
+(5 pre-existing warnings, all unrelated to this change: an unused
+ function/variables at lines 3240, 4159, 5163, 6749, 7860 — none within
+ or near the edited auth-guard block at lines 156–320)
+```
+
+## A.7 Hosting-Origin Investigation
+
+Root `README.md` and `portal/README.md` confirm `site/` and `portal/` are
+**two separate Cloudflare Pages projects** ("Each folder deploys as its
+own Cloudflare Pages project"; `portal/README.md`: "This directory
+deploys independently as the portal Cloudflare Pages project").
+
+- **Static Apex Advantage portal origin:** `advantage.apexaviationtx.com`
+  (confirmed — canonical URLs in `site/portal.html`, `site/portal-login.html`).
+- **React portal origin:** not committed to the repository — no
+  `wrangler.toml`, custom-domain config, or CNAME exists under `portal/`
+  to read an exact hostname from. Custom domains for Cloudflare Pages are
+  configured in the Cloudflare dashboard, outside this repo.
+- **Same origin: NO.** This doesn't require knowing the React portal's
+  exact hostname: a Cloudflare Pages custom domain can be bound to only
+  **one** Pages project at a time — two separate Pages projects
+  structurally cannot be served from the identical hostname. Since
+  `site/` and `portal/` are confirmed separate Pages projects, whatever
+  hostname the React portal uses (a distinct custom subdomain, or its
+  default `*.pages.dev` host), it is necessarily a different origin from
+  `advantage.apexaviationtx.com`. This resolves the "competing for the
+  same persisted session" concern raised in Phase 9B section 6 as a
+  non-issue in practice: the two Supabase clients cannot share
+  `localStorage` via same-origin access regardless of which exact
+  subdomain the React app is on.
+
+## A.8 Deployment Plan
+
+Not deployed. When authorized: no build step, no new dependency, no
+infrastructure change — `site/` deploys the modified `portal-stable.js`
+file as-is, exactly like every other change to that directory.
+
+## A.9 Rollback Plan
+
+Pure revert of `site/portal-stable.js` to its pre-Phase-9B.1 content
+restores the exact prior behavior. No data migration, no persisted
+server-side state — this is a client-only static-file change.
+
+## A.10 Remaining Uncertainty
+
+1. **`site/portal-login.html`'s own `getSession().then(...)` call also
+   ignores `res.error`** (section A.4). Its current behavior happens to
+   already be safe for a stale token (no `signOut` call exists there to
+   make it destructive), so there's no defect, but it's structurally the
+   same unhandled-error pattern. Not fixed here since it's a different
+   file than the one named for this task — flagged for a decision on
+   whether to apply the same explicit classification there for
+   consistency/cleanliness, purely as a code-quality matter rather than a
+   bug fix.
+2. Whether the actual production `refresh_token_not_found` failures
+   originated from `site/portal-stable.js` (now fixed here) or from
+   `portal/src/context/AuthContext.jsx` (fixed in Phase 9B) — or both —
+   remains unconfirmed without access to request-level Auth log metadata
+   or client-side error tracking. Both are now fixed, source-controlled,
+   and awaiting deployment authorization.
+
+PHASE 9B.1 STATIC PORTAL AUTH FIX READY — AWAITING REVIEW
