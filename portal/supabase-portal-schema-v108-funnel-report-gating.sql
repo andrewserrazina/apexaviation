@@ -1,0 +1,61 @@
+-- Apex Advantage Sprint 0 Phase 2A -- 005_funnel_report_gating (v108)
+--
+-- Design decision and rationale (required before writing this migration
+-- per the Phase 2A approval):
+--
+-- public.funnel_report was created in supabase-portal-schema-v39.sql as a
+-- plain view over analytics_events, with this exact comment at creation:
+-- "admin-only via analytics_events' own RLS (views run with the querying
+-- role's permissions, not the owner's, by default)". That belief was
+-- incorrect for a plain view created without `security_invoker = true`:
+-- pre-PG15 (and still by default in PG15+), a view's underlying table
+-- reads are permission-checked as the VIEW OWNER, not the querying role.
+-- This view's owner is `postgres`, which carries rolbypassrls = true --
+-- so every query through this view has always silently bypassed
+-- analytics_events' "Admins can view analytics events" RLS policy,
+-- exposing aggregate event counts to anon and authenticated alike. Not a
+-- PII leak (the view only returns event_name/counts/first_seen/last_seen,
+-- no row-level PII), but a real unintended-exposure gap, and not what the
+-- original author intended.
+--
+-- Caller trace performed before choosing a fix: a full-repo grep for
+-- "funnel_report" found exactly one match -- the v39 migration that
+-- created it. No page in site/ or portal/src, no Edge Function, and no
+-- other SQL function currently selects from this view. The admin
+-- dashboard's actual funnel reporting already goes through the properly
+-- is_admin()-gated get_marketing_executive_funnel() / get_checkride_prep_funnel_stats()
+-- / get_ground_school_funnel_stats() / get_readiness_funnel_stats() /
+-- get_retention_kpis() / get_utm_campaign_performance() RPCs (all hardened
+-- for grant hygiene in 004 above) -- funnel_report is superseded, unused
+-- legacy surface, not a live dependency.
+--
+-- Chosen design: Approach A (security_invoker view + underlying RLS),
+-- the first-listed preferred option in the Phase 2A approval, because it
+-- is a one-line fix that restores the ORIGINAL intended behavior (using
+-- the PG17 feature built for exactly this footgun) rather than inventing
+-- a new RPC that would just duplicate get_marketing_executive_funnel.
+-- Approach B (revoke + wrap in an admin RPC) was rejected as unnecessary
+-- duplication given that equivalent, already-correct RPCs exist and this
+-- view has zero live callers to preserve.
+--
+-- Underlying analytics_events RLS is NOT weakened by this migration --
+-- if anything, this migration is what makes that RLS actually apply here
+-- for the first time.
+--
+-- Idempotent: ALTER VIEW ... SET / REVOKE / GRANT are all safe to re-run.
+--
+-- Rollback:
+--   alter view public.funnel_report reset (security_invoker);
+--   grant select on public.funnel_report to anon, authenticated;
+
+alter view public.funnel_report set (security_invoker = true);
+
+-- anon has no legitimate use for this view (it never had one -- this is
+-- analytics tooling for staff). authenticated keeps SELECT: with
+-- security_invoker now on, a non-admin authenticated caller gets zero
+-- rows (analytics_events' RLS only allows admins to read it), and an
+-- admin caller gets the real aggregate -- the same safe "RLS decides, not
+-- the grant" pattern already used correctly elsewhere in this codebase
+-- (e.g. get_member_capabilities).
+revoke all on public.funnel_report from anon, authenticated;
+grant select on public.funnel_report to authenticated;
