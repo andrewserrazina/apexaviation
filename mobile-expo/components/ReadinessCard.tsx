@@ -42,7 +42,12 @@ export function ReadinessCard({ overallScore, evidenceLevel, reasonCodes }: Read
     )
   }
 
-  const explanation = reasonCodes.map((code) => REASON_COPY[code]).find(Boolean)
+  // Rev2 section 4: render every recognized, distinct limitation the
+  // server reported, not just the first match. A single `.find(Boolean)`
+  // could silently hide insufficient_content_coverage whenever another
+  // known code happened to appear earlier in the array -- content/
+  // evidence limitations must never be silently hidden.
+  const explanations = [...new Set(reasonCodes.map((code) => REASON_COPY[code]).filter((copy): copy is string => Boolean(copy)))]
 
   return (
     <Card>
@@ -57,10 +62,14 @@ export function ReadinessCard({ overallScore, evidenceLevel, reasonCodes }: Read
           </AppText>
         </View>
       </View>
-      {explanation ? (
-        <AppText variant="caption" color={colors.mutedText}>
-          {explanation}
-        </AppText>
+      {explanations.length > 0 ? (
+        <View style={styles.explanationList}>
+          {explanations.map((explanation) => (
+            <AppText key={explanation} variant="caption" color={colors.mutedText}>
+              {explanation}
+            </AppText>
+          ))}
+        </View>
       ) : null}
     </Card>
   )
@@ -68,6 +77,7 @@ export function ReadinessCard({ overallScore, evidenceLevel, reasonCodes }: Read
 
 const styles = StyleSheet.create({
   scoreRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  explanationList: { gap: 2 },
   evidenceBadge: {
     backgroundColor: colors.goldSoft,
     borderRadius: 999,

@@ -7,6 +7,7 @@ import { Card } from '../../../components/Card'
 import { ProgressIndicator } from '../../../components/ProgressIndicator'
 import { RevealContent } from '../../../components/RevealContent'
 import { RatingButtons } from '../../../components/RatingButtons'
+import { ReadinessCard } from '../../../components/ReadinessCard'
 import { ErrorState, LoadingState, EmptyState } from '../../../components/StateViews'
 import { useDrillSession } from '../../../hooks/useDrillSession'
 import { usePostCompleteRefresh } from '../../../hooks/usePostCompleteRefresh'
@@ -123,25 +124,32 @@ function CompletionScreen({ score, total }: { score: number; total: number }) {
         <AppText variant="display" heading weight="bold" center>
           Drill Complete
         </AppText>
+        {/* Self-rated, not objectively graded -- "marked" says that
+            honestly rather than implying the system scored an oral
+            response (Sprint 1A Rev2 section 5). */}
         <AppText variant="subtitle" color={colors.mutedText} center>
-          {score} of {total} correct
+          You marked {score} of {total} correct
         </AppText>
 
         {loading ? (
           <LoadingState label="Updating your progress…" />
         ) : (
-          <Card>
+          <>
             {progress ? (
-              <AppText variant="body" center>
-                {progress.xp} XP • {progress.current_streak} day streak
-              </AppText>
+              <Card>
+                <AppText variant="body" center>
+                  {progress.xp} XP • {progress.current_streak} day streak
+                </AppText>
+              </Card>
             ) : null}
             {readiness ? (
-              <AppText variant="caption" color={colors.mutedText} center>
-                Readiness indicator updated -- {readiness.evidence_level} evidence
-              </AppText>
+              <ReadinessCard
+                overallScore={readiness.overall_score}
+                evidenceLevel={readiness.evidence_level}
+                reasonCodes={readiness.reason_codes}
+              />
             ) : null}
-          </Card>
+          </>
         )}
 
         <Button label="Back to Home" onPress={() => router.replace('/(app)')} />
