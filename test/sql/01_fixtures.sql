@@ -60,3 +60,34 @@ on conflict (profile_id, activity_date) do nothing;
 insert into public.portal_study_activity (profile_id, activity_date, seconds) values
   ('00000000-0000-0000-0000-000000000021', current_date - 2, 600)
 on conflict (profile_id, activity_date) do nothing;
+
+-- ---------------------------------------------------------------------
+-- Phase C (v112-v116) fixtures. Loaded here, BEFORE v112-v116 are applied
+-- by the test runner, because v112's ACS backfill is a one-time
+-- migration-apply-time computation over whatever dpe_questions rows
+-- exist at that moment -- these six rows are shaped to exercise every
+-- branch of its strict-shape regex deterministically:
+--   q1, q2 -- same (exam_type, area_code, task_code), same title ->
+--            resolve to ONE shared acs_tasks row (title-consistency path).
+--   q6     -- a second, distinct task (Area I, Task B) -> resolves to its
+--            own acs_tasks row, giving the harness 2 real tasks total.
+--   q3     -- contains "/" -> multi_task_reference_needs_human_disambiguation.
+--   q4     -- "Special Emphasis Area" prefix -> special_emphasis_area_no_single_task.
+--   q5     -- doesn't match the shape at all -> does_not_match_known_acs_reference_shape.
+-- ---------------------------------------------------------------------
+insert into public.profiles (id, email, full_name, role, checkride_prep_unlocked, timezone) values
+  ('00000000-0000-0000-0000-000000000030', 'mobilemember@test.local', 'Mobile Member', 'student', true, 'UTC'),
+  ('00000000-0000-0000-0000-000000000031', 'noentitlement@test.local', 'No Entitlement Member', 'student', false, 'UTC')
+on conflict (id) do nothing;
+
+insert into public.dpe_categories (id, label) values ('test_category', 'Test Category')
+on conflict (id) do nothing;
+
+insert into public.dpe_questions (id, category, question, model_answer, acs_reference, is_scenario, exam_type) values
+  ('q1', 'test_category', 'Q1?', 'A1', 'Area of Operation I, Task A — Certificates and Documents (PA.I.A.K1, PA.I.A.K2)', false, 'private_pilot'),
+  ('q2', 'test_category', 'Q2?', 'A2', 'Area of Operation I, Task A — Certificates and Documents (PA.I.A.K3)', false, 'private_pilot'),
+  ('q6', 'test_category', 'Q6?', 'A6', 'Area of Operation I, Task B — Airworthiness Requirements (PA.I.B.K1)', false, 'private_pilot'),
+  ('q3', 'test_category', 'Q3?', 'A3', 'Area of Operation I, Task A / Area of Operation I, Task B — Ambiguous (PA.I.A.K1)', false, 'private_pilot'),
+  ('q4', 'test_category', 'Q4?', 'A4', 'Special Emphasis Area: Aeronautical Decision-Making', false, 'private_pilot'),
+  ('q5', 'test_category', 'Q5?', 'A5', 'General knowledge of the airplane', false, 'private_pilot')
+on conflict (id) do nothing;

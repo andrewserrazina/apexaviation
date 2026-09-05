@@ -1074,3 +1074,36 @@ begin
   end loop;
 end;
 $function$;
+
+-- ---------------------------------------------------------------------
+-- Sprint 0 Phase C -- DPE question bank prerequisite (dpe_questions
+-- predates Phase C by many migrations, e.g. v5/v68; reproduced here only
+-- with the columns v112-v116 and the mobile-* Edge Functions actually
+-- read/write, RLS copied verbatim -- admin-SELECT-only, since the real
+-- read path for a non-admin caller is always a service-role Edge
+-- Function that bypasses RLS entirely, never a direct client query).
+-- ---------------------------------------------------------------------
+create table public.dpe_categories (
+  id text primary key,
+  label text not null
+);
+
+create table public.dpe_questions (
+  id text primary key,
+  category text not null references public.dpe_categories(id),
+  question text not null,
+  model_answer text not null,
+  common_mistakes text,
+  dpe_evaluating text,
+  acs_reference text,
+  real_world_application text,
+  is_scenario boolean not null default false,
+  scenario_order integer,
+  sort_order integer not null default 0,
+  exam_type text not null default 'private_pilot',
+  created_at timestamptz not null default now()
+);
+alter table public.dpe_questions enable row level security;
+create policy "Admins can view all DPE questions"
+  on public.dpe_questions for select
+  using (public.is_admin(auth.uid()));

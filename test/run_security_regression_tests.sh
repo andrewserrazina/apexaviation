@@ -141,6 +141,15 @@ echo "=== Applying v110 (Ground School RPC overload fix, Phase 2B) ==="
 echo "=== Applying v111 (mission/streak client lockout) ==="
 "${PSQL_BASE[@]}" -v ON_ERROR_STOP=1 -f portal/supabase-portal-schema-v111-mission-streak-client-lockout.sql >/tmp/apex_test_v111.log 2>&1 || { echo "V111 MIGRATION FAILED"; cat /tmp/apex_test_v111.log; exit 1; }
 
+echo "=== Applying v112-v116 (Phase C mobile backend primitives, source-controlled only) ==="
+for f in portal/supabase-portal-schema-v112-acs-normalization.sql \
+         portal/supabase-portal-schema-v113-task-evidence.sql \
+         portal/supabase-portal-schema-v114-readiness-snapshots.sql \
+         portal/supabase-portal-schema-v115-daily-drills.sql \
+         portal/supabase-portal-schema-v116-mobile-device-notification-model.sql; do
+  "${PSQL_BASE[@]}" -v ON_ERROR_STOP=1 -f "$f" >/tmp/apex_test_migration.log 2>&1 || { echo "MIGRATION FAILED: $f"; cat /tmp/apex_test_migration.log; exit 1; }
+done
+
 echo
 echo "########## 1. GROUND SCHOOL FORGERY (post-v110) ##########"
 expect_rows "confirm_scheduled_ground_class_enrollment(6-arg) no longer exists after v110" postgres "" \
@@ -365,6 +374,156 @@ expect_success "run_streak_maintenance is safe to run twice in a row (no duplica
   "select public.run_streak_maintenance();"
 expect_rows "a second run does not create a duplicate Recovery Sortie for the same missed day" postgres "" \
   "select count(*) from public.recovery_sorties where profile_id='$STREAK_MEMBER' and missed_date = current_date - 1;" "1"
+
+MOBILE_MEMBER=00000000-0000-0000-0000-000000000030
+NO_ENTITLEMENT_MEMBER=00000000-0000-0000-0000-000000000031
+
+echo
+echo "########## 16. ACS NORMALIZATION (Phase C1 / v112) ##########"
+expect_success "anyone (anon) can read acs_versions (reference data)" anon "" \
+  "select count(*) from public.acs_versions;"
+expect_success "anyone (anon) can read acs_tasks (reference data)" anon "" \
+  "select count(*) from public.acs_tasks;"
+expect_success "anyone (anon) can read content_acs_mappings (reference data)" anon "" \
+  "select count(*) from public.content_acs_mappings;"
+expect_denied "authenticated cannot INSERT into acs_versions directly" authenticated "$MOBILE_MEMBER" \
+  "insert into public.acs_versions (certificate_type, version_code) values ('commercial','forged');"
+expect_denied "authenticated cannot INSERT into acs_tasks directly" authenticated "$MOBILE_MEMBER" \
+  "insert into public.acs_tasks (acs_version_id, area_code, area_title, task_code, task_title) values ((select id from public.acs_versions limit 1),'Z','Forged','Z','Forged');"
+expect_denied "authenticated cannot INSERT into content_acs_mappings directly" authenticated "$MOBILE_MEMBER" \
+  "insert into public.content_acs_mappings (content_type, content_id, acs_task_id) values ('dpe_question','q1',(select id from public.acs_tasks limit 1));"
+expect_rows "backfill created exactly 2 acs_tasks for private_pilot (Area I Task A, Area I Task B)" postgres "" \
+  "select count(*) from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot';" "2"
+expect_rows "q1 and q2 (same area/task/title) resolve to the SAME acs_task_id (title-consistency path)" postgres "" \
+  "select (select acs_task_id from public.content_acs_mappings where content_id='q1') = (select acs_task_id from public.content_acs_mappings where content_id='q2');" "t"
+expect_rows "q6 (a distinct task) resolves to a DIFFERENT acs_task_id than q1" postgres "" \
+  "select (select acs_task_id from public.content_acs_mappings where content_id='q6') <> (select acs_task_id from public.content_acs_mappings where content_id='q1');" "t"
+expect_rows "q3 (multi-task '/') is unmapped and reported with the correct reason" postgres "" \
+  "select reason from public.acs_unresolved_mappings where content_id='q3';" "multi_task_reference_needs_human_disambiguation"
+expect_rows "q4 (Special Emphasis Area) is unmapped and reported with the correct reason" postgres "" \
+  "select reason from public.acs_unresolved_mappings where content_id='q4';" "special_emphasis_area_no_single_task"
+expect_rows "q5 (no recognizable shape) is unmapped and reported with the correct reason" postgres "" \
+  "select reason from public.acs_unresolved_mappings where content_id='q5';" "does_not_match_known_acs_reference_shape"
+expect_rows "q1/q2/q6 (resolved rows) do NOT appear in acs_unresolved_mappings" postgres "" \
+  "select count(*) from public.acs_unresolved_mappings where content_id in ('q1','q2','q6');" "0"
+expect_denied "authenticated has no SELECT on acs_unresolved_mappings (service_role-only report)" authenticated "$MOBILE_MEMBER" \
+  "select count(*) from public.acs_unresolved_mappings;"
+expect_success "service_role can read acs_unresolved_mappings" service_role "" \
+  "select count(*) from public.acs_unresolved_mappings;"
+
+echo
+echo "########## 17. TASK EVIDENCE (Phase C2 / v113) ##########"
+TASK_IA="(select t.id from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot' and t.area_code='I' and t.task_code='A')"
+expect_denied "anon direct RPC record_task_evidence -> denied" anon "" \
+  "select public.record_task_evidence('$MOBILE_MEMBER'::uuid, $TASK_IA, true);"
+expect_denied "authenticated direct RPC record_task_evidence -> denied (server-side-only write path)" authenticated "$MOBILE_MEMBER" \
+  "select public.record_task_evidence('$MOBILE_MEMBER'::uuid, $TASK_IA, true);"
+expect_success "service_role record_task_evidence succeeds (first correct attempt)" service_role "" \
+  "select public.record_task_evidence('$MOBILE_MEMBER'::uuid, $TASK_IA, true);"
+expect_rows "1 correct / 1 attempt -> evidence_score dampened by volume (0.2000, not 1.0)" postgres "" \
+  "select evidence_score from public.task_evidence where profile_id='$MOBILE_MEMBER' and acs_task_id=$TASK_IA;" "0.2000"
+run_sql service_role "" "select public.record_task_evidence('$MOBILE_MEMBER'::uuid, $TASK_IA, true);" >/dev/null
+run_sql service_role "" "select public.record_task_evidence('$MOBILE_MEMBER'::uuid, $TASK_IA, true);" >/dev/null
+run_sql service_role "" "select public.record_task_evidence('$MOBILE_MEMBER'::uuid, $TASK_IA, true);" >/dev/null
+expect_success "service_role record_task_evidence succeeds (5th attempt, saturating the volume dampener)" service_role "" \
+  "select public.record_task_evidence('$MOBILE_MEMBER'::uuid, $TASK_IA, true);"
+expect_rows "5 correct / 5 attempts -> evidence_score = 1.0000 (dampener fully saturated at 5+ attempts)" postgres "" \
+  "select evidence_score from public.task_evidence where profile_id='$MOBILE_MEMBER' and acs_task_id=$TASK_IA;" "1.0000"
+expect_rows "anon sees zero task_evidence rows (table-level SELECT is grant-default, RLS filters every row)" anon "" \
+  "select count(*) from public.task_evidence;" "0"
+expect_rows "member A cannot read Mobile Member's task evidence (owner-only SELECT)" authenticated "$MEMBER_A" \
+  "select count(*) from public.task_evidence where profile_id='$MOBILE_MEMBER';" "0"
+expect_success "Mobile Member can read their own task evidence" authenticated "$MOBILE_MEMBER" \
+  "select count(*) from public.task_evidence where profile_id='$MOBILE_MEMBER';"
+expect_denied "authenticated cannot directly UPDATE task_evidence (no write policy at all)" authenticated "$MOBILE_MEMBER" \
+  "update public.task_evidence set evidence_score=1.0 where profile_id='$MOBILE_MEMBER';"
+
+echo
+echo "########## 18. READINESS SNAPSHOTS (Phase C3 / v114) ##########"
+expect_denied "anon direct RPC compute_readiness_snapshot -> denied (not authenticated at all)" anon "" \
+  "select public.compute_readiness_snapshot();"
+expect_success "authenticated Mobile Member can compute their own readiness snapshot" authenticated "$MOBILE_MEMBER" \
+  "select public.compute_readiness_snapshot();"
+expect_rows "evidence_level is 'low' with only 5 total attempts (< 10)" postgres "" \
+  "select evidence_level from public.readiness_snapshots where profile_id='$MOBILE_MEMBER' order by created_at desc limit 1;" "low"
+expect_rows "reason_codes flags low_sample_size when evidence_level is low" postgres "" \
+  "select (reason_codes @> '[\"low_sample_size\"]'::jsonb)::text from public.readiness_snapshots where profile_id='$MOBILE_MEMBER' order by created_at desc limit 1;" "true"
+expect_rows "reason_codes flags confidence_calibration_not_yet_available (no real confidence data captured yet)" postgres "" \
+  "select (reason_codes @> '[\"confidence_calibration_not_yet_available\"]'::jsonb)::text from public.readiness_snapshots where profile_id='$MOBILE_MEMBER' order by created_at desc limit 1;" "true"
+expect_rows "confidence_score defaults to a neutral 50, never fabricated" postgres "" \
+  "select confidence_score from public.readiness_snapshots where profile_id='$MOBILE_MEMBER' order by created_at desc limit 1;" "50"
+expect_rows "overall_score computed as the documented weighted average (0.35/0.30/0.20/0.15), pre-dampening" postgres "" \
+  "select overall_score from public.readiness_snapshots where profile_id='$MOBILE_MEMBER' order by created_at desc limit 1;" "75.00"
+expect_rows "member A sees zero rows of Mobile Member's readiness snapshots" authenticated "$MEMBER_A" \
+  "select count(*) from public.readiness_snapshots where profile_id='$MOBILE_MEMBER';" "0"
+expect_denied "authenticated cannot directly INSERT into readiness_snapshots (only compute_readiness_snapshot() writes)" authenticated "$MOBILE_MEMBER" \
+  "insert into public.readiness_snapshots (profile_id, overall_score, coverage_score, knowledge_score, risk_management_score, confidence_score, evidence_level) values ('$MOBILE_MEMBER', 100, 100, 100, 100, 100, 'high');"
+
+echo "--- Single-session-swing guard ---"
+run_sql postgres "" \
+  "insert into public.readiness_snapshots (profile_id, algorithm_version, overall_score, coverage_score, knowledge_score, risk_management_score, confidence_score, evidence_level, weak_tasks, reason_codes, evidence_volume, created_at) values ('$MOBILE_MEMBER','v1',10.00,10,10,10,10,'low','[]','[]',100,now());" >/dev/null
+expect_success "recompute after seeding a fabricated prior snapshot (overall=10, evidence_volume=100) still succeeds" authenticated "$MOBILE_MEMBER" \
+  "select public.compute_readiness_snapshot();"
+expect_rows "a >15-point swing NOT backed by proportional new evidence (5 attempts vs. prior volume 100) is clamped to a 15-point move" postgres "" \
+  "select overall_score from public.readiness_snapshots where profile_id='$MOBILE_MEMBER' order by created_at desc limit 1;" "25.00"
+expect_rows "the clamp is recorded via reason_codes: score_change_dampened" postgres "" \
+  "select (reason_codes @> '[\"score_change_dampened\"]'::jsonb)::text from public.readiness_snapshots where profile_id='$MOBILE_MEMBER' order by created_at desc limit 1;" "true"
+
+echo
+echo "########## 19. DAILY DRILLS (Phase C4 / v115) ##########"
+expect_denied "anon direct RPC get_or_create_daily_drill -> denied" anon "" \
+  "select public.get_or_create_daily_drill();"
+expect_error_matching "non-entitled learner is rejected server-side (entitlement is never caller-supplied)" authenticated "$NO_ENTITLEMENT_MEMBER" \
+  "select public.get_or_create_daily_drill();" "not unlocked"
+expect_success "entitled Mobile Member can generate today's daily drill" authenticated "$MOBILE_MEMBER" \
+  "select public.get_or_create_daily_drill();"
+DRILL_ID_1=$(run_sql authenticated "$MOBILE_MEMBER" "select (public.get_or_create_daily_drill()).id;" | tail -1 | xargs)
+DRILL_ID_2=$(run_sql authenticated "$MOBILE_MEMBER" "select (public.get_or_create_daily_drill()).id;" | tail -1 | xargs)
+if [ -n "$DRILL_ID_1" ] && [ "$DRILL_ID_1" = "$DRILL_ID_2" ]; then
+  echo "PASS: repeated same-day calls are idempotent (return the same drill row, not a regenerated one)"; PASS=$((PASS+1))
+else
+  echo "FAIL: expected the same drill id on a same-day retry, got '$DRILL_ID_1' then '$DRILL_ID_2'"; FAIL=$((FAIL+1)); FAILURES+=("daily drill same-day idempotency")
+fi
+expect_rows "generated drill targets at least one ACS task" postgres "" \
+  "select (jsonb_array_length(target_acs_tasks) > 0)::text from public.daily_drills where id='$DRILL_ID_1';" "true"
+expect_rows "member A sees zero rows of Mobile Member's daily drill" authenticated "$MEMBER_A" \
+  "select count(*) from public.daily_drills where id='$DRILL_ID_1';" "0"
+expect_error_matching "member A cannot start Mobile Member's drill (ownership-scoped RPC, not just RLS)" authenticated "$MEMBER_A" \
+  "select public.mark_daily_drill_started('$DRILL_ID_1');" "not found"
+expect_success "Mobile Member can start their own drill" authenticated "$MOBILE_MEMBER" \
+  "select public.mark_daily_drill_started('$DRILL_ID_1');"
+expect_rows "drill status transitions to in_progress with started_at set" postgres "" \
+  "select (status='in_progress' and started_at is not null)::text from public.daily_drills where id='$DRILL_ID_1';" "true"
+expect_success "starting an already-started drill is a safe no-op, not an error" authenticated "$MOBILE_MEMBER" \
+  "select public.mark_daily_drill_started('$DRILL_ID_1');"
+expect_denied "authenticated cannot directly INSERT into daily_drills (generation is RPC-only)" authenticated "$MOBILE_MEMBER" \
+  "insert into public.daily_drills (profile_id, drill_date) values ('$MOBILE_MEMBER', current_date + 1);"
+
+echo
+echo "########## 20. MOBILE DEVICES / NOTIFICATION PREFERENCES (Phase C5 / v116) ##########"
+DEVICE_ID=$(run_sql authenticated "$MOBILE_MEMBER" \
+  "insert into public.mobile_devices (profile_id, platform, expo_push_token) values ('$MOBILE_MEMBER','ios','ExponentPushToken[test-token-1]') returning id;" | tail -1 | xargs)
+if [ -n "$DEVICE_ID" ]; then
+  echo "PASS: a learner can register their own device directly (self-scoped RLS, low-risk owned data)"; PASS=$((PASS+1))
+else
+  echo "FAIL: expected a device id back from self-registration"; FAIL=$((FAIL+1)); FAILURES+=("mobile device self-registration")
+fi
+expect_denied "a learner cannot register a device row for a DIFFERENT profile_id (RLS with-check blocks forgery)" authenticated "$MOBILE_MEMBER" \
+  "insert into public.mobile_devices (profile_id, platform, expo_push_token) values ('$MEMBER_A','ios','ExponentPushToken[forged]');"
+expect_rows "member A cannot SELECT Mobile Member's devices" authenticated "$MEMBER_A" \
+  "select count(*) from public.mobile_devices where profile_id='$MOBILE_MEMBER';" "0"
+expect_error_matching "member A cannot revoke Mobile Member's device (ownership-scoped RPC)" authenticated "$MEMBER_A" \
+  "select public.revoke_mobile_device('$DEVICE_ID');" "not found"
+expect_success "Mobile Member can revoke their own device" authenticated "$MOBILE_MEMBER" \
+  "select public.revoke_mobile_device('$DEVICE_ID');"
+expect_rows "revoked device has revoked_at set" postgres "" \
+  "select (revoked_at is not null)::text from public.mobile_devices where id='$DEVICE_ID';" "true"
+expect_success "a learner can set their own notification preferences directly (self-scoped RLS)" authenticated "$MOBILE_MEMBER" \
+  "insert into public.notification_preferences (profile_id, daily_drill_time) values ('$MOBILE_MEMBER','06:30') on conflict (profile_id) do update set daily_drill_time=excluded.daily_drill_time;"
+expect_denied "a learner cannot set notification preferences for a DIFFERENT profile_id" authenticated "$MOBILE_MEMBER" \
+  "insert into public.notification_preferences (profile_id) values ('$MEMBER_A');"
+expect_rows "member A cannot SELECT Mobile Member's notification preferences" authenticated "$MEMBER_A" \
+  "select count(*) from public.notification_preferences where profile_id='$MOBILE_MEMBER';" "0"
 
 echo
 echo "=================================================="
