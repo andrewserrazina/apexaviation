@@ -150,6 +150,8 @@ for f in portal/supabase-portal-schema-v112-acs-normalization.sql \
   "${PSQL_BASE[@]}" -v ON_ERROR_STOP=1 -f "$f" >/tmp/apex_test_migration.log 2>&1 || { echo "MIGRATION FAILED: $f"; cat /tmp/apex_test_migration.log; exit 1; }
 done
 
+echo "=== NOT YET applying v117 -- Phase 9A section below proves the BEFORE state first ==="
+
 echo
 echo "########## 1. GROUND SCHOOL FORGERY (post-v110) ##########"
 expect_rows "confirm_scheduled_ground_class_enrollment(6-arg) no longer exists after v110" postgres "" \
@@ -563,6 +565,42 @@ expect_denied "a learner cannot set notification preferences for a DIFFERENT pro
 expect_rows "member A cannot SELECT Mobile Member's notification preferences" authenticated "$MEMBER_A" \
   "select count(*) from public.notification_preferences where profile_id='$MOBILE_MEMBER';" "0"
 
+echo
+echo "########## 20b. MOBILE PRACTICE MODE + XP COMPATIBILITY (Phase 9A / v117) ##########"
+echo "Discovered in production Phase 9 HTTP smoke testing: mobile-practice inserts"
+echo "mode='dpe_questions', which the real production CHECK constraint rejected. Proves the"
+echo "BEFORE state against the real (pre-v117) constraint, applies v117, then proves the AFTER"
+echo "state -- exactly the sequence Phase 9A requires so this is a proof, not a bypass."
+PHASE9A_MEMBER=00000000-0000-0000-0000-000000000060
+run_sql postgres "" \
+  "insert into public.profiles (id, email, full_name, role, checkride_prep_unlocked, timezone) values ('$PHASE9A_MEMBER','phase9a@test.local','Phase 9A Member','student',true,'UTC') on conflict (id) do nothing;" >/dev/null
+
+expect_error_matching "TEST A: BEFORE v117, mode='dpe_questions' is rejected by the production-equivalent constraint" postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$PHASE9A_MEMBER','dpe_questions','[\"q1\"]'::jsonb,1,now());" \
+  "violates check constraint \"portal_practice_attempts_mode_check\""
+expect_success "BEFORE v117: mode='checkride' is still accepted (unaffected historical mode)" postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$PHASE9A_MEMBER','checkride','[]'::jsonb,0,now());"
+expect_success "BEFORE v117: mode='rapidfire' is still accepted (unaffected historical mode)" postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$PHASE9A_MEMBER','rapidfire','[]'::jsonb,0,now());"
+
+echo "=== Applying v117 (mobile practice mode + XP compatibility fix) ==="
+"${PSQL_BASE[@]}" -v ON_ERROR_STOP=1 -f portal/supabase-portal-schema-v117-mobile-practice-mode-xp-compat.sql >/tmp/apex_test_v117.log 2>&1 || { echo "V117 MIGRATION FAILED"; cat /tmp/apex_test_v117.log; exit 1; }
+
+expect_rows "TEST B: AFTER v117, portal_practice_attempts_mode_check now allows exactly 3 values" postgres "" \
+  "select (pg_get_constraintdef(oid) = 'CHECK ((mode = ANY (ARRAY[''checkride''::text, ''rapidfire''::text, ''dpe_questions''::text])))')::text from pg_constraint where conname='portal_practice_attempts_mode_check' and conrelid='public.portal_practice_attempts'::regclass;" \
+  "true"
+expect_success "TEST B: AFTER v117, mode='rapidfire' still accepted" postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$PHASE9A_MEMBER','rapidfire','[]'::jsonb,0,now());"
+expect_success "TEST B: AFTER v117, mode='checkride' still accepted" postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$PHASE9A_MEMBER','checkride','[]'::jsonb,0,now());"
+expect_success "TEST B/C: AFTER v117, mode='dpe_questions' is now accepted -- mobile-practice start() succeeds against the real constraint" postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$PHASE9A_MEMBER','dpe_questions','[\"q1\"]'::jsonb,1,now());"
+expect_error_matching "TEST B: AFTER v117, an arbitrary unknown mode is still rejected (no accidental wildcard widening)" postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$PHASE9A_MEMBER','not_a_real_mode','[]'::jsonb,0,now());" \
+  "violates check constraint \"portal_practice_attempts_mode_check\""
+expect_rows "complete_mobile_practice_session() no longer references the mobile-only XP event type ('mobile_practice_completed') in its body" postgres "" \
+  "select (position('mobile_practice_completed' in (select prosrc from pg_proc where proname='complete_mobile_practice_session')) = 0)::text;" "true"
+
 TASK_IB="(select t.id from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot' and t.area_code='I' and t.task_code='B')"
 
 echo
@@ -646,8 +684,15 @@ expect_rows "final state: exactly ONE response row (not two) for the raced quest
   "select count(*) from public.portal_practice_attempt_responses where attempt_id='$CONCURRENCY_ATTEMPT';" "1"
 expect_rows "final state: task_evidence attempt_count incremented exactly ONCE (not twice) for the mapped task" postgres "" \
   "select attempt_count from public.task_evidence where profile_id='$CONCURRENCY_MEMBER' and acs_task_id=$TASK_IA;" "1"
-expect_rows "final state: XP awarded exactly ONCE for this attempt" postgres "" \
-  "select count(*) from public.xp_ledger where profile_id='$CONCURRENCY_MEMBER' and event_type='mobile_practice_completed' and source_id='$CONCURRENCY_ATTEMPT';" "1"
+echo "--- Phase 9A TEST E (perfect-score XP) + TEST F (concurrency-safe XP): this attempt is a 1/1 perfect score, completed via the race above ---"
+expect_rows "TEST F: no mobile-only 'mobile_practice_completed' XP event exists at all -- the sole authority is the existing shared trigger" postgres "" \
+  "select count(*) from public.xp_ledger where profile_id='$CONCURRENCY_MEMBER' and event_type='mobile_practice_completed';" "0"
+expect_rows "TEST E/F: exactly ONE 'practice_set_completed' (25 XP) event exists for this attempt, not doubled by the race" postgres "" \
+  "select count(*) filter (where xp_amount=25) from public.xp_ledger where profile_id='$CONCURRENCY_MEMBER' and event_type='practice_set_completed' and source_id='$CONCURRENCY_ATTEMPT';" "1"
+expect_rows "TEST E/F: exactly ONE 'perfect_score_bonus' (15 XP) event exists (score=total=1 -> perfect), not doubled by the race" postgres "" \
+  "select count(*) filter (where xp_amount=15) from public.xp_ledger where profile_id='$CONCURRENCY_MEMBER' and event_type='perfect_score_bonus' and source_id='$CONCURRENCY_ATTEMPT'||':perfect';" "1"
+expect_rows "TEST E: total practice XP from this completion is exactly 40 (25 + 15), matching the reviewed shared trigger's schedule" postgres "" \
+  "select coalesce(sum(xp_amount),0) from public.xp_ledger where profile_id='$CONCURRENCY_MEMBER' and event_type in ('practice_set_completed','perfect_score_bonus') and source_id like '$CONCURRENCY_ATTEMPT%';" "40"
 expect_rows "final state: study activity credited exactly ONCE (45 seconds, not 90)" postgres "" \
   "select seconds from public.portal_study_activity where profile_id='$CONCURRENCY_MEMBER' and activity_date = public.member_local_date('$CONCURRENCY_MEMBER');" "45"
 
@@ -888,6 +933,28 @@ expect_rows "the valid completion actually committed this time (completed_at is 
   "select (completed_at is not null)::text from public.portal_practice_attempts where id='$MALFORMED_ATTEMPT';" "true"
 expect_rows "exactly 2 response rows were written for the valid completion (one per question, not more)" postgres "" \
   "select count(*) from public.portal_practice_attempt_responses where attempt_id='$MALFORMED_ATTEMPT';" "2"
+
+echo "--- Phase 9A TEST D: non-perfect mobile session (score 1/2) XP is the single shared-trigger schedule, not the removed mobile-only one ---"
+expect_rows "TEST D: exactly ONE 'practice_set_completed' (25 XP) event for this attempt" postgres "" \
+  "select count(*) filter (where xp_amount=25) from public.xp_ledger where profile_id='$MALFORMED_MEMBER' and event_type='practice_set_completed' and source_id='$MALFORMED_ATTEMPT';" "1"
+expect_rows "TEST D: NO 'perfect_score_bonus' event (score 1 < total 2, not a perfect session)" postgres "" \
+  "select count(*) from public.xp_ledger where profile_id='$MALFORMED_MEMBER' and event_type='perfect_score_bonus' and source_id='$MALFORMED_ATTEMPT'||':perfect';" "0"
+expect_rows "TEST D: NO 'mobile_practice_completed' event exists at all -- the removed mobile-only award never fires" postgres "" \
+  "select count(*) from public.xp_ledger where profile_id='$MALFORMED_MEMBER' and event_type='mobile_practice_completed';" "0"
+expect_rows "TEST D: total completion XP is exactly 25 (not 25 + score*5=5 from the removed schedule, and not 40)" postgres "" \
+  "select coalesce(sum(xp_amount),0) from public.xp_ledger where profile_id='$MALFORMED_MEMBER' and event_type in ('practice_set_completed','perfect_score_bonus') and source_id like '$MALFORMED_ATTEMPT%';" "25"
+
+echo "--- Phase 9A TEST G: sequential retry of an already-completed session does not award XP twice ---"
+expect_success "TEST G: resubmitting the identical valid completion again returns the idempotent already_completed response" authenticated "$MALFORMED_MEMBER" \
+  "select * from public.complete_mobile_practice_session('$MALFORMED_ATTEMPT', '[{\"question_id\":\"q1\",\"self_rating\":\"correct\"},{\"question_id\":\"q6\",\"self_rating\":\"incorrect\"}]'::jsonb);"
+expect_rows "TEST G: retry is truly a no-op -- already_completed is true" authenticated "$MALFORMED_MEMBER" \
+  "select already_completed::text from public.complete_mobile_practice_session('$MALFORMED_ATTEMPT', '[{\"question_id\":\"q1\",\"self_rating\":\"correct\"},{\"question_id\":\"q6\",\"self_rating\":\"incorrect\"}]'::jsonb);" "true"
+expect_rows "TEST G: still exactly ONE 'practice_set_completed' event after the retry -- the trigger cannot refire (completed_at short-circuit means no UPDATE, no AFTER UPDATE trigger)" postgres "" \
+  "select count(*) from public.xp_ledger where profile_id='$MALFORMED_MEMBER' and event_type='practice_set_completed' and source_id='$MALFORMED_ATTEMPT';" "1"
+expect_rows "TEST G: response row count is still exactly 2 after the retry (not doubled to 4)" postgres "" \
+  "select count(*) from public.portal_practice_attempt_responses where attempt_id='$MALFORMED_ATTEMPT';" "2"
+expect_rows "TEST G: total completion XP is still exactly 25 after the retry (no double-award)" postgres "" \
+  "select coalesce(sum(xp_amount),0) from public.xp_ledger where profile_id='$MALFORMED_MEMBER' and event_type in ('practice_set_completed','perfect_score_bonus') and source_id like '$MALFORMED_ATTEMPT%';" "25"
 
 echo
 echo "########## 38. MOBILE-PRACTICE ERROR CONTRACT -- stable machine-readable prefixes (REV3.13) ##########"

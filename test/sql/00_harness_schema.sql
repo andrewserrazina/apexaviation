@@ -828,18 +828,54 @@ create table public.portal_question_progress (
 alter table public.portal_question_progress enable row level security;
 create policy "Members view their own question progress" on public.portal_question_progress for select using (auth.uid() = profile_id);
 
+-- mode CHECK constraint reproduced verbatim from live production
+-- (portal_practice_attempts_mode_check) -- this is the exact constraint
+-- Phase 9 HTTP smoke testing found the reviewed mobile-practice Edge
+-- Function violates (it inserts mode='dpe_questions'), which this harness
+-- previously modeled as a bare `text` column with no constraint at all,
+-- masking the defect. v117 widens this constraint; see the Phase 9A
+-- migration order below (v117 is applied immediately after v112-v116,
+-- before any test inserts a 'dpe_questions' row).
 create table public.portal_practice_attempts (
   id uuid primary key default gen_random_uuid(),
   profile_id uuid not null,
-  mode text,
+  mode text check (mode = any (array['checkride'::text, 'rapidfire'::text])),
   question_ids jsonb not null default '[]'::jsonb,
-  score integer,
-  total integer,
-  started_at timestamptz,
+  score integer not null default 0,
+  total integer not null default 0,
+  started_at timestamptz not null default now(),
   completed_at timestamptz
 );
 alter table public.portal_practice_attempts enable row level security;
 create policy "Members view their own practice attempts" on public.portal_practice_attempts for select using (auth.uid() = profile_id);
+
+-- award_xp_on_practice_attempt / trg_award_xp_practice_attempt() --
+-- reproduced verbatim from pg_get_triggerdef()/pg_get_functiondef()
+-- output read directly against production (wqzfhcjsfzwrimvsudxy) during
+-- Phase 9A. This is the REAL practice-completion XP trigger the reviewed
+-- complete_mobile_practice_session() (v113) was found to double-award
+-- against -- previously the harness only modeled an unrelated generic
+-- stub trigger (trg_award_xp_practice_attempt_stub, on the separate
+-- stub_practice_attempts table above), which could not have caught that
+-- defect since it never runs on the same table complete_mobile_practice_session()
+-- actually writes to.
+create or replace function public.trg_award_xp_practice_attempt()
+ returns trigger
+ language plpgsql security definer
+ set search_path to 'public'
+as $function$
+begin
+  if new.completed_at is not null and (tg_op = 'INSERT' or old.completed_at is null) then
+    perform public.award_xp(new.profile_id, 'practice_set_completed', 25, 'portal_practice_attempts', new.id::text);
+    if new.total > 0 and new.score = new.total then
+      perform public.award_xp(new.profile_id, 'perfect_score_bonus', 15, 'portal_practice_attempts', new.id::text || ':perfect');
+    end if;
+  end if;
+  return new;
+end;
+$function$;
+create trigger award_xp_on_practice_attempt after insert or update on public.portal_practice_attempts
+  for each row execute function trg_award_xp_practice_attempt();
 
 -- Phase C Rev2 (v115): checkride-date proximity weighting reads this
 -- existing production table directly -- reproduced here with only the
