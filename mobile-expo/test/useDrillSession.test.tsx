@@ -5,6 +5,9 @@ import { ApiError } from '../lib/api/errors'
 const mockStartDailyDrill = jest.fn()
 const mockCompletePractice = jest.fn()
 const mockRevealQuestion = jest.fn()
+const mockLoadDrillProgress = jest.fn()
+const mockSaveDrillProgress = jest.fn()
+const mockClearDrillProgress = jest.fn()
 
 jest.mock('../lib/api/dailyDrill', () => ({
   startDailyDrill: (...args: unknown[]) => mockStartDailyDrill(...args),
@@ -14,9 +17,9 @@ jest.mock('../lib/api/practice', () => ({
   revealQuestion: (...args: unknown[]) => mockRevealQuestion(...args),
 }))
 jest.mock('../lib/drillProgressStorage', () => ({
-  loadDrillProgress: jest.fn().mockResolvedValue(null),
-  saveDrillProgress: jest.fn().mockResolvedValue(undefined),
-  clearDrillProgress: jest.fn().mockResolvedValue(undefined),
+  loadDrillProgress: (...args: unknown[]) => mockLoadDrillProgress(...args),
+  saveDrillProgress: (...args: unknown[]) => mockSaveDrillProgress(...args),
+  clearDrillProgress: (...args: unknown[]) => mockClearDrillProgress(...args),
 }))
 
 const QUESTIONS = [
@@ -37,6 +40,9 @@ describe('useDrillSession', () => {
     mockStartDailyDrill.mockReset()
     mockCompletePractice.mockReset()
     mockRevealQuestion.mockReset()
+    mockLoadDrillProgress.mockReset().mockResolvedValue(null)
+    mockSaveDrillProgress.mockReset().mockResolvedValue(undefined)
+    mockClearDrillProgress.mockReset().mockResolvedValue(undefined)
   })
 
   it('starts the drill and exposes the first question', async () => {
@@ -145,5 +151,79 @@ describe('useDrillSession', () => {
     })
 
     expect(Object.keys(result.current.completeResult ?? {}).sort()).toEqual(['alreadyCompleted', 'score', 'total'])
+  })
+
+  // Rev2 section 1 regression: restart/resume must never deadlock. A
+  // learner who revealed and rated Q1, then force-closed the app, must
+  // come back to a restorable state -- never `isRevealed === true` with
+  // no debrief content and no way to trigger Reveal again.
+  describe('restart/resume regression (Rev2 section 1)', () => {
+    it('restores a saved rating without restoring revealed state, then lets the learner reveal again and continue', async () => {
+      mockLoadDrillProgress.mockResolvedValue({ sessionId: 'session-1', ratings: { q1: 'correct' } })
+      mockStartDailyDrill.mockResolvedValue(mockStartResponse())
+      mockRevealQuestion.mockResolvedValue({
+        question_id: 'q1',
+        model_answer: 'The model answer for Q1.',
+        common_mistakes: null,
+        dpe_evaluating: null,
+        real_world_application: null,
+      })
+
+      const { result } = await renderHook(() => useDrillSession('drill-1'))
+      await waitFor(() => expect(result.current.starting).toBe(false))
+
+      // The core deadlock this guards against: a restored question must
+      // never present as already revealed with no content and no way to
+      // trigger Reveal again.
+      expect(result.current.isRevealed).toBe(false)
+      expect(result.current.revealContent).toBeNull()
+
+      // The saved rating IS retained, even before this session's first
+      // reveal call.
+      expect(result.current.currentRating).toBe('correct')
+
+      // Reveal can always be called from this restored state.
+      await act(async () => {
+        await result.current.reveal()
+      })
+
+      // The returned answer content becomes visible...
+      expect(result.current.isRevealed).toBe(true)
+      expect(result.current.revealContent?.model_answer).toBe('The model answer for Q1.')
+      // ...and the previously saved rating is still shown as selected.
+      expect(result.current.currentRating).toBe('correct')
+
+      // The learner can continue past this question.
+      await act(async () => {
+        result.current.goNext()
+      })
+      expect(result.current.currentQuestion?.id).toBe('q2')
+    })
+
+    it('never persists revealed state locally -- only ratings', async () => {
+      mockStartDailyDrill.mockResolvedValue(mockStartResponse())
+      mockRevealQuestion.mockResolvedValue({
+        question_id: 'q1',
+        model_answer: 'Answer',
+        common_mistakes: null,
+        dpe_evaluating: null,
+        real_world_application: null,
+      })
+
+      const { result } = await renderHook(() => useDrillSession('drill-1'))
+      await waitFor(() => expect(result.current.starting).toBe(false))
+
+      await act(async () => {
+        await result.current.reveal()
+      })
+      await act(async () => {
+        result.current.rate('correct')
+      })
+
+      await waitFor(() => expect(result.current.currentRating).toBe('correct'))
+      const lastCall = mockSaveDrillProgress.mock.calls.at(-1)?.[0]
+      expect(lastCall).toEqual({ sessionId: 'session-1', ratings: { q1: 'correct' } })
+      expect(lastCall).not.toHaveProperty('revealedQuestionIds')
+    })
   })
 })

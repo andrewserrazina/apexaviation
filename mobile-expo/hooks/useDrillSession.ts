@@ -53,12 +53,17 @@ export function useDrillSession(drillId: string) {
       setSessionId(result.session_id)
       setDrillStatus(result.drill.status)
 
+      // Restore saved ratings only -- never restore `revealed`. The
+      // debrief content behind a revealed question isn't itself
+      // persisted, so a question must always be revealed again (fetching
+      // fresh content) before its rating/navigation UI can show. See
+      // drillProgressStorage.ts and Sprint 1A Rev2 section 1.
       const saved = result.session_id ? await loadDrillProgress(result.session_id) : null
       dispatch({
         type: 'initialize',
         questions: result.questions,
         ratings: saved?.ratings ?? {},
-        revealed: toRevealedMap(saved?.revealedQuestionIds),
+        revealed: {},
       })
     } catch (err) {
       logDevError('useDrillSession.start', err)
@@ -106,16 +111,17 @@ export function useDrillSession(drillId: string) {
     dispatch({ type: 'goToNext' })
   }, [])
 
-  // Persist ratings/reveal progress locally after every change, keyed to
-  // this session_id -- best-effort, see drillProgressStorage.ts.
+  // Persist ratings locally after every change, keyed to this
+  // session_id -- best-effort, see drillProgressStorage.ts. Deliberately
+  // does NOT persist `state.revealed` -- see the "initialize" dispatch
+  // above.
   useEffect(() => {
     if (!sessionId || !state.questions.length) return
     saveDrillProgress({
       sessionId,
       ratings: state.ratings,
-      revealedQuestionIds: Object.keys(state.revealed),
     })
-  }, [sessionId, state.questions.length, state.ratings, state.revealed])
+  }, [sessionId, state.questions.length, state.ratings])
 
   const complete = useCallback(async () => {
     if (!sessionId || completeInFlight.current) return
@@ -164,10 +170,4 @@ export function useDrillSession(drillId: string) {
     completeResult,
     complete,
   }
-}
-
-function toRevealedMap(ids: string[] | undefined): Record<string, boolean> {
-  const map: Record<string, boolean> = {}
-  for (const id of ids ?? []) map[id] = true
-  return map
 }

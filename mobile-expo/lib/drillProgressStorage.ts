@@ -13,6 +13,16 @@
 // truth. Plain AsyncStorage is intentional here (not the encrypted
 // LargeSecureStore used for the auth session) -- these are ordinary
 // non-sensitive self-ratings, not credentials.
+//
+// Deliberately persists RATINGS ONLY, never "revealed" state. The
+// server's reveal debrief content (model_answer/common_mistakes/etc.) is
+// never itself persisted locally, so restoring a question as already
+// "revealed" without that content would strand the learner: the Reveal
+// button hides once revealed, but there's no debrief to show and no way
+// to trigger fetching it again. Restoring ratings only, and always
+// requiring a fresh Reveal Answer tap after a restart, keeps the
+// hook/screen in a state that can always make forward progress (Sprint
+// 1A Rev2 section 1).
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { SelfRating } from '../../shared/mobile-dto'
 
@@ -21,7 +31,6 @@ const KEY_PREFIX = 'apex-advantage-drill-progress:'
 export interface DrillProgress {
   sessionId: string
   ratings: Record<string, SelfRating>
-  revealedQuestionIds: string[]
 }
 
 export async function saveDrillProgress(progress: DrillProgress): Promise<void> {
