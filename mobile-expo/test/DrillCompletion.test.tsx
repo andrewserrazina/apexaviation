@@ -95,4 +95,27 @@ describe('Drill completion screen', () => {
     const banned = /chance of passing|probability of passing|likelihood of passing|you will pass|you'll pass/i
     expect(screen.queryByText(banned)).toBeNull()
   })
+
+  // Rev3 section 4: the screen must forward completeResult.alreadyCompleted
+  // through to usePostCompleteRefresh so it knows whether to recompute
+  // (refreshReadiness) or just re-fetch (fetchLatestReadiness) -- see
+  // test/usePostCompleteRefresh.test.tsx for the hook-level proof of which
+  // API action each case actually calls.
+  it('forwards alreadyCompleted=false to usePostCompleteRefresh for a genuinely new completion', async () => {
+    mockUseDrillSession.mockReturnValue(completedSessionFixture({ completeResult: { score: 5, total: 7, alreadyCompleted: false } }))
+    mockUsePostCompleteRefresh.mockReturnValue({ loading: false, progress: null, readiness: null })
+
+    await render(<DrillSessionScreen />)
+
+    expect(mockUsePostCompleteRefresh).toHaveBeenCalledWith(true, false)
+  })
+
+  it('forwards alreadyCompleted=true to usePostCompleteRefresh for an idempotent replay', async () => {
+    mockUseDrillSession.mockReturnValue(completedSessionFixture({ completeResult: { score: 7, total: 7, alreadyCompleted: true } }))
+    mockUsePostCompleteRefresh.mockReturnValue({ loading: false, progress: null, readiness: null })
+
+    await render(<DrillSessionScreen />)
+
+    expect(mockUsePostCompleteRefresh).toHaveBeenCalledWith(true, true)
+  })
 })

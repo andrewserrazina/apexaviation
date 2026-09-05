@@ -51,7 +51,13 @@ export default function DrillSessionScreen() {
   }
 
   if (session.completeResult) {
-    return <CompletionScreen score={session.completeResult.score} total={session.completeResult.total} />
+    return (
+      <CompletionScreen
+        score={session.completeResult.score}
+        total={session.completeResult.total}
+        alreadyCompleted={session.completeResult.alreadyCompleted}
+      />
+    )
   }
 
   if (!session.currentQuestion || session.total === 0) {
@@ -115,8 +121,8 @@ export default function DrillSessionScreen() {
   )
 }
 
-function CompletionScreen({ score, total }: { score: number; total: number }) {
-  const { loading, progress, readiness } = usePostCompleteRefresh(true)
+function CompletionScreen({ score, total, alreadyCompleted }: { score: number; total: number; alreadyCompleted: boolean }) {
+  const { loading, progress, readiness } = usePostCompleteRefresh(true, alreadyCompleted)
 
   return (
     <Screen scroll={false}>
