@@ -156,53 +156,87 @@
   /* ── Auth guard — real Supabase session + profile ────────────── */
   var member = null;
   var accessToken = null;
-  var authReady = apexSupabase.auth.getSession().then(function (res) {
-    var session = res.data.session;
-    if (!session) {
-      // Preserve intended destination through the login round-trip, for
-      // two cases: ?upgrade=checkride-prep (the member-upgrade email/
-      // retargeting deep link) and a plain #hash (every other lifecycle/
-      // activation email links straight to portal.html#<section>, e.g.
-      // #dpe-library, #ground-school -- previously dropped entirely on a
-      // logged-out visit, silently bouncing to a bare login form with no
-      // memory of what the visitor actually clicked). portal-login.html's
-      // existing dest= param already maps a bare slug to a #hash on
-      // return (portalDestUrl()), and #checkride-prep already bounces a
-      // locked member into the unlock modal via the GATED_SECTIONS check
-      // in showSection() below -- so reusing dest here needs no changes
-      // to the login page itself. UTMs are forwarded too (portalDestUrl()
-      // carries them the rest of the way back), so an email click's
-      // attribution survives even when the recipient wasn't already
-      // signed in.
-      var deepLinkParams = new URLSearchParams(window.location.search);
-      var loginUrl = 'portal-login.html';
-      var loginQs = [];
-      if (deepLinkParams.get('upgrade') === 'checkride-prep') {
-        loginQs.push('dest=checkride-prep');
-      } else if (deepLinkParams.get('registered') === '1') {
-        // GS -> Portal Growth Funnel, section 3 -- an anonymous $25 Ground
-        // School purchaser (checkout never requires an account) landing
-        // here with no session used to lose every bit of purchase context
-        // right at this point: only dest/UTMs forwarded below, silently
-        // dropping registered=1, amount_cents, class_title/class_when,
-        // email, and name. Forwarding them lets portal-login.html show
-        // real "You're booked for X on Y" copy and a prefilled signup
-        // form instead of a bare, contextless login screen.
-        loginQs.push('dest=ground-school', 'registered=1');
-        ['amount_cents', 'class_title', 'class_when', 'email', 'name'].forEach(function (k) {
-          if (deepLinkParams.has(k)) loginQs.push(k + '=' + encodeURIComponent(deepLinkParams.get(k)));
-        });
-      } else if (window.location.hash) {
-        var hashDest = window.location.hash.slice(1);
-        if (/^[a-z0-9-]{1,60}$/.test(hashDest)) loginQs.push('dest=' + hashDest);
-      }
-      ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (k) {
+
+  // Phase 9B.1: builds and navigates to the exact same login URL the
+  // no-session branch below has always produced -- preserving the
+  // ?upgrade=checkride-prep deep link, the #hash-based dest (every
+  // lifecycle/activation email link), the Ground School ?registered=1
+  // purchase context, and every utm_* param. Factored out (unchanged
+  // logic, just given a name) so the new stale-refresh-token recovery
+  // path a few lines down can route through the identical redirect
+  // instead of duplicating this block.
+  function redirectToLoginPreservingContext() {
+    var deepLinkParams = new URLSearchParams(window.location.search);
+    var loginUrl = 'portal-login.html';
+    var loginQs = [];
+    if (deepLinkParams.get('upgrade') === 'checkride-prep') {
+      loginQs.push('dest=checkride-prep');
+    } else if (deepLinkParams.get('registered') === '1') {
+      // GS -> Portal Growth Funnel, section 3 -- an anonymous $25 Ground
+      // School purchaser (checkout never requires an account) landing
+      // here with no session used to lose every bit of purchase context
+      // right at this point: only dest/UTMs forwarded below, silently
+      // dropping registered=1, amount_cents, class_title/class_when,
+      // email, and name. Forwarding them lets portal-login.html show
+      // real "You're booked for X on Y" copy and a prefilled signup
+      // form instead of a bare, contextless login screen.
+      loginQs.push('dest=ground-school', 'registered=1');
+      ['amount_cents', 'class_title', 'class_when', 'email', 'name'].forEach(function (k) {
         if (deepLinkParams.has(k)) loginQs.push(k + '=' + encodeURIComponent(deepLinkParams.get(k)));
       });
-      if (loginQs.length) loginUrl += '?' + loginQs.join('&');
-      window.location.href = loginUrl;
+    } else if (window.location.hash) {
+      var hashDest = window.location.hash.slice(1);
+      if (/^[a-z0-9-]{1,60}$/.test(hashDest)) loginQs.push('dest=' + hashDest);
+    }
+    ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (k) {
+      if (deepLinkParams.has(k)) loginQs.push(k + '=' + encodeURIComponent(deepLinkParams.get(k)));
+    });
+    if (loginQs.length) loginUrl += '?' + loginQs.join('&');
+    window.location.href = loginUrl;
+  }
+
+  // Phase 9B.1: same narrow classifier semantics already reviewed in
+  // portal/src/lib/authErrors.js (the React portal's equivalent fix) --
+  // recognizes only the documented Supabase Auth codes for a refresh
+  // token that can never succeed again, via the public AuthApiError shape
+  // (.name/.code/.message), never a private/internal API. Reimplemented
+  // locally rather than shared via import: this file is a classic
+  // non-module browser script with no bundler, and introducing one just
+  // to share ~10 lines would be a bigger change than the fix itself.
+  function isStaleRefreshTokenError(error) {
+    if (!error || error.name !== 'AuthApiError') return false;
+    if (error.code === 'refresh_token_not_found' || error.code === 'refresh_token_already_used') return true;
+    return typeof error.message === 'string' && /refresh token not found/i.test(error.message);
+  }
+
+  var authReady = apexSupabase.auth.getSession().then(function (res) {
+    var session = res.data.session;
+
+    if (!session && isStaleRefreshTokenError(res.error)) {
+      // Confirmed-dead refresh token (production logs: refresh_token_not_found).
+      // Clear only this browser/device's local Supabase auth state, then
+      // follow the exact same login redirect the ordinary no-session path
+      // already uses below -- deep-link/UTM/registration context survives
+      // identically either way, and no raw Supabase error is ever shown.
+      return apexSupabase.auth.signOut({ scope: 'local' }).catch(function () {
+        // Best-effort cleanup only -- the redirect below still runs
+        // regardless of whether this network call itself completes.
+      }).then(function () {
+        redirectToLoginPreservingContext();
+        return Promise.reject('no-session');
+      });
+    }
+
+    if (!session) {
+      // Ordinary no-session -- this also covers a transient/network
+      // getSession() error that isn't a confirmed stale token (not
+      // classified above): no signOut is called, nothing stored locally
+      // is destroyed, the visitor just sees the normal login screen with
+      // their destination/deep-link/UTM context preserved, same as today.
+      redirectToLoginPreservingContext();
       return Promise.reject('no-session');
     }
+
     accessToken = session.access_token;
     return apexSupabase.from('profiles').select('*').eq('id', session.user.id).single().then(function (profRes) {
       var profile = profRes.data;

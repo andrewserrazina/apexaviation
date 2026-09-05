@@ -784,3 +784,379 @@ end;
 $function$;
 create trigger lock_profile_privileged_columns before update on public.profiles
   for each row execute function public.lock_profile_privileged_columns();
+
+-- ---------------------------------------------------------------------
+-- Mission/streak maintenance (Phase B, v111) -- supporting tables and
+-- functions, bodies copied verbatim from pg_get_functiondef() output
+-- read against the live project.
+-- ---------------------------------------------------------------------
+alter table public.profiles add column last_qualifying_study_date date;
+alter table public.profiles add column streak_freezes_banked integer not null default 0;
+alter table public.profiles add column timezone text;
+
+create or replace function public.member_local_date(p_profile_id uuid)
+ returns date
+ language sql stable
+ set search_path to 'public'
+as $function$
+  select (now() at time zone coalesce(
+    (select timezone from public.profiles where id = p_profile_id), 'UTC'
+  ))::date
+$function$;
+
+create table public.portal_study_activity (
+  profile_id uuid not null,
+  activity_date date not null,
+  seconds integer not null default 0,
+  primary key (profile_id, activity_date)
+);
+alter table public.portal_study_activity enable row level security;
+create policy "Members view their own study activity" on public.portal_study_activity for select using (auth.uid() = profile_id);
+
+create table public.portal_question_progress (
+  profile_id uuid not null,
+  question_id text not null,
+  completed boolean not null default false,
+  favorited boolean not null default false,
+  viewed_count integer not null default 0,
+  answered_count integer not null default 0,
+  first_viewed_at timestamptz,
+  last_viewed_at timestamptz,
+  updated_at timestamptz not null default now(),
+  primary key (profile_id, question_id)
+);
+alter table public.portal_question_progress enable row level security;
+create policy "Members view their own question progress" on public.portal_question_progress for select using (auth.uid() = profile_id);
+
+-- mode CHECK constraint reproduced verbatim from live production
+-- (portal_practice_attempts_mode_check) -- this is the exact constraint
+-- Phase 9 HTTP smoke testing found the reviewed mobile-practice Edge
+-- Function violates (it inserts mode='dpe_questions'), which this harness
+-- previously modeled as a bare `text` column with no constraint at all,
+-- masking the defect. v117 widens this constraint; see the Phase 9A
+-- migration order below (v117 is applied immediately after v112-v116,
+-- before any test inserts a 'dpe_questions' row).
+create table public.portal_practice_attempts (
+  id uuid primary key default gen_random_uuid(),
+  profile_id uuid not null,
+  mode text check (mode = any (array['checkride'::text, 'rapidfire'::text])),
+  question_ids jsonb not null default '[]'::jsonb,
+  score integer not null default 0,
+  total integer not null default 0,
+  started_at timestamptz not null default now(),
+  completed_at timestamptz
+);
+alter table public.portal_practice_attempts enable row level security;
+create policy "Members view their own practice attempts" on public.portal_practice_attempts for select using (auth.uid() = profile_id);
+
+-- award_xp_on_practice_attempt / trg_award_xp_practice_attempt() --
+-- reproduced verbatim from pg_get_triggerdef()/pg_get_functiondef()
+-- output read directly against production (wqzfhcjsfzwrimvsudxy) during
+-- Phase 9A. This is the REAL practice-completion XP trigger the reviewed
+-- complete_mobile_practice_session() (v113) was found to double-award
+-- against -- previously the harness only modeled an unrelated generic
+-- stub trigger (trg_award_xp_practice_attempt_stub, on the separate
+-- stub_practice_attempts table above), which could not have caught that
+-- defect since it never runs on the same table complete_mobile_practice_session()
+-- actually writes to.
+create or replace function public.trg_award_xp_practice_attempt()
+ returns trigger
+ language plpgsql security definer
+ set search_path to 'public'
+as $function$
+begin
+  if new.completed_at is not null and (tg_op = 'INSERT' or old.completed_at is null) then
+    perform public.award_xp(new.profile_id, 'practice_set_completed', 25, 'portal_practice_attempts', new.id::text);
+    if new.total > 0 and new.score = new.total then
+      perform public.award_xp(new.profile_id, 'perfect_score_bonus', 15, 'portal_practice_attempts', new.id::text || ':perfect');
+    end if;
+  end if;
+  return new;
+end;
+$function$;
+create trigger award_xp_on_practice_attempt after insert or update on public.portal_practice_attempts
+  for each row execute function trg_award_xp_practice_attempt();
+
+-- Phase C Rev2 (v115): checkride-date proximity weighting reads this
+-- existing production table directly -- reproduced here with only the
+-- columns that matter for that read.
+create table public.portal_checkride_date (
+  profile_id uuid primary key,
+  checkride_date date
+);
+alter table public.portal_checkride_date enable row level security;
+create policy "Members view their own checkride date" on public.portal_checkride_date for select using (auth.uid() = profile_id);
+
+create table public.missions (
+  id uuid primary key default gen_random_uuid(),
+  starts_on date not null,
+  ends_on date not null,
+  is_premium_only boolean not null default false,
+  requirement jsonb not null,
+  xp_reward integer not null default 0
+);
+
+create table public.member_mission_progress (
+  id uuid primary key default gen_random_uuid(),
+  profile_id uuid not null,
+  mission_id uuid not null,
+  progress integer not null default 0,
+  target integer not null default 1,
+  completed_at timestamptz,
+  updated_at timestamptz not null default now(),
+  unique (profile_id, mission_id)
+);
+alter table public.member_mission_progress enable row level security;
+create policy "Members view their own mission progress" on public.member_mission_progress for select using (auth.uid() = profile_id);
+
+create table public.streak_freeze_events (
+  id uuid primary key default gen_random_uuid(),
+  profile_id uuid not null,
+  event_type text not null,
+  event_date date not null
+);
+
+create table public.recovery_sorties (
+  id uuid primary key default gen_random_uuid(),
+  profile_id uuid not null,
+  missed_date date not null,
+  expires_at timestamptz not null,
+  unique (profile_id, missed_date)
+);
+alter table public.recovery_sorties enable row level security;
+create policy "Members view their own recovery sorties" on public.recovery_sorties for select using (auth.uid() = profile_id);
+
+create table public.member_subscriptions (
+  profile_id uuid primary key,
+  status text not null default 'active'
+);
+
+create or replace function public.member_has_active_membership(p_profile_id uuid)
+ returns boolean
+ language sql stable
+ set search_path to 'public'
+as $function$
+  select exists (select 1 from public.member_subscriptions where profile_id = p_profile_id and status in ('active','trialing','past_due'))
+$function$;
+
+create or replace function public.get_member_streak(p_profile_id uuid)
+ returns table(current_streak integer, longest_streak integer, days_studied integer)
+ language plpgsql stable
+ set search_path to 'public'
+as $function$
+declare
+  v_today date := public.member_local_date(p_profile_id);
+  v_dates date[];
+  v_cursor date;
+  v_prev date;
+  v_run integer := 0;
+  v_longest integer := 0;
+  v_current integer := 0;
+begin
+  select array_agg(activity_date order by activity_date) into v_dates
+  from public.portal_study_activity
+  where profile_id = p_profile_id;
+
+  if v_dates is null then
+    return query select 0, 0, 0;
+    return;
+  end if;
+
+  v_prev := null;
+  foreach v_cursor in array v_dates loop
+    if v_prev is not null and v_cursor = v_prev + 1 then
+      v_run := v_run + 1;
+    else
+      v_run := 1;
+    end if;
+    if v_run > v_longest then v_longest := v_run; end if;
+    v_prev := v_cursor;
+  end loop;
+
+  v_cursor := v_today;
+  if not (v_cursor = any(v_dates)) then
+    v_cursor := v_cursor - 1;
+  end if;
+  while v_cursor = any(v_dates) loop
+    v_current := v_current + 1;
+    v_cursor := v_cursor - 1;
+  end loop;
+
+  return query select v_current, v_longest, array_length(v_dates, 1);
+end;
+$function$;
+
+create or replace function public.run_streak_maintenance()
+ returns void
+ language plpgsql
+ security definer
+ set search_path to 'public'
+as $function$
+declare
+  v_profile record;
+  v_today date;
+  v_yesterday date;
+  v_day_before date;
+  v_streak record;
+  v_studied_yesterday boolean;
+  v_studied_day_before boolean;
+  v_already_handled boolean;
+begin
+  for v_profile in
+    select id, streak_freezes_banked from public.profiles where last_qualifying_study_date is not null
+  loop
+    v_today := public.member_local_date(v_profile.id);
+    v_yesterday := v_today - 1;
+    v_day_before := v_today - 2;
+
+    select * into v_streak from public.get_member_streak(v_profile.id);
+    if v_streak.current_streak > 0 and v_streak.current_streak % 14 = 0 and v_profile.streak_freezes_banked < 2 then
+      if not exists (
+        select 1 from public.streak_freeze_events
+        where profile_id = v_profile.id and event_type = 'earned' and event_date = v_today
+      ) then
+        update public.profiles set streak_freezes_banked = streak_freezes_banked + 1 where id = v_profile.id;
+        insert into public.streak_freeze_events (profile_id, event_type, event_date) values (v_profile.id, 'earned', v_today);
+      end if;
+    end if;
+
+    select exists (select 1 from public.portal_study_activity where profile_id = v_profile.id and activity_date = v_yesterday) into v_studied_yesterday;
+    select exists (select 1 from public.portal_study_activity where profile_id = v_profile.id and activity_date = v_day_before) into v_studied_day_before;
+
+    if v_studied_day_before and not v_studied_yesterday then
+      select exists (
+        select 1 from public.streak_freeze_events
+        where profile_id = v_profile.id and event_date = v_yesterday and event_type in ('consumed', 'recovery_offered')
+      ) into v_already_handled;
+
+      if not v_already_handled then
+        if v_profile.streak_freezes_banked > 0 then
+          insert into public.portal_study_activity (profile_id, activity_date, seconds)
+          values (v_profile.id, v_yesterday, 0)
+          on conflict (profile_id, activity_date) do nothing;
+          update public.profiles set streak_freezes_banked = streak_freezes_banked - 1 where id = v_profile.id;
+          insert into public.streak_freeze_events (profile_id, event_type, event_date) values (v_profile.id, 'consumed', v_yesterday);
+        else
+          insert into public.recovery_sorties (profile_id, missed_date, expires_at)
+          values (v_profile.id, v_yesterday, (v_today + 1)::timestamptz - interval '1 second')
+          on conflict (profile_id, missed_date) do nothing;
+          insert into public.streak_freeze_events (profile_id, event_type, event_date) values (v_profile.id, 'recovery_offered', v_yesterday);
+        end if;
+      end if;
+    end if;
+  end loop;
+end;
+$function$;
+
+create or replace function public.refresh_mission_progress()
+ returns void
+ language plpgsql
+ security definer
+ set search_path to 'public'
+as $function$
+declare
+  v_mission record;
+  v_profile record;
+  v_progress integer;
+  v_target integer;
+  v_met boolean;
+  v_row_id uuid;
+  v_was_completed boolean;
+begin
+  for v_mission in
+    select * from public.missions where current_date between starts_on and ends_on
+  loop
+    for v_profile in
+      select id from public.profiles where checkride_prep_unlocked = true
+    loop
+      if v_mission.is_premium_only and not public.member_has_active_membership(v_profile.id) then
+        continue;
+      end if;
+
+      v_progress := 0;
+      v_target := coalesce((v_mission.requirement->>'target')::integer, 1);
+
+      if v_mission.requirement->>'type' = 'study_days' then
+        select count(distinct activity_date) into v_progress
+        from public.portal_study_activity
+        where profile_id = v_profile.id
+          and activity_date between v_mission.starts_on and v_mission.ends_on
+          and seconds > 0;
+
+      elsif v_mission.requirement->>'type' = 'questions_answered' then
+        select count(*) into v_progress
+        from public.portal_question_progress
+        where profile_id = v_profile.id
+          and completed = true
+          and updated_at::date between v_mission.starts_on and v_mission.ends_on;
+
+      elsif v_mission.requirement->>'type' = 'practice_sets_completed' then
+        select count(*) into v_progress
+        from public.portal_practice_attempts
+        where profile_id = v_profile.id
+          and completed_at is not null
+          and completed_at::date between v_mission.starts_on and v_mission.ends_on;
+
+      elsif v_mission.requirement->>'type' = 'score_threshold' then
+        select exists (
+          select 1 from public.portal_practice_attempts
+          where profile_id = v_profile.id
+            and completed_at is not null
+            and completed_at::date between v_mission.starts_on and v_mission.ends_on
+            and total > 0
+            and (score::float / total) * 100 >= v_target
+        ) into v_met;
+        v_progress := case when v_met then 1 else 0 end;
+        v_target := 1;
+
+      else
+        continue;
+      end if;
+
+      insert into public.member_mission_progress (profile_id, mission_id, progress, target, updated_at)
+      values (v_profile.id, v_mission.id, v_progress, v_target, now())
+      on conflict (profile_id, mission_id) do update
+        set progress = excluded.progress, target = excluded.target, updated_at = now()
+      returning id, (completed_at is not null) into v_row_id, v_was_completed;
+
+      if not v_was_completed and v_progress >= v_target then
+        update public.member_mission_progress set completed_at = now() where id = v_row_id;
+        perform public.award_xp(v_profile.id, 'mission_completed', v_mission.xp_reward, 'missions', v_mission.id::text);
+      end if;
+    end loop;
+  end loop;
+end;
+$function$;
+
+-- ---------------------------------------------------------------------
+-- Sprint 0 Phase C -- DPE question bank prerequisite (dpe_questions
+-- predates Phase C by many migrations, e.g. v5/v68; reproduced here only
+-- with the columns v112-v116 and the mobile-* Edge Functions actually
+-- read/write, RLS copied verbatim -- admin-SELECT-only, since the real
+-- read path for a non-admin caller is always a service-role Edge
+-- Function that bypasses RLS entirely, never a direct client query).
+-- ---------------------------------------------------------------------
+create table public.dpe_categories (
+  id text primary key,
+  label text not null
+);
+
+create table public.dpe_questions (
+  id text primary key,
+  category text not null references public.dpe_categories(id),
+  question text not null,
+  model_answer text not null,
+  common_mistakes text,
+  dpe_evaluating text,
+  acs_reference text,
+  real_world_application text,
+  is_scenario boolean not null default false,
+  scenario_order integer,
+  sort_order integer not null default 0,
+  exam_type text not null default 'private_pilot',
+  created_at timestamptz not null default now()
+);
+alter table public.dpe_questions enable row level security;
+create policy "Admins can view all DPE questions"
+  on public.dpe_questions for select
+  using (public.is_admin(auth.uid()));

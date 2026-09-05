@@ -138,6 +138,20 @@ echo
 echo "=== Applying v110 (Ground School RPC overload fix, Phase 2B) ==="
 "${PSQL_BASE[@]}" -v ON_ERROR_STOP=1 -f portal/supabase-portal-schema-v110-ground-school-rpc-overload-fix.sql >/tmp/apex_test_v110.log 2>&1 || { echo "V110 MIGRATION FAILED"; cat /tmp/apex_test_v110.log; exit 1; }
 
+echo "=== Applying v111 (mission/streak client lockout) ==="
+"${PSQL_BASE[@]}" -v ON_ERROR_STOP=1 -f portal/supabase-portal-schema-v111-mission-streak-client-lockout.sql >/tmp/apex_test_v111.log 2>&1 || { echo "V111 MIGRATION FAILED"; cat /tmp/apex_test_v111.log; exit 1; }
+
+echo "=== Applying v112-v116 (Phase C mobile backend primitives, source-controlled only) ==="
+for f in portal/supabase-portal-schema-v112-acs-normalization.sql \
+         portal/supabase-portal-schema-v113-task-evidence.sql \
+         portal/supabase-portal-schema-v114-readiness-snapshots.sql \
+         portal/supabase-portal-schema-v115-daily-drills.sql \
+         portal/supabase-portal-schema-v116-mobile-device-notification-model.sql; do
+  "${PSQL_BASE[@]}" -v ON_ERROR_STOP=1 -f "$f" >/tmp/apex_test_migration.log 2>&1 || { echo "MIGRATION FAILED: $f"; cat /tmp/apex_test_migration.log; exit 1; }
+done
+
+echo "=== NOT YET applying v117 -- Phase 9A section below proves the BEFORE state first ==="
+
 echo
 echo "########## 1. GROUND SCHOOL FORGERY (post-v110) ##########"
 expect_rows "confirm_scheduled_ground_class_enrollment(6-arg) no longer exists after v110" postgres "" \
@@ -324,6 +338,638 @@ expect_rows "member A cannot read member B's study pack entitlements" authentica
 run_sql authenticated "$MEMBER_A" "update public.profiles set full_name='hacked' where id='$MEMBER_B';" >/dev/null
 expect_rows "member A's update attempt on member B's profile has no effect (RLS filters the row, 0 rows touched)" postgres "" \
   "select full_name from public.profiles where id='$MEMBER_B';" "Member B"
+
+MISSION_MEMBER=00000000-0000-0000-0000-000000000020
+STREAK_MEMBER=00000000-0000-0000-0000-000000000021
+
+echo
+echo "########## 15. MISSION/STREAK CLIENT LOCKOUT (Phase B / v111) ##########"
+expect_denied "anon direct RPC run_streak_maintenance -> denied" anon "" \
+  "select public.run_streak_maintenance();"
+expect_denied "anon direct RPC refresh_mission_progress -> denied" anon "" \
+  "select public.refresh_mission_progress();"
+expect_denied "authenticated member direct RPC run_streak_maintenance -> denied" authenticated "$MEMBER_A" \
+  "select public.run_streak_maintenance();"
+expect_denied "authenticated member direct RPC refresh_mission_progress -> denied" authenticated "$MEMBER_A" \
+  "select public.refresh_mission_progress();"
+expect_success "service-role run_streak_maintenance succeeds (lifecycle path)" service_role "" \
+  "select public.run_streak_maintenance();"
+expect_success "service-role refresh_mission_progress succeeds (lifecycle path)" service_role "" \
+  "select public.refresh_mission_progress();"
+
+echo
+echo "--- MISSION BEHAVIOR: progress is still recomputed correctly ---"
+expect_success "refresh_mission_progress runs clean against real mission/profile data" service_role "" \
+  "select public.refresh_mission_progress();"
+expect_rows "study_days mission marked complete for a member who studied today" postgres "" \
+  "select (completed_at is not null) from public.member_mission_progress where profile_id='$MISSION_MEMBER' and mission_id='00000000-0000-0000-0000-0000000000e1';" "t"
+expect_rows "mission completion awarded XP exactly once (not duplicated by the second run above)" postgres "" \
+  "select count(*) from public.xp_ledger where profile_id='$MISSION_MEMBER' and event_type='mission_completed' and source_id='00000000-0000-0000-0000-0000000000e1';" "1"
+
+echo
+echo "--- STREAK BEHAVIOR: freeze/recovery-sortie maintenance still behaves correctly ---"
+expect_success "run_streak_maintenance runs clean against real streak data" service_role "" \
+  "select public.run_streak_maintenance();"
+expect_rows "a missed day with zero freezes banked offers a Recovery Sortie" postgres "" \
+  "select count(*) from public.recovery_sorties where profile_id='$STREAK_MEMBER' and missed_date = current_date - 1;" "1"
+expect_success "run_streak_maintenance is safe to run twice in a row (no duplicate-key error)" service_role "" \
+  "select public.run_streak_maintenance();"
+expect_rows "a second run does not create a duplicate Recovery Sortie for the same missed day" postgres "" \
+  "select count(*) from public.recovery_sorties where profile_id='$STREAK_MEMBER' and missed_date = current_date - 1;" "1"
+
+MOBILE_MEMBER=00000000-0000-0000-0000-000000000030
+NO_ENTITLEMENT_MEMBER=00000000-0000-0000-0000-000000000031
+
+echo
+echo "########## 16. ACS NORMALIZATION -- AUTHORITATIVE FAA-S-ACS-6C (Phase C1 / v112 REV2) ##########"
+expect_success "anyone (anon) can read acs_versions (reference data)" anon "" \
+  "select count(*) from public.acs_versions;"
+expect_success "anyone (anon) can read acs_tasks (reference data)" anon "" \
+  "select count(*) from public.acs_tasks;"
+expect_success "anyone (anon) can read content_acs_mappings (reference data)" anon "" \
+  "select count(*) from public.content_acs_mappings;"
+expect_denied "authenticated cannot INSERT into acs_versions directly" authenticated "$MOBILE_MEMBER" \
+  "insert into public.acs_versions (certificate_type, version_code) values ('commercial','forged');"
+expect_denied "authenticated cannot INSERT into acs_tasks directly" authenticated "$MOBILE_MEMBER" \
+  "insert into public.acs_tasks (acs_version_id, area_code, area_title, task_code, task_title) values ((select id from public.acs_versions limit 1),'Z','Forged','Z','Forged');"
+expect_denied "authenticated cannot INSERT into content_acs_mappings directly" authenticated "$MOBILE_MEMBER" \
+  "insert into public.content_acs_mappings (content_type, content_id, acs_task_id) values ('dpe_question','q1',(select id from public.acs_tasks limit 1));"
+expect_rows "the private_pilot version is seeded as FAA-S-ACS-6C, not v1-backfill" postgres "" \
+  "select version_code from public.acs_versions where certificate_type='private_pilot' and active;" "FAA-S-ACS-6C"
+expect_rows "seeded with the real effective date (2024-05-31)" postgres "" \
+  "select effective_date::text from public.acs_versions where certificate_type='private_pilot' and active;" "2024-05-31"
+expect_rows "the COMPLETE authoritative taxonomy is seeded: 61 tasks, regardless of Apex content" postgres "" \
+  "select count(*) from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot';" "61"
+expect_rows "12 Areas of Operation, matching the real FAA-S-ACS-6C table of contents" postgres "" \
+  "select count(distinct area_code) from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot';" "12"
+expect_rows "a task with ZERO Apex content mapped to it is still present (Area III Task A -- Apex has no seaplane/light-signals content)" postgres "" \
+  "select task_title from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot' and t.area_code='III' and t.task_code='A';" "Communications, Light Signals, and Runway Lighting Systems"
+expect_rows "q1 and q2 (different Apex-authored acs_reference title text) still resolve to the SAME authoritative I/A task -- mapping is by area/task CODE only, never by title match" postgres "" \
+  "select (select acs_task_id from public.content_acs_mappings where content_id='q1') = (select acs_task_id from public.content_acs_mappings where content_id='q2');" "t"
+expect_rows "the shared task's title is the AUTHORITATIVE FAA title (Pilot Qualifications), not Apex's own paraphrase (Certificates and Documents)" postgres "" \
+  "select t.task_title from public.content_acs_mappings m join public.acs_tasks t on t.id=m.acs_task_id where m.content_id='q1';" "Pilot Qualifications"
+expect_rows "q6/q9 (Area I Task B) resolve to a DIFFERENT acs_task_id than q1" postgres "" \
+  "select (select acs_task_id from public.content_acs_mappings where content_id='q6') <> (select acs_task_id from public.content_acs_mappings where content_id='q1');" "t"
+expect_rows "q3 (multi-task '/') is unmapped and reported with the correct reason" postgres "" \
+  "select reason from public.acs_unresolved_mappings where content_id='q3';" "multi_task_reference_needs_human_disambiguation"
+expect_rows "q4 (Special Emphasis Area) is unmapped and reported with the correct reason" postgres "" \
+  "select reason from public.acs_unresolved_mappings where content_id='q4';" "special_emphasis_area_no_single_task"
+expect_rows "q5 (no recognizable shape) is unmapped and reported with the correct reason" postgres "" \
+  "select reason from public.acs_unresolved_mappings where content_id='q5';" "does_not_match_known_acs_reference_shape"
+expect_rows "q7 (well-formed but non-existent Area XX Task Z) is unmapped with the NEW REV2 reason -- never silently accepted" postgres "" \
+  "select reason from public.acs_unresolved_mappings where content_id='q7';" "area_task_not_found_in_authoritative_acs"
+expect_rows "q8 (instrument exam_type, no authoritative ACS seeded) is unmapped with the NEW REV2 staging reason" postgres "" \
+  "select reason from public.acs_unresolved_mappings where content_id='q8';" "no_authoritative_acs_seeded_for_exam_type"
+expect_rows "q1/q2/q6/q9 (resolved rows) do NOT appear in acs_unresolved_mappings" postgres "" \
+  "select count(*) from public.acs_unresolved_mappings where content_id in ('q1','q2','q6','q9');" "0"
+expect_rows "exactly 9 test dpe_questions total, 4 resolved, 5 unresolved -- matches the documented REV2 mapping-results table" postgres "" \
+  "select count(*)::text || ',' || (select count(*) from public.content_acs_mappings where content_type='dpe_question' and content_id in ('q1','q2','q3','q4','q5','q6','q7','q8','q9'))::text || ',' || (select count(*) from public.acs_unresolved_mappings where content_id in ('q1','q2','q3','q4','q5','q6','q7','q8','q9'))::text from public.dpe_questions where id in ('q1','q2','q3','q4','q5','q6','q7','q8','q9');" "9,4,5"
+expect_denied "authenticated has no SELECT on acs_unresolved_mappings (service_role-only report)" authenticated "$MOBILE_MEMBER" \
+  "select count(*) from public.acs_unresolved_mappings;"
+expect_success "service_role can read acs_unresolved_mappings" service_role "" \
+  "select count(*) from public.acs_unresolved_mappings;"
+
+echo
+echo "########## 16b. CONTENT MAPPING PROVENANCE SURVIVES RERUN (REV2.2 -- defect #2) ##########"
+TASK_IC="(select t.id from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot' and t.area_code='I' and t.task_code='C')"
+run_sql postgres "" \
+  "insert into public.content_acs_mappings (content_type, content_id, acs_task_id, mapping_type, mapping_source, created_by) values ('dpe_question','q4',$TASK_IC,'human_curated_test','human_curated','$ADMIN');" >/dev/null
+expect_rows "q4's manual mapping exists before any rerun" postgres "" \
+  "select count(*) from public.content_acs_mappings where content_type='dpe_question' and content_id='q4' and mapping_source='human_curated';" "1"
+expect_rows "q4 no longer appears in acs_unresolved_mappings now that a human has mapped it" service_role "" \
+  "select count(*) from public.acs_unresolved_mappings where content_id='q4';" "0"
+
+echo "=== Re-applying v112 a second time (proves rerun-safety, REV2.2) ==="
+"${PSQL_BASE[@]}" -v ON_ERROR_STOP=1 -f portal/supabase-portal-schema-v112-acs-normalization.sql >/tmp/apex_test_v112_rerun.log 2>&1 || { echo "V112 RERUN FAILED"; cat /tmp/apex_test_v112_rerun.log; exit 1; }
+
+expect_rows "q4's MANUAL mapping SURVIVES the v112 rerun untouched, on the exact task a human chose" postgres "" \
+  "select count(*) from public.content_acs_mappings where content_type='dpe_question' and content_id='q4' and mapping_source='human_curated' and acs_task_id=$TASK_IC;" "1"
+expect_rows "q1's AUTO mapping still exists after the rerun (regenerated, same task, not duplicated)" postgres "" \
+  "select count(*) from public.content_acs_mappings where content_type='dpe_question' and content_id='q1' and mapping_source='deterministic_backfill';" "1"
+expect_rows "exactly one mapping row total for q1 after the rerun (no duplication)" postgres "" \
+  "select count(*) from public.content_acs_mappings where content_type='dpe_question' and content_id='q1';" "1"
+expect_rows "the authoritative task count is still exactly 61 after a rerun (seeding is idempotent, never duplicates tasks)" postgres "" \
+  "select count(*) from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot';" "61"
+
+echo
+echo "########## 17. TASK EVIDENCE (Phase C2 / v113) ##########"
+TASK_IA="(select t.id from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot' and t.area_code='I' and t.task_code='A')"
+expect_denied "anon direct RPC record_task_evidence -> denied" anon "" \
+  "select public.record_task_evidence('$MOBILE_MEMBER'::uuid, $TASK_IA, true);"
+expect_denied "authenticated direct RPC record_task_evidence -> denied (server-side-only write path)" authenticated "$MOBILE_MEMBER" \
+  "select public.record_task_evidence('$MOBILE_MEMBER'::uuid, $TASK_IA, true);"
+expect_success "service_role record_task_evidence succeeds (first correct attempt)" service_role "" \
+  "select public.record_task_evidence('$MOBILE_MEMBER'::uuid, $TASK_IA, true);"
+expect_rows "1 correct / 1 attempt -> evidence_score dampened by volume (0.2000, not 1.0)" postgres "" \
+  "select evidence_score from public.task_evidence where profile_id='$MOBILE_MEMBER' and acs_task_id=$TASK_IA;" "0.2000"
+run_sql service_role "" "select public.record_task_evidence('$MOBILE_MEMBER'::uuid, $TASK_IA, true);" >/dev/null
+run_sql service_role "" "select public.record_task_evidence('$MOBILE_MEMBER'::uuid, $TASK_IA, true);" >/dev/null
+run_sql service_role "" "select public.record_task_evidence('$MOBILE_MEMBER'::uuid, $TASK_IA, true);" >/dev/null
+expect_success "service_role record_task_evidence succeeds (5th attempt, saturating the volume dampener)" service_role "" \
+  "select public.record_task_evidence('$MOBILE_MEMBER'::uuid, $TASK_IA, true);"
+expect_rows "5 correct / 5 attempts -> evidence_score = 1.0000 (dampener fully saturated at 5+ attempts)" postgres "" \
+  "select evidence_score from public.task_evidence where profile_id='$MOBILE_MEMBER' and acs_task_id=$TASK_IA;" "1.0000"
+expect_rows "anon sees zero task_evidence rows (table-level SELECT is grant-default, RLS filters every row)" anon "" \
+  "select count(*) from public.task_evidence;" "0"
+expect_rows "member A cannot read Mobile Member's task evidence (owner-only SELECT)" authenticated "$MEMBER_A" \
+  "select count(*) from public.task_evidence where profile_id='$MOBILE_MEMBER';" "0"
+expect_success "Mobile Member can read their own task evidence" authenticated "$MOBILE_MEMBER" \
+  "select count(*) from public.task_evidence where profile_id='$MOBILE_MEMBER';"
+expect_denied "authenticated cannot directly UPDATE task_evidence (no write policy at all)" authenticated "$MOBILE_MEMBER" \
+  "update public.task_evidence set evidence_score=1.0 where profile_id='$MOBILE_MEMBER';"
+
+echo
+echo "########## 18. READINESS SNAPSHOTS (Phase C3 / v114) ##########"
+expect_denied "anon direct RPC compute_readiness_snapshot -> denied (not authenticated at all)" anon "" \
+  "select public.compute_readiness_snapshot();"
+expect_success "authenticated Mobile Member can compute their own readiness snapshot" authenticated "$MOBILE_MEMBER" \
+  "select public.compute_readiness_snapshot();"
+expect_rows "evidence_level is 'low' with only 5 total attempts (< 10)" postgres "" \
+  "select evidence_level from public.readiness_snapshots where profile_id='$MOBILE_MEMBER' order by created_at desc limit 1;" "low"
+expect_rows "reason_codes flags low_sample_size when evidence_level is low" postgres "" \
+  "select (reason_codes @> '[\"low_sample_size\"]'::jsonb)::text from public.readiness_snapshots where profile_id='$MOBILE_MEMBER' order by created_at desc limit 1;" "true"
+expect_rows "reason_codes flags confidence_calibration_not_yet_available (no real confidence data captured yet)" postgres "" \
+  "select (reason_codes @> '[\"confidence_calibration_not_yet_available\"]'::jsonb)::text from public.readiness_snapshots where profile_id='$MOBILE_MEMBER' order by created_at desc limit 1;" "true"
+expect_rows "confidence_score defaults to a neutral 50, never fabricated" postgres "" \
+  "select confidence_score from public.readiness_snapshots where profile_id='$MOBILE_MEMBER' order by created_at desc limit 1;" "50"
+expect_rows "overall_score computed as the documented weighted average over the ASEL-applicable 45-task denominator (REV3: coverage=1/45=2.22, knowledge=risk=100, confidence=50 -> 0.35*2.22+0.30*100+0.20*100+0.15*50=58.28), pre-dampening" postgres "" \
+  "select overall_score from public.readiness_snapshots where profile_id='$MOBILE_MEMBER' order by created_at desc limit 1;" "58.28"
+expect_rows "member A sees zero rows of Mobile Member's readiness snapshots" authenticated "$MEMBER_A" \
+  "select count(*) from public.readiness_snapshots where profile_id='$MOBILE_MEMBER';" "0"
+expect_denied "authenticated cannot directly INSERT into readiness_snapshots (only compute_readiness_snapshot() writes)" authenticated "$MOBILE_MEMBER" \
+  "insert into public.readiness_snapshots (profile_id, overall_score, coverage_score, knowledge_score, risk_management_score, confidence_score, evidence_level) values ('$MOBILE_MEMBER', 100, 100, 100, 100, 100, 'high');"
+
+echo "--- Single-session-swing guard ---"
+run_sql postgres "" \
+  "insert into public.readiness_snapshots (profile_id, algorithm_version, overall_score, coverage_score, knowledge_score, risk_management_score, confidence_score, evidence_level, weak_tasks, reason_codes, evidence_volume, created_at) values ('$MOBILE_MEMBER','v1',10.00,10,10,10,10,'low','[]','[]',100,now());" >/dev/null
+expect_success "recompute after seeding a fabricated prior snapshot (overall=10, evidence_volume=100) still succeeds" authenticated "$MOBILE_MEMBER" \
+  "select public.compute_readiness_snapshot();"
+expect_rows "a >15-point swing NOT backed by proportional new evidence (5 attempts vs. prior volume 100) is clamped to a 15-point move" postgres "" \
+  "select overall_score from public.readiness_snapshots where profile_id='$MOBILE_MEMBER' order by created_at desc limit 1;" "25.00"
+expect_rows "the clamp is recorded via reason_codes: score_change_dampened" postgres "" \
+  "select (reason_codes @> '[\"score_change_dampened\"]'::jsonb)::text from public.readiness_snapshots where profile_id='$MOBILE_MEMBER' order by created_at desc limit 1;" "true"
+
+echo
+echo "########## 19. DAILY DRILLS (Phase C4 / v115) ##########"
+expect_denied "anon direct RPC get_or_create_daily_drill -> denied" anon "" \
+  "select public.get_or_create_daily_drill();"
+expect_error_matching "non-entitled learner is rejected server-side (entitlement is never caller-supplied)" authenticated "$NO_ENTITLEMENT_MEMBER" \
+  "select public.get_or_create_daily_drill();" "not unlocked"
+expect_success "entitled Mobile Member can generate today's daily drill" authenticated "$MOBILE_MEMBER" \
+  "select public.get_or_create_daily_drill();"
+DRILL_ID_1=$(run_sql authenticated "$MOBILE_MEMBER" "select (public.get_or_create_daily_drill()).id;" | tail -1 | xargs)
+DRILL_ID_2=$(run_sql authenticated "$MOBILE_MEMBER" "select (public.get_or_create_daily_drill()).id;" | tail -1 | xargs)
+if [ -n "$DRILL_ID_1" ] && [ "$DRILL_ID_1" = "$DRILL_ID_2" ]; then
+  echo "PASS: repeated same-day calls are idempotent (return the same drill row, not a regenerated one)"; PASS=$((PASS+1))
+else
+  echo "FAIL: expected the same drill id on a same-day retry, got '$DRILL_ID_1' then '$DRILL_ID_2'"; FAIL=$((FAIL+1)); FAILURES+=("daily drill same-day idempotency")
+fi
+expect_rows "generated drill targets at least one ACS task" postgres "" \
+  "select (jsonb_array_length(target_acs_tasks) > 0)::text from public.daily_drills where id='$DRILL_ID_1';" "true"
+expect_rows "member A sees zero rows of Mobile Member's daily drill" authenticated "$MEMBER_A" \
+  "select count(*) from public.daily_drills where id='$DRILL_ID_1';" "0"
+expect_error_matching "member A cannot start Mobile Member's drill (ownership-scoped RPC, not just RLS)" authenticated "$MEMBER_A" \
+  "select public.mark_daily_drill_started('$DRILL_ID_1');" "not found"
+expect_success "Mobile Member can start their own drill" authenticated "$MOBILE_MEMBER" \
+  "select public.mark_daily_drill_started('$DRILL_ID_1');"
+expect_rows "drill status transitions to in_progress with started_at set" postgres "" \
+  "select (status='in_progress' and started_at is not null)::text from public.daily_drills where id='$DRILL_ID_1';" "true"
+expect_success "starting an already-started drill is a safe no-op, not an error" authenticated "$MOBILE_MEMBER" \
+  "select public.mark_daily_drill_started('$DRILL_ID_1');"
+expect_denied "authenticated cannot directly INSERT into daily_drills (generation is RPC-only)" authenticated "$MOBILE_MEMBER" \
+  "insert into public.daily_drills (profile_id, drill_date) values ('$MOBILE_MEMBER', current_date + 1);"
+
+echo
+echo "########## 20. MOBILE DEVICES / NOTIFICATION PREFERENCES (Phase C5 / v116) ##########"
+DEVICE_ID=$(run_sql authenticated "$MOBILE_MEMBER" \
+  "insert into public.mobile_devices (profile_id, platform, expo_push_token) values ('$MOBILE_MEMBER','ios','ExponentPushToken[test-token-1]') returning id;" | tail -1 | xargs)
+if [ -n "$DEVICE_ID" ]; then
+  echo "PASS: a learner can register their own device directly (self-scoped RLS, low-risk owned data)"; PASS=$((PASS+1))
+else
+  echo "FAIL: expected a device id back from self-registration"; FAIL=$((FAIL+1)); FAILURES+=("mobile device self-registration")
+fi
+expect_denied "a learner cannot register a device row for a DIFFERENT profile_id (RLS with-check blocks forgery)" authenticated "$MOBILE_MEMBER" \
+  "insert into public.mobile_devices (profile_id, platform, expo_push_token) values ('$MEMBER_A','ios','ExponentPushToken[forged]');"
+expect_rows "member A cannot SELECT Mobile Member's devices" authenticated "$MEMBER_A" \
+  "select count(*) from public.mobile_devices where profile_id='$MOBILE_MEMBER';" "0"
+expect_error_matching "member A cannot revoke Mobile Member's device (ownership-scoped RPC)" authenticated "$MEMBER_A" \
+  "select public.revoke_mobile_device('$DEVICE_ID');" "not found"
+expect_success "Mobile Member can revoke their own device" authenticated "$MOBILE_MEMBER" \
+  "select public.revoke_mobile_device('$DEVICE_ID');"
+expect_rows "revoked device has revoked_at set" postgres "" \
+  "select (revoked_at is not null)::text from public.mobile_devices where id='$DEVICE_ID';" "true"
+expect_success "a learner can set their own notification preferences directly (self-scoped RLS)" authenticated "$MOBILE_MEMBER" \
+  "insert into public.notification_preferences (profile_id, daily_drill_time) values ('$MOBILE_MEMBER','06:30') on conflict (profile_id) do update set daily_drill_time=excluded.daily_drill_time;"
+expect_denied "a learner cannot set notification preferences for a DIFFERENT profile_id" authenticated "$MOBILE_MEMBER" \
+  "insert into public.notification_preferences (profile_id) values ('$MEMBER_A');"
+expect_rows "member A cannot SELECT Mobile Member's notification preferences" authenticated "$MEMBER_A" \
+  "select count(*) from public.notification_preferences where profile_id='$MOBILE_MEMBER';" "0"
+
+echo
+echo "########## 20b. MOBILE PRACTICE MODE + XP COMPATIBILITY (Phase 9A / v117) ##########"
+echo "Discovered in production Phase 9 HTTP smoke testing: mobile-practice inserts"
+echo "mode='dpe_questions', which the real production CHECK constraint rejected. Proves the"
+echo "BEFORE state against the real (pre-v117) constraint, applies v117, then proves the AFTER"
+echo "state -- exactly the sequence Phase 9A requires so this is a proof, not a bypass."
+PHASE9A_MEMBER=00000000-0000-0000-0000-000000000060
+run_sql postgres "" \
+  "insert into public.profiles (id, email, full_name, role, checkride_prep_unlocked, timezone) values ('$PHASE9A_MEMBER','phase9a@test.local','Phase 9A Member','student',true,'UTC') on conflict (id) do nothing;" >/dev/null
+
+expect_error_matching "TEST A: BEFORE v117, mode='dpe_questions' is rejected by the production-equivalent constraint" postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$PHASE9A_MEMBER','dpe_questions','[\"q1\"]'::jsonb,1,now());" \
+  "violates check constraint \"portal_practice_attempts_mode_check\""
+expect_success "BEFORE v117: mode='checkride' is still accepted (unaffected historical mode)" postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$PHASE9A_MEMBER','checkride','[]'::jsonb,0,now());"
+expect_success "BEFORE v117: mode='rapidfire' is still accepted (unaffected historical mode)" postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$PHASE9A_MEMBER','rapidfire','[]'::jsonb,0,now());"
+
+echo "=== Applying v117 (mobile practice mode + XP compatibility fix) ==="
+"${PSQL_BASE[@]}" -v ON_ERROR_STOP=1 -f portal/supabase-portal-schema-v117-mobile-practice-mode-xp-compat.sql >/tmp/apex_test_v117.log 2>&1 || { echo "V117 MIGRATION FAILED"; cat /tmp/apex_test_v117.log; exit 1; }
+
+expect_rows "TEST B: AFTER v117, portal_practice_attempts_mode_check now allows exactly 3 values" postgres "" \
+  "select (pg_get_constraintdef(oid) = 'CHECK ((mode = ANY (ARRAY[''checkride''::text, ''rapidfire''::text, ''dpe_questions''::text])))')::text from pg_constraint where conname='portal_practice_attempts_mode_check' and conrelid='public.portal_practice_attempts'::regclass;" \
+  "true"
+expect_success "TEST B: AFTER v117, mode='rapidfire' still accepted" postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$PHASE9A_MEMBER','rapidfire','[]'::jsonb,0,now());"
+expect_success "TEST B: AFTER v117, mode='checkride' still accepted" postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$PHASE9A_MEMBER','checkride','[]'::jsonb,0,now());"
+expect_success "TEST B/C: AFTER v117, mode='dpe_questions' is now accepted -- mobile-practice start() succeeds against the real constraint" postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$PHASE9A_MEMBER','dpe_questions','[\"q1\"]'::jsonb,1,now());"
+expect_error_matching "TEST B: AFTER v117, an arbitrary unknown mode is still rejected (no accidental wildcard widening)" postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$PHASE9A_MEMBER','not_a_real_mode','[]'::jsonb,0,now());" \
+  "violates check constraint \"portal_practice_attempts_mode_check\""
+expect_rows "complete_mobile_practice_session() no longer references the mobile-only XP event type ('mobile_practice_completed') in its body" postgres "" \
+  "select (position('mobile_practice_completed' in (select prosrc from pg_proc where proname='complete_mobile_practice_session')) = 0)::text;" "true"
+
+TASK_IB="(select t.id from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot' and t.area_code='I' and t.task_code='B')"
+
+echo
+echo "########## 21. QUESTION PROGRESS COUNTERS FIXED (REV2.6 -- defect #4) ##########"
+COUNTERS_MEMBER=00000000-0000-0000-0000-000000000046
+COUNTERS_ATTEMPT=$(run_sql postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$COUNTERS_MEMBER','dpe_questions','[\"q1\"]'::jsonb,1,now()) returning id;" | tail -1 | xargs)
+expect_rows "BEFORE: fixture answered_count is 7, favorited is true" postgres "" \
+  "select answered_count::text || ',' || favorited::text from public.portal_question_progress where profile_id='$COUNTERS_MEMBER' and question_id='q1';" "7,true"
+expect_success "Counters Member completes a new practice session containing q1" authenticated "$COUNTERS_MEMBER" \
+  "select * from public.complete_mobile_practice_session('$COUNTERS_ATTEMPT', '[{\"question_id\":\"q1\",\"self_rating\":\"correct\"}]'::jsonb);"
+expect_rows "AFTER: answered_count is INCREMENTED to 8, never reset to 1 (the Rev1 bug)" postgres "" \
+  "select answered_count from public.portal_question_progress where profile_id='$COUNTERS_MEMBER' and question_id='q1';" "8"
+expect_rows "AFTER: favorited remains true (not reset by the completion upsert)" postgres "" \
+  "select favorited::text from public.portal_question_progress where profile_id='$COUNTERS_MEMBER' and question_id='q1';" "true"
+expect_rows "AFTER: viewed_count and first_viewed_at are untouched by a completion (9 and the original 30-day-old timestamp)" postgres "" \
+  "select viewed_count::text || ',' || (first_viewed_at < now() - interval '29 days')::text from public.portal_question_progress where profile_id='$COUNTERS_MEMBER' and question_id='q1';" "9,true"
+
+echo
+echo "########## 22. ATOMIC PRACTICE COMPLETION -- OWNERSHIP + VALIDATION (REV2.4) ##########"
+expect_error_matching "completing a nonexistent session fails clearly" authenticated "$MOBILE_MEMBER" \
+  "select * from public.complete_mobile_practice_session('00000000-0000-0000-0000-0000000000ff', '[]'::jsonb);" "session_not_found"
+CONCURRENCY_MEMBER=00000000-0000-0000-0000-000000000044
+OWNERSHIP_ATTEMPT=$(run_sql postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$CONCURRENCY_MEMBER','dpe_questions','[\"q1\"]'::jsonb,1,now()) returning id;" | tail -1 | xargs)
+expect_error_matching "member A cannot complete Concurrency Member's session (ownership enforced INSIDE the RPC, not just by RLS)" authenticated "$MEMBER_A" \
+  "select * from public.complete_mobile_practice_session('$OWNERSHIP_ATTEMPT', '[{\"question_id\":\"q1\",\"self_rating\":\"correct\"}]'::jsonb);" "not_your_session"
+expect_denied "anon cannot call complete_mobile_practice_session at all (no EXECUTE grant)" anon "" \
+  "select * from public.complete_mobile_practice_session('$OWNERSHIP_ATTEMPT', '[]'::jsonb);"
+run_sql postgres "" "delete from public.portal_practice_attempts where id='$OWNERSHIP_ATTEMPT';" >/dev/null
+
+echo
+echo "########## 23. REAL TWO-PROCESS CONCURRENCY (REV2.7 -- defect #3, the critical fix) ##########"
+echo "Two independent psql processes attempt to complete the SAME attempt_id at effectively the"
+echo "same time. Process A opens an explicit transaction, runs the completion RPC (which takes a"
+echo "row lock via 'select ... for update' as its very first statement), then holds that lock via"
+echo "pg_sleep(3) BEFORE committing. Process B is launched 1 second later as a single autocommit"
+echo "statement -- it must block on A's row lock (ordinary Postgres row-lock semantics) until A"
+echo "commits, then see completed_at already set and perform ZERO side effects a second time."
+CONCURRENCY_ATTEMPT=$(run_sql postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$CONCURRENCY_MEMBER','dpe_questions','[\"q1\"]'::jsonb,1,now()) returning id;" | tail -1 | xargs)
+
+(
+  {
+    echo "set role authenticated;"
+    echo "set myapp.uid = '$CONCURRENCY_MEMBER';"
+    echo "set myapp.role = 'authenticated';"
+    echo "begin;"
+    echo "select * from public.complete_mobile_practice_session('$CONCURRENCY_ATTEMPT', '[{\"question_id\":\"q1\",\"self_rating\":\"correct\"}]'::jsonb);"
+    echo "select pg_sleep(3);"
+    echo "commit;"
+  } | "${PSQL_BASE[@]}" -v ON_ERROR_STOP=1 > /tmp/apex_test_concurrency_a.log 2>&1
+) &
+CONC_PID_A=$!
+sleep 1
+(
+  {
+    echo "set role authenticated;"
+    echo "set myapp.uid = '$CONCURRENCY_MEMBER';"
+    echo "set myapp.role = 'authenticated';"
+    echo "select * from public.complete_mobile_practice_session('$CONCURRENCY_ATTEMPT', '[{\"question_id\":\"q1\",\"self_rating\":\"correct\"}]'::jsonb);"
+  } | "${PSQL_BASE[@]}" -v ON_ERROR_STOP=1 > /tmp/apex_test_concurrency_b.log 2>&1
+) &
+CONC_PID_B=$!
+wait $CONC_PID_A
+CONC_RC_A=$?
+wait $CONC_PID_B
+CONC_RC_B=$?
+
+if [ $CONC_RC_A -eq 0 ] && [ $CONC_RC_B -eq 0 ]; then
+  echo "PASS: both concurrent completion requests returned successfully (no error, no deadlock)"; PASS=$((PASS+1))
+else
+  echo "FAIL: a concurrent completion request errored -- A rc=$CONC_RC_A, B rc=$CONC_RC_B"
+  echo "  -- process A log:"; cat /tmp/apex_test_concurrency_a.log
+  echo "  -- process B log:"; cat /tmp/apex_test_concurrency_b.log
+  FAIL=$((FAIL+1)); FAILURES+=("concurrent completion requests both succeed")
+fi
+expect_rows "final state: the attempt is completed exactly once" postgres "" \
+  "select (completed_at is not null)::text from public.portal_practice_attempts where id='$CONCURRENCY_ATTEMPT';" "true"
+expect_rows "final state: exactly ONE response row (not two) for the raced question" postgres "" \
+  "select count(*) from public.portal_practice_attempt_responses where attempt_id='$CONCURRENCY_ATTEMPT';" "1"
+expect_rows "final state: task_evidence attempt_count incremented exactly ONCE (not twice) for the mapped task" postgres "" \
+  "select attempt_count from public.task_evidence where profile_id='$CONCURRENCY_MEMBER' and acs_task_id=$TASK_IA;" "1"
+echo "--- Phase 9A TEST E (perfect-score XP) + TEST F (concurrency-safe XP): this attempt is a 1/1 perfect score, completed via the race above ---"
+expect_rows "TEST F: no mobile-only 'mobile_practice_completed' XP event exists at all -- the sole authority is the existing shared trigger" postgres "" \
+  "select count(*) from public.xp_ledger where profile_id='$CONCURRENCY_MEMBER' and event_type='mobile_practice_completed';" "0"
+expect_rows "TEST E/F: exactly ONE 'practice_set_completed' (25 XP) event exists for this attempt, not doubled by the race" postgres "" \
+  "select count(*) filter (where xp_amount=25) from public.xp_ledger where profile_id='$CONCURRENCY_MEMBER' and event_type='practice_set_completed' and source_id='$CONCURRENCY_ATTEMPT';" "1"
+expect_rows "TEST E/F: exactly ONE 'perfect_score_bonus' (15 XP) event exists (score=total=1 -> perfect), not doubled by the race" postgres "" \
+  "select count(*) filter (where xp_amount=15) from public.xp_ledger where profile_id='$CONCURRENCY_MEMBER' and event_type='perfect_score_bonus' and source_id='$CONCURRENCY_ATTEMPT'||':perfect';" "1"
+expect_rows "TEST E: total practice XP from this completion is exactly 40 (25 + 15), matching the reviewed shared trigger's schedule" postgres "" \
+  "select coalesce(sum(xp_amount),0) from public.xp_ledger where profile_id='$CONCURRENCY_MEMBER' and event_type in ('practice_set_completed','perfect_score_bonus') and source_id like '$CONCURRENCY_ATTEMPT%';" "40"
+expect_rows "final state: study activity credited exactly ONCE (45 seconds, not 90)" postgres "" \
+  "select seconds from public.portal_study_activity where profile_id='$CONCURRENCY_MEMBER' and activity_date = public.member_local_date('$CONCURRENCY_MEMBER');" "45"
+
+echo
+echo "########## 24. REVEAL CONTRACT -- underlying data authorization (REV2.9) ##########"
+echo "NOTE: mobile-practice's 'reveal' action is implemented in the Deno Edge Function, which"
+echo "cannot execute in this sandbox (no deno/supabase-cli runtime available -- confirmed absent"
+echo "before writing this section, see the Rev2 report). These tests instead prove, at the"
+echo "database level, the exact authorization predicate that action's TypeScript evaluates before"
+echo "returning any debrief field -- HTTP-level execution of mobile-practice itself remains for"
+echo "staging verification, and this report does not claim otherwise."
+expect_rows "owner + question genuinely in the session: the reveal predicate is satisfied" authenticated "$CONCURRENCY_MEMBER" \
+  "select (question_ids @> to_jsonb('q1'::text))::text from public.portal_practice_attempts where id='$CONCURRENCY_ATTEMPT' and profile_id='$CONCURRENCY_MEMBER';" "true"
+expect_rows "owner but question NOT part of that session: the reveal predicate is not satisfied" authenticated "$CONCURRENCY_MEMBER" \
+  "select (question_ids @> to_jsonb('q6'::text))::text from public.portal_practice_attempts where id='$CONCURRENCY_ATTEMPT' and profile_id='$CONCURRENCY_MEMBER';" "false"
+expect_rows "a different learner cannot even see the session row to evaluate the predicate against (RLS)" authenticated "$MEMBER_A" \
+  "select count(*) from public.portal_practice_attempts where id='$CONCURRENCY_ATTEMPT';" "0"
+expect_rows "dpe_questions carries real debrief fields for the reveal response (model_answer/common_mistakes/dpe_evaluating/real_world_application)" postgres "" \
+  "select (model_answer is not null and common_mistakes is not null and dpe_evaluating is not null and real_world_application is not null)::text from public.dpe_questions where id='q1';" "true"
+
+echo
+echo "########## 25. MOBILE BOOTSTRAP: TODAY REALLY MEANS TODAY (REV2.10 -- defect #5) ##########"
+YESTERDAY_MEMBER=00000000-0000-0000-0000-000000000045
+run_sql postgres "" \
+  "insert into public.daily_drills (profile_id, drill_date, algorithm_version, status) values ('$YESTERDAY_MEMBER', current_date - 1, 'v1', 'pending');" >/dev/null
+expect_rows "the OLD buggy query shape (order by drill_date desc limit 1) WOULD have wrongly returned yesterday's drill as 'today's'" postgres "" \
+  "select (drill_date = current_date - 1)::text from public.daily_drills where profile_id='$YESTERDAY_MEMBER' order by drill_date desc limit 1;" "true"
+expect_rows "the FIXED query (exact match on member_local_date()) correctly finds ZERO rows -- mobile-bootstrap returns todays_drill: null" postgres "" \
+  "select count(*) from public.daily_drills where profile_id='$YESTERDAY_MEMBER' and drill_date = public.member_local_date('$YESTERDAY_MEMBER') and algorithm_version = 'v1';" "0"
+
+echo
+echo "########## 26. DAILY DRILL CHECKRIDE-PROXIMITY WEIGHTING (REV2.11/2.12) ##########"
+PROX_NONE=00000000-0000-0000-0000-000000000040
+PROX_FAR=00000000-0000-0000-0000-000000000041
+PROX_NEAR=00000000-0000-0000-0000-000000000042
+for M in "$PROX_NONE" "$PROX_FAR" "$PROX_NEAR"; do
+  run_sql postgres "" \
+    "insert into public.task_evidence (profile_id, acs_task_id, attempt_count, correct_count, recent_accuracy, evidence_score, last_attempt_at) values ('$M', $TASK_IB, 5, 1, 0.2, 0.2, now());" >/dev/null
+done
+expect_success "Proximity None Member (no checkride date) can generate a daily drill" authenticated "$PROX_NONE" "select public.get_or_create_daily_drill();"
+expect_success "Proximity Far Member (checkride 60 days out) can generate a daily drill" authenticated "$PROX_FAR" "select public.get_or_create_daily_drill();"
+expect_success "Proximity Near Member (checkride 3 days out) can generate a daily drill" authenticated "$PROX_NEAR" "select public.get_or_create_daily_drill();"
+expect_rows "NO checkride date: coverage-weighted ('far') scoring means the ~60 zero-evidence tasks (score 3.0) drown out the one weak-but-attempted task I/B (score 0.8) -- I/B is NOT targeted" postgres "" \
+  "select ((select target_acs_tasks from public.daily_drills where profile_id='$PROX_NONE') @> jsonb_build_array(jsonb_build_object('acs_task_id', $TASK_IB)))::text;" "false"
+expect_rows "FAR checkride date (60 days): same coverage-weighted bucket as no-date -- I/B still NOT targeted" postgres "" \
+  "select ((select target_acs_tasks from public.daily_drills where profile_id='$PROX_FAR') @> jsonb_build_array(jsonb_build_object('acs_task_id', $TASK_IB)))::text;" "false"
+expect_rows "NEAR checkride date (3 days): weak-evidence weighting flips the ranking -- I/B (score 1.6) beats every untouched task (score 0.5) and IS targeted" postgres "" \
+  "select ((select target_acs_tasks from public.daily_drills where profile_id='$PROX_NEAR') @> jsonb_build_array(jsonb_build_object('acs_task_id', $TASK_IB)))::text;" "true"
+
+echo
+echo "########## 27. DAILY DRILL RECENCY CORRECTNESS (REV2.13) ##########"
+echo "Uses REAL per-question response events (portal_practice_attempt_responses), never"
+echo "portal_question_progress.completed, to decide anti-repeat vs. recent-miss priority."
+RECENCY_MEMBER=00000000-0000-0000-0000-000000000043
+run_sql postgres "" \
+  "insert into public.task_evidence (profile_id, acs_task_id, attempt_count, correct_count, recent_accuracy, evidence_score, last_attempt_at) values ('$RECENCY_MEMBER', $TASK_IB, 5, 1, 0.2, 0.2, now());" >/dev/null
+RECENCY_ATTEMPT=$(run_sql postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at, completed_at) values ('$RECENCY_MEMBER','dpe_questions','[\"q6\",\"q9\"]'::jsonb,2,now(),now()) returning id;" | tail -1 | xargs)
+run_sql postgres "" \
+  "insert into public.portal_practice_attempt_responses (attempt_id, profile_id, question_id, self_rating, is_correct, answered_at) values ('$RECENCY_ATTEMPT','$RECENCY_MEMBER','q6','correct',true,now()), ('$RECENCY_ATTEMPT','$RECENCY_MEMBER','q9','incorrect',false,now());" >/dev/null
+expect_success "Recency Member (checkride near, so I/B is targeted per section 26's proven mechanism) can generate a daily drill" authenticated "$RECENCY_MEMBER" "select public.get_or_create_daily_drill();"
+expect_rows "q6 (answered CORRECTLY 0 days ago) is EXCLUDED from the drill -- real anti-repeat, not the old 'completed' proxy" postgres "" \
+  "select ((select question_ids from public.daily_drills where profile_id='$RECENCY_MEMBER') @> '\"q6\"'::jsonb)::text;" "false"
+expect_rows "q9 (answered INCORRECTLY 0 days ago) IS included -- recent misses are prioritized for re-drilling, not suppressed" postgres "" \
+  "select ((select question_ids from public.daily_drills where profile_id='$RECENCY_MEMBER') @> '\"q9\"'::jsonb)::text;" "true"
+
+echo
+echo "########## 28. READINESS: HONEST ABOUT CONTENT-LESS ACS TASKS (REV2.14) ##########"
+expect_success "Proximity None Member can compute readiness against the full authoritative ACS" authenticated "$PROX_NONE" "select public.compute_readiness_snapshot();"
+expect_rows "coverage_score denominator is the full 61-task authoritative ACS, not just the ~9 tasks Apex has content for (score stays well under 10 with only 1 task evidenced)" postgres "" \
+  "select (coverage_score < 10)::text from public.readiness_snapshots where profile_id='$PROX_NONE' order by created_at desc limit 1;" "true"
+expect_rows "reason_codes flags insufficient_content_coverage -- the learner is not silently scored down for ACS tasks Apex has never written content for" postgres "" \
+  "select (reason_codes @> '[\"insufficient_content_coverage\"]'::jsonb)::text from public.readiness_snapshots where profile_id='$PROX_NONE' order by created_at desc limit 1;" "true"
+
+echo
+echo "########## 29. ACS VERSION SELECTION (REV2.15) ##########"
+expect_rows "get_active_acs_version() resolves the one authoritative private_pilot version unambiguously" postgres "" \
+  "select (public.get_active_acs_version('private_pilot') = (select id from public.acs_versions where certificate_type='private_pilot' and version_code='FAA-S-ACS-6C'))::text;" "true"
+expect_error_matching "a SECOND active version for the same certificate_type is rejected outright by the partial unique index" postgres "" \
+  "insert into public.acs_versions (certificate_type, version_code, active) values ('private_pilot', 'duplicate-active-test', true);" "duplicate key value violates unique constraint"
+expect_success "a second INACTIVE version for the same certificate_type is allowed to coexist (future-revision staging)" postgres "" \
+  "insert into public.acs_versions (certificate_type, version_code, active) values ('private_pilot', 'duplicate-inactive-test', false);"
+
+TASK_II="(select t.id from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot' and v.version_code='FAA-S-ACS-6C' and t.area_code='I' and t.task_code='I')"
+TASK_IVC="(select t.id from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot' and v.version_code='FAA-S-ACS-6C' and t.area_code='IV' and t.task_code='C')"
+TASK_XA="(select t.id from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot' and v.version_code='FAA-S-ACS-6C' and t.area_code='X' and t.task_code='A')"
+
+echo
+echo "########## 30. ACS TASK APPLICABILITY (REV3.1/3.2) ##########"
+expect_rows "a universal task (I/A, Pilot Qualifications) is applicable to ASEL" postgres "" \
+  "select exists(select 1 from public.acs_task_applicability where acs_task_id=$TASK_IA and aircraft_class='ASEL')::text;" "true"
+expect_rows "an ASEL-only task (IV/C, Soft-Field Takeoff and Climb) is applicable to ASEL" postgres "" \
+  "select exists(select 1 from public.acs_task_applicability where acs_task_id=$TASK_IVC and aircraft_class='ASEL')::text;" "true"
+expect_rows "that same ASEL-only task is NOT applicable to ASES" postgres "" \
+  "select exists(select 1 from public.acs_task_applicability where acs_task_id=$TASK_IVC and aircraft_class='ASES')::text;" "false"
+expect_rows "that same ASEL-only task is NOT applicable to AMEL" postgres "" \
+  "select exists(select 1 from public.acs_task_applicability where acs_task_id=$TASK_IVC and aircraft_class='AMEL')::text;" "false"
+expect_rows "that same ASEL-only task is NOT applicable to AMES" postgres "" \
+  "select exists(select 1 from public.acs_task_applicability where acs_task_id=$TASK_IVC and aircraft_class='AMES')::text;" "false"
+expect_rows "an ASES-only task (I/I, seaplane characteristics) is NOT applicable to ASEL" postgres "" \
+  "select exists(select 1 from public.acs_task_applicability where acs_task_id=$TASK_II and aircraft_class='ASEL')::text;" "false"
+expect_rows "that same ASES-only task IS applicable to ASES" postgres "" \
+  "select exists(select 1 from public.acs_task_applicability where acs_task_id=$TASK_II and aircraft_class='ASES')::text;" "true"
+expect_rows "an AMEL-specific task (X/A, multiengine) is NOT applicable to ASEL" postgres "" \
+  "select exists(select 1 from public.acs_task_applicability where acs_task_id=$TASK_XA and aircraft_class='ASEL')::text;" "false"
+expect_denied "authenticated cannot INSERT into acs_task_applicability directly" authenticated "$MOBILE_MEMBER" \
+  "insert into public.acs_task_applicability (acs_task_id, aircraft_class) values ($TASK_II, 'ASEL');"
+expect_error_matching "acs_task_applicability rejects an arbitrary class string (no glider/helicopter values invented)" postgres "" \
+  "insert into public.acs_task_applicability (acs_task_id, aircraft_class) values ($TASK_IA, 'GLIDER');" "violates check constraint"
+expect_rows "the complete 61-task authoritative taxonomy still exists regardless of applicability filtering" postgres "" \
+  "select count(*) from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot' and v.version_code='FAA-S-ACS-6C';" "61"
+
+echo
+echo "########## 31. LEARNER TRAINING CONTEXT RESOLUTION (REV3.3/3.4) ##########"
+expect_rows "profiles.primary_aircraft_class defaults to ASEL for an existing (pre-v112) fixture row" postgres "" \
+  "select primary_aircraft_class from public.profiles where id='$MOBILE_MEMBER';" "ASEL"
+expect_denied "anon cannot call get_member_training_context at all" anon "" \
+  "select * from public.get_member_training_context();"
+expect_success "authenticated Mobile Member resolves their own training context (no argument -> auth.uid())" authenticated "$MOBILE_MEMBER" \
+  "select * from public.get_member_training_context();"
+expect_rows "resolved context is exactly private_pilot / ASEL / the authoritative FAA-S-ACS-6C version" postgres "" \
+  "select certificate_type || ',' || aircraft_class || ',' || (acs_version_id = (select id from public.acs_versions where certificate_type='private_pilot' and version_code='FAA-S-ACS-6C'))::text from public.get_member_training_context('$MOBILE_MEMBER');" "private_pilot,ASEL,true"
+expect_error_matching "member A cannot resolve Mobile Member's training context by passing their id explicitly (their own real auth.uid() differs from it)" authenticated "$MEMBER_A" \
+  "select * from public.get_member_training_context('$MOBILE_MEMBER');" "not authorized to resolve another member"
+expect_success "service_role (no forwarded end-user JWT, auth.uid() is null) MAY resolve an explicit learner's context -- mobile-bootstrap's own calling convention" service_role "" \
+  "select * from public.get_member_training_context('$MOBILE_MEMBER');"
+
+echo
+echo "########## 32. ASEL READINESS DENOMINATOR (REV3.5) ##########"
+expect_rows "get_applicable_acs_tasks() for an ASEL learner resolves exactly 45 of the 61 authoritative tasks (16 seaplane/multiengine-only tasks excluded)" postgres "" \
+  "select count(*) from public.get_applicable_acs_tasks('$PROX_NONE');" "45"
+expect_success "Proximity None Member recomputes readiness against the ASEL-scoped denominator" authenticated "$PROX_NONE" "select public.compute_readiness_snapshot();"
+expect_rows "coverage_score denominator is 45 (1 applicable task with evidence / 45 = 2.22), not 61 (which would give 1.64)" postgres "" \
+  "select coverage_score from public.readiness_snapshots where profile_id='$PROX_NONE' order by created_at desc limit 1;" "2.22"
+
+echo
+echo "########## 33. EVIDENCE SCOPED TO CURRENT CLASS + VERSION (REV3.6) ##########"
+UNRELATED_CLASS_MEMBER=00000000-0000-0000-0000-000000000050
+UNRELATED_VERSION_MEMBER=00000000-0000-0000-0000-000000000051
+run_sql postgres "" \
+  "insert into public.task_evidence (profile_id, acs_task_id, attempt_count, correct_count, recent_accuracy, evidence_score, last_attempt_at) values ('$UNRELATED_CLASS_MEMBER', $TASK_II, 5, 5, 1.0, 1.0, now());" >/dev/null
+expect_success "Unrelated Class Member (ASEL by default) computes readiness despite having strong evidence on an ASES-only task" authenticated "$UNRELATED_CLASS_MEMBER" "select public.compute_readiness_snapshot();"
+expect_rows "that ASES-only evidence does NOT count as coverage for this ASEL learner (coverage_score is 0.00, not >0)" postgres "" \
+  "select coverage_score from public.readiness_snapshots where profile_id='$UNRELATED_CLASS_MEMBER' order by created_at desc limit 1;" "0.00"
+expect_rows "that ASES-only evidence does NOT count toward knowledge_score either (0, not 100 -- it is the learner's only evidence row)" postgres "" \
+  "select knowledge_score from public.readiness_snapshots where profile_id='$UNRELATED_CLASS_MEMBER' order by created_at desc limit 1;" "0"
+
+run_sql postgres "" \
+  "insert into public.acs_versions (certificate_type, version_code, active) values ('private_pilot', 'rev3-unrelated-version-test', false) on conflict do nothing;" >/dev/null
+run_sql postgres "" \
+  "insert into public.acs_tasks (acs_version_id, area_code, area_title, task_code, task_title) values ((select id from public.acs_versions where version_code='rev3-unrelated-version-test'), 'ZZ', 'Unrelated Version Area', 'Z', 'Unrelated Version Task') on conflict do nothing;" >/dev/null
+run_sql postgres "" \
+  "insert into public.acs_task_applicability (acs_task_id, aircraft_class) values ((select id from public.acs_tasks where task_code='Z' and area_code='ZZ'), 'ASEL') on conflict do nothing;" >/dev/null
+run_sql postgres "" \
+  "insert into public.task_evidence (profile_id, acs_task_id, attempt_count, correct_count, recent_accuracy, evidence_score, last_attempt_at) values ('$UNRELATED_VERSION_MEMBER', (select id from public.acs_tasks where task_code='Z' and area_code='ZZ'), 5, 5, 1.0, 1.0, now());" >/dev/null
+expect_success "Unrelated Version Member computes readiness despite having strong evidence on a task from an INACTIVE (non-current) ACS version" authenticated "$UNRELATED_VERSION_MEMBER" "select public.compute_readiness_snapshot();"
+expect_rows "evidence against a non-active ACS version's task does not count as coverage, even though it IS marked ASEL-applicable" postgres "" \
+  "select coverage_score from public.readiness_snapshots where profile_id='$UNRELATED_VERSION_MEMBER' order by created_at desc limit 1;" "0.00"
+expect_rows "and does not count toward knowledge_score either" postgres "" \
+  "select knowledge_score from public.readiness_snapshots where profile_id='$UNRELATED_VERSION_MEMBER' order by created_at desc limit 1;" "0"
+
+echo
+echo "########## 34. CONTENT COVERAGE HONESTY, RE-SCOPED (REV3.7) ##########"
+expect_rows "insufficient_content_coverage is still flagged for an ASEL learner (Apex has content for only a handful of the 45 applicable tasks)" postgres "" \
+  "select (reason_codes @> '[\"insufficient_content_coverage\"]'::jsonb)::text from public.readiness_snapshots where profile_id='$PROX_NONE' order by created_at desc limit 1;" "true"
+expect_rows "the content-less-task count used for that flag is scoped to the 45 applicable tasks, never the full 61 (seaplane/multiengine content gaps are irrelevant to an ASEL learner)" postgres "" \
+  "select (count(*) <= 45)::text from public.get_applicable_acs_tasks('$PROX_NONE') t where not exists (select 1 from public.content_acs_mappings m where m.acs_task_id=t.id);" "true"
+
+echo
+echo "########## 35. DAILY DRILL ELIGIBILITY: CONTENT-LESS + NON-APPLICABLE EXCLUSION (REV3.8) ##########"
+expect_rows "an ASES-only task can never even be a CANDIDATE for an ASEL learner's drill (excluded at the applicability join, not just by low score)" postgres "" \
+  "select count(*) from public.get_applicable_acs_tasks('$MOBILE_MEMBER') where area_code='I' and task_code='I';" "0"
+expect_rows "no target task in Proximity Near Member's already-generated drill (section 26) is a content-less task" postgres "" \
+  "select (not exists (select 1 from jsonb_array_elements((select target_acs_tasks from public.daily_drills where profile_id='$PROX_NEAR')) x where not exists (select 1 from public.content_acs_mappings m where m.acs_task_id = (x->>'acs_task_id')::uuid)))::text;" "true"
+
+echo
+echo "########## 36. DAILY DRILL BROADER-POOL FALLBACK FILL (REV3.9) ##########"
+echo "By this point in the suite there are 5 ASEL-applicable, content-backed candidate tasks:"
+echo "I/A (q1,q2), I/B (q6,q9), I/C (q10, plus q4 manually mapped in section 16b), I/D (q11), I/E (q12)."
+echo "Fill Member gets weak (non-zero) evidence on I/A and I/C -- the two 2-question tasks -- so under"
+echo "far/no-date weighting they score strictly below the three untouched tasks (I/B, I/D, I/E), which"
+echo "tie for the top 3 slots exactly (3 candidates, 3 slots -- no random tie-break needed for which"
+echo "tasks make target_acs_tasks). Those three targets only offer 4 questions total (2+1+1), one short"
+echo "of the 5-question minimum, so the fallback must reach into I/A or I/C to fill the 5th slot."
+TASK_IC="(select t.id from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot' and v.version_code='FAA-S-ACS-6C' and t.area_code='I' and t.task_code='C')"
+FILL_MEMBER=00000000-0000-0000-0000-000000000052
+run_sql postgres "" \
+  "insert into public.task_evidence (profile_id, acs_task_id, attempt_count, correct_count, recent_accuracy, evidence_score, last_attempt_at) values ('$FILL_MEMBER', $TASK_IA, 5, 1, 0.2, 0.2, now()), ('$FILL_MEMBER', $TASK_IC, 5, 1, 0.2, 0.2, now());" >/dev/null
+expect_success "Fill Member (no checkride date, weak evidence on I/A and I/C only) can generate a daily drill" authenticated "$FILL_MEMBER" "select public.get_or_create_daily_drill();"
+expect_rows "target_acs_tasks is exactly the 3 untouched tasks (I/B, I/D, I/E) -- I/A and I/C excluded deterministically" postgres "" \
+  "select (jsonb_array_length((select target_acs_tasks from public.daily_drills where profile_id='$FILL_MEMBER')) = 3)::text;" "true"
+expect_rows "the top-3 targets together offer only 4 questions (q6,q9,q11,q12) -- below the 5-question minimum" postgres "" \
+  "select (jsonb_array_length((select question_ids from public.daily_drills where profile_id='$FILL_MEMBER')) >= 5)::text;" "true"
+expect_rows "the fallback pulled in a question from I/A or I/C (q1, q2, q10, or q4) -- neither was one of the top-3 targets -- to reach the minimum" postgres "" \
+  "select ((select question_ids from public.daily_drills where profile_id='$FILL_MEMBER') @> '\"q1\"'::jsonb or (select question_ids from public.daily_drills where profile_id='$FILL_MEMBER') @> '\"q2\"'::jsonb or (select question_ids from public.daily_drills where profile_id='$FILL_MEMBER') @> '\"q10\"'::jsonb or (select question_ids from public.daily_drills where profile_id='$FILL_MEMBER') @> '\"q4\"'::jsonb)::text;" "true"
+
+echo
+echo "########## 37. DUPLICATE / CONFLICTING / MALFORMED REQUEST REJECTION (REV3.10-3.12) ##########"
+MALFORMED_MEMBER=00000000-0000-0000-0000-000000000053
+MALFORMED_ATTEMPT=$(run_sql postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$MALFORMED_MEMBER','dpe_questions','[\"q1\",\"q6\"]'::jsonb,2,now()) returning id;" | tail -1 | xargs)
+
+assert_no_side_effects_yet() {
+  local desc="$1"
+  expect_rows "$desc: completed_at is still null" postgres "" \
+    "select (completed_at is null)::text from public.portal_practice_attempts where id='$MALFORMED_ATTEMPT';" "true"
+  expect_rows "$desc: zero response rows were written" postgres "" \
+    "select count(*) from public.portal_practice_attempt_responses where attempt_id='$MALFORMED_ATTEMPT';" "0"
+  expect_rows "$desc: task_evidence is still untouched for this learner" postgres "" \
+    "select count(*) from public.task_evidence where profile_id='$MALFORMED_MEMBER';" "0"
+  expect_rows "$desc: no XP was awarded" postgres "" \
+    "select count(*) from public.xp_ledger where profile_id='$MALFORMED_MEMBER';" "0"
+}
+
+expect_error_matching "duplicate question_id with the SAME rating twice is rejected, not silently deduplicated" authenticated "$MALFORMED_MEMBER" \
+  "select * from public.complete_mobile_practice_session('$MALFORMED_ATTEMPT', '[{\"question_id\":\"q1\",\"self_rating\":\"correct\"},{\"question_id\":\"q1\",\"self_rating\":\"correct\"}]'::jsonb);" "duplicate_question_id"
+assert_no_side_effects_yet "after duplicate-same-rating rejection"
+
+expect_error_matching "duplicate question_id with CONFLICTING ratings is rejected -- never 'pick the first one'" authenticated "$MALFORMED_MEMBER" \
+  "select * from public.complete_mobile_practice_session('$MALFORMED_ATTEMPT', '[{\"question_id\":\"q1\",\"self_rating\":\"correct\"},{\"question_id\":\"q1\",\"self_rating\":\"incorrect\"}]'::jsonb);" "duplicate_question_id"
+assert_no_side_effects_yet "after conflicting-duplicate rejection"
+
+expect_error_matching "a question_id that is not part of the attempt is rejected" authenticated "$MALFORMED_MEMBER" \
+  "select * from public.complete_mobile_practice_session('$MALFORMED_ATTEMPT', '[{\"question_id\":\"q1\",\"self_rating\":\"correct\"},{\"question_id\":\"q999\",\"self_rating\":\"correct\"}]'::jsonb);" "invalid_question"
+assert_no_side_effects_yet "after unknown-question rejection"
+
+expect_error_matching "an invalid self_rating value is rejected" authenticated "$MALFORMED_MEMBER" \
+  "select * from public.complete_mobile_practice_session('$MALFORMED_ATTEMPT', '[{\"question_id\":\"q1\",\"self_rating\":\"maybe\"},{\"question_id\":\"q6\",\"self_rating\":\"correct\"}]'::jsonb);" "invalid_self_rating"
+assert_no_side_effects_yet "after invalid-self_rating rejection"
+
+expect_error_matching "an INCOMPLETE submission (missing a response for q6) is rejected -- REV3.11's exactly-once-per-question policy" authenticated "$MALFORMED_MEMBER" \
+  "select * from public.complete_mobile_practice_session('$MALFORMED_ATTEMPT', '[{\"question_id\":\"q1\",\"self_rating\":\"correct\"}]'::jsonb);" "incomplete_submission"
+assert_no_side_effects_yet "after incomplete-submission rejection"
+
+expect_success "AFTER all five rejections, a genuinely valid, complete, non-duplicated submission still succeeds normally" authenticated "$MALFORMED_MEMBER" \
+  "select * from public.complete_mobile_practice_session('$MALFORMED_ATTEMPT', '[{\"question_id\":\"q1\",\"self_rating\":\"correct\"},{\"question_id\":\"q6\",\"self_rating\":\"incorrect\"}]'::jsonb);"
+expect_rows "the valid completion actually committed this time (completed_at is now set)" postgres "" \
+  "select (completed_at is not null)::text from public.portal_practice_attempts where id='$MALFORMED_ATTEMPT';" "true"
+expect_rows "exactly 2 response rows were written for the valid completion (one per question, not more)" postgres "" \
+  "select count(*) from public.portal_practice_attempt_responses where attempt_id='$MALFORMED_ATTEMPT';" "2"
+
+echo "--- Phase 9A TEST D: non-perfect mobile session (score 1/2) XP is the single shared-trigger schedule, not the removed mobile-only one ---"
+expect_rows "TEST D: exactly ONE 'practice_set_completed' (25 XP) event for this attempt" postgres "" \
+  "select count(*) filter (where xp_amount=25) from public.xp_ledger where profile_id='$MALFORMED_MEMBER' and event_type='practice_set_completed' and source_id='$MALFORMED_ATTEMPT';" "1"
+expect_rows "TEST D: NO 'perfect_score_bonus' event (score 1 < total 2, not a perfect session)" postgres "" \
+  "select count(*) from public.xp_ledger where profile_id='$MALFORMED_MEMBER' and event_type='perfect_score_bonus' and source_id='$MALFORMED_ATTEMPT'||':perfect';" "0"
+expect_rows "TEST D: NO 'mobile_practice_completed' event exists at all -- the removed mobile-only award never fires" postgres "" \
+  "select count(*) from public.xp_ledger where profile_id='$MALFORMED_MEMBER' and event_type='mobile_practice_completed';" "0"
+expect_rows "TEST D: total completion XP is exactly 25 (not 25 + score*5=5 from the removed schedule, and not 40)" postgres "" \
+  "select coalesce(sum(xp_amount),0) from public.xp_ledger where profile_id='$MALFORMED_MEMBER' and event_type in ('practice_set_completed','perfect_score_bonus') and source_id like '$MALFORMED_ATTEMPT%';" "25"
+
+echo "--- Phase 9A TEST G: sequential retry of an already-completed session does not award XP twice ---"
+expect_success "TEST G: resubmitting the identical valid completion again returns the idempotent already_completed response" authenticated "$MALFORMED_MEMBER" \
+  "select * from public.complete_mobile_practice_session('$MALFORMED_ATTEMPT', '[{\"question_id\":\"q1\",\"self_rating\":\"correct\"},{\"question_id\":\"q6\",\"self_rating\":\"incorrect\"}]'::jsonb);"
+expect_rows "TEST G: retry is truly a no-op -- already_completed is true" authenticated "$MALFORMED_MEMBER" \
+  "select already_completed::text from public.complete_mobile_practice_session('$MALFORMED_ATTEMPT', '[{\"question_id\":\"q1\",\"self_rating\":\"correct\"},{\"question_id\":\"q6\",\"self_rating\":\"incorrect\"}]'::jsonb);" "true"
+expect_rows "TEST G: still exactly ONE 'practice_set_completed' event after the retry -- the trigger cannot refire (completed_at short-circuit means no UPDATE, no AFTER UPDATE trigger)" postgres "" \
+  "select count(*) from public.xp_ledger where profile_id='$MALFORMED_MEMBER' and event_type='practice_set_completed' and source_id='$MALFORMED_ATTEMPT';" "1"
+expect_rows "TEST G: response row count is still exactly 2 after the retry (not doubled to 4)" postgres "" \
+  "select count(*) from public.portal_practice_attempt_responses where attempt_id='$MALFORMED_ATTEMPT';" "2"
+expect_rows "TEST G: total completion XP is still exactly 25 after the retry (no double-award)" postgres "" \
+  "select coalesce(sum(xp_amount),0) from public.xp_ledger where profile_id='$MALFORMED_MEMBER' and event_type in ('practice_set_completed','perfect_score_bonus') and source_id like '$MALFORMED_ATTEMPT%';" "25"
+
+echo
+echo "########## 38. MOBILE-PRACTICE ERROR CONTRACT -- stable machine-readable prefixes (REV3.13) ##########"
+echo "NOTE: as in Rev2 section 24, the actual HTTP-layer mapping (mobile-practice's regex-to-status-code"
+echo "logic) is TypeScript and cannot execute in this sandbox (no deno/supabase-cli). These tests confirm"
+echo "the RPC emits the exact stable prefixes that logic matches against -- the contract, not the HTTP path."
+expect_error_matching "session_not_found is prefixed exactly as mobile-practice's error mapper expects" authenticated "$MOBILE_MEMBER" \
+  "select * from public.complete_mobile_practice_session('00000000-0000-0000-0000-0000000000ff', '[]'::jsonb);" "session_not_found:"
+expect_error_matching "not_your_session is prefixed exactly as mobile-practice's error mapper expects" authenticated "$MEMBER_A" \
+  "select * from public.complete_mobile_practice_session('$MALFORMED_ATTEMPT', '[]'::jsonb);" "not_your_session:"
+
+echo
+echo "########## 39. MOBILE BOOTSTRAP TRAINING CONTEXT (REV3.15) ##########"
+expect_rows "the training-context fields mobile-bootstrap now surfaces resolve to a real, queryable acs_versions row" postgres "" \
+  "select version_code from public.acs_versions where id = (select acs_version_id from public.get_member_training_context('$MOBILE_MEMBER'));" "FAA-S-ACS-6C"
 
 echo
 echo "=================================================="
