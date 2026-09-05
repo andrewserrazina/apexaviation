@@ -1160,6 +1160,114 @@ expect_rows "bridging the pre-v118 drill forward now links it to a real practice
   "select (practice_attempt_id is not null)::text from public.daily_drills where id='$DRILL_ID_1';" "true"
 
 echo
+echo "########## 40b. V118 REV2 -- INDEPENDENT REVIEW FIXES ##########"
+echo "Blocker 1: entitlement must be re-checked before Start creates a NEW attempt (get_or_create_"
+echo "daily_drill only checks entitlement at generation time; start_daily_drill_practice_session is"
+echo "directly callable by authenticated, bypassing mobile-daily-drill's requirePremiumAccess())."
+ENTITLEMENT_LOSS_MEMBER=00000000-0000-0000-0000-000000000074
+run_sql postgres "" \
+  "insert into public.profiles (id, email, full_name, role, checkride_prep_unlocked, timezone) values ('$ENTITLEMENT_LOSS_MEMBER','v118e@test.local','V118 Entitlement Loss Member','student',true,'UTC') on conflict (id) do nothing;" >/dev/null
+expect_success "Entitlement Loss Member (currently entitled) can generate today's daily drill" authenticated "$ENTITLEMENT_LOSS_MEMBER" \
+  "select public.get_or_create_daily_drill();"
+ENTITLEMENT_LOSS_DRILL=$(run_sql postgres "" "select id::text from public.daily_drills where profile_id='$ENTITLEMENT_LOSS_MEMBER';" | tail -1 | xargs)
+run_sql service_role "" "update public.profiles set checkride_prep_unlocked=false where id='$ENTITLEMENT_LOSS_MEMBER';" >/dev/null
+expect_error_matching "after entitlement is revoked, a direct authenticated call to Start is denied (the same rule get_or_create_daily_drill uses)" authenticated "$ENTITLEMENT_LOSS_MEMBER" \
+  "select public.start_daily_drill_practice_session('$ENTITLEMENT_LOSS_DRILL');" "not unlocked"
+expect_rows "the drill's practice_attempt_id remains null after the denied Start" postgres "" \
+  "select (practice_attempt_id is null)::text from public.daily_drills where id='$ENTITLEMENT_LOSS_DRILL';" "true"
+expect_rows "no portal_practice_attempts row was created for the entitlement-revoked learner" postgres "" \
+  "select count(*) from public.portal_practice_attempts where profile_id='$ENTITLEMENT_LOSS_MEMBER';" "0"
+run_sql service_role "" "update public.profiles set checkride_prep_unlocked=true where id='$ENTITLEMENT_LOSS_MEMBER';" >/dev/null
+expect_success "re-entitled Member can now Start normally (confirms the denial above was genuinely entitlement-gated, not a different bug)" authenticated "$ENTITLEMENT_LOSS_MEMBER" \
+  "select public.start_daily_drill_practice_session('$ENTITLEMENT_LOSS_DRILL');"
+
+echo
+echo "Blocker 1 continued: entitlement is NOT re-checked on RESUME (only on creating a new attempt) --"
+echo "using V118 Member's already-linked, already-completed drill/session from section 40 above."
+run_sql service_role "" "update public.profiles set checkride_prep_unlocked=false where id='$V118_MEMBER';" >/dev/null
+expect_success "an already-linked drill can still be Start-resumed even with entitlement currently revoked (resuming/re-fetching is never entitlement-gated)" authenticated "$V118_MEMBER" \
+  "select public.start_daily_drill_practice_session('$V118_DRILL');"
+run_sql service_role "" "update public.profiles set checkride_prep_unlocked=true where id='$V118_MEMBER';" >/dev/null
+
+echo
+echo "Blocker 2: a completed drill must never create a new session, whether already linked or not."
+echo "--- completed + linked: V118_DRILL/V118_SESSION from section 40 above ---"
+V118_ATTEMPT_COUNT_BEFORE=$(run_sql postgres "" "select count(*) from public.portal_practice_attempts where profile_id='$V118_MEMBER';" | tail -1 | xargs)
+expect_success "Start on an already-completed, already-linked drill succeeds (returns existing state, not an error)" authenticated "$V118_MEMBER" \
+  "select public.start_daily_drill_practice_session('$V118_DRILL');"
+V118_ATTEMPT_COUNT_AFTER=$(run_sql postgres "" "select count(*) from public.portal_practice_attempts where profile_id='$V118_MEMBER';" | tail -1 | xargs)
+if [ "$V118_ATTEMPT_COUNT_BEFORE" = "$V118_ATTEMPT_COUNT_AFTER" ]; then
+  echo "PASS: completed+linked Start created zero new practice attempts ($V118_ATTEMPT_COUNT_BEFORE unchanged)"; PASS=$((PASS+1))
+else
+  echo "FAIL: expected attempt count to stay at $V118_ATTEMPT_COUNT_BEFORE, got $V118_ATTEMPT_COUNT_AFTER"; FAIL=$((FAIL+1)); FAILURES+=("completed+linked Start creates no new attempt")
+fi
+expect_rows "the linkage is unchanged -- still the same session_id" postgres "" \
+  "select (practice_attempt_id::text = '$V118_SESSION')::text from public.daily_drills where id='$V118_DRILL';" "true"
+expect_rows "the drill's completed_at is unchanged" postgres "" \
+  "select status from public.daily_drills where id='$V118_DRILL';" "completed"
+
+echo "--- completed + UNLINKED: a legacy-shaped row (get_or_create_daily_drill never produces this today, but the RPC must not assume it can't exist) ---"
+COMPLETED_UNLINKED_MEMBER=00000000-0000-0000-0000-000000000075
+run_sql postgres "" \
+  "insert into public.profiles (id, email, full_name, role, checkride_prep_unlocked, timezone) values ('$COMPLETED_UNLINKED_MEMBER','v118f@test.local','V118 Completed Unlinked Member','student',true,'UTC') on conflict (id) do nothing;" >/dev/null
+COMPLETED_UNLINKED_DRILL=$(run_sql postgres "" \
+  "insert into public.daily_drills (profile_id, drill_date, algorithm_version, target_acs_tasks, question_ids, scenario_ids, estimated_minutes, status, completed_at) values ('$COMPLETED_UNLINKED_MEMBER', current_date, 'v1', '[]'::jsonb, '[\"q1\"]'::jsonb, '[]'::jsonb, 7, 'completed', now()) returning id;" | tail -1 | xargs)
+expect_success "Start on a completed-but-unlinked drill succeeds (returns the completed row, does not error)" authenticated "$COMPLETED_UNLINKED_MEMBER" \
+  "select public.start_daily_drill_practice_session('$COMPLETED_UNLINKED_DRILL');"
+expect_rows "no practice attempt was created for the completed-but-unlinked drill" postgres "" \
+  "select count(*) from public.portal_practice_attempts where profile_id='$COMPLETED_UNLINKED_MEMBER';" "0"
+expect_rows "the drill remains completed and still unlinked (session_id null) -- not reset, not force-linked" postgres "" \
+  "select (status='completed' and practice_attempt_id is null)::text from public.daily_drills where id='$COMPLETED_UNLINKED_DRILL';" "true"
+
+echo
+echo "Integrity hardening: an invalid stored Daily Drill question set must fail closed, not be repaired."
+echo "--- duplicate stored question id ---"
+DUPLICATE_QID_MEMBER=00000000-0000-0000-0000-000000000076
+run_sql postgres "" \
+  "insert into public.profiles (id, email, full_name, role, checkride_prep_unlocked, timezone) values ('$DUPLICATE_QID_MEMBER','v118g@test.local','V118 Duplicate Qid Member','student',true,'UTC') on conflict (id) do nothing;" >/dev/null
+DUPLICATE_QID_DRILL=$(run_sql postgres "" \
+  "insert into public.daily_drills (profile_id, drill_date, algorithm_version, target_acs_tasks, question_ids, scenario_ids, estimated_minutes, status) values ('$DUPLICATE_QID_MEMBER', current_date, 'v1', '[]'::jsonb, '[\"q1\",\"q6\",\"q1\"]'::jsonb, '[]'::jsonb, 7, 'pending') returning id;" | tail -1 | xargs)
+expect_error_matching "Start on a drill whose stored question_ids contain a duplicate is rejected outright" authenticated "$DUPLICATE_QID_MEMBER" \
+  "select public.start_daily_drill_practice_session('$DUPLICATE_QID_DRILL');" "duplicate question id"
+expect_rows "no attempt was created for the duplicate-question-id drill" postgres "" \
+  "select count(*) from public.portal_practice_attempts where profile_id='$DUPLICATE_QID_MEMBER';" "0"
+expect_rows "the duplicate-question-id drill remains unlinked" postgres "" \
+  "select (practice_attempt_id is null)::text from public.daily_drills where id='$DUPLICATE_QID_DRILL';" "true"
+
+echo "--- nonexistent stored question id ---"
+MISSING_QID_MEMBER=00000000-0000-0000-0000-000000000077
+run_sql postgres "" \
+  "insert into public.profiles (id, email, full_name, role, checkride_prep_unlocked, timezone) values ('$MISSING_QID_MEMBER','v118h@test.local','V118 Missing Qid Member','student',true,'UTC') on conflict (id) do nothing;" >/dev/null
+MISSING_QID_DRILL=$(run_sql postgres "" \
+  "insert into public.daily_drills (profile_id, drill_date, algorithm_version, target_acs_tasks, question_ids, scenario_ids, estimated_minutes, status) values ('$MISSING_QID_MEMBER', current_date, 'v1', '[]'::jsonb, '[\"q1\",\"not-a-real-question-id\"]'::jsonb, '[]'::jsonb, 7, 'pending') returning id;" | tail -1 | xargs)
+expect_error_matching "Start on a drill whose stored question_ids reference a nonexistent question is rejected outright" authenticated "$MISSING_QID_MEMBER" \
+  "select public.start_daily_drill_practice_session('$MISSING_QID_DRILL');" "no longer exists"
+expect_rows "no attempt was created for the missing-question-id drill" postgres "" \
+  "select count(*) from public.portal_practice_attempts where profile_id='$MISSING_QID_MEMBER';" "0"
+expect_rows "the missing-question-id drill remains unlinked" postgres "" \
+  "select (practice_attempt_id is null)::text from public.daily_drills where id='$MISSING_QID_DRILL';" "true"
+
+echo "--- malformed stored question id (empty string element) ---"
+BLANK_QID_MEMBER=00000000-0000-0000-0000-000000000078
+run_sql postgres "" \
+  "insert into public.profiles (id, email, full_name, role, checkride_prep_unlocked, timezone) values ('$BLANK_QID_MEMBER','v118i@test.local','V118 Blank Qid Member','student',true,'UTC') on conflict (id) do nothing;" >/dev/null
+BLANK_QID_DRILL=$(run_sql postgres "" \
+  "insert into public.daily_drills (profile_id, drill_date, algorithm_version, target_acs_tasks, question_ids, scenario_ids, estimated_minutes, status) values ('$BLANK_QID_MEMBER', current_date, 'v1', '[]'::jsonb, '[\"q1\",\"\"]'::jsonb, '[]'::jsonb, 7, 'pending') returning id;" | tail -1 | xargs)
+expect_error_matching "Start on a drill whose stored question_ids contain a blank id is rejected outright" authenticated "$BLANK_QID_MEMBER" \
+  "select public.start_daily_drill_practice_session('$BLANK_QID_DRILL');" "invalid question id"
+expect_rows "no attempt was created for the blank-question-id drill" postgres "" \
+  "select count(*) from public.portal_practice_attempts where profile_id='$BLANK_QID_MEMBER';" "0"
+
+echo
+echo "NOTE: mobile-daily-drill's resolveDrillQuestions() fail-closed fix (throwing instead of"
+echo "silently filtering a missing question, so the client never receives a partial drill) is TypeScript"
+echo "and cannot execute in this sandbox (no deno/supabase-cli runtime), matching the same documented"
+echo "limitation as sections 24/38's Edge-Function-only logic. The RPC-level integrity checks above are"
+echo "the actual source of truth this fix relies on: because start_daily_drill_practice_session() now"
+echo "rejects any drill whose stored question_ids contain a dangling id BEFORE an attempt can ever be"
+echo "created, the Edge Function's fail-closed path is a defense-in-depth backstop, not the only guard."
+
+echo
 echo "=================================================="
 echo "RESULTS: $PASS passed, $FAIL failed"
 if [ $FAIL -gt 0 ]; then

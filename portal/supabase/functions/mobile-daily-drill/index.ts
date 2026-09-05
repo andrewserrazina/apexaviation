@@ -61,6 +61,15 @@ function shapeDrill(drill: DrillRow) {
 // category only -- never model_answer/etc. upfront), preserving the
 // drill's own stored ordering exactly rather than whatever order the
 // database happens to return rows in.
+//
+// v118 Rev2: fails closed. The linked practice session (when one exists)
+// is defined to contain EXACTLY these question_ids -- silently dropping
+// one that fails to resolve (the prior `.filter(Boolean)`) would return a
+// drill with fewer questions than the session actually has, which the
+// client could then never fully complete. Any missing id throws instead,
+// caught by the caller's existing catch-all and surfaced as a generic
+// Internal error -- never a partial drill, never a raw database error, and
+// never a silently substituted question.
 async function resolveDrillQuestions(serviceClient: ReturnType<typeof createClient>, questionIds: string[]) {
   if (!questionIds.length) return []
   const { data: qRows, error } = await serviceClient
@@ -69,7 +78,11 @@ async function resolveDrillQuestions(serviceClient: ReturnType<typeof createClie
     .in('id', questionIds)
   if (error) throw error
   const byId = new Map((qRows || []).map((q: { id: string }) => [q.id, q]))
-  return questionIds.map((id) => byId.get(id)).filter(Boolean)
+  return questionIds.map((id) => {
+    const question = byId.get(id)
+    if (!question) throw new Error(`Daily Drill question ${id} could not be resolved`)
+    return question
+  })
 }
 
 serve(async (req) => {

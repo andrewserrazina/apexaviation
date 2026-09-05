@@ -3,6 +3,63 @@
 -- NOT YET APPLIED TO PRODUCTION. Source-controlled, locally tested only.
 --
 -- ===========================================================================
+-- REV2 CHANGE NOTE
+-- ===========================================================================
+-- Independent review of the original v118 found two blocking issues and
+-- required one preventative hardening item in start_daily_drill_practice_
+-- session(). All three are additive re-checks inside that one function --
+-- nothing about the schema, the completion-linkage step, the Daily Drill
+-- selection algorithm, or any other reviewed guarantee changes.
+--
+-- (Blocker 1) start_daily_drill_practice_session() is directly callable by
+-- `authenticated` -- mobile-daily-drill's requirePremiumAccess() check does
+-- not protect a direct RPC call. The original body assumed that because
+-- get_or_create_daily_drill() checked entitlement at GENERATION time, the
+-- learner was still entitled at START time. A learner who lost Checkride
+-- Prep access after generating a drill could otherwise still mint a fresh
+-- premium practice attempt from that old persisted row. Fixed by
+-- re-checking `profiles.checkride_prep_unlocked` -- the exact same
+-- authoritative rule get_or_create_daily_drill() already uses, no new
+-- entitlement model -- immediately before the only branch that can create
+-- a new attempt. Ordering decision: this check sits AFTER the
+-- already-linked early-return (so resuming or simply re-fetching an
+-- existing session, at any status, is never entitlement-gated -- only
+-- *creating* a new attempt is) and BEFORE the question-set validation
+-- below (a cheaper, more fundamental gate goes first).
+--
+-- (Blocker 2) The original body's only guard against re-touching a
+-- completed drill was the already-linked early-return -- a completed drill
+-- that (via a legacy row, manual repair, or a future rollback) somehow had
+-- practice_attempt_id = NULL would fall through into normal attempt
+-- creation, resetting a drill that should be permanently done. Fixed with
+-- an explicit `status = 'completed'` check, placed immediately after the
+-- already-linked check and before entitlement/question-set validation:
+-- it returns the completed row as-is (session_id stays null in that
+-- edge case -- a deliberate "nothing to start, this is already done"
+-- response, not an error and not a fabricated session) and creates
+-- nothing. get_or_create_daily_drill() never actually produces a
+-- completed-but-unlinked row today; this is preventative, matching the
+-- production audit already covered by the original migration's own header.
+--
+-- (Integrity hardening) The bridge's whole guarantee is that the created
+-- attempt represents EXACTLY the drill's stored question_ids. Before
+-- inserting, the stored set is now validated to be a non-empty JSON array
+-- of distinct, non-empty string ids, each resolving to a real
+-- dpe_questions row. Any violation fails closed -- reject, create zero
+-- attempts, mutate nothing. No replacement ids are ever accepted from the
+-- client (none were before either); a bad stored set is never repaired,
+-- deduplicated, or re-randomized -- it is simply refused. This is
+-- preventative: production presently has one Daily Drill row, zero
+-- multi-mapped DPE questions, and zero drills with duplicate question ids;
+-- no production data is altered by this migration either way.
+--
+-- Also fixed in the same review: mobile-daily-drill's resolveDrillQuestions
+-- helper silently returned fewer questions than the session actually
+-- contained if a stored id failed to resolve (a plain `.filter(Boolean)`).
+-- It now fails closed -- any missing id throws, surfaced as a generic
+-- Internal error, never a partial drill and never a raw database error.
+--
+-- ===========================================================================
 -- INTEGRATION GAP THIS CLOSES
 -- ===========================================================================
 -- Sprint 1 (Expo) tracing of the reviewed backend found that mobile-daily-
@@ -133,6 +190,9 @@ declare
   v_attempt_id uuid;
   v_question_ids jsonb;
   v_total integer;
+  v_entitled boolean;
+  v_distinct_count integer;
+  v_missing_count integer;
 begin
   if v_profile_id is null then
     raise exception 'Not signed in.';
@@ -151,15 +211,70 @@ begin
 
   -- Already linked -- pending, in_progress, or completed: resume/return
   -- the existing state. Never create a second attempt, never reset a
-  -- completed drill.
+  -- completed drill. Rev2: deliberately placed BEFORE the entitlement
+  -- re-check below -- entitlement only ever gates CREATING a new attempt,
+  -- never resuming (or simply re-fetching) one that already exists.
   if v_drill.practice_attempt_id is not null then
     return v_drill;
   end if;
 
-  v_question_ids := coalesce(v_drill.question_ids, '[]'::jsonb);
-  v_total := jsonb_array_length(v_question_ids);
-  if v_total = 0 then
+  -- Rev2 (Blocker 2): a completed drill with no linked attempt (a legacy
+  -- row, a manual repair, a future rollback artifact -- get_or_create_
+  -- daily_drill() never produces this today) must never be turned into a
+  -- fresh attempt. Simplest stable contract: return the completed drill
+  -- as-is, session_id still null -- a deliberate "nothing to start, this
+  -- is already done" response, not an error and not a fabricated session.
+  if v_drill.status = 'completed' then
+    return v_drill;
+  end if;
+
+  -- Rev2 (Blocker 1): get_or_create_daily_drill() only ever checks
+  -- entitlement at GENERATION time. This function is directly callable by
+  -- `authenticated` -- mobile-daily-drill's requirePremiumAccess() check
+  -- does not protect a direct RPC call -- so a learner who has since lost
+  -- Checkride Prep access could otherwise still mint a brand new premium
+  -- practice attempt from an old persisted drill. Re-checked here, using
+  -- the exact same authoritative rule get_or_create_daily_drill() already
+  -- uses (no new entitlement model), immediately before the only branch
+  -- below that can create a new attempt.
+  select checkride_prep_unlocked into v_entitled from public.profiles where id = v_profile_id;
+  if not coalesce(v_entitled, false) then
+    raise exception 'Checkride Prep is not unlocked on this account.';
+  end if;
+
+  -- Rev2 (integrity hardening): the bridge's whole guarantee is that the
+  -- created attempt represents EXACTLY this drill's stored question_ids.
+  -- Fail closed on a malformed stored set rather than create a session the
+  -- learner can never complete -- no re-randomizing, no dropping bad ids,
+  -- no deduplicating and proceeding. The client never supplies question_ids
+  -- here (unchanged from the original design); this only validates what
+  -- the Daily Drill algorithm itself already stored.
+  v_question_ids := v_drill.question_ids;
+  if v_question_ids is null or jsonb_typeof(v_question_ids) <> 'array' or jsonb_array_length(v_question_ids) = 0 then
     raise exception 'This Daily Drill has no questions to practice.';
+  end if;
+
+  if exists (
+    select 1 from jsonb_array_elements(v_question_ids) as elem(value)
+    where jsonb_typeof(elem.value) <> 'string' or length(trim(both from (elem.value #>> '{}'))) = 0
+  ) then
+    raise exception 'This Daily Drill''s stored question set contains an invalid question id.';
+  end if;
+
+  v_total := jsonb_array_length(v_question_ids);
+
+  select count(distinct qid) into v_distinct_count
+  from jsonb_array_elements_text(v_question_ids) as qid;
+  if v_distinct_count <> v_total then
+    raise exception 'This Daily Drill''s stored question set contains a duplicate question id.';
+  end if;
+
+  select count(*) into v_missing_count
+  from jsonb_array_elements_text(v_question_ids) as qid
+  left join public.dpe_questions dq on dq.id = qid
+  where dq.id is null;
+  if v_missing_count > 0 then
+    raise exception 'This Daily Drill''s stored question set references a question that no longer exists.';
   end if;
 
   insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at)
