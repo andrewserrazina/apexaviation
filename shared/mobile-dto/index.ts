@@ -237,10 +237,16 @@ export interface MobileDailyDrill {
 }
 
 // Returned by both the default (fetch-or-create) action and the `start`
-// action. `start` additionally guarantees session_id is non-null on the
-// returned drill (surfaced redundantly at the top level below so callers
-// don't have to reach into `drill` for the one field `start` exists to
-// produce).
+// action. For the normal pending/in_progress case, `start` creates or
+// resumes a real session and session_id is non-null on the returned
+// drill. The one deliberate exception: a completed drill that has no
+// linked session (a shape today's generation code never produces, but the
+// v118 bridge's start_daily_drill_practice_session() RPC explicitly
+// tolerates rather than assumes impossible) returns the completed drill
+// as-is with session_id still null and creates nothing -- callers must
+// not assume `start` always yields a non-null session_id and must honor
+// the nullable type. session_id is surfaced redundantly at the top level
+// below so callers don't have to reach into `drill` for it.
 export interface MobileDailyDrillResponse {
   drill: MobileDailyDrill
   session_id: string | null

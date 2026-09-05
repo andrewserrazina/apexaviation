@@ -1193,6 +1193,7 @@ echo
 echo "Blocker 2: a completed drill must never create a new session, whether already linked or not."
 echo "--- completed + linked: V118_DRILL/V118_SESSION from section 40 above ---"
 V118_ATTEMPT_COUNT_BEFORE=$(run_sql postgres "" "select count(*) from public.portal_practice_attempts where profile_id='$V118_MEMBER';" | tail -1 | xargs)
+V118_COMPLETED_AT_BEFORE=$(run_sql postgres "" "select completed_at::text from public.daily_drills where id='$V118_DRILL';" | tail -1 | xargs)
 expect_success "Start on an already-completed, already-linked drill succeeds (returns existing state, not an error)" authenticated "$V118_MEMBER" \
   "select public.start_daily_drill_practice_session('$V118_DRILL');"
 V118_ATTEMPT_COUNT_AFTER=$(run_sql postgres "" "select count(*) from public.portal_practice_attempts where profile_id='$V118_MEMBER';" | tail -1 | xargs)
@@ -1203,8 +1204,10 @@ else
 fi
 expect_rows "the linkage is unchanged -- still the same session_id" postgres "" \
   "select (practice_attempt_id::text = '$V118_SESSION')::text from public.daily_drills where id='$V118_DRILL';" "true"
-expect_rows "the drill's completed_at is unchanged" postgres "" \
+expect_rows "the drill's status remains completed" postgres "" \
   "select status from public.daily_drills where id='$V118_DRILL';" "completed"
+expect_rows "the drill's completed_at is unchanged (byte-identical to before the redundant Start call)" postgres "" \
+  "select (completed_at::text = '$V118_COMPLETED_AT_BEFORE')::text from public.daily_drills where id='$V118_DRILL';" "true"
 
 echo "--- completed + UNLINKED: a legacy-shaped row (get_or_create_daily_drill never produces this today, but the RPC must not assume it can't exist) ---"
 COMPLETED_UNLINKED_MEMBER=00000000-0000-0000-0000-000000000075
