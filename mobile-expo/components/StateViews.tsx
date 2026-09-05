@@ -59,6 +59,24 @@ export function EmptyState({ title, message, actionLabel, onAction }: EmptyState
   )
 }
 
+// The one locked-access state for a learner whose bootstrap-reported
+// access.checkride_prep is false. Sprint 1A has no in-app purchase flow,
+// so this is deliberately a dead end with NO url/price/checkout/browser
+// steering of any kind (Sprint 1A Rev2 section 3) -- a plain account-
+// state message pointing the learner to a human, not a purchase path.
+export function LockedState() {
+  return (
+    <View style={styles.wrap}>
+      <AppText variant="subtitle" weight="semibold" center>
+        Checkride Prep isn’t included on this account
+      </AppText>
+      <AppText variant="body" color={colors.mutedText} center>
+        If you believe this is a mistake, contact your instructor or Apex support.
+      </AppText>
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
   wrap: {
     flex: 1,

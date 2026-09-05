@@ -4,12 +4,33 @@ import { SectionHeader } from '../../../components/SectionHeader'
 import { Card } from '../../../components/Card'
 import { AppText } from '../../../components/AppText'
 import { TodaysDrillCard } from '../../../components/TodaysDrillCard'
-import { ErrorState, LoadingState } from '../../../components/StateViews'
+import { ErrorState, LoadingState, LockedState } from '../../../components/StateViews'
+import { useBootstrapContext } from '../../../contexts/BootstrapContext'
 import { useDailyDrill } from '../../../hooks/useDailyDrill'
 import { colors } from '../../../constants/theme'
 
 export default function PracticeTabScreen() {
-  const { data, loading, error, refetch } = useDailyDrill()
+  const bootstrap = useBootstrapContext()
+  const { data, loading, error, refetch } = useDailyDrill({ enabled: bootstrap.ready && bootstrap.entitled })
+
+  if (bootstrap.loading || !bootstrap.ready) {
+    return (
+      <Screen scroll={false}>
+        <LoadingState label="Loading Practice…" />
+      </Screen>
+    )
+  }
+
+  // Sprint 1A Rev2 section 3: an unentitled learner sees an intentional
+  // locked state here too, never a retryable "premium API failed" error,
+  // and never generates a mobile-daily-drill request.
+  if (!bootstrap.entitled) {
+    return (
+      <Screen scroll={false}>
+        <LockedState />
+      </Screen>
+    )
+  }
 
   return (
     <Screen>

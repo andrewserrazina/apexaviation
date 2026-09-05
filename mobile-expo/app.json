@@ -40,7 +40,8 @@
         {
           "backgroundColor": "#0B1F3A"
         }
-      ]
+      ],
+      "expo-asset"
     ]
   }
 }

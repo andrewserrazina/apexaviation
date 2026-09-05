@@ -5,6 +5,15 @@ import { ApiError, logDevError } from '../lib/api/errors'
 
 type TodaysDrill = MobileBootstrapDTO['home']['todays_drill']
 
+interface UseHomeDrillOptions {
+  // Gate on bootstrap having resolved AND the learner being entitled --
+  // this hook must never call mobile-daily-drill while bootstrap is
+  // still loading (entitlement isn't known yet) or once bootstrap has
+  // confirmed the learner lacks Checkride Prep access (Sprint 1A Rev2
+  // section 2).
+  enabled: boolean
+}
+
 interface UseHomeDrillResult {
   drill: TodaysDrill
   loading: boolean
@@ -16,13 +25,24 @@ interface UseHomeDrillResult {
 // render it. If bootstrap has no drill: call mobile-daily-drill default
 // action to fetch/create it." This hook is exactly that branch -- it only
 // calls mobile-daily-drill when bootstrap's own todays_drill is null,
-// rather than unconditionally re-fetching what bootstrap already gave us.
-export function useHomeDrill(bootstrapDrill: TodaysDrill): UseHomeDrillResult {
-  const [drill, setDrill] = useState<TodaysDrill>(bootstrapDrill)
-  const [loading, setLoading] = useState(!bootstrapDrill)
+// rather than unconditionally re-fetching what bootstrap already gave us
+// -- and, per Rev2 section 2, only once `enabled` says bootstrap has
+// actually resolved and the learner is entitled.
+export function useHomeDrill(bootstrapDrill: TodaysDrill, { enabled }: UseHomeDrillOptions): UseHomeDrillResult {
+  const [drill, setDrill] = useState<TodaysDrill>(enabled ? bootstrapDrill : null)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<ApiError | null>(null)
 
   const fetchIfNeeded = useCallback(async () => {
+    if (!enabled) {
+      // Not ready to know yet (bootstrap still loading) or the learner
+      // isn't entitled -- never fetch/create a Daily Drill in either
+      // case.
+      setDrill(null)
+      setLoading(false)
+      setError(null)
+      return
+    }
     if (bootstrapDrill) {
       setDrill(bootstrapDrill)
       setLoading(false)
@@ -45,7 +65,7 @@ export function useHomeDrill(bootstrapDrill: TodaysDrill): UseHomeDrillResult {
     } finally {
       setLoading(false)
     }
-  }, [bootstrapDrill])
+  }, [enabled, bootstrapDrill])
 
   useEffect(() => {
     fetchIfNeeded()

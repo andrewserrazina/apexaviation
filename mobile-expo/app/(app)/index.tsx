@@ -1,8 +1,8 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Pressable, View, StyleSheet } from 'react-native'
-import { router } from 'expo-router'
+import { router, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { useBootstrap } from '../../hooks/useBootstrap'
+import { useBootstrapContext } from '../../contexts/BootstrapContext'
 import { useHomeDrill } from '../../hooks/useHomeDrill'
 import { Screen } from '../../components/Screen'
 import { AppText } from '../../components/AppText'
@@ -11,12 +11,12 @@ import { MetricCard } from '../../components/MetricCard'
 import { ReadinessCard } from '../../components/ReadinessCard'
 import { TodaysDrillCard } from '../../components/TodaysDrillCard'
 import { SectionHeader } from '../../components/SectionHeader'
-import { ErrorState, LoadingState, EmptyState } from '../../components/StateViews'
+import { ErrorState, LoadingState, LockedState } from '../../components/StateViews'
 import { colors, spacing } from '../../constants/theme'
 
 export default function HomeScreen() {
-  const bootstrap = useBootstrap()
-  const drill = useHomeDrill(bootstrap.data?.home.todays_drill ?? null)
+  const bootstrap = useBootstrapContext()
+  const drill = useHomeDrill(bootstrap.data?.home.todays_drill ?? null, { enabled: bootstrap.ready && bootstrap.entitled })
   const [refreshing, setRefreshing] = useState(false)
 
   const onRefresh = useCallback(async () => {
@@ -24,14 +24,39 @@ export default function HomeScreen() {
     setRefreshing(true)
     try {
       await bootstrap.refresh()
-      await drill.retry()
+      // useHomeDrill re-syncs on its own once the refreshed
+      // bootstrap.data flows back down as a new `bootstrapDrill` prop --
+      // no separate drill.retry() call needed here.
     } finally {
       setRefreshing(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshing])
 
-  if (bootstrap.loading) {
+  // Sprint 1A Rev2 section 8: refresh bootstrap whenever Home regains
+  // focus (e.g. the learner taps "Back to Home" after completing a
+  // drill), so XP/streak/readiness/today's-drill are current without
+  // requiring a manual pull-to-refresh. Skips the very first focus --
+  // BootstrapProvider already fetches once on mount, so refreshing again
+  // immediately would just be a duplicate network call. useBootstrap's
+  // own in-flight guard additionally prevents this from ever overlapping
+  // a refresh already underway (e.g. from pull-to-refresh).
+  const hasFocusedOnce = useRef(false)
+  const refreshRef = useRef(bootstrap.refresh)
+  useEffect(() => {
+    refreshRef.current = bootstrap.refresh
+  }, [bootstrap.refresh])
+  useFocusEffect(
+    useCallback(() => {
+      if (!hasFocusedOnce.current) {
+        hasFocusedOnce.current = true
+        return
+      }
+      refreshRef.current()
+    }, [])
+  )
+
+  if (bootstrap.loading || !bootstrap.ready) {
     return (
       <Screen scroll={false}>
         <LoadingState label="Loading your dashboard…" />
@@ -52,10 +77,7 @@ export default function HomeScreen() {
   if (!access.checkride_prep) {
     return (
       <Screen scroll={false}>
-        <EmptyState
-          title="Checkride Prep isn’t unlocked yet"
-          message="Ask your instructor or visit apexaviationtx.com from a browser to unlock Checkride Prep for your account."
-        />
+        <LockedState />
       </Screen>
     )
   }
