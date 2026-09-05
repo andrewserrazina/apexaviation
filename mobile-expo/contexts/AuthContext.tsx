@@ -10,9 +10,11 @@
 // session; this app falls through and uses whatever session
 // getSession() did return alongside that non-fatal error.
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { AppState, type AppStateStatus } from 'react-native'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { isStaleRefreshTokenError } from '../lib/authErrors'
+import { logDevError } from '../lib/api/errors'
 
 export type AuthSignInResult =
   | { ok: true }
@@ -69,6 +71,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // treated as stale -- fall through and use whatever session
         // getSession() returned, which may still be valid.
         setSession(data.session ?? null)
+      } catch (err) {
+        // A genuinely thrown/rejected getSession() (e.g. a secure-storage
+        // read failure) is unexpected, but it is still not evidence of a
+        // stale/invalid refresh token -- never route it into
+        // handleStaleSession()/destructive local sign-out. Dev-log it and
+        // resolve loading so the app can proceed with whatever `session`
+        // state already holds (Sprint 1A Rev2 section 6).
+        if (!cancelled) logDevError('AuthContext.initialize', err)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -87,6 +97,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
       subscription.unsubscribe()
+    }
+  }, [])
+
+  // Official Supabase React Native guidance: auto-refresh must be driven
+  // by app foreground/background state, or a backgrounded app can burn
+  // through refresh attempts (or fail to refresh in time) once returned
+  // to foreground. Synchronizes the initial AppState immediately, then
+  // starts/stops on every subsequent transition. Never touches stale-
+  // token handling or triggers a sign-out of any kind.
+  useEffect(() => {
+    function syncAutoRefresh(state: AppStateStatus) {
+      if (state === 'active') {
+        supabase.auth.startAutoRefresh()
+      } else {
+        supabase.auth.stopAutoRefresh()
+      }
+    }
+
+    syncAutoRefresh(AppState.currentState)
+    const subscription = AppState.addEventListener('change', syncAutoRefresh)
+
+    return () => {
+      subscription.remove()
     }
   }, [])
 

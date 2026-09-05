@@ -1,11 +1,14 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native'
 import type { ReactNode } from 'react'
+import { AppState } from 'react-native'
 import { AuthProvider, useAuth } from '../contexts/AuthContext'
 
 const mockGetSession = jest.fn()
 const mockOnAuthStateChange = jest.fn()
 const mockSignOut = jest.fn()
 const mockSignInWithPassword = jest.fn()
+const mockStartAutoRefresh = jest.fn()
+const mockStopAutoRefresh = jest.fn()
 
 jest.mock('../lib/supabase', () => ({
   supabase: {
@@ -14,6 +17,8 @@ jest.mock('../lib/supabase', () => ({
       onAuthStateChange: (...args: unknown[]) => mockOnAuthStateChange(...args),
       signOut: (...args: unknown[]) => mockSignOut(...args),
       signInWithPassword: (...args: unknown[]) => mockSignInWithPassword(...args),
+      startAutoRefresh: (...args: unknown[]) => mockStartAutoRefresh(...args),
+      stopAutoRefresh: (...args: unknown[]) => mockStopAutoRefresh(...args),
     },
   },
 }))
@@ -30,7 +35,12 @@ describe('AuthContext', () => {
     mockOnAuthStateChange.mockReset()
     mockSignOut.mockReset()
     mockSignInWithPassword.mockReset()
+    mockStartAutoRefresh.mockReset()
+    mockStopAutoRefresh.mockReset()
     mockOnAuthStateChange.mockReturnValue({ data: { subscription: { unsubscribe: jest.fn() } } })
+    ;(AppState.addEventListener as jest.Mock).mockReset()
+    ;(AppState.addEventListener as jest.Mock).mockReturnValue({ remove: jest.fn() })
+    AppState.currentState = 'active'
   })
 
   // A: a valid stored session restores.
@@ -139,5 +149,66 @@ describe('AuthContext', () => {
       await result.current.signOut()
     })
     expect(result.current.session).toBeNull()
+  })
+
+  // Rev2 section 6: an unexpected thrown/rejected getSession() (not a
+  // returned {error}, an actual exception) must be dev-logged only --
+  // never routed into stale-token cleanup, never a destructive sign-out.
+  it('does not sign out when getSession() unexpectedly rejects during initialization', async () => {
+    mockGetSession.mockRejectedValue(new Error('secure storage read failed'))
+
+    const { result } = await renderHook(() => useAuth(), { wrapper })
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    expect(mockSignOut).not.toHaveBeenCalled()
+    expect(result.current.session).toBeNull()
+  })
+
+  // Rev2 section 6: AppState-driven auto-refresh lifecycle.
+  describe('AppState-driven auto-refresh', () => {
+    it('starts auto-refresh when the app is active on mount', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null })
+      AppState.currentState = 'active'
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.loading).toBe(false))
+
+      expect(mockStartAutoRefresh).toHaveBeenCalled()
+      expect(mockStopAutoRefresh).not.toHaveBeenCalled()
+    })
+
+    it('stops auto-refresh when the app is backgrounded, and restarts it when active again', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null })
+      AppState.currentState = 'active'
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.loading).toBe(false))
+      mockStartAutoRefresh.mockClear()
+
+      const addEventListenerMock = AppState.addEventListener as jest.Mock
+      const handler = addEventListenerMock.mock.calls[0][1] as (state: string) => void
+
+      await act(async () => {
+        handler('background')
+      })
+      expect(mockStopAutoRefresh).toHaveBeenCalledTimes(1)
+
+      await act(async () => {
+        handler('active')
+      })
+      expect(mockStartAutoRefresh).toHaveBeenCalledTimes(1)
+    })
+
+    it('removes the AppState listener on unmount', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null })
+      const removeMock = jest.fn()
+      ;(AppState.addEventListener as jest.Mock).mockReturnValue({ remove: removeMock })
+
+      const { result, unmount } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.loading).toBe(false))
+
+      await unmount()
+      expect(removeMock).toHaveBeenCalledTimes(1)
+    })
   })
 })
