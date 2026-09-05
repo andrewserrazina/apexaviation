@@ -8,23 +8,17 @@
 // actually rendered.
 import type { MobileReadinessResponse } from '../../../shared/mobile-dto'
 import { invokeMobileFunction } from './client'
-import { assertShape, isPlainObject } from './validate'
+import { assertShape, isPlainObject, isValidReadinessSummaryOrNull } from './validate'
 
 function validateReadinessResponse(data: unknown, context: string): MobileReadinessResponse {
   assertShape(isPlainObject(data) && typeof data.refreshed === 'boolean', context, data)
-  const snapshot = (data as { snapshot: unknown }).snapshot
-  // ReadinessCard renders overall_score/evidence_level/reason_codes --
-  // snapshot is either null (the intentional "no readiness yet" case) or
-  // must carry all three in a usable shape.
-  assertShape(
-    snapshot === null ||
-      (isPlainObject(snapshot) &&
-        typeof snapshot.overall_score === 'number' &&
-        typeof snapshot.evidence_level === 'string' &&
-        Array.isArray(snapshot.reason_codes)),
-    context,
-    data
-  )
+  // Shares its shape check with mobile-bootstrap's progress.
+  // readiness_summary via isValidReadinessSummaryOrNull -- both are
+  // rendered by the same ReadinessCard component and must satisfy the
+  // exact same invariants: null, or overall_score/evidence_level/
+  // reason_codes usable (evidence_level one of low/moderate/high,
+  // reason_codes an array of strings).
+  assertShape(isValidReadinessSummaryOrNull((data as { snapshot: unknown }).snapshot), context, data)
   return data as MobileReadinessResponse
 }
 

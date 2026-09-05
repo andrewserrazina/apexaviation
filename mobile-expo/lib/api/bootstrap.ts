@@ -5,22 +5,47 @@
 // of this exact contract.
 import type { MobileBootstrapDTO } from '../../../shared/mobile-dto'
 import { invokeMobileFunction } from './client'
-import { assertShape, isPlainObject } from './validate'
+import { assertShape, isNullableString, isPlainObject, isValidReadinessSummaryOrNull, isValidTodaysDrillOrNull } from './validate'
+
+// Sprint 1A Rev3 section 3: checks the exact nested fields Home actually
+// reads -- not the full DTO shape, and not a schema-validation
+// dependency, just enough that a malformed 200 can't crash Home's render
+// or misrender a boolean/number as something else.
+function isValidBootstrap(data: unknown): data is MobileBootstrapDTO {
+  if (!isPlainObject(data)) return false
+  const { user, training, access, progress, home } = data
+
+  if (!isPlainObject(user) || typeof user.id !== 'string' || !isNullableString(user.full_name)) return false
+
+  if (
+    !isPlainObject(training) ||
+    !isNullableString(training.certificate_type) ||
+    !isNullableString(training.aircraft_class) ||
+    !isNullableString(training.acs_version)
+  ) {
+    return false
+  }
+
+  if (!isPlainObject(access) || typeof access.checkride_prep !== 'boolean') return false
+
+  if (
+    !isPlainObject(progress) ||
+    typeof progress.xp !== 'number' ||
+    typeof progress.current_streak !== 'number' ||
+    typeof progress.longest_streak !== 'number' ||
+    !isNullableString(progress.current_rank) ||
+    !isValidReadinessSummaryOrNull(progress.readiness_summary)
+  ) {
+    return false
+  }
+
+  if (!isPlainObject(home) || !isValidTodaysDrillOrNull(home.todays_drill) || !Array.isArray(home.weak_areas)) return false
+
+  return true
+}
 
 export async function fetchBootstrap(): Promise<MobileBootstrapDTO> {
   const data = await invokeMobileFunction<MobileBootstrapDTO>('mobile-bootstrap')
-  // Home renders user/training/access/progress/home directly -- a
-  // malformed response missing any of them must not reach the render
-  // tree (Sprint 1A Rev2 section 9).
-  assertShape(
-    isPlainObject(data) &&
-      isPlainObject(data.user) &&
-      isPlainObject(data.training) &&
-      isPlainObject(data.access) &&
-      isPlainObject(data.progress) &&
-      isPlainObject(data.home),
-    'fetchBootstrap',
-    data
-  )
+  assertShape(isValidBootstrap(data), 'fetchBootstrap', data)
   return data
 }
