@@ -5,9 +5,10 @@
 // file does NOT mock useHomeDrill/useDailyDrill -- it exercises the real
 // hooks against a mocked mobile-daily-drill client, so the entitlement
 // gate itself (not just its rendered output) is under test.
-import { render, screen, waitFor } from '@testing-library/react-native'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react-native'
 import HomeScreen from '../app/(app)/index'
 import PracticeTabScreen from '../app/(app)/practice/index'
+import { ApiError } from '../lib/api/errors'
 
 jest.mock('expo-router', () => ({
   router: { push: jest.fn(), replace: jest.fn() },
@@ -91,5 +92,67 @@ describe('entitlement gating (Rev2 section 3)', () => {
 
     await waitFor(() => expect(mockFetchDailyDrill).toHaveBeenCalledTimes(1))
     expect(screen.getByText('Start Drill')).toBeTruthy()
+  })
+})
+
+// Rev3 section 2: a bootstrap FAILURE (data: null, error set) must never
+// be misrepresented as "not entitled" -- bootstrap.entitled defaults to
+// false whenever bootstrap.data is null, which is exactly the shape a
+// failed bootstrap call has. Practice's ordering must check for this
+// error/no-data case BEFORE checking entitlement, matching Home.
+describe('Practice distinguishes bootstrap failure from locked access (Rev3 section 2)', () => {
+  function failedBootstrapContext() {
+    const refresh = jest.fn()
+    return {
+      data: null,
+      loading: false,
+      refreshing: false,
+      error: new ApiError({ kind: 'network', userMessage: 'Check your connection and try again.' }),
+      refresh,
+      ready: true,
+      entitled: false,
+    }
+  }
+
+  beforeEach(() => {
+    mockFetchDailyDrill.mockReset()
+    mockUseBootstrapContext.mockReset()
+  })
+
+  it('shows a retryable dashboard/account-loading error, not the locked-access message', async () => {
+    mockUseBootstrapContext.mockReturnValue(failedBootstrapContext())
+
+    await render(<PracticeTabScreen />)
+
+    expect(screen.getByText('Check your connection and try again.')).toBeTruthy()
+    expect(screen.queryByText('Checkride Prep isn’t included on this account')).toBeNull()
+  })
+
+  it('never generates a mobile-daily-drill request while bootstrap is errored', async () => {
+    mockUseBootstrapContext.mockReturnValue(failedBootstrapContext())
+
+    await render(<PracticeTabScreen />)
+
+    expect(mockFetchDailyDrill).not.toHaveBeenCalled()
+  })
+
+  it('retry calls bootstrap.refresh', async () => {
+    const fixture = failedBootstrapContext()
+    mockUseBootstrapContext.mockReturnValue(fixture)
+
+    await render(<PracticeTabScreen />)
+
+    const retryButton = screen.getByRole('button', { name: 'Try again' })
+    fireEvent.press(retryButton)
+    expect(fixture.refresh).toHaveBeenCalledTimes(1)
+  })
+
+  it('a resolved-but-dataless bootstrap (no error object, but data still null) also shows the retryable error, never LockedState', async () => {
+    mockUseBootstrapContext.mockReturnValue({ ...failedBootstrapContext(), error: null })
+
+    await render(<PracticeTabScreen />)
+
+    expect(screen.queryByText('Checkride Prep isn’t included on this account')).toBeNull()
+    expect(screen.getByText('Try again')).toBeTruthy()
   })
 })

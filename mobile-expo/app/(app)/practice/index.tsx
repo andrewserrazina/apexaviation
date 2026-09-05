@@ -21,6 +21,22 @@ export default function PracticeTabScreen() {
     )
   }
 
+  // Rev3 section 2: a bootstrap failure (network/server error, or a
+  // resolved-but-dataless state) must never be misrepresented as "not
+  // entitled" -- `bootstrap.entitled` defaults to false whenever
+  // `bootstrap.data` is null, which is exactly the shape a failed
+  // bootstrap call has. This check must come BEFORE the entitlement
+  // check below, matching Home's own ordering, so a learner who is
+  // actually entitled but hit a transient bootstrap failure sees a
+  // retryable error, never the permanent-sounding locked-access copy.
+  if (bootstrap.error || !bootstrap.data) {
+    return (
+      <Screen scroll={false}>
+        <ErrorState message={bootstrap.error?.userMessage ?? 'We couldn’t load your account.'} onRetry={bootstrap.refresh} />
+      </Screen>
+    )
+  }
+
   // Sprint 1A Rev2 section 3: an unentitled learner sees an intentional
   // locked state here too, never a retryable "premium API failed" error,
   // and never generates a mobile-daily-drill request.
