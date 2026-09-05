@@ -204,6 +204,49 @@ revoke insert, update, delete on public.portal_practice_attempt_responses from a
 -- Progress-counter fix (REV2.6): the portal_question_progress upsert now
 -- increments answered_count instead of overwriting it, and leaves
 -- viewed_count/favorited/first_viewed_at alone on conflict.
+--
+-- ===========================================================================
+-- REV3.10/3.11 CHANGE NOTE -- full-payload validation before ANY side effect
+-- ===========================================================================
+-- Independent review found that Rev2's per-item loop SILENTLY SKIPPED a
+-- malformed item (`continue`) rather than rejecting the whole request. That
+-- meant a client bug (or forged payload) submitting the SAME question_id
+-- twice -- once as "correct", once as "incorrect" -- would have both
+-- responses attempted; the response table's own unique constraint would
+-- stop the second row from being inserted, but nothing stopped
+-- task_evidence, the aggregate score, or study-activity seconds from
+-- reflecting whichever copy happened to run first, silently and
+-- non-deterministically.
+--
+-- Rev3 validates the ENTIRE p_responses array up front, under the same row
+-- lock, before touching any other table. Any of the following aborts the
+-- whole transaction with zero side effects (Postgres rolls back everything
+-- the function did up to the `raise exception`, which at this point is
+-- nothing but the lock itself):
+--   - a response with a null/missing question_id
+--   - a self_rating that isn't exactly 'correct' | 'incorrect' | 'partial'
+--   - a question_id that is not a member of the attempt's own question_ids
+--   - the SAME question_id appearing more than once, for any reason,
+--     including two different (conflicting) ratings for it
+--   - (REV3.11) an INCOMPLETE submission -- see below
+--
+-- REV3.11 completeness decision: completion requires EXACTLY one response
+-- per question in the attempt, no more, no less -- not an arbitrary valid
+-- subset. This matches the natural mobile UX (a learner answers all N
+-- questions in a session, then taps "Finish") and keeps `score`/`total`
+-- unambiguous: `total` is always the full session size, and `score` is
+-- always "how many of ALL of them were rated correct," never "how many of
+-- however many happened to be submitted this time." A client that wants to
+-- abandon a session early should simply never call `complete` for it,
+-- rather than complete it with partial data -- the attempt row stays
+-- uncompleted, which the mobile app can already detect via
+-- portal_practice_attempts.completed_at is null.
+--
+-- Error messages are prefixed with a stable machine-readable code
+-- (invalid_question / invalid_self_rating / duplicate_question_id /
+-- incomplete_submission / not_your_session / session_not_found) so
+-- mobile-practice's Edge Function can map each to a clean 4xx response
+-- (REV3.13) instead of exposing a raw Postgres error to the client.
 -- ===========================================================================
 create or replace function public.complete_mobile_practice_session(
   p_attempt_id uuid,
@@ -222,9 +265,11 @@ declare
   v_self_rating text;
   v_is_correct boolean;
   v_score integer := 0;
-  v_valid_count integer := 0;
   v_today date;
   v_mapped_task record;
+  v_submitted_count integer;
+  v_distinct_count integer;
+  v_attempt_size integer;
 begin
   if v_profile_id is null then
     raise exception 'Not signed in.';
@@ -238,47 +283,73 @@ begin
   for update;
 
   if not found then
-    raise exception 'Session not found.';
+    raise exception 'session_not_found: no practice session with this id exists';
   end if;
   if v_attempt.profile_id <> v_profile_id then
-    raise exception 'Not your session.';
+    raise exception 'not_your_session: this practice session belongs to a different learner';
   end if;
 
   -- Idempotent short-circuit, evaluated under the row lock: a concurrent
   -- racer that lost the race to acquire the lock lands here and performs
   -- zero side effects, returning the same result the winner already
-  -- committed.
+  -- committed. Deliberately BEFORE payload validation -- a retried request
+  -- for an already-completed session should succeed idempotently even if
+  -- its payload happens to be malformed, since nothing is about to be
+  -- processed from it anyway.
   if v_attempt.completed_at is not null then
     return query select v_attempt.id, v_attempt.score, v_attempt.total, v_attempt.completed_at, true;
     return;
   end if;
 
-  v_today := public.member_local_date(v_profile_id);
-
+  -- ---------------------------------------------------------------------
+  -- REV3.10/3.11: validate the COMPLETE payload before any side effect.
+  -- ---------------------------------------------------------------------
   for v_response in select * from jsonb_array_elements(coalesce(p_responses, '[]'::jsonb))
   loop
     v_question_id := v_response ->> 'question_id';
     v_self_rating := v_response ->> 'self_rating';
 
-    -- Validate every submitted question belongs to this attempt, and that
-    -- self_rating is one of the three accepted values -- anything else is
-    -- silently skipped, not trusted.
-    if v_question_id is null or v_self_rating not in ('correct', 'incorrect', 'partial') then
-      continue;
+    if v_question_id is null then
+      raise exception 'invalid_question: question_id is required on every response';
+    end if;
+    if v_self_rating is null or v_self_rating not in ('correct', 'incorrect', 'partial') then
+      raise exception 'invalid_self_rating: % is not one of correct, incorrect, partial', coalesce(v_self_rating, 'null');
     end if;
     if not (v_attempt.question_ids @> to_jsonb(v_question_id)) then
-      continue;
+      raise exception 'invalid_question: % is not part of this session', v_question_id;
     end if;
+  end loop;
 
+  select count(*), count(distinct r ->> 'question_id')
+  into v_submitted_count, v_distinct_count
+  from jsonb_array_elements(coalesce(p_responses, '[]'::jsonb)) r;
+
+  if v_submitted_count <> v_distinct_count then
+    raise exception 'duplicate_question_id: the same question_id was submitted more than once';
+  end if;
+
+  v_attempt_size := jsonb_array_length(v_attempt.question_ids);
+  if v_distinct_count <> v_attempt_size then
+    raise exception 'incomplete_submission: expected exactly % responses (one per question in this session), got %', v_attempt_size, v_distinct_count;
+  end if;
+
+  -- ---------------------------------------------------------------------
+  -- Every response is now known to be valid, non-duplicated, and complete
+  -- -- process unconditionally, no per-item skip logic needed.
+  -- ---------------------------------------------------------------------
+  v_today := public.member_local_date(v_profile_id);
+
+  for v_response in select * from jsonb_array_elements(p_responses)
+  loop
+    v_question_id := v_response ->> 'question_id';
+    v_self_rating := v_response ->> 'self_rating';
     v_is_correct := (v_self_rating = 'correct');
-    v_valid_count := v_valid_count + 1;
     if v_is_correct then
       v_score := v_score + 1;
     end if;
 
     insert into public.portal_practice_attempt_responses (attempt_id, profile_id, question_id, self_rating, is_correct)
-    values (p_attempt_id, v_profile_id, v_question_id, v_self_rating, v_is_correct)
-    on conflict (attempt_id, question_id) do nothing;
+    values (p_attempt_id, v_profile_id, v_question_id, v_self_rating, v_is_correct);
 
     -- REV2.6 fix: increment, never overwrite. viewed_count/favorited/
     -- first_viewed_at are left exactly as they were on conflict.
@@ -298,9 +369,9 @@ begin
     end loop;
   end loop;
 
-  if v_valid_count > 0 then
+  if v_attempt_size > 0 then
     insert into public.portal_study_activity (profile_id, activity_date, seconds)
-    values (v_profile_id, v_today, v_valid_count * 45)
+    values (v_profile_id, v_today, v_attempt_size * 45)
     on conflict (profile_id, activity_date) do update set
       seconds = public.portal_study_activity.seconds + excluded.seconds;
   end if;

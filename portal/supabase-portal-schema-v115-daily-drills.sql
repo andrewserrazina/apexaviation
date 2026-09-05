@@ -44,6 +44,47 @@
 -- `where active = true` join, so target-task selection always resolves the
 -- one unambiguous applicable ACS version.
 --
+-- ===========================================================================
+-- REV3 CHANGE NOTE
+-- ===========================================================================
+-- Independent review found two remaining gaps:
+--
+-- (REV3.8) Target-task selection considered every task in the active ACS
+-- version, including tasks not applicable to the learner's own airplane
+-- class (an ASES-only task could theoretically outrank and be targeted for
+-- an ASEL learner) and tasks with ZERO Apex content mapped to them (which
+-- would produce a drill "targeting" a task it then cannot pull any
+-- question for). Rev3 restricts the entire candidate pool -- both target-
+-- task ranking and question selection -- to
+-- `public.get_applicable_acs_tasks(v_profile_id)` (v112 REV3.4) AND
+-- `exists (... content_acs_mappings ...)`. A task failing either check
+-- cannot become a Daily Drill target, full stop, regardless of how weak or
+-- overdue its evidence looks.
+--
+-- (REV3.9) Because that gate can shrink the eligible pool sharply (Apex
+-- currently has content for a small minority of the 45 ASEL-applicable
+-- tasks), naively capping question selection to just the top-3 target
+-- tasks' own questions could yield an under-filled or empty drill even
+-- though other eligible content exists. Rev3 adds an explicit, ordered
+-- three-step fallback, run only as far as needed to reach
+-- MIN_DRILL_QUESTIONS (5):
+--   1. Questions mapped to the top-3 TARGET tasks, excluding any question
+--      with a 'correct' response in the last 3 days (normal anti-repeat).
+--   2. If step 1 didn't reach 5: broaden to ALL applicable+content-backed
+--      tasks (not just the top 3), ranked by the same weighted score,
+--      still excluding recent-correct, filling up to 7 total.
+--   3. If still short of 5: relax the recent-correct exclusion within that
+--      same broadened pool -- the last resort, only reached when there
+--      genuinely isn't enough fresh eligible content to avoid it.
+-- `target_acs_tasks` on the stored row always reflects the top-3 ranked
+-- tasks (for the app's "why these tasks" framing) even when step 2/3 had
+-- to pull some of the actual questions from outside that top 3.
+-- Entitlement (checkride_prep_unlocked) continues to gate the whole
+-- function before any of this runs -- no fallback step can ever surface
+-- unentitled content, because every step still only ever selects from
+-- `dpe_questions` mapped via `content_acs_mappings`, the same table
+-- `mobile-practice`'s own `start` action reads from.
+--
 -- Rollback: `drop function if exists public.mark_daily_drill_started(uuid);
 -- drop function if exists public.get_or_create_daily_drill();
 -- drop table if exists public.daily_drills;` -- reads task_evidence/
@@ -133,7 +174,11 @@ declare
   v_target_tasks jsonb;
   v_target_task_ids uuid[];
   v_question_ids jsonb;
+  v_question_id_arr text[] := '{}';
+  v_fill_arr text[];
   v_row public.daily_drills%rowtype;
+  MIN_DRILL_QUESTIONS constant integer := 5;
+  MAX_DRILL_QUESTIONS constant integer := 7;
 begin
   if v_profile_id is null then
     raise exception 'Not signed in.';
@@ -168,6 +213,9 @@ begin
     v_w_coverage := 0.5; v_w_weak := 2.0; v_w_stale := 0.5; v_w_miss := 3.0; v_w_fav := 0.25;
   end if;
 
+  -- REV3.8: the candidate pool is applicable tasks (get_applicable_acs_tasks)
+  -- that ALSO have at least one Apex content item mapped -- a task failing
+  -- either check is never a target, no matter how weak its evidence.
   with task_signals as (
     select
       t.id as task_id, t.task_code, t.area_code,
@@ -187,9 +235,9 @@ begin
         where m.acs_task_id = t.id and m.content_type = 'dpe_question'
           and p.profile_id = v_profile_id and p.favorited = true
       ) then 1 else 0 end as favorite
-    from public.acs_tasks t
+    from public.get_applicable_acs_tasks(v_profile_id) t
     left join public.task_evidence e on e.acs_task_id = t.id and e.profile_id = v_profile_id
-    where t.acs_version_id = v_active_version
+    where exists (select 1 from public.content_acs_mappings m where m.acs_task_id = t.id)
   ),
   scored as (
     select task_id, task_code, area_code,
@@ -205,7 +253,9 @@ begin
     limit 3
   ) top3;
 
-  select coalesce(jsonb_agg(picked.id), '[]'::jsonb) into v_question_ids
+  -- REV3.9 step 1: questions mapped to the top-3 TARGET tasks, normal
+  -- anti-repeat (exclude anything answered correctly in the last 3 days).
+  select coalesce(array_agg(picked.id), '{}') into v_question_id_arr
   from (
     select d.id,
       case
@@ -231,8 +281,104 @@ begin
           and r.answered_at > now() - interval '3 days'
       )
     order by priority desc, random()
-    limit 7
+    limit MAX_DRILL_QUESTIONS
   ) picked;
+
+  -- REV3.9 step 2: still short of MIN_DRILL_QUESTIONS -- broaden to ALL
+  -- applicable+content-backed tasks (not just the top 3), ranked by the
+  -- same weighted score, still respecting the recent-correct anti-repeat.
+  if array_length(v_question_id_arr, 1) is null or array_length(v_question_id_arr, 1) < MIN_DRILL_QUESTIONS then
+    with task_signals as (
+      select
+        t.id as task_id,
+        case when e.attempt_count is null or e.attempt_count = 0 then 1 else 0 end as no_evidence,
+        case when e.attempt_count > 0 then (1 - e.evidence_score) else 0 end as weakness,
+        case when e.last_attempt_at is not null and e.last_attempt_at < now() - interval '14 days' then 1 else 0 end as stale,
+        case when exists (
+          select 1 from public.content_acs_mappings m
+          join public.portal_practice_attempt_responses r on r.question_id = m.content_id
+          where m.acs_task_id = t.id and m.content_type = 'dpe_question'
+            and r.profile_id = v_profile_id and r.is_correct = false and r.answered_at > now() - interval '14 days'
+        ) then 1 else 0 end as recent_miss,
+        case when exists (
+          select 1 from public.content_acs_mappings m
+          join public.portal_question_progress p on p.question_id = m.content_id
+          where m.acs_task_id = t.id and m.content_type = 'dpe_question'
+            and p.profile_id = v_profile_id and p.favorited = true
+        ) then 1 else 0 end as favorite
+      from public.get_applicable_acs_tasks(v_profile_id) t
+      left join public.task_evidence e on e.acs_task_id = t.id and e.profile_id = v_profile_id
+      where exists (select 1 from public.content_acs_mappings m where m.acs_task_id = t.id)
+    ),
+    scored_all as (
+      select task_id, (v_w_coverage * no_evidence + v_w_weak * weakness + v_w_stale * stale + v_w_miss * recent_miss + v_w_fav * favorite) as score
+      from task_signals
+    )
+    select coalesce(array_agg(picked.id), '{}') into v_fill_arr
+    from (
+      select d.id
+      from public.content_acs_mappings m
+      join public.dpe_questions d on d.id = m.content_id and m.content_type = 'dpe_question'
+      join scored_all t on t.task_id = m.acs_task_id
+      where d.is_scenario = false
+        and not (d.id = any(v_question_id_arr))
+        and not exists (
+          select 1 from public.portal_practice_attempt_responses r
+          where r.question_id = d.id and r.profile_id = v_profile_id and r.self_rating = 'correct'
+            and r.answered_at > now() - interval '3 days'
+        )
+      order by t.score desc, random()
+      limit greatest(MAX_DRILL_QUESTIONS - array_length(v_question_id_arr, 1), 0)
+    ) picked;
+    v_question_id_arr := v_question_id_arr || coalesce(v_fill_arr, '{}');
+  end if;
+
+  -- REV3.9 step 3 (last resort): still short of MIN_DRILL_QUESTIONS after
+  -- broadening -- relax the recent-correct exclusion within that same
+  -- broadened applicable+content-backed pool. Only reached when there
+  -- genuinely isn't enough fresh eligible content to avoid it.
+  if array_length(v_question_id_arr, 1) is null or array_length(v_question_id_arr, 1) < MIN_DRILL_QUESTIONS then
+    with task_signals as (
+      select
+        t.id as task_id,
+        case when e.attempt_count is null or e.attempt_count = 0 then 1 else 0 end as no_evidence,
+        case when e.attempt_count > 0 then (1 - e.evidence_score) else 0 end as weakness,
+        case when e.last_attempt_at is not null and e.last_attempt_at < now() - interval '14 days' then 1 else 0 end as stale,
+        case when exists (
+          select 1 from public.content_acs_mappings m
+          join public.portal_practice_attempt_responses r on r.question_id = m.content_id
+          where m.acs_task_id = t.id and m.content_type = 'dpe_question'
+            and r.profile_id = v_profile_id and r.is_correct = false and r.answered_at > now() - interval '14 days'
+        ) then 1 else 0 end as recent_miss,
+        case when exists (
+          select 1 from public.content_acs_mappings m
+          join public.portal_question_progress p on p.question_id = m.content_id
+          where m.acs_task_id = t.id and m.content_type = 'dpe_question'
+            and p.profile_id = v_profile_id and p.favorited = true
+        ) then 1 else 0 end as favorite
+      from public.get_applicable_acs_tasks(v_profile_id) t
+      left join public.task_evidence e on e.acs_task_id = t.id and e.profile_id = v_profile_id
+      where exists (select 1 from public.content_acs_mappings m where m.acs_task_id = t.id)
+    ),
+    scored_all as (
+      select task_id, (v_w_coverage * no_evidence + v_w_weak * weakness + v_w_stale * stale + v_w_miss * recent_miss + v_w_fav * favorite) as score
+      from task_signals
+    )
+    select coalesce(array_agg(picked.id), '{}') into v_fill_arr
+    from (
+      select d.id
+      from public.content_acs_mappings m
+      join public.dpe_questions d on d.id = m.content_id and m.content_type = 'dpe_question'
+      join scored_all t on t.task_id = m.acs_task_id
+      where d.is_scenario = false
+        and not (d.id = any(v_question_id_arr))
+      order by t.score desc, random()
+      limit greatest(MAX_DRILL_QUESTIONS - array_length(v_question_id_arr, 1), 0)
+    ) picked;
+    v_question_id_arr := v_question_id_arr || coalesce(v_fill_arr, '{}');
+  end if;
+
+  v_question_ids := to_jsonb(v_question_id_arr);
 
   insert into public.daily_drills (profile_id, drill_date, algorithm_version, target_acs_tasks, question_ids, scenario_ids, estimated_minutes, status)
   values (v_profile_id, v_today, 'v1', v_target_tasks, v_question_ids, '[]'::jsonb, 7, 'pending')

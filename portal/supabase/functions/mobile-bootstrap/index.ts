@@ -62,12 +62,20 @@ serve(async (req) => {
     const { data: todayDateRow } = await supabase.rpc('member_local_date', { p_profile_id: userId })
     const todayDate = (todayDateRow as unknown as string) || null
 
+    // REV3.15: the client must never infer certificate_type/aircraft_class/
+    // acs_version itself -- get_member_training_context() (v112 REV3.4) is
+    // the one resolution path every other Phase C consumer (readiness,
+    // Daily Drill) already uses internally; bootstrap just surfaces it.
+    const { data: trainingContextRow } = await supabase.rpc('get_member_training_context', { p_profile_id: userId })
+    const trainingContext = Array.isArray(trainingContextRow) ? trainingContextRow[0] : trainingContextRow
+
     const [
       { data: profile },
       { data: entitlements },
       { data: latestReadiness },
       { data: todaysDrill },
       { data: streakRow },
+      { data: acsVersionRow },
     ] = await Promise.all([
       supabase
         .from('profiles')
@@ -92,6 +100,9 @@ serve(async (req) => {
             .maybeSingle()
         : Promise.resolve({ data: null }),
       supabase.rpc('get_member_streak', { p_profile_id: userId }),
+      trainingContext?.acs_version_id
+        ? supabase.from('acs_versions').select('version_code').eq('id', trainingContext.acs_version_id).maybeSingle()
+        : Promise.resolve({ data: null }),
     ])
 
     if (!profile) return json({ error: 'Profile not found' }, 404)
@@ -116,6 +127,9 @@ serve(async (req) => {
         role: profile.role, // app-role handling only (e.g. show an instructor-specific screen) -- never a content gate on its own
       },
       training: {
+        certificate_type: trainingContext?.certificate_type ?? null,
+        aircraft_class: trainingContext?.aircraft_class ?? null,
+        acs_version: acsVersionRow?.version_code ?? null,
         checkride_date: checkrideDateRow?.checkride_date ?? null,
       },
       access: {

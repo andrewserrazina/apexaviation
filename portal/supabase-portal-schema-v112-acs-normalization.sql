@@ -359,3 +359,216 @@ comment on view public.acs_unresolved_mappings is 'Every dpe_questions row with 
 
 revoke all on public.acs_unresolved_mappings from anon, authenticated;
 grant select on public.acs_unresolved_mappings to service_role;
+
+-- ===========================================================================
+-- REV3 ADDITIONS -- task applicability + learner training context
+-- ===========================================================================
+--
+-- Independent review of Rev2 correctly found that treating all 61
+-- authoritative tasks as applicable to every Private Pilot applicant is
+-- wrong: FAA-S-ACS-6C itself qualifies many tasks to specific airplane
+-- classes (single-engine land, multiengine land, single-engine sea,
+-- multiengine sea). An ASEL (single-engine land) learner -- the class Apex
+-- actually serves today -- must never be scored against seaplane-only or
+-- multiengine-only tasks.
+--
+-- F. ACS TASK APPLICABILITY
+--
+-- acs_task_applicability is a normalized junction table (one row per
+-- applicable class), not a text[] column -- chosen per REV3.2's own
+-- preference for a normalized design when in doubt, and because it makes
+-- "is task T applicable to class C" a plain indexed join rather than an
+-- array-containment operation sprinkled through every consumer query.
+--
+-- Populated directly from the qualifier text already present in the
+-- authoritative task titles extracted in section C above (e.g. "Taxiing
+-- (ASEL, AMEL)") -- NOT inferred from Apex content, exactly as REV3.1
+-- requires. A task with no class qualifier in its official title applies
+-- to all four classes (e.g. "Pilot Qualifications" -- every Private Pilot
+-- applicant, regardless of class, is tested on this). This produces 45 of
+-- the 61 tasks applicable to ASEL -- the 16 excluded are every seaplane-
+-- only (ASES/AMES) and multiengine-only (AMEL/AMES) task, matching
+-- FAA-S-ACS-6C's own class-qualification scheme exactly.
+create table if not exists public.acs_task_applicability (
+  acs_task_id uuid not null references public.acs_tasks(id) on delete cascade,
+  aircraft_class text not null check (aircraft_class in ('ASEL', 'AMEL', 'ASES', 'AMES')),
+  primary key (acs_task_id, aircraft_class)
+);
+comment on table public.acs_task_applicability is 'Which airplane class(es) an ACS task applies to, per FAA-S-ACS-6C''s own class qualifiers on each task title. A task with no qualifier in its official title is applicable to all four classes.';
+
+create index if not exists idx_acs_task_applicability_class on public.acs_task_applicability (aircraft_class, acs_task_id);
+
+alter table public.acs_task_applicability enable row level security;
+drop policy if exists "Anyone can read ACS task applicability" on public.acs_task_applicability;
+create policy "Anyone can read ACS task applicability" on public.acs_task_applicability for select using (true);
+revoke insert, update, delete on public.acs_task_applicability from anon, authenticated;
+
+insert into public.acs_task_applicability (acs_task_id, aircraft_class)
+select t.id, x.aircraft_class
+from (values
+    ('I', 'A', 'ASEL'), ('I', 'A', 'AMEL'), ('I', 'A', 'ASES'), ('I', 'A', 'AMES'),
+    ('I', 'B', 'ASEL'), ('I', 'B', 'AMEL'), ('I', 'B', 'ASES'), ('I', 'B', 'AMES'),
+    ('I', 'C', 'ASEL'), ('I', 'C', 'AMEL'), ('I', 'C', 'ASES'), ('I', 'C', 'AMES'),
+    ('I', 'D', 'ASEL'), ('I', 'D', 'AMEL'), ('I', 'D', 'ASES'), ('I', 'D', 'AMES'),
+    ('I', 'E', 'ASEL'), ('I', 'E', 'AMEL'), ('I', 'E', 'ASES'), ('I', 'E', 'AMES'),
+    ('I', 'F', 'ASEL'), ('I', 'F', 'AMEL'), ('I', 'F', 'ASES'), ('I', 'F', 'AMES'),
+    ('I', 'G', 'ASEL'), ('I', 'G', 'AMEL'), ('I', 'G', 'ASES'), ('I', 'G', 'AMES'),
+    ('I', 'H', 'ASEL'), ('I', 'H', 'AMEL'), ('I', 'H', 'ASES'), ('I', 'H', 'AMES'),
+    ('I', 'I', 'ASES'), ('I', 'I', 'AMES'),
+    ('II', 'A', 'ASEL'), ('II', 'A', 'AMEL'), ('II', 'A', 'ASES'), ('II', 'A', 'AMES'),
+    ('II', 'B', 'ASEL'), ('II', 'B', 'AMEL'), ('II', 'B', 'ASES'), ('II', 'B', 'AMES'),
+    ('II', 'C', 'ASEL'), ('II', 'C', 'AMEL'), ('II', 'C', 'ASES'), ('II', 'C', 'AMES'),
+    ('II', 'D', 'ASEL'), ('II', 'D', 'AMEL'),
+    ('II', 'E', 'ASES'), ('II', 'E', 'AMES'),
+    ('II', 'F', 'ASEL'), ('II', 'F', 'AMEL'), ('II', 'F', 'ASES'), ('II', 'F', 'AMES'),
+    ('III', 'A', 'ASEL'), ('III', 'A', 'AMEL'), ('III', 'A', 'ASES'), ('III', 'A', 'AMES'),
+    ('III', 'B', 'ASEL'), ('III', 'B', 'AMEL'), ('III', 'B', 'ASES'), ('III', 'B', 'AMES'),
+    ('IV', 'A', 'ASEL'), ('IV', 'A', 'AMEL'), ('IV', 'A', 'ASES'), ('IV', 'A', 'AMES'),
+    ('IV', 'B', 'ASEL'), ('IV', 'B', 'AMEL'), ('IV', 'B', 'ASES'), ('IV', 'B', 'AMES'),
+    ('IV', 'C', 'ASEL'),
+    ('IV', 'D', 'ASEL'),
+    ('IV', 'E', 'ASEL'), ('IV', 'E', 'AMEL'),
+    ('IV', 'F', 'ASEL'), ('IV', 'F', 'AMEL'),
+    ('IV', 'G', 'ASES'), ('IV', 'G', 'AMES'),
+    ('IV', 'H', 'ASES'), ('IV', 'H', 'AMES'),
+    ('IV', 'I', 'ASES'), ('IV', 'I', 'AMES'),
+    ('IV', 'J', 'ASES'), ('IV', 'J', 'AMES'),
+    ('IV', 'K', 'ASES'), ('IV', 'K', 'AMES'),
+    ('IV', 'L', 'ASES'), ('IV', 'L', 'AMES'),
+    ('IV', 'M', 'ASEL'), ('IV', 'M', 'ASES'),
+    ('IV', 'N', 'ASEL'), ('IV', 'N', 'AMEL'), ('IV', 'N', 'ASES'), ('IV', 'N', 'AMES'),
+    ('V', 'A', 'ASEL'), ('V', 'A', 'AMEL'), ('V', 'A', 'ASES'), ('V', 'A', 'AMES'),
+    ('V', 'B', 'ASEL'), ('V', 'B', 'AMEL'), ('V', 'B', 'ASES'), ('V', 'B', 'AMES'),
+    ('VI', 'A', 'ASEL'), ('VI', 'A', 'AMEL'), ('VI', 'A', 'ASES'), ('VI', 'A', 'AMES'),
+    ('VI', 'B', 'ASEL'), ('VI', 'B', 'AMEL'), ('VI', 'B', 'ASES'), ('VI', 'B', 'AMES'),
+    ('VI', 'C', 'ASEL'), ('VI', 'C', 'AMEL'), ('VI', 'C', 'ASES'), ('VI', 'C', 'AMES'),
+    ('VI', 'D', 'ASEL'), ('VI', 'D', 'AMEL'), ('VI', 'D', 'ASES'), ('VI', 'D', 'AMES'),
+    ('VII', 'A', 'ASEL'), ('VII', 'A', 'AMEL'), ('VII', 'A', 'ASES'), ('VII', 'A', 'AMES'),
+    ('VII', 'B', 'ASEL'), ('VII', 'B', 'AMEL'), ('VII', 'B', 'ASES'), ('VII', 'B', 'AMES'),
+    ('VII', 'C', 'ASEL'), ('VII', 'C', 'AMEL'), ('VII', 'C', 'ASES'), ('VII', 'C', 'AMES'),
+    ('VII', 'D', 'ASEL'), ('VII', 'D', 'AMEL'), ('VII', 'D', 'ASES'), ('VII', 'D', 'AMES'),
+    ('VIII', 'A', 'ASEL'), ('VIII', 'A', 'AMEL'), ('VIII', 'A', 'ASES'), ('VIII', 'A', 'AMES'),
+    ('VIII', 'B', 'ASEL'), ('VIII', 'B', 'AMEL'), ('VIII', 'B', 'ASES'), ('VIII', 'B', 'AMES'),
+    ('VIII', 'C', 'ASEL'), ('VIII', 'C', 'AMEL'), ('VIII', 'C', 'ASES'), ('VIII', 'C', 'AMES'),
+    ('VIII', 'D', 'ASEL'), ('VIII', 'D', 'AMEL'), ('VIII', 'D', 'ASES'), ('VIII', 'D', 'AMES'),
+    ('VIII', 'E', 'ASEL'), ('VIII', 'E', 'AMEL'), ('VIII', 'E', 'ASES'), ('VIII', 'E', 'AMES'),
+    ('VIII', 'F', 'ASEL'), ('VIII', 'F', 'AMEL'), ('VIII', 'F', 'ASES'), ('VIII', 'F', 'AMES'),
+    ('IX', 'A', 'ASEL'), ('IX', 'A', 'AMEL'), ('IX', 'A', 'ASES'), ('IX', 'A', 'AMES'),
+    ('IX', 'B', 'ASEL'), ('IX', 'B', 'ASES'),
+    ('IX', 'C', 'ASEL'), ('IX', 'C', 'AMEL'), ('IX', 'C', 'ASES'), ('IX', 'C', 'AMES'),
+    ('IX', 'D', 'ASEL'), ('IX', 'D', 'AMEL'), ('IX', 'D', 'ASES'), ('IX', 'D', 'AMES'),
+    ('IX', 'E', 'AMEL'), ('IX', 'E', 'AMES'),
+    ('IX', 'F', 'AMEL'), ('IX', 'F', 'AMES'),
+    ('IX', 'G', 'AMEL'), ('IX', 'G', 'AMES'),
+    ('X', 'A', 'AMEL'), ('X', 'A', 'AMES'),
+    ('X', 'B', 'AMEL'), ('X', 'B', 'AMES'),
+    ('X', 'C', 'AMEL'), ('X', 'C', 'AMES'),
+    ('X', 'D', 'AMEL'), ('X', 'D', 'AMES'),
+    ('XI', 'A', 'ASEL'), ('XI', 'A', 'AMEL'), ('XI', 'A', 'ASES'), ('XI', 'A', 'AMES'),
+    ('XII', 'A', 'ASEL'), ('XII', 'A', 'AMEL'),
+    ('XII', 'B', 'ASES'), ('XII', 'B', 'AMES')
+) as x(area_code, task_code, aircraft_class)
+join public.acs_tasks t on t.area_code = x.area_code and t.task_code = x.task_code
+  and t.acs_version_id = (select id from public.acs_versions where certificate_type = 'private_pilot' and version_code = 'FAA-S-ACS-6C')
+on conflict (acs_task_id, aircraft_class) do nothing;
+
+-- ---------------------------------------------------------------------
+-- G. Learner training context (REV3.3/3.4)
+-- ---------------------------------------------------------------------
+--
+-- profiles.primary_aircraft_class is the smallest clean addition needed:
+-- no existing field anywhere in the schema captures a learner's airplane
+-- class (searched before adding this -- profiles has no such column, and
+-- no other table tracks it either; the closest existing field,
+-- certificate_status, is free text used for a different purpose).
+--
+-- Defaulted to 'ASEL' for every row, existing and future: this matches
+-- current Apex product reality exactly -- every piece of curriculum
+-- content in this codebase (dpe_questions, Ground School, Study Packs) is
+-- single-engine-land-oriented with no seaplane or multiengine track sold
+-- today. This is a safe, honest default for v1, not a guess -- it is
+-- revisited the moment Apex actually sells seaplane/multiengine content
+-- and a real class-selection UI is warranted (see Sprint 0 report "Known
+-- Limitations").
+alter table public.profiles add column if not exists primary_aircraft_class text
+  not null default 'ASEL' check (primary_aircraft_class in ('ASEL', 'AMEL', 'ASES', 'AMES'));
+comment on column public.profiles.primary_aircraft_class is 'The airplane class this learner is training toward, for ACS-task-applicability filtering (readiness coverage, Daily Drill targeting). Defaults to ASEL -- see v112''s own header comment for why that default is safe for current Apex v1 product reality.';
+
+-- ---------------------------------------------------------------------
+-- get_member_training_context() -- the ONE resolution path for
+-- certificate_type + aircraft_class + active ACS version, used by every
+-- consumer (readiness, daily drills, mobile-bootstrap) instead of each
+-- reimplementing slightly different lookup logic.
+--
+-- p_profile_id is optional: omitted (or null), it resolves auth.uid() --
+-- the auth.uid()-bound path every direct authenticated RPC caller uses
+-- (mirrors compute_readiness_snapshot/get_or_create_daily_drill). Supplied
+-- explicitly, it lets a trusted server-side caller (mobile-bootstrap, which
+-- already independently verifies the JWT via auth.getUser() and works with
+-- a bare service-role client rather than forwarding the Authorization
+-- header) resolve a specific learner's context without needing to change
+-- that established calling convention.
+--
+-- Security: an explicit p_profile_id that DIFFERS from a real, non-null
+-- auth.uid() is always rejected -- an authenticated end-user's own JWT
+-- cannot be forged to claim someone else's auth.uid(), so this closes the
+-- one real risk of accepting an explicit argument at all (a learner trying
+-- to read another learner's training context) while still allowing the
+-- genuine service-role case, where there is no forwarded end-user JWT at
+-- all and auth.uid() is simply null.
+-- ---------------------------------------------------------------------
+create or replace function public.get_member_training_context(p_profile_id uuid default null)
+returns table (profile_id uuid, certificate_type text, aircraft_class text, acs_version_id uuid)
+language plpgsql
+stable
+security definer
+set search_path to 'public'
+as $function$
+declare
+  v_profile_id uuid;
+  v_certificate_type text := 'private_pilot';
+  v_aircraft_class text;
+begin
+  if p_profile_id is not null and auth.uid() is not null and p_profile_id <> auth.uid() then
+    raise exception 'Not authorized to resolve another member''s training context.';
+  end if;
+
+  v_profile_id := coalesce(p_profile_id, auth.uid());
+  if v_profile_id is null then
+    raise exception 'Not signed in.';
+  end if;
+
+  select coalesce(p.primary_aircraft_class, 'ASEL') into v_aircraft_class
+  from public.profiles p where p.id = v_profile_id;
+  if v_aircraft_class is null then
+    raise exception 'Profile not found.';
+  end if;
+
+  return query select v_profile_id, v_certificate_type, v_aircraft_class,
+    public.get_active_acs_version(v_certificate_type);
+end;
+$function$;
+
+revoke execute on function public.get_member_training_context(uuid) from public, anon;
+grant execute on function public.get_member_training_context(uuid) to authenticated, service_role;
+
+-- get_applicable_acs_tasks() -- the single query every consumer (readiness,
+-- daily drills) uses to get "the tasks that count for this learner right
+-- now," rather than each reimplementing the applicability join separately.
+create or replace function public.get_applicable_acs_tasks(p_profile_id uuid default null)
+returns setof public.acs_tasks
+language sql
+stable
+security definer
+set search_path to 'public'
+as $function$
+  select t.*
+  from public.acs_tasks t
+  join public.acs_task_applicability a on a.acs_task_id = t.id
+  join public.get_member_training_context(p_profile_id) ctx on true
+  where t.acs_version_id = ctx.acs_version_id
+    and a.aircraft_class = ctx.aircraft_class
+$function$;
+
+revoke execute on function public.get_applicable_acs_tasks(uuid) from public, anon;
+grant execute on function public.get_applicable_acs_tasks(uuid) to authenticated, service_role;

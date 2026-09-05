@@ -490,8 +490,8 @@ expect_rows "reason_codes flags confidence_calibration_not_yet_available (no rea
   "select (reason_codes @> '[\"confidence_calibration_not_yet_available\"]'::jsonb)::text from public.readiness_snapshots where profile_id='$MOBILE_MEMBER' order by created_at desc limit 1;" "true"
 expect_rows "confidence_score defaults to a neutral 50, never fabricated" postgres "" \
   "select confidence_score from public.readiness_snapshots where profile_id='$MOBILE_MEMBER' order by created_at desc limit 1;" "50"
-expect_rows "overall_score computed as the documented weighted average over the full 61-task authoritative ACS (REV2: coverage=1/61=1.64, knowledge=risk=100, confidence=50 -> 0.35*1.64+0.30*100+0.20*100+0.15*50=58.07), pre-dampening" postgres "" \
-  "select overall_score from public.readiness_snapshots where profile_id='$MOBILE_MEMBER' order by created_at desc limit 1;" "58.07"
+expect_rows "overall_score computed as the documented weighted average over the ASEL-applicable 45-task denominator (REV3: coverage=1/45=2.22, knowledge=risk=100, confidence=50 -> 0.35*2.22+0.30*100+0.20*100+0.15*50=58.28), pre-dampening" postgres "" \
+  "select overall_score from public.readiness_snapshots where profile_id='$MOBILE_MEMBER' order by created_at desc limit 1;" "58.28"
 expect_rows "member A sees zero rows of Mobile Member's readiness snapshots" authenticated "$MEMBER_A" \
   "select count(*) from public.readiness_snapshots where profile_id='$MOBILE_MEMBER';" "0"
 expect_denied "authenticated cannot directly INSERT into readiness_snapshots (only compute_readiness_snapshot() writes)" authenticated "$MOBILE_MEMBER" \
@@ -584,12 +584,12 @@ expect_rows "AFTER: viewed_count and first_viewed_at are untouched by a completi
 echo
 echo "########## 22. ATOMIC PRACTICE COMPLETION -- OWNERSHIP + VALIDATION (REV2.4) ##########"
 expect_error_matching "completing a nonexistent session fails clearly" authenticated "$MOBILE_MEMBER" \
-  "select * from public.complete_mobile_practice_session('00000000-0000-0000-0000-0000000000ff', '[]'::jsonb);" "session not found"
+  "select * from public.complete_mobile_practice_session('00000000-0000-0000-0000-0000000000ff', '[]'::jsonb);" "session_not_found"
 CONCURRENCY_MEMBER=00000000-0000-0000-0000-000000000044
 OWNERSHIP_ATTEMPT=$(run_sql postgres "" \
   "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$CONCURRENCY_MEMBER','dpe_questions','[\"q1\"]'::jsonb,1,now()) returning id;" | tail -1 | xargs)
 expect_error_matching "member A cannot complete Concurrency Member's session (ownership enforced INSIDE the RPC, not just by RLS)" authenticated "$MEMBER_A" \
-  "select * from public.complete_mobile_practice_session('$OWNERSHIP_ATTEMPT', '[{\"question_id\":\"q1\",\"self_rating\":\"correct\"}]'::jsonb);" "not your session"
+  "select * from public.complete_mobile_practice_session('$OWNERSHIP_ATTEMPT', '[{\"question_id\":\"q1\",\"self_rating\":\"correct\"}]'::jsonb);" "not_your_session"
 expect_denied "anon cannot call complete_mobile_practice_session at all (no EXECUTE grant)" anon "" \
   "select * from public.complete_mobile_practice_session('$OWNERSHIP_ATTEMPT', '[]'::jsonb);"
 run_sql postgres "" "delete from public.portal_practice_attempts where id='$OWNERSHIP_ATTEMPT';" >/dev/null
@@ -730,6 +730,179 @@ expect_error_matching "a SECOND active version for the same certificate_type is 
   "insert into public.acs_versions (certificate_type, version_code, active) values ('private_pilot', 'duplicate-active-test', true);" "duplicate key value violates unique constraint"
 expect_success "a second INACTIVE version for the same certificate_type is allowed to coexist (future-revision staging)" postgres "" \
   "insert into public.acs_versions (certificate_type, version_code, active) values ('private_pilot', 'duplicate-inactive-test', false);"
+
+TASK_II="(select t.id from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot' and v.version_code='FAA-S-ACS-6C' and t.area_code='I' and t.task_code='I')"
+TASK_IVC="(select t.id from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot' and v.version_code='FAA-S-ACS-6C' and t.area_code='IV' and t.task_code='C')"
+TASK_XA="(select t.id from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot' and v.version_code='FAA-S-ACS-6C' and t.area_code='X' and t.task_code='A')"
+
+echo
+echo "########## 30. ACS TASK APPLICABILITY (REV3.1/3.2) ##########"
+expect_rows "a universal task (I/A, Pilot Qualifications) is applicable to ASEL" postgres "" \
+  "select exists(select 1 from public.acs_task_applicability where acs_task_id=$TASK_IA and aircraft_class='ASEL')::text;" "true"
+expect_rows "an ASEL-only task (IV/C, Soft-Field Takeoff and Climb) is applicable to ASEL" postgres "" \
+  "select exists(select 1 from public.acs_task_applicability where acs_task_id=$TASK_IVC and aircraft_class='ASEL')::text;" "true"
+expect_rows "that same ASEL-only task is NOT applicable to ASES" postgres "" \
+  "select exists(select 1 from public.acs_task_applicability where acs_task_id=$TASK_IVC and aircraft_class='ASES')::text;" "false"
+expect_rows "that same ASEL-only task is NOT applicable to AMEL" postgres "" \
+  "select exists(select 1 from public.acs_task_applicability where acs_task_id=$TASK_IVC and aircraft_class='AMEL')::text;" "false"
+expect_rows "that same ASEL-only task is NOT applicable to AMES" postgres "" \
+  "select exists(select 1 from public.acs_task_applicability where acs_task_id=$TASK_IVC and aircraft_class='AMES')::text;" "false"
+expect_rows "an ASES-only task (I/I, seaplane characteristics) is NOT applicable to ASEL" postgres "" \
+  "select exists(select 1 from public.acs_task_applicability where acs_task_id=$TASK_II and aircraft_class='ASEL')::text;" "false"
+expect_rows "that same ASES-only task IS applicable to ASES" postgres "" \
+  "select exists(select 1 from public.acs_task_applicability where acs_task_id=$TASK_II and aircraft_class='ASES')::text;" "true"
+expect_rows "an AMEL-specific task (X/A, multiengine) is NOT applicable to ASEL" postgres "" \
+  "select exists(select 1 from public.acs_task_applicability where acs_task_id=$TASK_XA and aircraft_class='ASEL')::text;" "false"
+expect_denied "authenticated cannot INSERT into acs_task_applicability directly" authenticated "$MOBILE_MEMBER" \
+  "insert into public.acs_task_applicability (acs_task_id, aircraft_class) values ($TASK_II, 'ASEL');"
+expect_error_matching "acs_task_applicability rejects an arbitrary class string (no glider/helicopter values invented)" postgres "" \
+  "insert into public.acs_task_applicability (acs_task_id, aircraft_class) values ($TASK_IA, 'GLIDER');" "violates check constraint"
+expect_rows "the complete 61-task authoritative taxonomy still exists regardless of applicability filtering" postgres "" \
+  "select count(*) from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot' and v.version_code='FAA-S-ACS-6C';" "61"
+
+echo
+echo "########## 31. LEARNER TRAINING CONTEXT RESOLUTION (REV3.3/3.4) ##########"
+expect_rows "profiles.primary_aircraft_class defaults to ASEL for an existing (pre-v112) fixture row" postgres "" \
+  "select primary_aircraft_class from public.profiles where id='$MOBILE_MEMBER';" "ASEL"
+expect_denied "anon cannot call get_member_training_context at all" anon "" \
+  "select * from public.get_member_training_context();"
+expect_success "authenticated Mobile Member resolves their own training context (no argument -> auth.uid())" authenticated "$MOBILE_MEMBER" \
+  "select * from public.get_member_training_context();"
+expect_rows "resolved context is exactly private_pilot / ASEL / the authoritative FAA-S-ACS-6C version" postgres "" \
+  "select certificate_type || ',' || aircraft_class || ',' || (acs_version_id = (select id from public.acs_versions where certificate_type='private_pilot' and version_code='FAA-S-ACS-6C'))::text from public.get_member_training_context('$MOBILE_MEMBER');" "private_pilot,ASEL,true"
+expect_error_matching "member A cannot resolve Mobile Member's training context by passing their id explicitly (their own real auth.uid() differs from it)" authenticated "$MEMBER_A" \
+  "select * from public.get_member_training_context('$MOBILE_MEMBER');" "not authorized to resolve another member"
+expect_success "service_role (no forwarded end-user JWT, auth.uid() is null) MAY resolve an explicit learner's context -- mobile-bootstrap's own calling convention" service_role "" \
+  "select * from public.get_member_training_context('$MOBILE_MEMBER');"
+
+echo
+echo "########## 32. ASEL READINESS DENOMINATOR (REV3.5) ##########"
+expect_rows "get_applicable_acs_tasks() for an ASEL learner resolves exactly 45 of the 61 authoritative tasks (16 seaplane/multiengine-only tasks excluded)" postgres "" \
+  "select count(*) from public.get_applicable_acs_tasks('$PROX_NONE');" "45"
+expect_success "Proximity None Member recomputes readiness against the ASEL-scoped denominator" authenticated "$PROX_NONE" "select public.compute_readiness_snapshot();"
+expect_rows "coverage_score denominator is 45 (1 applicable task with evidence / 45 = 2.22), not 61 (which would give 1.64)" postgres "" \
+  "select coverage_score from public.readiness_snapshots where profile_id='$PROX_NONE' order by created_at desc limit 1;" "2.22"
+
+echo
+echo "########## 33. EVIDENCE SCOPED TO CURRENT CLASS + VERSION (REV3.6) ##########"
+UNRELATED_CLASS_MEMBER=00000000-0000-0000-0000-000000000050
+UNRELATED_VERSION_MEMBER=00000000-0000-0000-0000-000000000051
+run_sql postgres "" \
+  "insert into public.task_evidence (profile_id, acs_task_id, attempt_count, correct_count, recent_accuracy, evidence_score, last_attempt_at) values ('$UNRELATED_CLASS_MEMBER', $TASK_II, 5, 5, 1.0, 1.0, now());" >/dev/null
+expect_success "Unrelated Class Member (ASEL by default) computes readiness despite having strong evidence on an ASES-only task" authenticated "$UNRELATED_CLASS_MEMBER" "select public.compute_readiness_snapshot();"
+expect_rows "that ASES-only evidence does NOT count as coverage for this ASEL learner (coverage_score is 0.00, not >0)" postgres "" \
+  "select coverage_score from public.readiness_snapshots where profile_id='$UNRELATED_CLASS_MEMBER' order by created_at desc limit 1;" "0.00"
+expect_rows "that ASES-only evidence does NOT count toward knowledge_score either (0, not 100 -- it is the learner's only evidence row)" postgres "" \
+  "select knowledge_score from public.readiness_snapshots where profile_id='$UNRELATED_CLASS_MEMBER' order by created_at desc limit 1;" "0"
+
+run_sql postgres "" \
+  "insert into public.acs_versions (certificate_type, version_code, active) values ('private_pilot', 'rev3-unrelated-version-test', false) on conflict do nothing;" >/dev/null
+run_sql postgres "" \
+  "insert into public.acs_tasks (acs_version_id, area_code, area_title, task_code, task_title) values ((select id from public.acs_versions where version_code='rev3-unrelated-version-test'), 'ZZ', 'Unrelated Version Area', 'Z', 'Unrelated Version Task') on conflict do nothing;" >/dev/null
+run_sql postgres "" \
+  "insert into public.acs_task_applicability (acs_task_id, aircraft_class) values ((select id from public.acs_tasks where task_code='Z' and area_code='ZZ'), 'ASEL') on conflict do nothing;" >/dev/null
+run_sql postgres "" \
+  "insert into public.task_evidence (profile_id, acs_task_id, attempt_count, correct_count, recent_accuracy, evidence_score, last_attempt_at) values ('$UNRELATED_VERSION_MEMBER', (select id from public.acs_tasks where task_code='Z' and area_code='ZZ'), 5, 5, 1.0, 1.0, now());" >/dev/null
+expect_success "Unrelated Version Member computes readiness despite having strong evidence on a task from an INACTIVE (non-current) ACS version" authenticated "$UNRELATED_VERSION_MEMBER" "select public.compute_readiness_snapshot();"
+expect_rows "evidence against a non-active ACS version's task does not count as coverage, even though it IS marked ASEL-applicable" postgres "" \
+  "select coverage_score from public.readiness_snapshots where profile_id='$UNRELATED_VERSION_MEMBER' order by created_at desc limit 1;" "0.00"
+expect_rows "and does not count toward knowledge_score either" postgres "" \
+  "select knowledge_score from public.readiness_snapshots where profile_id='$UNRELATED_VERSION_MEMBER' order by created_at desc limit 1;" "0"
+
+echo
+echo "########## 34. CONTENT COVERAGE HONESTY, RE-SCOPED (REV3.7) ##########"
+expect_rows "insufficient_content_coverage is still flagged for an ASEL learner (Apex has content for only a handful of the 45 applicable tasks)" postgres "" \
+  "select (reason_codes @> '[\"insufficient_content_coverage\"]'::jsonb)::text from public.readiness_snapshots where profile_id='$PROX_NONE' order by created_at desc limit 1;" "true"
+expect_rows "the content-less-task count used for that flag is scoped to the 45 applicable tasks, never the full 61 (seaplane/multiengine content gaps are irrelevant to an ASEL learner)" postgres "" \
+  "select (count(*) <= 45)::text from public.get_applicable_acs_tasks('$PROX_NONE') t where not exists (select 1 from public.content_acs_mappings m where m.acs_task_id=t.id);" "true"
+
+echo
+echo "########## 35. DAILY DRILL ELIGIBILITY: CONTENT-LESS + NON-APPLICABLE EXCLUSION (REV3.8) ##########"
+expect_rows "an ASES-only task can never even be a CANDIDATE for an ASEL learner's drill (excluded at the applicability join, not just by low score)" postgres "" \
+  "select count(*) from public.get_applicable_acs_tasks('$MOBILE_MEMBER') where area_code='I' and task_code='I';" "0"
+expect_rows "no target task in Proximity Near Member's already-generated drill (section 26) is a content-less task" postgres "" \
+  "select (not exists (select 1 from jsonb_array_elements((select target_acs_tasks from public.daily_drills where profile_id='$PROX_NEAR')) x where not exists (select 1 from public.content_acs_mappings m where m.acs_task_id = (x->>'acs_task_id')::uuid)))::text;" "true"
+
+echo
+echo "########## 36. DAILY DRILL BROADER-POOL FALLBACK FILL (REV3.9) ##########"
+echo "By this point in the suite there are 5 ASEL-applicable, content-backed candidate tasks:"
+echo "I/A (q1,q2), I/B (q6,q9), I/C (q10, plus q4 manually mapped in section 16b), I/D (q11), I/E (q12)."
+echo "Fill Member gets weak (non-zero) evidence on I/A and I/C -- the two 2-question tasks -- so under"
+echo "far/no-date weighting they score strictly below the three untouched tasks (I/B, I/D, I/E), which"
+echo "tie for the top 3 slots exactly (3 candidates, 3 slots -- no random tie-break needed for which"
+echo "tasks make target_acs_tasks). Those three targets only offer 4 questions total (2+1+1), one short"
+echo "of the 5-question minimum, so the fallback must reach into I/A or I/C to fill the 5th slot."
+TASK_IC="(select t.id from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot' and v.version_code='FAA-S-ACS-6C' and t.area_code='I' and t.task_code='C')"
+FILL_MEMBER=00000000-0000-0000-0000-000000000052
+run_sql postgres "" \
+  "insert into public.task_evidence (profile_id, acs_task_id, attempt_count, correct_count, recent_accuracy, evidence_score, last_attempt_at) values ('$FILL_MEMBER', $TASK_IA, 5, 1, 0.2, 0.2, now()), ('$FILL_MEMBER', $TASK_IC, 5, 1, 0.2, 0.2, now());" >/dev/null
+expect_success "Fill Member (no checkride date, weak evidence on I/A and I/C only) can generate a daily drill" authenticated "$FILL_MEMBER" "select public.get_or_create_daily_drill();"
+expect_rows "target_acs_tasks is exactly the 3 untouched tasks (I/B, I/D, I/E) -- I/A and I/C excluded deterministically" postgres "" \
+  "select (jsonb_array_length((select target_acs_tasks from public.daily_drills where profile_id='$FILL_MEMBER')) = 3)::text;" "true"
+expect_rows "the top-3 targets together offer only 4 questions (q6,q9,q11,q12) -- below the 5-question minimum" postgres "" \
+  "select (jsonb_array_length((select question_ids from public.daily_drills where profile_id='$FILL_MEMBER')) >= 5)::text;" "true"
+expect_rows "the fallback pulled in a question from I/A or I/C (q1, q2, q10, or q4) -- neither was one of the top-3 targets -- to reach the minimum" postgres "" \
+  "select ((select question_ids from public.daily_drills where profile_id='$FILL_MEMBER') @> '\"q1\"'::jsonb or (select question_ids from public.daily_drills where profile_id='$FILL_MEMBER') @> '\"q2\"'::jsonb or (select question_ids from public.daily_drills where profile_id='$FILL_MEMBER') @> '\"q10\"'::jsonb or (select question_ids from public.daily_drills where profile_id='$FILL_MEMBER') @> '\"q4\"'::jsonb)::text;" "true"
+
+echo
+echo "########## 37. DUPLICATE / CONFLICTING / MALFORMED REQUEST REJECTION (REV3.10-3.12) ##########"
+MALFORMED_MEMBER=00000000-0000-0000-0000-000000000053
+MALFORMED_ATTEMPT=$(run_sql postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$MALFORMED_MEMBER','dpe_questions','[\"q1\",\"q6\"]'::jsonb,2,now()) returning id;" | tail -1 | xargs)
+
+assert_no_side_effects_yet() {
+  local desc="$1"
+  expect_rows "$desc: completed_at is still null" postgres "" \
+    "select (completed_at is null)::text from public.portal_practice_attempts where id='$MALFORMED_ATTEMPT';" "true"
+  expect_rows "$desc: zero response rows were written" postgres "" \
+    "select count(*) from public.portal_practice_attempt_responses where attempt_id='$MALFORMED_ATTEMPT';" "0"
+  expect_rows "$desc: task_evidence is still untouched for this learner" postgres "" \
+    "select count(*) from public.task_evidence where profile_id='$MALFORMED_MEMBER';" "0"
+  expect_rows "$desc: no XP was awarded" postgres "" \
+    "select count(*) from public.xp_ledger where profile_id='$MALFORMED_MEMBER';" "0"
+}
+
+expect_error_matching "duplicate question_id with the SAME rating twice is rejected, not silently deduplicated" authenticated "$MALFORMED_MEMBER" \
+  "select * from public.complete_mobile_practice_session('$MALFORMED_ATTEMPT', '[{\"question_id\":\"q1\",\"self_rating\":\"correct\"},{\"question_id\":\"q1\",\"self_rating\":\"correct\"}]'::jsonb);" "duplicate_question_id"
+assert_no_side_effects_yet "after duplicate-same-rating rejection"
+
+expect_error_matching "duplicate question_id with CONFLICTING ratings is rejected -- never 'pick the first one'" authenticated "$MALFORMED_MEMBER" \
+  "select * from public.complete_mobile_practice_session('$MALFORMED_ATTEMPT', '[{\"question_id\":\"q1\",\"self_rating\":\"correct\"},{\"question_id\":\"q1\",\"self_rating\":\"incorrect\"}]'::jsonb);" "duplicate_question_id"
+assert_no_side_effects_yet "after conflicting-duplicate rejection"
+
+expect_error_matching "a question_id that is not part of the attempt is rejected" authenticated "$MALFORMED_MEMBER" \
+  "select * from public.complete_mobile_practice_session('$MALFORMED_ATTEMPT', '[{\"question_id\":\"q1\",\"self_rating\":\"correct\"},{\"question_id\":\"q999\",\"self_rating\":\"correct\"}]'::jsonb);" "invalid_question"
+assert_no_side_effects_yet "after unknown-question rejection"
+
+expect_error_matching "an invalid self_rating value is rejected" authenticated "$MALFORMED_MEMBER" \
+  "select * from public.complete_mobile_practice_session('$MALFORMED_ATTEMPT', '[{\"question_id\":\"q1\",\"self_rating\":\"maybe\"},{\"question_id\":\"q6\",\"self_rating\":\"correct\"}]'::jsonb);" "invalid_self_rating"
+assert_no_side_effects_yet "after invalid-self_rating rejection"
+
+expect_error_matching "an INCOMPLETE submission (missing a response for q6) is rejected -- REV3.11's exactly-once-per-question policy" authenticated "$MALFORMED_MEMBER" \
+  "select * from public.complete_mobile_practice_session('$MALFORMED_ATTEMPT', '[{\"question_id\":\"q1\",\"self_rating\":\"correct\"}]'::jsonb);" "incomplete_submission"
+assert_no_side_effects_yet "after incomplete-submission rejection"
+
+expect_success "AFTER all five rejections, a genuinely valid, complete, non-duplicated submission still succeeds normally" authenticated "$MALFORMED_MEMBER" \
+  "select * from public.complete_mobile_practice_session('$MALFORMED_ATTEMPT', '[{\"question_id\":\"q1\",\"self_rating\":\"correct\"},{\"question_id\":\"q6\",\"self_rating\":\"incorrect\"}]'::jsonb);"
+expect_rows "the valid completion actually committed this time (completed_at is now set)" postgres "" \
+  "select (completed_at is not null)::text from public.portal_practice_attempts where id='$MALFORMED_ATTEMPT';" "true"
+expect_rows "exactly 2 response rows were written for the valid completion (one per question, not more)" postgres "" \
+  "select count(*) from public.portal_practice_attempt_responses where attempt_id='$MALFORMED_ATTEMPT';" "2"
+
+echo
+echo "########## 38. MOBILE-PRACTICE ERROR CONTRACT -- stable machine-readable prefixes (REV3.13) ##########"
+echo "NOTE: as in Rev2 section 24, the actual HTTP-layer mapping (mobile-practice's regex-to-status-code"
+echo "logic) is TypeScript and cannot execute in this sandbox (no deno/supabase-cli). These tests confirm"
+echo "the RPC emits the exact stable prefixes that logic matches against -- the contract, not the HTTP path."
+expect_error_matching "session_not_found is prefixed exactly as mobile-practice's error mapper expects" authenticated "$MOBILE_MEMBER" \
+  "select * from public.complete_mobile_practice_session('00000000-0000-0000-0000-0000000000ff', '[]'::jsonb);" "session_not_found:"
+expect_error_matching "not_your_session is prefixed exactly as mobile-practice's error mapper expects" authenticated "$MEMBER_A" \
+  "select * from public.complete_mobile_practice_session('$MALFORMED_ATTEMPT', '[]'::jsonb);" "not_your_session:"
+
+echo
+echo "########## 39. MOBILE BOOTSTRAP TRAINING CONTEXT (REV3.15) ##########"
+expect_rows "the training-context fields mobile-bootstrap now surfaces resolve to a real, queryable acs_versions row" postgres "" \
+  "select version_code from public.acs_versions where id = (select acs_version_id from public.get_member_training_context('$MOBILE_MEMBER'));" "FAA-S-ACS-6C"
 
 echo
 echo "=================================================="

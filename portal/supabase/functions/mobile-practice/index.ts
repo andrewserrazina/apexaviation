@@ -187,9 +187,17 @@ serve(async (req) => {
         p_responses: responses,
       })
       if (error) {
+        // REV3.13: map the RPC's stable machine-readable error prefixes to
+        // clean client-facing responses -- never a raw Postgres error, and
+        // never a 500 for input the RPC rejected as malformed (that's a
+        // 4xx, the client's request was bad, not our server).
         const msg = error.message || ''
-        if (msg.includes('Not your session')) return json({ error: 'Not your session' }, 403)
-        if (msg.includes('Session not found')) return json({ error: 'Session not found' }, 404)
+        const codeMatch = msg.match(/^(session_not_found|not_your_session|invalid_question|invalid_self_rating|duplicate_question_id|incomplete_submission):\s*(.*)$/)
+        if (codeMatch) {
+          const [, code, detail] = codeMatch
+          const status = code === 'session_not_found' ? 404 : code === 'not_your_session' ? 403 : 400
+          return json({ error: detail || code, code }, status)
+        }
         throw error
       }
 

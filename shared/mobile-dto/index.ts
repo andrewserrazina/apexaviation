@@ -25,6 +25,15 @@
 // param is now routed through complete_mobile_practice_session() -- see
 // that RPC in v113 -- rather than orchestrated client-side; the wire shape
 // of the request/response is unchanged.
+//
+// REV3: added AircraftClass and MobileTrainingContext (surfaced on
+// mobile-bootstrap per REV3.15 -- the client must never infer its own
+// certificate_type/aircraft_class/acs_version), and MobileAcsTaskInfo for a
+// future ACS map screen (REV3.14) -- not wired to any endpoint yet, kept
+// here so the shape is agreed on ahead of that screen's construction.
+// error_codes.ts-style validation codes for mobile-practice `complete`
+// (REV3.13) are plain string literals in each response type below rather
+// than a separate enum, matching how the Edge Function actually emits them.
 
 // ---------------------------------------------------------------------
 // Shared primitives
@@ -34,11 +43,34 @@ export type EvidenceLevel = 'low' | 'moderate' | 'high'
 export type DrillStatus = 'pending' | 'in_progress' | 'completed'
 export type MobilePlatform = 'ios' | 'android'
 export type SelfRating = 'correct' | 'incorrect' | 'partial'
+export type AircraftClass = 'ASEL' | 'AMEL' | 'ASES' | 'AMES'
 
 export interface MobileAcsTaskRef {
   acs_task_id: string
   area_code: string
   task_code: string
+}
+
+// REV3.4/3.15: the one resolved training context every mobile surface
+// (bootstrap, readiness, Daily Drill) is scoped to. The client renders
+// this; it never computes or guesses any part of it.
+export interface MobileTrainingContext {
+  certificate_type: string
+  aircraft_class: AircraftClass
+  acs_version: string | null
+}
+
+// REV3.14: shape for a future ACS map/coverage screen. Not wired to any
+// Edge Function response yet -- agreed here ahead of that screen's
+// construction so the eventual endpoint has a settled contract to target.
+// Deliberately does not expose acs_task_applicability or
+// content_acs_mappings row shapes directly.
+export interface MobileAcsTaskInfo extends MobileAcsTaskRef {
+  area_title: string
+  task_title: string
+  applicable: boolean
+  content_available: boolean
+  evidence_summary: { attempt_count: number; evidence_score: number } | null
 }
 
 // REV2: known reason_codes values, for consumers that want to render
@@ -91,7 +123,7 @@ export interface MobileBootstrapDTO {
     // still enforces its own entitlement/RLS regardless of this value.
     role: string | null
   }
-  training: {
+  training: MobileTrainingContext & {
     checkride_date: string | null
   }
   access: {

@@ -110,7 +110,29 @@ insert into public.dpe_questions (id, category, question, model_answer, common_m
   ('q4', 'test_category', 'Q4?', 'A4', null, null, null, 'Special Emphasis Area: Aeronautical Decision-Making', false, 'private_pilot'),
   ('q5', 'test_category', 'Q5?', 'A5', null, null, null, 'General knowledge of the airplane', false, 'private_pilot'),
   ('q7', 'test_category', 'Q7?', 'A7', null, null, null, 'Area of Operation XX, Task Z — Nonexistent Task (PA.XX.Z.K1)', false, 'private_pilot'),
-  ('q8', 'test_category', 'Q8?', 'A8', null, null, null, 'Area of Operation I, Task A — Something (INST.I.A.K1)', false, 'instrument')
+  ('q8', 'test_category', 'Q8?', 'A8', null, null, null, 'Area of Operation I, Task A — Something (INST.I.A.K1)', false, 'instrument'),
+  -- REV3.8/3.9: two more universal (ASEL-applicable), content-backed tasks
+  -- (Area I Task C "Weather Information", Task D "Cross-Country Flight
+  -- Planning") so the Daily Drill fallback/broader-pool-fill tests have
+  -- real, distinct eligible tasks to expand into beyond the initial top-3.
+  ('q10', 'test_category', 'Q10?', 'A10', null, null, null, 'Area of Operation I, Task C — Weather Info (PA.I.C.K1)', false, 'private_pilot'),
+  ('q11', 'test_category', 'Q11?', 'A11', null, null, null, 'Area of Operation I, Task D — XC Planning (PA.I.D.K1)', false, 'private_pilot'),
+  ('q12', 'test_category', 'Q12?', 'A12', null, null, null, 'Area of Operation I, Task E — NAS (PA.I.E.K1)', false, 'private_pilot')
+on conflict (id) do nothing;
+
+-- ---------------------------------------------------------------------
+-- REV3 fixtures. profiles.primary_aircraft_class does not exist yet at
+-- this point in fixture-load order (v112, which adds it, runs after
+-- fixtures) -- every profile row here (and every profile fixture above)
+-- picks up the column's default ('ASEL') the moment v112 applies its
+-- ALTER TABLE, which is itself the exact default-rule behavior REV3.3
+-- documents and this suite verifies.
+-- ---------------------------------------------------------------------
+insert into public.profiles (id, email, full_name, role, checkride_prep_unlocked, timezone) values
+  ('00000000-0000-0000-0000-000000000050', 'unrelatedclass@test.local', 'Unrelated Class Member', 'student', true, 'UTC'),
+  ('00000000-0000-0000-0000-000000000051', 'unrelatedversion@test.local', 'Unrelated Version Member', 'student', true, 'UTC'),
+  ('00000000-0000-0000-0000-000000000052', 'fillmember@test.local', 'Fill Member', 'student', true, 'UTC'),
+  ('00000000-0000-0000-0000-000000000053', 'malformed@test.local', 'Malformed Payload Member', 'student', true, 'UTC')
 on conflict (id) do nothing;
 
 -- REV2.11/2.12: dedicated profiles for the checkride-proximity weighting
