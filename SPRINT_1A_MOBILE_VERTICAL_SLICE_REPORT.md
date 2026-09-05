@@ -1,6 +1,6 @@
 # Sprint 1A -- Apex Advantage Native Mobile Vertical Slice
 
-Status: **implementation complete, Rev2 + Rev3 revisions applied, awaiting final device-test review. Not merged to main. Not deployed. Not submitted to any app store.**
+Status: **implementation complete, Rev2 + Rev3 revisions and the navigation fix applied, ready for physical device test. Not merged to main. Not deployed. Not submitted to any app store.**
 
 This report covers the native Expo/React Native vertical slice built in `mobile-expo/` per the "RESUME SPRINT 1A" authorization, which followed the closed backend stop-gate (the v118 Daily Drill / mobile-practice bridge, reviewed and production-verified in `SPRINT_1A_DAILY_DRILL_PRACTICE_BRIDGE_REPORT.md`).
 
@@ -63,6 +63,7 @@ mobile-expo/
       _layout.tsx          redirect-if-signed-out guard, bottom tabs
       index.tsx             Home
       practice/
+        _layout.tsx          Stack -- Practice tab's own nested navigator (nav fix)
         index.tsx           Practice tab (Today's Drill entry + placeholder)
         [drillId].tsx        Question -> Reveal -> Self-Rate -> Complete flow
       acs.tsx               placeholder
@@ -159,6 +160,8 @@ Bottom tabs: **Home, Practice, ACS, Oral, Library** -- the long-term shape. Spri
 
 Protected routing: `(auth)/_layout.tsx` redirects a signed-in learner into `(app)`; `(app)/_layout.tsx` redirects a signed-out learner back to sign-in. Both render a loading state while the session is still resolving.
 
+**(Navigation fix -- section 29)** The Practice tab contains two screens -- its own root (`practice/index.tsx`) and a pushed drill session screen (`practice/[drillId].tsx`) -- but had no navigator of its own; the parent `Tabs`' single `<Tabs.Screen name="practice" />` had nothing but a bare directory to resolve to. Fixed with `app/(app)/practice/_layout.tsx`, a nested `Stack` (`headerShown: false`, `unstable_settings.initialRouteName: 'index'`) per Expo Router's documented "Stack inside a Tab" pattern. The Practice tab always lands on its root first; `[drillId]` is only ever reached by an explicit push (from Home's Today's Drill card or the Practice tab's own copy of it) and renders inside that same nested Stack, so the tab bar stays on "Practice" the whole time a learner is in a drill -- never a separate, undesired sixth tab. The route path itself (`/(app)/practice/[drillId]`), every existing `router.push`/`router.replace` call site, and "Back to Home" all continue to work unchanged.
+
 ## 10. Home implementation
 
 **(Rev2)** `contexts/BootstrapContext.tsx` now wraps `useBootstrap()` in a `BootstrapProvider` mounted once in `app/(app)/_layout.tsx`, so bootstrap loading/entitlement state is shared by every authenticated screen instead of Home calling `mobile-bootstrap` in isolation -- this is what lets both Home and the Practice tab gate their own Daily Drill fetch on the same "bootstrap resolved + entitled" signal (section 27, item 2).
@@ -199,11 +202,12 @@ Tested behaviorally against the pure reducer and hook logic (a full physical-dev
 
 ## 16. Test count / results
 
-**Rev3 (current):**
+**Post-navigation-fix (current):**
 ```
-Test Suites: 13 passed, 13 total
-Tests:       117 passed, 117 total
+Test Suites: 14 passed, 14 total
+Tests:       119 passed, 119 total
 ```
+(Rev3's 13/117 plus the navigation fix's new `test/practiceNavigation.test.tsx`, 2 tests -- section 29.)
 
 Files (6 original + 6 added in Rev2 + 1 added in Rev3): `test/authErrors.test.ts`, `test/drillSessionReducer.test.ts`, `test/apiClient.test.ts`, `test/AuthContext.test.tsx`, `test/useDrillSession.test.tsx`, `test/security.test.ts`, Rev2's `test/ReadinessCard.test.tsx`, `test/Home.test.tsx`, `test/entitlementGating.test.tsx`, `test/DrillCompletion.test.tsx`, `test/HomeFocusRefresh.test.tsx`, `test/apiValidation.test.ts`, plus Rev3's new `test/usePostCompleteRefresh.test.tsx`. Coverage against this Sprint's required list (section 20 of the original task):
 
@@ -230,16 +234,16 @@ npx tsc --noEmit
 
 ## 19. Expo validation result
 
-**Rev3 (current):**
+**Post-navigation-fix (current):**
 ```
 npx expo-doctor
 21/21 checks passed. No issues detected!
 ```
 ```
 npx expo export --platform ios
-iOS Bundled 19211ms node_modules/expo-router/entry.js (1315 modules)
+iOS Bundled 8416ms node_modules/expo-router/entry.js (1316 modules)
 ```
-A complete production JS bundle was produced -- every screen, hook, component, and the cross-directory `shared/mobile-dto` import all resolved and bundled successfully. Module count is unchanged from Rev2 (1315) -- Rev3 only edited existing files and added test files, which aren't part of the app bundle. `dist/` was deleted after export -- it's a validation artifact, not a committed build. (`--platform web` was not attempted: this is a mobile-only app and adding `react-dom`/`react-native-web` purely for an unused web target was judged out of scope.)
+A complete production JS bundle was produced -- every screen, hook, component, and the cross-directory `shared/mobile-dto` import all resolved and bundled successfully. Module count is up by exactly 1 from Rev3 (1315 -> 1316) -- the new `app/(app)/practice/_layout.tsx` nested navigator, confirming it's actually part of the bundled route tree, not a dead file. `dist/` was deleted after export -- it's a validation artifact, not a committed build. (`--platform web` was not attempted: this is a mobile-only app and adding `react-dom`/`react-native-web` purely for an unused web target was judged out of scope.)
 
 **Rev2 also added `expo-asset` as a direct dependency.** It's a real (if undeclared) transitive dependency of `expo-font`'s font-loading code path, which `@expo/vector-icons` pulls in; without it declared directly, npm nested it only under `node_modules/expo/node_modules/expo-asset` instead of hoisting it, which broke Jest's plain Node module resolution the first time a real `@testing-library/react-native` `render()` of a full screen (rather than just a hook) was attempted for the new Home tests. Metro's bundler resolution is more lenient than Jest's and already found it fine (the original submission's `expo export` succeeded even though `@expo/vector-icons` was already in use), but the gap was real and is now closed via `npx expo install expo-asset`, which also updated `app.json`'s `plugins` array.
 
@@ -347,14 +351,18 @@ All new files under `mobile-expo/` (nothing outside it was touched -- see sectio
 - New tests: `test/usePostCompleteRefresh.test.tsx`.
 - Modified tests: `test/apiValidation.test.ts` (rewritten Daily Drill section with tests A-F, plus new nested-field/enum/finite-number malformed-response cases), `test/entitlementGating.test.tsx` (new "Practice distinguishes bootstrap failure from locked access" describe block), `test/DrillCompletion.test.tsx` (proves the screen forwards `alreadyCompleted` correctly).
 
+**Navigation fix additions (section 29):**
+- `app/(app)/practice/_layout.tsx` (new) -- nested `Stack` navigator for the Practice tab.
+- `test/practiceNavigation.test.tsx` (new) -- narrow structural test proving the layout declares exactly `index` then `[drillId]`, with `initialRouteName: 'index'`.
+
 ## 25. Confirmation: backend was not modified
 
-- No file under `portal/supabase/functions/`, no `portal/supabase-portal-schema-*.sql` migration, and no `test/run_security_regression_tests.sh` change was made during this Sprint 1A implementation work, **nor during the Rev2 or Rev3 revisions** -- `git diff --stat -- portal/ shared/` against this revision's base is empty.
-- `shared/mobile-dto/index.ts` was **not** modified in this session, in Rev2, or in Rev3 -- it was already updated (adding `session_id`) during the prior v118 Rev2 work and is consumed here as-is.
+- No file under `portal/supabase/functions/`, no `portal/supabase-portal-schema-*.sql` migration, and no `test/run_security_regression_tests.sh` change was made during this Sprint 1A implementation work, **nor during the Rev2 revision, the Rev3 revision, or the navigation fix** -- `git diff --stat -- portal/ shared/` against this revision's base is empty.
+- `shared/mobile-dto/index.ts` was **not** modified in this session, in Rev2, in Rev3, or in the navigation fix -- it was already updated (adding `session_id`) during the prior v118 Rev2 work and is consumed here as-is.
 - **Rev3 specifically re-read the actual deployed Edge Function source** (`portal/supabase/functions/mobile-daily-drill/index.ts`, `mobile-bootstrap/index.ts`, `mobile-practice/index.ts`, `mobile-readiness/index.ts`) and the v118 migration's `start_daily_drill_practice_session()`/`complete_mobile_practice_session()` RPC bodies directly, rather than assuming the prior validation was correct. The one contract question this raised -- whether `session_id: null` is ever legitimate for a `pending`/`in_progress` Daily Drill -- resolved as "yes, for fetch" (confirmed against the RPC's own status-transition logic and the deployed function's `session_id: drill.practice_attempt_id ?? null` shape), so this was a client-side validation bug, not a backend contract mismatch, and no STOP was required.
 - `mobile/` (the existing Capacitor WebView wrapper) was not touched, read, or referenced by any file in `mobile-expo/`.
-- No production deployment, database migration, or Edge Function redeploy occurred during this session, the Rev2 revision, or the Rev3 revision. Rev3 made no new production API calls at all -- its validation was `jest`/`tsc`/`lint`/`expo-doctor`/`expo export` only, no live Supabase calls, and its backend investigation was read-only source review of files already present in this repository. The only production interaction on record remains the original submission's section 20 read/write validation, scoped entirely to one disposable test account with its temporary password rotated back to random immediately after.
-- No blocking backend contract defect was discovered in Rev3 -- all four review items were resolvable entirely within `mobile-expo/`.
+- No production deployment, database migration, or Edge Function redeploy occurred during this session, the Rev2 revision, the Rev3 revision, or the navigation fix. The navigation fix touched only Expo Router layout/route structure -- `app/(app)/practice/_layout.tsx` and its one narrow test -- no API client, hook, or DTO file was touched by it. The only production interaction on record remains the original submission's section 20 read/write validation, scoped entirely to one disposable test account with its temporary password rotated back to random immediately after.
+- No blocking backend contract defect was discovered in Rev3 or the navigation fix -- every review item across both was resolvable entirely within `mobile-expo/`.
 
 ## 26. Sprint 1B recommendations
 
@@ -441,6 +449,59 @@ iOS Bundled 19211ms node_modules/expo-router/entry.js (1315 modules)
 
 `git status`/`git diff --stat` confirm only files under `mobile-expo/` and this report changed in this revision -- no file under `portal/`, no migration, and no change to `shared/mobile-dto/index.ts`. No production deployment or live Supabase API call occurred during this revision. **No physical-device or simulator verification is claimed here** -- that remains the one outstanding step, per section 21 and section 22's exact Mac instructions.
 
+## 29. Final pre-device navigation fix
+
+A final independent review, otherwise approving Rev3, found one Expo Router structure issue: the Practice **tab** contains two screens -- `practice/index.tsx` (the tab root) and `practice/[drillId].tsx` (the pushed drill session screen) -- but `practice/` had no `_layout.tsx` of its own. The parent `app/(app)/_layout.tsx`'s `<Tabs.Screen name="practice" />` therefore had only a bare directory to resolve to, not a real navigator, which is the documented "Stack inside a Tab" shape Expo Router expects whenever a tab holds more than one screen.
+
+**Fix:** `app/(app)/practice/_layout.tsx` (new) -- a nested `Stack`:
+
+```tsx
+import { Stack } from 'expo-router'
+
+export const unstable_settings = {
+  initialRouteName: 'index',
+}
+
+export default function PracticeLayout() {
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="[drillId]" />
+    </Stack>
+  )
+}
+```
+
+This matches the suggested shape exactly -- no SDK 57 typing/API deviation was needed. Effects:
+- `<Tabs.Screen name="practice" />` in the parent layout now resolves to this whole nested navigator (confirmed by the production bundle's module count increasing by exactly 1, 1315 -> 1316 -- section 19).
+- The Practice tab always lands on `index` first (`unstable_settings.initialRouteName`).
+- `[drillId]` is pushed inside this same Stack, never a separate visible tab -- the tab bar stays on "Practice" the entire time a learner is in a drill, since both screens live under the one `Tabs.Screen`.
+- Headers stay hidden (`headerShown: false`), matching every other screen's existing treatment -- no deliberate design reason existed to introduce one here.
+- The route path (`/(app)/practice/[drillId]`), every existing `router.push`/`router.replace` call site (Home's Today's Drill card, the Practice tab's own copy, "Back to Home" from both the already-complete-drill state and the completion screen), and the completed-drill guard all continue to work completely unchanged -- this fix only added a navigator declaration, it did not touch any screen's own logic.
+
+**Verification:** a narrow structural test (`test/practiceNavigation.test.tsx`, 2 tests) confirms the layout module declares `initialRouteName: 'index'` and renders exactly two `Stack.Screen`s named `index` and `[drillId]`, in that order -- deliberately not a full Expo Router route-resolution integration test (out of scope for this narrow fix, and unnecessary given the production bundle itself is the stronger, more authoritative proof that the navigator is real and reachable).
+
+**Validation, run clean together in this session:**
+```
+npx jest --runInBand
+Test Suites: 14 passed, 14 total
+Tests:       119 passed, 119 total
+
+npx tsc --noEmit
+(0 errors)
+
+npx expo lint
+(0 errors, 0 warnings)
+
+npx expo-doctor
+21/21 checks passed. No issues detected!
+
+npx expo export --platform ios
+iOS Bundled 8416ms node_modules/expo-router/entry.js (1316 modules)
+```
+
+`git status`/`git diff --stat` confirm only `mobile-expo/app/(app)/practice/_layout.tsx`, `mobile-expo/test/practiceNavigation.test.tsx`, and this report changed for this fix -- no file under `portal/`, no migration, and no change to `shared/mobile-dto/index.ts`. No production deployment or live Supabase API call occurred. **No physical-device or simulator verification is claimed here** -- this fix removes the one known structural blocker to that step, but the device/simulator pass itself (section 21, section 22's exact Mac commands) still has not been performed in this sandbox.
+
 ---
 
-**SPRINT 1A MOBILE VERTICAL SLICE REV3 COMPLETE -- AWAITING FINAL DEVICE-TEST REVIEW**
+**SPRINT 1A NAVIGATION FIX COMPLETE -- READY FOR PHYSICAL DEVICE TEST**
