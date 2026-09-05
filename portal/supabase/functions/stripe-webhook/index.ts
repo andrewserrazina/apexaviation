@@ -514,6 +514,20 @@ async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Che
       .eq('id', scheduledClassId)
       .maybeSingle()
 
+    // Explicit p_payment_status is required, not cosmetic: production has
+    // (had, as of v110) two overloads of this RPC sharing these same six
+    // parameter names/types, the other adding a seventh
+    // (p_payment_status) with a DEFAULT of 'paid'. Calling with exactly
+    // these six named parameters -- which this call did until this fix --
+    // is genuinely ambiguous to Postgres's function resolver ("function
+    // ... is not unique") regardless of role or grants, and was
+    // confirmed live in production to be silently failing every paid
+    // scheduled-class Ground School registration, which stripe-webhook's
+    // catch block below then refunded. Passing p_payment_status here
+    // makes the call unambiguous on its own even before v110 drops the
+    // six-argument overload outright -- see
+    // supabase-portal-schema-v110-ground-school-rpc-overload-fix.sql and
+    // SPRINT_0_PHASE_2B_HOTFIX_REPORT.md for the full incident writeup.
     const { error: enrollError } = await supabase.rpc('confirm_scheduled_ground_class_enrollment', {
       p_scheduled_ground_class_id: scheduledClassId,
       p_full_name: fullName,
@@ -521,6 +535,7 @@ async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Che
       p_profile_id: matchingProfile?.id ?? null,
       p_stripe_session_id: session.id,
       p_amount_cents: amountCents,
+      p_payment_status: 'paid',
     })
     if (enrollError) {
       // confirm_scheduled_ground_class_enrollment (v57) raises several

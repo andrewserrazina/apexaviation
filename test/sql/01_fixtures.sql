@@ -12,7 +12,8 @@ insert into public.profiles (id, email, full_name, role, private_pilot_ground_sc
 on conflict (id) do nothing;
 
 insert into public.scheduled_ground_classes (id, course_id, status, class_date, capacity, enrolled_count) values
-  ('00000000-0000-0000-0000-0000000000c1', 'PPL', 'published', current_date + 7, 20, 0)
+  ('00000000-0000-0000-0000-0000000000c1', 'PPL', 'published', current_date + 7, 20, 0),
+  ('00000000-0000-0000-0000-0000000000c2', 'PPL', 'published', current_date + 7, 1, 1)
 on conflict (id) do nothing;
 
 insert into public.ground_sessions (id, title, max_students) values
