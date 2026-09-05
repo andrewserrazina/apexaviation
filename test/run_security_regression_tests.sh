@@ -138,6 +138,9 @@ echo
 echo "=== Applying v110 (Ground School RPC overload fix, Phase 2B) ==="
 "${PSQL_BASE[@]}" -v ON_ERROR_STOP=1 -f portal/supabase-portal-schema-v110-ground-school-rpc-overload-fix.sql >/tmp/apex_test_v110.log 2>&1 || { echo "V110 MIGRATION FAILED"; cat /tmp/apex_test_v110.log; exit 1; }
 
+echo "=== Applying v111 (mission/streak client lockout) ==="
+"${PSQL_BASE[@]}" -v ON_ERROR_STOP=1 -f portal/supabase-portal-schema-v111-mission-streak-client-lockout.sql >/tmp/apex_test_v111.log 2>&1 || { echo "V111 MIGRATION FAILED"; cat /tmp/apex_test_v111.log; exit 1; }
+
 echo
 echo "########## 1. GROUND SCHOOL FORGERY (post-v110) ##########"
 expect_rows "confirm_scheduled_ground_class_enrollment(6-arg) no longer exists after v110" postgres "" \
@@ -324,6 +327,44 @@ expect_rows "member A cannot read member B's study pack entitlements" authentica
 run_sql authenticated "$MEMBER_A" "update public.profiles set full_name='hacked' where id='$MEMBER_B';" >/dev/null
 expect_rows "member A's update attempt on member B's profile has no effect (RLS filters the row, 0 rows touched)" postgres "" \
   "select full_name from public.profiles where id='$MEMBER_B';" "Member B"
+
+MISSION_MEMBER=00000000-0000-0000-0000-000000000020
+STREAK_MEMBER=00000000-0000-0000-0000-000000000021
+
+echo
+echo "########## 15. MISSION/STREAK CLIENT LOCKOUT (Phase B / v111) ##########"
+expect_denied "anon direct RPC run_streak_maintenance -> denied" anon "" \
+  "select public.run_streak_maintenance();"
+expect_denied "anon direct RPC refresh_mission_progress -> denied" anon "" \
+  "select public.refresh_mission_progress();"
+expect_denied "authenticated member direct RPC run_streak_maintenance -> denied" authenticated "$MEMBER_A" \
+  "select public.run_streak_maintenance();"
+expect_denied "authenticated member direct RPC refresh_mission_progress -> denied" authenticated "$MEMBER_A" \
+  "select public.refresh_mission_progress();"
+expect_success "service-role run_streak_maintenance succeeds (lifecycle path)" service_role "" \
+  "select public.run_streak_maintenance();"
+expect_success "service-role refresh_mission_progress succeeds (lifecycle path)" service_role "" \
+  "select public.refresh_mission_progress();"
+
+echo
+echo "--- MISSION BEHAVIOR: progress is still recomputed correctly ---"
+expect_success "refresh_mission_progress runs clean against real mission/profile data" service_role "" \
+  "select public.refresh_mission_progress();"
+expect_rows "study_days mission marked complete for a member who studied today" postgres "" \
+  "select (completed_at is not null) from public.member_mission_progress where profile_id='$MISSION_MEMBER' and mission_id='00000000-0000-0000-0000-0000000000e1';" "t"
+expect_rows "mission completion awarded XP exactly once (not duplicated by the second run above)" postgres "" \
+  "select count(*) from public.xp_ledger where profile_id='$MISSION_MEMBER' and event_type='mission_completed' and source_id='00000000-0000-0000-0000-0000000000e1';" "1"
+
+echo
+echo "--- STREAK BEHAVIOR: freeze/recovery-sortie maintenance still behaves correctly ---"
+expect_success "run_streak_maintenance runs clean against real streak data" service_role "" \
+  "select public.run_streak_maintenance();"
+expect_rows "a missed day with zero freezes banked offers a Recovery Sortie" postgres "" \
+  "select count(*) from public.recovery_sorties where profile_id='$STREAK_MEMBER' and missed_date = current_date - 1;" "1"
+expect_success "run_streak_maintenance is safe to run twice in a row (no duplicate-key error)" service_role "" \
+  "select public.run_streak_maintenance();"
+expect_rows "a second run does not create a duplicate Recovery Sortie for the same missed day" postgres "" \
+  "select count(*) from public.recovery_sorties where profile_id='$STREAK_MEMBER' and missed_date = current_date - 1;" "1"
 
 echo
 echo "=================================================="
