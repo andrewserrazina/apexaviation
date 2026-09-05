@@ -972,6 +972,194 @@ expect_rows "the training-context fields mobile-bootstrap now surfaces resolve t
   "select version_code from public.acs_versions where id = (select acs_version_id from public.get_member_training_context('$MOBILE_MEMBER'));" "FAA-S-ACS-6C"
 
 echo
+echo "########## 40. DAILY DRILL / MOBILE-PRACTICE BRIDGE (Sprint 1A / v118) ##########"
+echo "Applied LAST, after every section above (including 19's mark_daily_drill_started() calls and"
+echo "20b's v117 application), specifically so v118's mark_daily_drill_started() grant revocation"
+echo "cannot retroactively break earlier sections' assertions. Uses its own fresh test profiles."
+echo "=== Applying v118 (Daily Drill / mobile-practice bridge, Sprint 1A, source-controlled only) ==="
+"${PSQL_BASE[@]}" -v ON_ERROR_STOP=1 -f portal/supabase-portal-schema-v118-daily-drill-practice-bridge.sql >/tmp/apex_test_v118.log 2>&1 || { echo "V118 MIGRATION FAILED"; cat /tmp/apex_test_v118.log; exit 1; }
+
+V118_MEMBER=00000000-0000-0000-0000-000000000070
+V118_OTHER=00000000-0000-0000-0000-000000000071
+run_sql postgres "" \
+  "insert into public.profiles (id, email, full_name, role, checkride_prep_unlocked, timezone) values ('$V118_MEMBER','v118a@test.local','V118 Member','student',true,'UTC'), ('$V118_OTHER','v118b@test.local','V118 Other','student',true,'UTC') on conflict (id) do nothing;" >/dev/null
+
+expect_denied "mark_daily_drill_started() EXECUTE grant is revoked from authenticated (superseded by the new RPC)" authenticated "$V118_MEMBER" \
+  "select public.mark_daily_drill_started('00000000-0000-0000-0000-0000000000ff');"
+
+expect_success "V118 Member can generate today's daily drill" authenticated "$V118_MEMBER" \
+  "select public.get_or_create_daily_drill();"
+V118_DRILL=$(run_sql authenticated "$V118_MEMBER" "select (public.get_or_create_daily_drill()).id;" | tail -1 | xargs)
+V118_DRILL_QIDS=$(run_sql postgres "" "select question_ids::text from public.daily_drills where id='$V118_DRILL';" | tail -1 | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+
+expect_denied "anon direct RPC start_daily_drill_practice_session -> denied" anon "" \
+  "select public.start_daily_drill_practice_session('$V118_DRILL');"
+expect_error_matching "V118 Other cannot start V118 Member's drill (ownership-scoped, not just RLS)" authenticated "$V118_OTHER" \
+  "select public.start_daily_drill_practice_session('$V118_DRILL');" "not found"
+
+expect_success "V118 Member can start their own drill's practice session" authenticated "$V118_MEMBER" \
+  "select public.start_daily_drill_practice_session('$V118_DRILL');"
+V118_SESSION=$(run_sql postgres "" "select practice_attempt_id::text from public.daily_drills where id='$V118_DRILL';" | tail -1 | xargs)
+if [ -n "$V118_SESSION" ] && [ "$V118_SESSION" != "" ]; then
+  echo "PASS: Start linked exactly one practice_attempt_id onto the drill"; PASS=$((PASS+1))
+else
+  echo "FAIL: expected a non-null practice_attempt_id after Start"; FAIL=$((FAIL+1)); FAILURES+=("v118 start linkage")
+fi
+expect_rows "drill transitions to in_progress with started_at set" postgres "" \
+  "select (status='in_progress' and started_at is not null)::text from public.daily_drills where id='$V118_DRILL';" "true"
+expect_rows "the linked attempt's question_ids are byte-identical to the drill's own question_ids (server-authoritative, no client input)" postgres "" \
+  "select (question_ids::text = '$V118_DRILL_QIDS')::text from public.portal_practice_attempts where id='$V118_SESSION';" "true"
+expect_rows "the linked attempt's mode is 'dpe_questions'" postgres "" \
+  "select mode from public.portal_practice_attempts where id='$V118_SESSION';" "dpe_questions"
+
+echo "--- retry / resume / concurrency ---"
+expect_success "calling Start again on the already-linked drill is a safe no-op (resume, not error)" authenticated "$V118_MEMBER" \
+  "select public.start_daily_drill_practice_session('$V118_DRILL');"
+V118_SESSION_RETRY=$(run_sql postgres "" "select practice_attempt_id::text from public.daily_drills where id='$V118_DRILL';" | tail -1 | xargs)
+if [ "$V118_SESSION_RETRY" = "$V118_SESSION" ]; then
+  echo "PASS: retrying Start returns the SAME session_id, never creates a second attempt"; PASS=$((PASS+1))
+else
+  echo "FAIL: expected retry to keep session_id '$V118_SESSION', got '$V118_SESSION_RETRY'"; FAIL=$((FAIL+1)); FAILURES+=("v118 start retry idempotency")
+fi
+expect_rows "exactly one portal_practice_attempts row is linked to this drill (no duplicate created by the retry)" postgres "" \
+  "select count(*) from public.portal_practice_attempts where id='$V118_SESSION';" "1"
+
+echo "Two independent psql processes call Start on the SAME never-before-started drill at effectively"
+echo "the same time -- proves the row lock serializes them into exactly one created attempt, matching"
+echo "the pattern already proven for complete_mobile_practice_session() in section 23."
+V118_CONC_MEMBER=00000000-0000-0000-0000-000000000072
+run_sql postgres "" \
+  "insert into public.profiles (id, email, full_name, role, checkride_prep_unlocked, timezone) values ('$V118_CONC_MEMBER','v118c@test.local','V118 Concurrency Member','student',true,'UTC') on conflict (id) do nothing;" >/dev/null
+run_sql authenticated "$V118_CONC_MEMBER" "select public.get_or_create_daily_drill();" >/dev/null
+V118_CONC_DRILL=$(run_sql postgres "" "select id::text from public.daily_drills where profile_id='$V118_CONC_MEMBER';" | tail -1 | xargs)
+
+(
+  {
+    echo "set role authenticated;"
+    echo "set myapp.uid = '$V118_CONC_MEMBER';"
+    echo "set myapp.role = 'authenticated';"
+    echo "begin;"
+    echo "select * from public.start_daily_drill_practice_session('$V118_CONC_DRILL');"
+    echo "select pg_sleep(2);"
+    echo "commit;"
+  } | "${PSQL_BASE[@]}" -v ON_ERROR_STOP=1 > /tmp/apex_test_v118_conc_a.log 2>&1
+) &
+V118_CONC_PID_A=$!
+sleep 1
+(
+  {
+    echo "set role authenticated;"
+    echo "set myapp.uid = '$V118_CONC_MEMBER';"
+    echo "set myapp.role = 'authenticated';"
+    echo "select * from public.start_daily_drill_practice_session('$V118_CONC_DRILL');"
+  } | "${PSQL_BASE[@]}" -v ON_ERROR_STOP=1 > /tmp/apex_test_v118_conc_b.log 2>&1
+) &
+V118_CONC_PID_B=$!
+wait $V118_CONC_PID_A; V118_CONC_RC_A=$?
+wait $V118_CONC_PID_B; V118_CONC_RC_B=$?
+if [ $V118_CONC_RC_A -eq 0 ] && [ $V118_CONC_RC_B -eq 0 ]; then
+  echo "PASS: both concurrent Start requests returned successfully (no error, no deadlock)"; PASS=$((PASS+1))
+else
+  echo "FAIL: a concurrent Start request errored -- A rc=$V118_CONC_RC_A, B rc=$V118_CONC_RC_B"
+  echo "  -- process A log:"; cat /tmp/apex_test_v118_conc_a.log
+  echo "  -- process B log:"; cat /tmp/apex_test_v118_conc_b.log
+  FAIL=$((FAIL+1)); FAILURES+=("v118 concurrent start requests both succeed")
+fi
+expect_rows "true concurrent Start created exactly ONE portal_practice_attempts row (not two)" postgres "" \
+  "select count(*) from public.portal_practice_attempts where profile_id='$V118_CONC_MEMBER';" "1"
+
+echo "--- fetch-after-start / reveal / complete through the existing mobile-practice contract ---"
+expect_rows "fetching the drill again (default action equivalent) still shows the same linked session_id" postgres "" \
+  "select (practice_attempt_id::text = '$V118_SESSION')::text from public.daily_drills where id='$V118_DRILL';" "true"
+
+V118_Q1=$(run_sql postgres "" "select question_ids->>0 from public.portal_practice_attempts where id='$V118_SESSION';" | tail -1 | xargs)
+expect_success "reveal succeeds for a question that IS part of the linked session" authenticated "$V118_MEMBER" \
+  "select id from public.dpe_questions where id='$V118_Q1' and exists (select 1 from public.portal_practice_attempts where id='$V118_SESSION' and question_ids @> to_jsonb('$V118_Q1'::text));"
+expect_rows "reveal-equivalent check rejects a question NOT part of the linked session (reveal's own ownership+membership guard, proven in section 24, is unaffected by v118)" postgres "" \
+  "select (question_ids @> to_jsonb('not-a-real-question-id'::text))::text from public.portal_practice_attempts where id='$V118_SESSION';" "false"
+
+expect_error_matching "V118 Other cannot complete V118 Member's linked session (ownership enforced inside the RPC, unaffected by v118)" authenticated "$V118_OTHER" \
+  "select * from public.complete_mobile_practice_session('$V118_SESSION', '[]'::jsonb);" "not_your_session"
+
+V118_RESPONSES=$(run_sql postgres "" "select jsonb_agg(jsonb_build_object('question_id', q, 'self_rating', 'correct'))::text from jsonb_array_elements_text((select question_ids from public.portal_practice_attempts where id='$V118_SESSION')) q;" | tail -1 | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+expect_success "V118 Member completes the linked session with a self-rating for every question" authenticated "$V118_MEMBER" \
+  "select * from public.complete_mobile_practice_session('$V118_SESSION', '$V118_RESPONSES'::jsonb);"
+
+expect_rows "the practice attempt itself is marked completed" postgres "" \
+  "select (completed_at is not null)::text from public.portal_practice_attempts where id='$V118_SESSION';" "true"
+expect_rows "the LINKED Daily Drill is ALSO marked completed, in the same transaction (the new v118 step)" postgres "" \
+  "select status from public.daily_drills where id='$V118_DRILL';" "completed"
+expect_rows "the drill's completed_at matches the practice attempt's completed_at exactly" postgres "" \
+  "select (d.completed_at = a.completed_at)::text from public.daily_drills d join public.portal_practice_attempts a on a.id=d.practice_attempt_id where d.id='$V118_DRILL';" "true"
+
+echo "--- XP behavior preserved exactly (v117's sole-authority trigger, untouched by v118) ---"
+expect_rows "no mobile-only 'mobile_practice_completed' XP event was created for this v118-linked completion" postgres "" \
+  "select count(*) from public.xp_ledger where profile_id='$V118_MEMBER' and event_type='mobile_practice_completed';" "0"
+V118_XP_TOTAL=$(run_sql postgres "" "select coalesce(sum(xp_amount),0) from public.xp_ledger where profile_id='$V118_MEMBER' and event_type in ('practice_set_completed','perfect_score_bonus') and source_id like '$V118_SESSION%';" | tail -1 | xargs)
+expect_rows "exactly one 'practice_set_completed' (25 XP) event exists for this attempt" postgres "" \
+  "select count(*) filter (where xp_amount=25) from public.xp_ledger where profile_id='$V118_MEMBER' and event_type='practice_set_completed' and source_id='$V118_SESSION';" "1"
+if [ "$V118_XP_TOTAL" = "40" ] || [ "$V118_XP_TOTAL" = "25" ]; then
+  echo "PASS: total XP from this v118-linked completion ($V118_XP_TOTAL) matches the reviewed shared trigger's schedule (25, +15 only on a perfect score)"; PASS=$((PASS+1))
+else
+  echo "FAIL: expected total XP of 25 or 40, got '$V118_XP_TOTAL'"; FAIL=$((FAIL+1)); FAILURES+=("v118 XP amount matches shared trigger schedule")
+fi
+
+echo "Racing Complete against the SAME v118-linked session a second time, concurrently, to confirm the"
+echo "existing already_completed short-circuit (proven generally in section 23) also protects the new"
+echo "Daily Drill completion step -- it must produce ZERO additional side effects, not a second XP award"
+echo "or a second drill-completion write."
+(
+  { echo "set role authenticated;"; echo "set myapp.uid = '$V118_MEMBER';"; echo "set myapp.role = 'authenticated';";
+    echo "select * from public.complete_mobile_practice_session('$V118_SESSION', '$V118_RESPONSES'::jsonb);"; } \
+  | "${PSQL_BASE[@]}" -v ON_ERROR_STOP=1 > /tmp/apex_test_v118_recomplete_a.log 2>&1
+) &
+V118_RECOMP_PID_A=$!
+(
+  { echo "set role authenticated;"; echo "set myapp.uid = '$V118_MEMBER';"; echo "set myapp.role = 'authenticated';";
+    echo "select * from public.complete_mobile_practice_session('$V118_SESSION', '$V118_RESPONSES'::jsonb);"; } \
+  | "${PSQL_BASE[@]}" -v ON_ERROR_STOP=1 > /tmp/apex_test_v118_recomplete_b.log 2>&1
+) &
+V118_RECOMP_PID_B=$!
+wait $V118_RECOMP_PID_A; V118_RECOMP_RC_A=$?
+wait $V118_RECOMP_PID_B; V118_RECOMP_RC_B=$?
+if [ $V118_RECOMP_RC_A -eq 0 ] && [ $V118_RECOMP_RC_B -eq 0 ]; then
+  echo "PASS: both concurrent re-Complete calls returned successfully (already_completed short-circuit, no error)"; PASS=$((PASS+1))
+else
+  echo "FAIL: a concurrent re-Complete call errored -- A rc=$V118_RECOMP_RC_A, B rc=$V118_RECOMP_RC_B"; FAIL=$((FAIL+1)); FAILURES+=("v118 concurrent re-complete both succeed")
+fi
+expect_rows "concurrent re-Complete produced ZERO additional XP for this attempt (still exactly one 25XP event)" postgres "" \
+  "select count(*) filter (where xp_amount=25) from public.xp_ledger where profile_id='$V118_MEMBER' and event_type='practice_set_completed' and source_id='$V118_SESSION';" "1"
+expect_rows "the drill is still 'completed' (the AND status <> 'completed' guard prevented a redundant write)" postgres "" \
+  "select status from public.daily_drills where id='$V118_DRILL';" "completed"
+
+echo "--- ad-hoc mobile-practice sessions (no linked drill) are completely unaffected ---"
+V118_ADHOC=$(run_sql postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$V118_MEMBER','dpe_questions','[\"$V118_Q1\"]'::jsonb,1,now()) returning id;" | tail -1 | xargs)
+expect_success "an ordinary ad-hoc mobile-practice session (created the old way, no Daily Drill link) still completes normally" authenticated "$V118_MEMBER" \
+  "select * from public.complete_mobile_practice_session('$V118_ADHOC', '[{\"question_id\":\"$V118_Q1\",\"self_rating\":\"correct\"}]'::jsonb);"
+expect_rows "completing an ad-hoc session creates/updates ZERO daily_drills rows (no accidental linkage by proximity, only by explicit practice_attempt_id)" postgres "" \
+  "select count(*) from public.daily_drills where practice_attempt_id='$V118_ADHOC';" "0"
+
+echo "--- empty/invalid Daily Drill question set cannot produce a practice attempt ---"
+EMPTY_DRILL_MEMBER=00000000-0000-0000-0000-000000000073
+run_sql postgres "" \
+  "insert into public.profiles (id, email, full_name, role, checkride_prep_unlocked, timezone) values ('$EMPTY_DRILL_MEMBER','v118d@test.local','V118 Empty Drill Member','student',true,'UTC') on conflict (id) do nothing;" >/dev/null
+EMPTY_DRILL=$(run_sql postgres "" \
+  "insert into public.daily_drills (profile_id, drill_date, algorithm_version, target_acs_tasks, question_ids, scenario_ids, estimated_minutes, status) values ('$EMPTY_DRILL_MEMBER', current_date, 'v1', '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, 7, 'pending') returning id;" | tail -1 | xargs)
+expect_error_matching "Start on a Daily Drill with an empty question set is rejected, not turned into a 0-question practice attempt" authenticated "$EMPTY_DRILL_MEMBER" \
+  "select public.start_daily_drill_practice_session('$EMPTY_DRILL');" "no questions to practice"
+expect_rows "the empty drill was never linked to any practice attempt" postgres "" \
+  "select (practice_attempt_id is null)::text from public.daily_drills where id='$EMPTY_DRILL';" "true"
+
+echo "--- previously-created pending Daily Drill rows (from before v118, e.g. section 19's DRILL_ID_1) remain valid ---"
+expect_rows "section 19's pre-v118 drill row (DRILL_ID_1, already in_progress via the old mark_daily_drill_started path) still has practice_attempt_id null -- v118 did not retroactively touch it" postgres "" \
+  "select (practice_attempt_id is null)::text from public.daily_drills where id='$DRILL_ID_1';" "true"
+expect_success "that pre-existing drill can still be bridged forward via the new RPC (Start treats a null-linked pre-v118 row the same as any other unlinked drill)" authenticated "$MOBILE_MEMBER" \
+  "select public.start_daily_drill_practice_session('$DRILL_ID_1');"
+expect_rows "bridging the pre-v118 drill forward now links it to a real practice attempt" postgres "" \
+  "select (practice_attempt_id is not null)::text from public.daily_drills where id='$DRILL_ID_1';" "true"
+
+echo
 echo "=================================================="
 echo "RESULTS: $PASS passed, $FAIL failed"
 if [ $FAIL -gt 0 ]; then

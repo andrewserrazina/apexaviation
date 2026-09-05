@@ -228,10 +228,22 @@ export interface MobileDailyDrill {
   target_acs_tasks: MobileAcsTaskRef[]
   started_at: string | null
   completed_at: string | null
+  // v118: the portal_practice_attempts row backing this drill, created (or
+  // resumed) via start_daily_drill_practice_session(). null until the
+  // learner has called `start` on this drill at least once. Once set, the
+  // client drives reveal/complete through the existing mobile-practice
+  // contract using this id -- it is not a separate practice concept.
+  session_id: string | null
 }
 
+// Returned by both the default (fetch-or-create) action and the `start`
+// action. `start` additionally guarantees session_id is non-null on the
+// returned drill (surfaced redundantly at the top level below so callers
+// don't have to reach into `drill` for the one field `start` exists to
+// produce).
 export interface MobileDailyDrillResponse {
   drill: MobileDailyDrill
+  session_id: string | null
   questions: MobilePracticeQuestion[]
 }
 
