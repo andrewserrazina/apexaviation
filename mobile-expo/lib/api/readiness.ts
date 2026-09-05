@@ -8,11 +8,32 @@
 // actually rendered.
 import type { MobileReadinessResponse } from '../../../shared/mobile-dto'
 import { invokeMobileFunction } from './client'
+import { assertShape, isPlainObject } from './validate'
 
-export function fetchLatestReadiness(): Promise<MobileReadinessResponse> {
-  return invokeMobileFunction<MobileReadinessResponse, { action: 'latest' }>('mobile-readiness', { action: 'latest' })
+function validateReadinessResponse(data: unknown, context: string): MobileReadinessResponse {
+  assertShape(isPlainObject(data) && typeof data.refreshed === 'boolean', context, data)
+  const snapshot = (data as { snapshot: unknown }).snapshot
+  // ReadinessCard renders overall_score/evidence_level/reason_codes --
+  // snapshot is either null (the intentional "no readiness yet" case) or
+  // must carry all three in a usable shape.
+  assertShape(
+    snapshot === null ||
+      (isPlainObject(snapshot) &&
+        typeof snapshot.overall_score === 'number' &&
+        typeof snapshot.evidence_level === 'string' &&
+        Array.isArray(snapshot.reason_codes)),
+    context,
+    data
+  )
+  return data as MobileReadinessResponse
 }
 
-export function refreshReadiness(): Promise<MobileReadinessResponse> {
-  return invokeMobileFunction<MobileReadinessResponse, { action: 'refresh' }>('mobile-readiness', { action: 'refresh' })
+export async function fetchLatestReadiness(): Promise<MobileReadinessResponse> {
+  const data = await invokeMobileFunction<MobileReadinessResponse, { action: 'latest' }>('mobile-readiness', { action: 'latest' })
+  return validateReadinessResponse(data, 'fetchLatestReadiness')
+}
+
+export async function refreshReadiness(): Promise<MobileReadinessResponse> {
+  const data = await invokeMobileFunction<MobileReadinessResponse, { action: 'refresh' }>('mobile-readiness', { action: 'refresh' })
+  return validateReadinessResponse(data, 'refreshReadiness')
 }

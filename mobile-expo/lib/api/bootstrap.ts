@@ -5,7 +5,22 @@
 // of this exact contract.
 import type { MobileBootstrapDTO } from '../../../shared/mobile-dto'
 import { invokeMobileFunction } from './client'
+import { assertShape, isPlainObject } from './validate'
 
-export function fetchBootstrap(): Promise<MobileBootstrapDTO> {
-  return invokeMobileFunction<MobileBootstrapDTO>('mobile-bootstrap')
+export async function fetchBootstrap(): Promise<MobileBootstrapDTO> {
+  const data = await invokeMobileFunction<MobileBootstrapDTO>('mobile-bootstrap')
+  // Home renders user/training/access/progress/home directly -- a
+  // malformed response missing any of them must not reach the render
+  // tree (Sprint 1A Rev2 section 9).
+  assertShape(
+    isPlainObject(data) &&
+      isPlainObject(data.user) &&
+      isPlainObject(data.training) &&
+      isPlainObject(data.access) &&
+      isPlainObject(data.progress) &&
+      isPlainObject(data.home),
+    'fetchBootstrap',
+    data
+  )
+  return data
 }

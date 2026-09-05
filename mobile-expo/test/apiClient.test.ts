@@ -80,14 +80,14 @@ describe('Daily Drill session creation routes exclusively through mobile-daily-d
 
   // N: Start calls mobile-daily-drill action:start.
   it('startDailyDrill invokes mobile-daily-drill with action "start" and the drill_id', async () => {
-    mockInvoke.mockResolvedValue({ data: { drill: {}, session_id: 's1', questions: [] }, error: null })
+    mockInvoke.mockResolvedValue({ data: { drill: { id: 'd1', status: 'pending' }, session_id: 's1', questions: [] }, error: null })
     await startDailyDrill('drill-123')
     expect(mockInvoke).toHaveBeenCalledTimes(1)
     expect(mockInvoke).toHaveBeenCalledWith('mobile-daily-drill', { body: { action: 'start', drill_id: 'drill-123' } })
   })
 
   it('fetchDailyDrill invokes mobile-daily-drill with no action (default fetch-or-create)', async () => {
-    mockInvoke.mockResolvedValue({ data: { drill: {}, session_id: null, questions: [] }, error: null })
+    mockInvoke.mockResolvedValue({ data: { drill: { id: 'd1', status: 'completed' }, session_id: null, questions: [] }, error: null })
     await fetchDailyDrill()
     expect(mockInvoke).toHaveBeenCalledWith('mobile-daily-drill', undefined)
   })
@@ -96,7 +96,7 @@ describe('Daily Drill session creation routes exclusively through mobile-daily-d
   // substitute -- proven here by asserting the ONLY function name ever
   // invoked by startDailyDrill/fetchDailyDrill is 'mobile-daily-drill'.
   it('never calls mobile-practice as part of starting or fetching a Daily Drill', async () => {
-    mockInvoke.mockResolvedValue({ data: { drill: {}, session_id: 's1', questions: [] }, error: null })
+    mockInvoke.mockResolvedValue({ data: { drill: { id: 'd1', status: 'pending' }, session_id: 's1', questions: [] }, error: null })
     await fetchDailyDrill()
     await startDailyDrill('drill-123')
     const calledFunctionNames = mockInvoke.mock.calls.map((call) => call[0])
