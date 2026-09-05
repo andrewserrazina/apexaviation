@@ -18,6 +18,13 @@
 // NOT YET DEPLOYED / NOT YET CONSUMED. Source-controlled only, ahead of
 // Sprint 1 Expo development (which has not started -- see the Sprint 0
 // report's stop gate).
+//
+// REV2: added MobilePracticeRevealRequest/Response for the new `reveal`
+// action (REV2.9), ReadinessReasonCode for the new insufficient_content_
+// coverage code (REV2.14), and MobilePracticeCompleteRequest's session_id
+// param is now routed through complete_mobile_practice_session() -- see
+// that RPC in v113 -- rather than orchestrated client-side; the wire shape
+// of the request/response is unchanged.
 
 // ---------------------------------------------------------------------
 // Shared primitives
@@ -34,6 +41,25 @@ export interface MobileAcsTaskRef {
   task_code: string
 }
 
+// REV2: known reason_codes values, for consumers that want to render
+// specific limitation copy rather than a generic string. Not exhaustive by
+// type (reason_codes is still string[] at the wire level, new codes can
+// appear without a type change) -- this is a reference list, not a closed
+// enum.
+//   low_sample_size                    -- <10 total attempts across all tasks
+//   confidence_calibration_not_yet_available -- no real confidence capture exists yet (v1 placeholder)
+//   score_change_dampened              -- a >15pt swing was clamped (single-session-swing guard)
+//   insufficient_content_coverage      -- (REV2.14) at least one ACS task in the
+//     active version has zero Apex content mapped to it -- the learner is
+//     not being scored down for content Apex hasn't written yet, but the
+//     coverage denominator still includes that task honestly.
+export type ReadinessReasonCode =
+  | 'low_sample_size'
+  | 'confidence_calibration_not_yet_available'
+  | 'score_change_dampened'
+  | 'insufficient_content_coverage'
+  | (string & {})
+
 // A training-readiness INDICATOR, never a pass-probability estimate.
 // Every consumer of this type must render evidence_level and
 // reason_codes alongside overall_score -- never overall_score alone --
@@ -46,7 +72,7 @@ export interface MobileReadinessSummary {
   confidence_score: number
   evidence_level: EvidenceLevel
   weak_tasks: Array<MobileAcsTaskRef & { evidence_score: number }>
-  reason_codes: string[]
+  reason_codes: ReadinessReasonCode[]
   algorithm_version: string
   computed_at: string
 }
@@ -130,6 +156,23 @@ export interface MobilePracticeCompleteResponse {
   total: number
   completed_at: string
   already_completed: boolean
+}
+
+// REV2.9: QUESTION -> answer out loud -> REVEAL -> self-rate. Server
+// verifies session ownership and that question_id belongs to that session
+// before returning any debrief field -- never a generic question-bank dump.
+export interface MobilePracticeRevealRequest {
+  action: 'reveal'
+  session_id: string
+  question_id: string
+}
+
+export interface MobilePracticeRevealResponse {
+  question_id: string
+  model_answer: string
+  common_mistakes: string | null
+  dpe_evaluating: string | null
+  real_world_application: string | null
 }
 
 // ---------------------------------------------------------------------

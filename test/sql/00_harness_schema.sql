@@ -818,6 +818,10 @@ create table public.portal_question_progress (
   question_id text not null,
   completed boolean not null default false,
   favorited boolean not null default false,
+  viewed_count integer not null default 0,
+  answered_count integer not null default 0,
+  first_viewed_at timestamptz,
+  last_viewed_at timestamptz,
   updated_at timestamptz not null default now(),
   primary key (profile_id, question_id)
 );
@@ -827,12 +831,25 @@ create policy "Members view their own question progress" on public.portal_questi
 create table public.portal_practice_attempts (
   id uuid primary key default gen_random_uuid(),
   profile_id uuid not null,
+  mode text,
+  question_ids jsonb not null default '[]'::jsonb,
   score integer,
   total integer,
+  started_at timestamptz,
   completed_at timestamptz
 );
 alter table public.portal_practice_attempts enable row level security;
 create policy "Members view their own practice attempts" on public.portal_practice_attempts for select using (auth.uid() = profile_id);
+
+-- Phase C Rev2 (v115): checkride-date proximity weighting reads this
+-- existing production table directly -- reproduced here with only the
+-- columns that matter for that read.
+create table public.portal_checkride_date (
+  profile_id uuid primary key,
+  checkride_date date
+);
+alter table public.portal_checkride_date enable row level security;
+create policy "Members view their own checkride date" on public.portal_checkride_date for select using (auth.uid() = profile_id);
 
 create table public.missions (
   id uuid primary key default gen_random_uuid(),

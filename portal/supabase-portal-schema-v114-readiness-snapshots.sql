@@ -8,6 +8,37 @@
 -- Functions, future UI copy), may express readiness as "N% chance of
 -- passing" or "you will/won't pass." The fields below are named to make
 -- that distinction unambiguous to every future reader of this schema.
+--
+-- ===========================================================================
+-- REV2 CHANGE NOTE
+-- ===========================================================================
+-- Independent review of Rev1 correctly noted that, once the ACS taxonomy is
+-- authoritative (v112 Rev2 -- the complete 61-task FAA-S-ACS-6C, not just
+-- the tasks Apex has content for), the coverage denominator here
+-- automatically becomes "all applicable tasks in the ACS," which is exactly
+-- what REV2.14 requires -- no code change was needed for that half of the
+-- fix, since coverage_score's query already joins through acs_versions/
+-- acs_tasks rather than through Apex content.
+--
+-- What DID need fixing: a task Apex has never written ANY content for looks
+-- identical, from a learner's evidence alone, to a task the learner simply
+-- hasn't studied -- both show zero attempts. That is dishonest: the learner
+-- did not fail to study something Apex never offered. This migration adds
+-- an explicit check for content-less tasks in the active version and, when
+-- any exist, adds reason_codes: ["insufficient_content_coverage"] so every
+-- consumer (the mobile bootstrap DTO especially) can surface that
+-- limitation rather than silently blending it into the score as if it were
+-- the learner's gap.
+--
+-- Also: get_active_acs_version() (v112 REV2.15) replaces the inline
+-- `where v.active` join, so this function always resolves the one
+-- unambiguous applicable ACS version rather than assuming there is exactly
+-- one `active = true` row (now actually guaranteed by v112's partial unique
+-- index, but this keeps the selection logic in one place regardless).
+--
+-- Rollback: `drop function if exists public.compute_readiness_snapshot();
+-- drop table if exists public.readiness_snapshots;` -- depends only on
+-- task_evidence/acs_tasks/acs_versions (v112/v113), never modifies them.
 
 create table if not exists public.readiness_snapshots (
   id uuid primary key default gen_random_uuid(),
@@ -107,8 +138,10 @@ as $function$
 declare
   v_profile_id uuid := auth.uid();
   v_exam_type text;
+  v_active_version uuid;
   v_total_tasks integer;
   v_covered_tasks integer;
+  v_content_less_tasks integer;
   v_coverage numeric;
   v_knowledge numeric;
   v_risk numeric;
@@ -129,19 +162,33 @@ begin
   -- to real users (see get-premium-content's own exam_type='private_pilot'
   -- restriction) -- hard-coded here for the same reason, not a guess.
   v_exam_type := 'private_pilot';
+  v_active_version := public.get_active_acs_version(v_exam_type);
 
   select count(*) into v_total_tasks
   from public.acs_tasks t
-  join public.acs_versions v on v.id = t.acs_version_id
-  where v.certificate_type = v_exam_type and v.active;
+  where t.acs_version_id = v_active_version;
 
   select count(distinct e.acs_task_id) into v_covered_tasks
   from public.task_evidence e
   join public.acs_tasks t on t.id = e.acs_task_id
-  join public.acs_versions v on v.id = t.acs_version_id
-  where e.profile_id = v_profile_id and v.certificate_type = v_exam_type and e.attempt_count > 0;
+  where e.profile_id = v_profile_id and t.acs_version_id = v_active_version and e.attempt_count > 0;
 
   v_coverage := case when v_total_tasks > 0 then round(100.0 * v_covered_tasks / v_total_tasks, 2) else 0 end;
+
+  -- REV2.14: a task Apex has zero content mapped to is not the same thing
+  -- as a task the learner hasn't studied -- flag the limitation explicitly
+  -- rather than silently scoring it the same as an unstudied-but-available
+  -- task.
+  select count(*) into v_content_less_tasks
+  from public.acs_tasks t
+  where t.acs_version_id = v_active_version
+    and not exists (
+      select 1 from public.content_acs_mappings m
+      where m.acs_task_id = t.id
+    );
+  if v_content_less_tasks > 0 then
+    v_reason_codes := v_reason_codes || '["insufficient_content_coverage"]'::jsonb;
+  end if;
 
   select round(100.0 * avg(evidence_score), 2), coalesce(sum(attempt_count), 0)
   into v_knowledge, v_total_attempts

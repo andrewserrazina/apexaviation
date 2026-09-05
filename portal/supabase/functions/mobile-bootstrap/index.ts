@@ -50,6 +50,18 @@ serve(async (req) => {
     if (userErr || !userData?.user) return json({ error: 'Invalid or expired session' }, 401)
     const userId = userData.user.id
 
+    // REV2.10: "today's drill" must mean the learner's actual current
+    // local study date, resolved via member_local_date() -- the same
+    // single source of truth run_streak_maintenance() and
+    // get_or_create_daily_drill() already use -- not "whatever drill row
+    // sorts first." `order by drill_date desc limit 1` (Rev1's approach)
+    // could silently hand back yesterday's or last week's drill and label
+    // it "today's." Resolving the date first and filtering on an exact
+    // match means a learner with no drill generated yet for today
+    // correctly gets todays_drill: null instead of a stale one.
+    const { data: todayDateRow } = await supabase.rpc('member_local_date', { p_profile_id: userId })
+    const todayDate = (todayDateRow as unknown as string) || null
+
     const [
       { data: profile },
       { data: entitlements },
@@ -70,13 +82,15 @@ serve(async (req) => {
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle(),
-      supabase
-        .from('daily_drills')
-        .select('id, drill_date, status, estimated_minutes, target_acs_tasks')
-        .eq('profile_id', userId)
-        .order('drill_date', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
+      todayDate
+        ? supabase
+            .from('daily_drills')
+            .select('id, drill_date, status, estimated_minutes, target_acs_tasks')
+            .eq('profile_id', userId)
+            .eq('drill_date', todayDate)
+            .eq('algorithm_version', 'v1')
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
       supabase.rpc('get_member_streak', { p_profile_id: userId }),
     ])
 

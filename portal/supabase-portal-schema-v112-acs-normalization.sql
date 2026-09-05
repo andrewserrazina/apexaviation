@@ -1,13 +1,54 @@
--- Apex Advantage Sprint 0 Phase C -- ACS normalization (v112)
+-- Apex Advantage Sprint 0 Phase C -- ACS normalization (v112) -- REV2
 --
 -- NOT YET APPLIED TO PRODUCTION. Source-controlled, locally tested only,
 -- per the explicit Phase C stop gate. This is Sprint 0's mobile-backend
 -- product work, not a security-hardening migration.
 --
--- Purpose: give the mobile app (and, eventually, the web app) a real,
--- queryable ACS task taxonomy to attach evidence/readiness/drills to,
--- without touching dpe_questions.acs_reference (a free-text field) or
--- inventing IDs for existing content. This migration is purely additive.
+-- ===========================================================================
+-- REV2 CHANGE NOTE (independent review, Rev1 -> Rev2)
+-- ===========================================================================
+-- Rev1 of this migration DERIVED the ACS task list from dpe_questions.acs_
+-- reference free text -- i.e. Apex content defined the taxonomy. Independent
+-- review correctly flagged this backwards: readiness coverage must be
+-- measured against the COMPLETE official ACS, not just the subset of tasks
+-- Apex happened to write a question for. Rev2 replaces that with the
+-- authoritative FAA source:
+--
+--   FAA-S-ACS-6C, "Private Pilot for Airplane Category Airman Certification
+--   Standards" (publication date November 2023; effective for testing
+--   May 31, 2024) -- attached to this task as a PDF and read directly with
+--   pdftotext (poppler-utils) to extract its real Table of Contents. Every
+--   Area of Operation / Task title below is copied verbatim from that
+--   extraction (12 Areas of Operation, 61 Tasks total) -- none of it is
+--   derived from dpe_questions, previous migrations, or memory. See
+--   SPRINT_0_MOBILE_BACKEND_IMPLEMENTATION_REPORT_REV2.md section 4 for the
+--   full extraction methodology and the exact text verification performed
+--   (the PDF's own front matter and revision-history table confirm
+--   "FAA-S-ACS-6C" and "supersedes FAA-S-ACS-6B", which was cross-checked
+--   before trusting the extraction).
+--
+-- No Instrument ACS is seeded here -- no authoritative Instrument ACS
+-- document was supplied, and Rev2's own rule ("do not derive an ACS merely
+-- from existing question strings") applies just as much to Instrument as to
+-- Private Pilot. Every instrument dpe_questions row is therefore reported as
+-- unresolved (reason: no_authoritative_acs_seeded_for_exam_type) until a real
+-- FAA-S-ACS-8 (or successor) source is supplied. This is a deliberate,
+-- documented staging decision, not an oversight.
+--
+-- Rev1 also had two further defects fixed here:
+--  (1) its backfill ran `delete from content_acs_mappings where
+--      content_type = 'dpe_question'` on every re-run, which would have
+--      silently deleted any manually-curated mapping a human added in the
+--      meantime. Rev2 adds explicit mapping_source provenance
+--      ('deterministic_backfill' | 'human_curated') and the backfill now
+--      deletes/regenerates ONLY rows it itself created -- a manual mapping
+--      is never touched by a re-run, proven by a dedicated regression test.
+--  (2) it allowed multiple `active = true` acs_versions rows per
+--      certificate_type with no way to pick "the" applicable one
+--      unambiguously. Rev2 adds a partial unique index enforcing at most one
+--      active version per certificate_type, plus a get_active_acs_version()
+--      helper every consumer (readiness, daily drills) now calls instead of
+--      an inline `where active = true`.
 --
 -- ---------------------------------------------------------------------
 -- A. Schema
@@ -15,20 +56,19 @@
 --
 -- acs_versions   -- one row per (certificate_type, ACS revision). Lets a
 --                    future Instrument/Commercial ACS, or a future PPL ACS
---                    revision, coexist without touching old data.
+--                    revision, coexist without touching old data. At most
+--                    one ACTIVE row per certificate_type (enforced below).
 -- acs_tasks      -- one row per Area-of-Operation + Task, scoped to a
---                    specific acs_version_id. area_code/task_code are the
---                    ACS's own identifiers (roman numeral area, letter
---                    task) -- NOT a reinterpretation of them.
+--                    specific acs_version_id. area_code/task_code/area_title/
+--                    task_title are the FAA's own identifiers and titles,
+--                    copied verbatim -- never paraphrased, never inferred
+--                    from Apex content.
 -- content_acs_mappings -- generic join: any (content_type, content_id)
 --                    pair (today: 'dpe_question') to any acs_task_id, with
---                    a mapping_type (which KSA component: knowledge /
---                    risk_management / skill / combinations thereof, taken
---                    verbatim from the source acs_reference text) and a
---                    weight (reserved for future many-to-many confidence
---                    weighting; always 1.0 for the deterministic v1
---                    backfill below, since every resolved row maps to
---                    exactly one task).
+--                    a mapping_type (which KSA component, taken verbatim
+--                    from the source acs_reference text when auto-derived),
+--                    a weight, and a mapping_source recording HOW the row
+--                    was created (see REV2 change note above).
 --
 -- ---------------------------------------------------------------------
 -- B. Backfill methodology (read this before trusting the numbers below)
@@ -36,44 +76,33 @@
 --
 -- dpe_questions.acs_reference is free text, authored over many separate
 -- content-writing sessions, and is NOT a reliable machine-readable key on
--- its own -- confirmed by direct inspection of all 392 live values across
--- both exam_types before writing this migration (63 private_pilot +
--- instrument-only rows don't even follow the "Area of Operation N, Task
--- L" shape at all; 24 more explicitly reference two tasks joined by "/").
+-- its own. Under Rev2, the backfill's job is narrower and safer than Rev1's:
+-- it parses ONLY the strict, unambiguous shape
+--   ^Area of Operation <roman>, Task <letter> --- ... (...)
+-- to extract an (area_code, task_code) pair, then looks up whether that
+-- exact pair already exists in the AUTHORITATIVE acs_tasks seeded in
+-- section C below. It never creates a new acs_tasks row from Apex content.
+-- If the parsed pair doesn't exist in the authoritative set for that
+-- exam_type, the row is reported unresolved (reason:
+-- area_task_not_found_in_authoritative_acs) rather than silently accepted.
 --
--- The backfill below parses ONLY the strict, unambiguous shape:
---   ^Area of Operation <roman>, Task <letter> --- <title> (...)
--- with no "/" anywhere in the string and no "Special Emphasis Area"
--- prefix. It ALSO requires that every row sharing the same
--- (exam_type, area_code, task_code) triple resolve to the exact same
--- <title> text -- if two rows disagree on the title for the same task
--- (which does not happen in the current dataset, but is checked for
--- defensively since new content could introduce it), NONE of that
--- pair's rows are auto-mapped; they fall through to the unresolved
--- report instead of guessing which title is canonical.
+-- Because the task's title now always comes from the authoritative source
+-- (never from Apex's own paraphrase in acs_reference), the "title conflict
+-- between two rows claiming the same task" failure mode from Rev1 is
+-- structurally eliminated -- there is no longer any Apex-supplied title to
+-- disagree about. This category is kept in the report's count table (always
+-- 0) with this explanation, rather than silently dropped.
 --
--- Rows that do not match this strict shape are NEVER guessed at. They
--- are left unmapped, and every one of them is captured in the
--- `acs_unresolved_mappings` reporting view created at the end of this
--- migration (see Sprint 0 Mobile Backend Report section 6 for the
--- rendered results: 305 of 392 rows resolved automatically, 87 require
--- a human to add the mapping by hand -- 24 explicit multi-task "/"
--- references where a human must decide which task is primary, and 63
--- rows -- mostly "Special Emphasis Area" ACS-Appendix references that
--- correctly have no single numbered task to map to).
+-- Rows with a "/" (multi-task references) or a "Special Emphasis Area"
+-- prefix are still never guessed at -- see acs_unresolved_mappings.
 --
 -- `dpe_questions.acs_reference` itself is NOT modified, dropped, or
--- reinterpreted by this migration -- it remains the source of truth for
--- the free-text display string; content_acs_mappings is purely additive
--- structure layered on top.
+-- reinterpreted by this migration.
 --
--- Idempotent: every DDL statement uses IF NOT EXISTS; the backfill DELETE
--- and re-INSERT is safe to re-run because it only ever touches rows this
--- migration itself would have created (matched on content_type='dpe_question'
--- and content_id in dpe_questions), never a manually-added mapping (which
--- would use a different, non-generated content_id set... in practice,
--- manually-added mappings should just avoid re-running this file after
--- being added; this migration is intended to run once per environment).
+-- Idempotent + manual-curation-safe: every DDL statement uses IF NOT
+-- EXISTS; the backfill DELETE only ever removes rows with
+-- mapping_source = 'deterministic_backfill', so re-running this file after
+-- a human has added a 'human_curated' mapping cannot lose that work.
 --
 -- Rollback: `drop table if exists content_acs_mappings, acs_tasks, acs_versions cascade;`
 -- (no other table is touched; dpe_questions and every existing content
@@ -84,11 +113,19 @@ create table if not exists public.acs_versions (
   certificate_type text not null,
   version_code text not null,
   effective_date date,
+  source_document text,
   active boolean not null default true,
   created_at timestamptz not null default now(),
   unique (certificate_type, version_code)
 );
-comment on table public.acs_versions is 'One row per (certificate_type, ACS revision). Additive -- never replaces dpe_questions.acs_reference.';
+comment on table public.acs_versions is 'One row per (certificate_type, ACS revision). Additive -- never replaces dpe_questions.acs_reference. At most one active row per certificate_type (see idx_acs_versions_one_active_per_cert below).';
+comment on column public.acs_versions.source_document is 'Human-readable provenance, e.g. "FAA-S-ACS-6C PDF, extracted via pdftotext from the attached authoritative source, Sprint 0 Phase C Rev2". Not machine-parsed.';
+
+-- REV2.15: at most one ACTIVE version per certificate_type, so every
+-- consumer has an unambiguous "the applicable version" to select instead of
+-- risking multiple `active = true` rows with no tiebreak.
+create unique index if not exists idx_acs_versions_one_active_per_cert
+  on public.acs_versions (certificate_type) where active;
 
 create table if not exists public.acs_tasks (
   id uuid primary key default gen_random_uuid(),
@@ -101,7 +138,8 @@ create table if not exists public.acs_tasks (
   created_at timestamptz not null default now(),
   unique (acs_version_id, area_code, task_code)
 );
-comment on table public.acs_tasks is 'One row per Area-of-Operation + Task within a specific acs_version_id. area_code/task_code are the ACS document''s own identifiers.';
+comment on table public.acs_tasks is 'One row per Area-of-Operation + Task within a specific acs_version_id. area_code/task_code/area_title/task_title are the FAA document''s own identifiers and titles, copied verbatim -- never inferred from Apex content.';
+create index if not exists idx_acs_tasks_version on public.acs_tasks (acs_version_id);
 
 create table if not exists public.content_acs_mappings (
   id uuid primary key default gen_random_uuid(),
@@ -109,14 +147,19 @@ create table if not exists public.content_acs_mappings (
   content_id text not null,
   acs_task_id uuid not null references public.acs_tasks(id) on delete cascade,
   mapping_type text,
+  mapping_source text not null default 'deterministic_backfill'
+    check (mapping_source in ('deterministic_backfill', 'human_curated')),
   weight numeric not null default 1.0,
   created_at timestamptz not null default now(),
+  created_by uuid references public.profiles(id),
   unique (content_type, content_id, acs_task_id)
 );
-comment on table public.content_acs_mappings is 'Generic content-to-ACS-task join. content may map to more than one acs_task_id (multiple rows). Never replaces or rewrites the source content row.';
+comment on table public.content_acs_mappings is 'Generic content-to-ACS-task join. content may map to more than one acs_task_id (multiple rows). mapping_source records provenance so an automatic re-backfill can regenerate its own rows without ever touching a human_curated one (REV2.2). Never replaces or rewrites the source content row.';
+comment on column public.content_acs_mappings.created_by is 'Set only for human_curated rows (the admin who added the mapping). Null for deterministic_backfill rows -- the migration itself has no profile id to attribute to.';
 
 create index if not exists idx_content_acs_mappings_task on public.content_acs_mappings (acs_task_id);
 create index if not exists idx_content_acs_mappings_content on public.content_acs_mappings (content_type, content_id);
+create index if not exists idx_content_acs_mappings_source on public.content_acs_mappings (mapping_source);
 
 -- RLS: this is reference/curriculum data, not user data -- readable by
 -- any authenticated client (mirrors dpe_questions/dpe_categories' own
@@ -137,98 +180,149 @@ create policy "Anyone can read content ACS mappings" on public.content_acs_mappi
 
 -- No INSERT/UPDATE/DELETE policy on any of the three -- writes only ever
 -- happen via service_role (this migration's own backfill, and any future
--- admin content-curation tooling), which bypasses RLS entirely. Matches
--- the existing dpe_questions/dpe_categories pattern (public read via
--- policy, write via service_role only, no direct client write path).
+-- admin content-curation tooling for human_curated rows), which bypasses
+-- RLS entirely.
 revoke insert, update, delete on public.acs_versions from anon, authenticated;
 revoke insert, update, delete on public.acs_tasks from anon, authenticated;
 revoke insert, update, delete on public.content_acs_mappings from anon, authenticated;
 
 -- ---------------------------------------------------------------------
--- C. Seed acs_versions for the two exam_types already present in
---    dpe_questions. version_code 'v1-backfill' marks these as the
---    machine-derived baseline; a future real ACS revision gets its own
---    version_code without touching this one.
+-- REV2.15: unambiguous version selection helper. Every consumer (readiness,
+-- daily drills, any future admin tooling) should call this instead of an
+-- inline `where active = true` query, so the "one applicable version" rule
+-- lives in exactly one place.
 -- ---------------------------------------------------------------------
-insert into public.acs_versions (certificate_type, version_code, active)
-values
-  ('private_pilot', 'v1-backfill', true),
-  ('instrument', 'v1-backfill', true)
+create or replace function public.get_active_acs_version(p_certificate_type text)
+returns uuid
+language sql stable
+set search_path to 'public'
+as $function$
+  select id from public.acs_versions
+  where certificate_type = p_certificate_type and active
+  limit 1
+$function$;
+
+revoke execute on function public.get_active_acs_version(text) from public, anon;
+grant execute on function public.get_active_acs_version(text) to authenticated, service_role;
+
+-- ---------------------------------------------------------------------
+-- C. Seed the authoritative Private Pilot ACS version, then its complete
+--    Area of Operation / Task taxonomy (61 tasks, 12 Areas of Operation),
+--    extracted verbatim from the attached FAA-S-ACS-6C PDF's own Table of
+--    Contents. Included in full even for tasks Apex currently has ZERO
+--    content mapped to (e.g. seaplane/multiengine-only tasks) -- see the
+--    REV2 change note above for why this matters for readiness coverage.
+-- ---------------------------------------------------------------------
+insert into public.acs_versions (certificate_type, version_code, effective_date, source_document, active)
+values (
+  'private_pilot',
+  'FAA-S-ACS-6C',
+  '2024-05-31',
+  'FAA-S-ACS-6C, Private Pilot for Airplane Category Airman Certification Standards (publication date November 2023; supersedes FAA-S-ACS-6B). Taxonomy extracted verbatim from the attached authoritative PDF via pdftotext, Sprint 0 Phase C Rev2.',
+  true
+)
 on conflict (certificate_type, version_code) do nothing;
 
+insert into public.acs_tasks (acs_version_id, area_code, area_title, task_code, task_title, sort_order)
+select (select id from public.acs_versions where certificate_type = 'private_pilot' and version_code = 'FAA-S-ACS-6C'),
+       x.area_code, x.area_title, x.task_code, x.task_title, x.sort_order
+from (values
+    ('I', 'Area of Operation I. Preflight Preparation', 'A', 'Pilot Qualifications', 1),
+    ('I', 'Area of Operation I. Preflight Preparation', 'B', 'Airworthiness Requirements', 2),
+    ('I', 'Area of Operation I. Preflight Preparation', 'C', 'Weather Information', 3),
+    ('I', 'Area of Operation I. Preflight Preparation', 'D', 'Cross-Country Flight Planning', 4),
+    ('I', 'Area of Operation I. Preflight Preparation', 'E', 'National Airspace System', 5),
+    ('I', 'Area of Operation I. Preflight Preparation', 'F', 'Performance and Limitations', 6),
+    ('I', 'Area of Operation I. Preflight Preparation', 'G', 'Operation of Systems', 7),
+    ('I', 'Area of Operation I. Preflight Preparation', 'H', 'Human Factors', 8),
+    ('I', 'Area of Operation I. Preflight Preparation', 'I', 'Water and Seaplane Characteristics, Seaplane Bases, Maritime Rules, and Aids to Marine Navigation (ASES, AMES)', 9),
+    ('II', 'Area of Operation II. Preflight Procedures', 'A', 'Preflight Assessment', 10),
+    ('II', 'Area of Operation II. Preflight Procedures', 'B', 'Flight Deck Management', 11),
+    ('II', 'Area of Operation II. Preflight Procedures', 'C', 'Engine Starting', 12),
+    ('II', 'Area of Operation II. Preflight Procedures', 'D', 'Taxiing (ASEL, AMEL)', 13),
+    ('II', 'Area of Operation II. Preflight Procedures', 'E', 'Taxiing and Sailing (ASES, AMES)', 14),
+    ('II', 'Area of Operation II. Preflight Procedures', 'F', 'Before Takeoff Check', 15),
+    ('III', 'Area of Operation III. Airport and Seaplane Base Operations', 'A', 'Communications, Light Signals, and Runway Lighting Systems', 16),
+    ('III', 'Area of Operation III. Airport and Seaplane Base Operations', 'B', 'Traffic Patterns', 17),
+    ('IV', 'Area of Operation IV. Takeoffs, Landings, and Go-Arounds', 'A', 'Normal Takeoff and Climb', 18),
+    ('IV', 'Area of Operation IV. Takeoffs, Landings, and Go-Arounds', 'B', 'Normal Approach and Landing', 19),
+    ('IV', 'Area of Operation IV. Takeoffs, Landings, and Go-Arounds', 'C', 'Soft-Field Takeoff and Climb (ASEL)', 20),
+    ('IV', 'Area of Operation IV. Takeoffs, Landings, and Go-Arounds', 'D', 'Soft-Field Approach and Landing (ASEL)', 21),
+    ('IV', 'Area of Operation IV. Takeoffs, Landings, and Go-Arounds', 'E', 'Short-Field Takeoff and Maximum Performance Climb (ASEL, AMEL)', 22),
+    ('IV', 'Area of Operation IV. Takeoffs, Landings, and Go-Arounds', 'F', 'Short-Field Approach and Landing (ASEL, AMEL)', 23),
+    ('IV', 'Area of Operation IV. Takeoffs, Landings, and Go-Arounds', 'G', 'Confined Area Takeoff and Maximum Performance Climb (ASES, AMES)', 24),
+    ('IV', 'Area of Operation IV. Takeoffs, Landings, and Go-Arounds', 'H', 'Confined Area Approach and Landing (ASES, AMES)', 25),
+    ('IV', 'Area of Operation IV. Takeoffs, Landings, and Go-Arounds', 'I', 'Glassy Water Takeoff and Climb (ASES, AMES)', 26),
+    ('IV', 'Area of Operation IV. Takeoffs, Landings, and Go-Arounds', 'J', 'Glassy Water Approach and Landing (ASES, AMES)', 27),
+    ('IV', 'Area of Operation IV. Takeoffs, Landings, and Go-Arounds', 'K', 'Rough Water Takeoff and Climb (ASES, AMES)', 28),
+    ('IV', 'Area of Operation IV. Takeoffs, Landings, and Go-Arounds', 'L', 'Rough Water Approach and Landing (ASES, AMES)', 29),
+    ('IV', 'Area of Operation IV. Takeoffs, Landings, and Go-Arounds', 'M', 'Forward Slip to a Landing (ASEL, ASES)', 30),
+    ('IV', 'Area of Operation IV. Takeoffs, Landings, and Go-Arounds', 'N', 'Go-Around/Rejected Landing', 31),
+    ('V', 'Area of Operation V. Performance Maneuvers and Ground Reference Maneuvers', 'A', 'Steep Turns', 32),
+    ('V', 'Area of Operation V. Performance Maneuvers and Ground Reference Maneuvers', 'B', 'Ground Reference Maneuvers', 33),
+    ('VI', 'Area of Operation VI. Navigation', 'A', 'Pilotage and Dead Reckoning', 34),
+    ('VI', 'Area of Operation VI. Navigation', 'B', 'Navigation Systems and Radar Services', 35),
+    ('VI', 'Area of Operation VI. Navigation', 'C', 'Diversion', 36),
+    ('VI', 'Area of Operation VI. Navigation', 'D', 'Lost Procedures', 37),
+    ('VII', 'Area of Operation VII. Slow Flight and Stalls', 'A', 'Maneuvering During Slow Flight', 38),
+    ('VII', 'Area of Operation VII. Slow Flight and Stalls', 'B', 'Power-Off Stalls', 39),
+    ('VII', 'Area of Operation VII. Slow Flight and Stalls', 'C', 'Power-On Stalls', 40),
+    ('VII', 'Area of Operation VII. Slow Flight and Stalls', 'D', 'Spin Awareness', 41),
+    ('VIII', 'Area of Operation VIII. Basic Instrument Maneuvers', 'A', 'Straight-and-Level Flight', 42),
+    ('VIII', 'Area of Operation VIII. Basic Instrument Maneuvers', 'B', 'Constant Airspeed Climbs', 43),
+    ('VIII', 'Area of Operation VIII. Basic Instrument Maneuvers', 'C', 'Constant Airspeed Descents', 44),
+    ('VIII', 'Area of Operation VIII. Basic Instrument Maneuvers', 'D', 'Turns to Headings', 45),
+    ('VIII', 'Area of Operation VIII. Basic Instrument Maneuvers', 'E', 'Recovery from Unusual Flight Attitudes', 46),
+    ('VIII', 'Area of Operation VIII. Basic Instrument Maneuvers', 'F', 'Radio Communications, Navigation Systems/Facilities, and Radar Services', 47),
+    ('IX', 'Area of Operation IX. Emergency Operations', 'A', 'Emergency Descent', 48),
+    ('IX', 'Area of Operation IX. Emergency Operations', 'B', 'Emergency Approach and Landing (Simulated) (ASEL, ASES)', 49),
+    ('IX', 'Area of Operation IX. Emergency Operations', 'C', 'Systems and Equipment Malfunctions', 50),
+    ('IX', 'Area of Operation IX. Emergency Operations', 'D', 'Emergency Equipment and Survival Gear', 51),
+    ('IX', 'Area of Operation IX. Emergency Operations', 'E', 'Engine Failure During Takeoff Before VMC (Simulated) (AMEL, AMES)', 52),
+    ('IX', 'Area of Operation IX. Emergency Operations', 'F', 'Engine Failure After Liftoff (Simulated) (AMEL, AMES)', 53),
+    ('IX', 'Area of Operation IX. Emergency Operations', 'G', 'Approach and Landing with an Inoperative Engine (Simulated) (AMEL, AMES)', 54),
+    ('X', 'Area of Operation X. Multiengine Operations', 'A', 'Maneuvering with One Engine Inoperative (AMEL, AMES)', 55),
+    ('X', 'Area of Operation X. Multiengine Operations', 'B', 'VMC Demonstration (AMEL, AMES)', 56),
+    ('X', 'Area of Operation X. Multiengine Operations', 'C', 'One Engine Inoperative (Simulated) (solely by Reference to Instruments) During Straight-and-Level Flight and Turns (AMEL, AMES)', 57),
+    ('X', 'Area of Operation X. Multiengine Operations', 'D', 'Instrument Approach and Landing with an Inoperative Engine (Simulated) (AMEL, AMES)', 58),
+    ('XI', 'Area of Operation XI. Night Operations', 'A', 'Night Operations', 59),
+    ('XII', 'Area of Operation XII. Postflight Procedures', 'A', 'After Landing, Parking, and Securing (ASEL, AMEL)', 60),
+    ('XII', 'Area of Operation XII. Postflight Procedures', 'B', 'Seaplane Post-Landing Procedures (ASES, AMES)', 61)
+) as x(area_code, area_title, task_code, task_title, sort_order)
+on conflict (acs_version_id, area_code, task_code) do nothing;
+
 -- ---------------------------------------------------------------------
--- D. Deterministic backfill -- see methodology note (B) above.
+-- D. Deterministic content backfill -- maps dpe_questions onto the
+--    AUTHORITATIVE tasks seeded above. Never creates a new acs_tasks row.
+--    Only ever deletes/regenerates rows this exact backfill itself created
+--    (mapping_source = 'deterministic_backfill'), so a human-curated
+--    mapping added between two runs of this migration always survives
+--    (REV2.2 -- proven by a dedicated regression test).
 -- ---------------------------------------------------------------------
 do $$
-declare
-  v_version_pp uuid := (select id from public.acs_versions where certificate_type = 'private_pilot' and version_code = 'v1-backfill');
-  v_version_instr uuid := (select id from public.acs_versions where certificate_type = 'instrument' and version_code = 'v1-backfill');
 begin
-  -- Clear only what this migration itself would have created, so it's
-  -- safe to re-run without duplicating or drifting from a re-computed
-  -- backfill.
-  delete from public.content_acs_mappings where content_type = 'dpe_question';
-  delete from public.acs_tasks where acs_version_id in (v_version_pp, v_version_instr);
+  delete from public.content_acs_mappings
+  where content_type = 'dpe_question' and mapping_source = 'deterministic_backfill';
 
-  -- Insert one acs_tasks row per (exam_type, area_code, task_code) that
-  -- passes the strict-shape + title-consistency test. Mirrors the exact
-  -- CTE structure validated read-only against production before this
-  -- migration was written (305 of 392 rows resolved, 0 title conflicts
-  -- found in the current dataset -- the consistency check is kept as a
-  -- defensive safeguard against future content, not because it currently
-  -- excludes anything).
-  with parsed as (
-    select
-      exam_type,
-      (regexp_match(acs_reference, '^Area of Operation\s+([IVXLCDM]+),\s*Task\s+([A-Z])\s*—\s*([^(]+?)\.?\s*\('))[1] as area_code,
-      (regexp_match(acs_reference, '^Area of Operation\s+([IVXLCDM]+),\s*Task\s+([A-Z])\s*—\s*([^(]+?)\.?\s*\('))[2] as task_code,
-      trim((regexp_match(acs_reference, '^Area of Operation\s+([IVXLCDM]+),\s*Task\s+([A-Z])\s*—\s*([^(]+?)\.?\s*\('))[3]) as task_title
-    from public.dpe_questions
-    where acs_reference not like '%/%'
-      and acs_reference not like 'Special Emphasis Area%'
-  ),
-  candidates as (
-    select * from parsed where area_code is not null
-  ),
-  title_counts as (
-    select exam_type, area_code, task_code, count(distinct task_title) as distinct_titles
-    from candidates
-    group by exam_type, area_code, task_code
-  )
-  insert into public.acs_tasks (acs_version_id, area_code, area_title, task_code, task_title)
-  select distinct
-    case when c.exam_type = 'private_pilot' then v_version_pp else v_version_instr end,
-    c.area_code,
-    'Area of Operation ' || c.area_code,
-    c.task_code,
-    c.task_title
-  from candidates c
-  join title_counts t using (exam_type, area_code, task_code)
-  where t.distinct_titles = 1
-  on conflict (acs_version_id, area_code, task_code) do nothing;
-
-  -- Map each safely-resolved dpe_questions row to its acs_task, carrying
-  -- the KSA-component parenthetical through as mapping_type verbatim
-  -- (lightly normalized: lowercased, "and" -> comma).
-  insert into public.content_acs_mappings (content_type, content_id, acs_task_id, mapping_type, weight)
+  insert into public.content_acs_mappings (content_type, content_id, acs_task_id, mapping_type, mapping_source, weight)
   select distinct
     'dpe_question',
     d.id,
     t.id,
     lower(replace((regexp_match(d.acs_reference, '\(([^)]+)\)'))[1], ' and ', ', ')),
+    'deterministic_backfill',
     1.0
   from public.dpe_questions d
   join lateral (
     select
       (regexp_match(d.acs_reference, '^Area of Operation\s+([IVXLCDM]+),\s*Task\s+([A-Z])\s*—\s*([^(]+?)\.?\s*\('))[1] as area_code,
-      (regexp_match(d.acs_reference, '^Area of Operation\s+([IVXLCDM]+),\s*Task\s+([A-Z])\s*—\s*([^(]+?)\.?\s*\('))[2] as task_code,
-      trim((regexp_match(d.acs_reference, '^Area of Operation\s+([IVXLCDM]+),\s*Task\s+([A-Z])\s*—\s*([^(]+?)\.?\s*\('))[3]) as task_title
-  ) p on true
+      (regexp_match(d.acs_reference, '^Area of Operation\s+([IVXLCDM]+),\s*Task\s+([A-Z])\s*—\s*([^(]+?)\.?\s*\('))[2] as task_code
+  ) p on p.area_code is not null
+  join public.acs_versions v on v.certificate_type = d.exam_type and v.active
   join public.acs_tasks t
-    on t.acs_version_id = case when d.exam_type = 'private_pilot' then v_version_pp else v_version_instr end
+    on t.acs_version_id = v.id
    and t.area_code = p.area_code
    and t.task_code = p.task_code
-   and t.task_title = p.task_title
   where d.acs_reference not like '%/%'
     and d.acs_reference not like 'Special Emphasis Area%'
   on conflict (content_type, content_id, acs_task_id) do nothing;
@@ -236,11 +330,10 @@ end $$;
 
 -- ---------------------------------------------------------------------
 -- E. Unresolved-mapping report -- a live view, not a point-in-time
---    snapshot, so re-running this migration (or adding new dpe_questions
---    rows later) keeps the report current. Every row here needs a human
---    to either (a) add the mapping manually via an INSERT into
---    content_acs_mappings, or (b) decide it genuinely has no single-task
---    mapping (e.g. Special Emphasis Area rows).
+--    snapshot. Every row here needs a human to either (a) add a
+--    human_curated mapping, or (b) decide it genuinely has no single-task
+--    mapping (e.g. Special Emphasis Area rows, or content for an exam_type
+--    with no authoritative ACS seeded yet).
 -- ---------------------------------------------------------------------
 create or replace view public.acs_unresolved_mappings as
 select
@@ -249,16 +342,20 @@ select
   d.exam_type,
   d.acs_reference,
   case
+    when not exists (select 1 from public.acs_versions v where v.certificate_type = d.exam_type and v.active)
+      then 'no_authoritative_acs_seeded_for_exam_type'
     when d.acs_reference like 'Special Emphasis Area%' then 'special_emphasis_area_no_single_task'
     when d.acs_reference like '%/%' then 'multi_task_reference_needs_human_disambiguation'
-    when (regexp_match(d.acs_reference, '^Area of Operation\s+([IVXLCDM]+),\s*Task\s+([A-Z])\s*—\s*([^(]+?)\.?\s*\(')) is null then 'does_not_match_known_acs_reference_shape'
-    else 'title_conflict_with_another_row_for_the_same_area_task'
+    when (regexp_match(d.acs_reference, '^Area of Operation\s+([IVXLCDM]+),\s*Task\s+([A-Z])\s*—\s*([^(]+?)\.?\s*\(')) is null
+      then 'does_not_match_known_acs_reference_shape'
+    else 'area_task_not_found_in_authoritative_acs'
   end as reason
 from public.dpe_questions d
 where not exists (
   select 1 from public.content_acs_mappings m
   where m.content_type = 'dpe_question' and m.content_id = d.id
 );
+comment on view public.acs_unresolved_mappings is 'Every dpe_questions row with no content_acs_mappings row at all, classified by why. "title_conflict" from Rev1 is structurally impossible now that task titles come from the authoritative FAA source rather than Apex text -- see the Rev2 report''s ACS Mapping Results section for that count (always 0, by design, not by omission).';
 
 revoke all on public.acs_unresolved_mappings from anon, authenticated;
 grant select on public.acs_unresolved_mappings to service_role;
