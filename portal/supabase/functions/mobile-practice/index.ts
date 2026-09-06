@@ -6,6 +6,27 @@
 //
 // NOT YET DEPLOYED. Source-controlled only.
 //
+// V119 CHANGE NOTE: two hardenings on top of REV2/REV3/v117:
+//   1. Fail-closed targeted start -- previously, `start` with an
+//      acs_task_id whose content_acs_mappings query returned zero rows
+//      fell through to an UNCONSTRAINED general dpe_questions query
+//      (because the .in('id', questionIds) filter was only applied
+//      `if (questionIds.length)`), silently handing back unrelated
+//      general questions for a request that named a specific ACS task.
+//      Targeted start now fails closed with a clean 404 and creates no
+//      attempt whenever no eligible mapped question survives -- it never
+//      backfills with unrelated general questions. General start (no
+//      acs_task_id) is unchanged.
+//   2. New authenticated `resume` action -- ad-hoc practice sessions had
+//      no way to be re-fetched after the client's in-memory state was
+//      lost (app restart, force-close), unlike Daily Drill's own
+//      fetch-or-create path. `resume` returns the caller's own attempt's
+//      already-stored question set, in its stored order, never creating
+//      a new attempt and never returning debrief fields. See
+//      SPRINT_1B_V119_PRACTICE_CONTRACT_REPORT.md for the full audit and
+//      design writeup. No schema migration -- portal_practice_attempts
+//      already carries every column resume needs.
+//
 // REV2 CHANGE NOTE: `complete` is now a THIN wrapper (REV2.8) -- it
 // authenticates the caller, validates basic request shape, and calls the
 // atomic, concurrency-safe complete_mobile_practice_session() RPC
@@ -73,7 +94,12 @@ serve(async (req) => {
         ? body.session_size
         : DEFAULT_SESSION_SIZE
 
-      let questionIds: string[]
+      // V119: targeted start (acs_task_id supplied) must fail closed --
+      // never fall through to an unconstrained general query. A learner
+      // who asked to practice one ACS task must get questions mapped to
+      // that task, or a clean "nothing available yet" response, never an
+      // unrelated general session.
+      let candidates: Array<{ id: string; question: string; category: string | null; acs_reference: string | null }>
       if (acsTaskId) {
         const { data: mapped, error: mapErr } = await serviceClient
           .from('content_acs_mappings')
@@ -82,24 +108,33 @@ serve(async (req) => {
           .eq('acs_task_id', acsTaskId)
           .limit(sessionSize * 3)
         if (mapErr) throw mapErr
-        questionIds = (mapped || []).map((r: { content_id: string }) => r.content_id)
+        const mappedIds = (mapped || []).map((r: { content_id: string }) => r.content_id)
+        if (mappedIds.length === 0) {
+          return json({ error: 'No practice questions are available for this ACS task yet.' }, 404)
+        }
+
+        const { data: mappedCandidates, error: qErr } = await serviceClient
+          .from('dpe_questions')
+          .select('id, question, category, acs_reference')
+          .eq('exam_type', 'private_pilot')
+          .eq('is_scenario', false)
+          .in('id', mappedIds)
+        if (qErr) throw qErr
+        if (!mappedCandidates?.length) {
+          return json({ error: 'No practice questions are available for this ACS task yet.' }, 404)
+        }
+        candidates = mappedCandidates
       } else {
-        questionIds = []
+        const { data: generalCandidates, error: qErr } = await serviceClient
+          .from('dpe_questions')
+          .select('id, question, category, acs_reference')
+          .eq('exam_type', 'private_pilot')
+          .eq('is_scenario', false)
+          .limit(sessionSize * 3)
+        if (qErr) throw qErr
+        if (!generalCandidates?.length) return json({ error: 'No questions available for this request' }, 404)
+        candidates = generalCandidates
       }
-
-      let questionQuery = serviceClient
-        .from('dpe_questions')
-        .select('id, question, category, acs_reference')
-        .eq('exam_type', 'private_pilot')
-        .eq('is_scenario', false)
-
-      if (questionIds.length) {
-        questionQuery = questionQuery.in('id', questionIds)
-      }
-
-      const { data: candidates, error: qErr } = await questionQuery.limit(sessionSize * 3)
-      if (qErr) throw qErr
-      if (!candidates?.length) return json({ error: 'No questions available for this request' }, 404)
 
       const shuffled = [...candidates].sort(() => Math.random() - 0.5).slice(0, sessionSize)
       const finalIds = shuffled.map((q) => q.id)
@@ -172,6 +207,82 @@ serve(async (req) => {
         common_mistakes: question.common_mistakes,
         dpe_evaluating: question.dpe_evaluating,
         real_world_application: question.real_world_application,
+      })
+    }
+
+    if (action === 'resume') {
+      // V119: authenticated resume -- a native client that lost its
+      // in-memory session (force-close, restart) can re-fetch its own
+      // attempt's already-stored question set. Never creates a new
+      // attempt, never randomizes, never returns debrief fields -- this
+      // is a read of what `start` already decided, nothing more.
+      //
+      // Thin wrapper (mirrors REV2.8's `complete`): ownership enforcement,
+      // fail-closed integrity validation, and order preservation all live
+      // in resume_mobile_practice_session() (v119) so those guarantees are
+      // provable in the SQL regression harness, not just asserted here.
+      // Auth-forwarding client, same reason as `complete` -- the RPC is
+      // auth.uid()-bound.
+      const sessionId = body?.session_id
+      if (!sessionId || typeof sessionId !== 'string') return json({ error: 'session_id is required' }, 400)
+
+      const { data, error } = await authedClient.rpc('resume_mobile_practice_session', {
+        p_attempt_id: sessionId,
+      })
+      if (error) {
+        const msg = error.message || ''
+        const codeMatch = msg.match(/^(session_not_found|not_your_session|invalid_question_set):\s*(.*)$/)
+        if (codeMatch) {
+          const [, code, detail] = codeMatch
+          const status = code === 'session_not_found' ? 404 : code === 'not_your_session' ? 403 : 500
+          return json({ error: detail || code, code }, status)
+        }
+        throw error
+      }
+
+      const attempt = Array.isArray(data) ? data[0] : data
+      const storedIds: string[] = attempt.question_ids
+
+      // Resolve question text/category for the RPC-validated ids. The RPC
+      // already proved every id resolves to dpe_questions and the count
+      // matches, but this second read is a fresh query -- re-check the
+      // count rather than trust it can't have changed underneath us.
+      const { data: resolved, error: qErr } = await serviceClient
+        .from('dpe_questions')
+        .select('id, question, category')
+        .in('id', storedIds)
+      if (qErr) throw qErr
+      if (!resolved || resolved.length !== storedIds.length) {
+        return json({ error: 'This practice session has no valid question set to resume.' }, 500)
+      }
+
+      const byId = new Map(resolved.map((q: { id: string }) => [q.id, q]))
+      // Map over storedIds (the RPC's own validated, stored-order array),
+      // never over the resolved rows -- .in() does not preserve input
+      // order, so this is what actually guarantees the wire order matches
+      // the stored order.
+      const orderedQuestions = storedIds.map((id) => byId.get(id))
+      if (orderedQuestions.some((q) => !q)) {
+        return json({ error: 'This practice session has no valid question set to resume.' }, 500)
+      }
+
+      const { data: mappings } = await serviceClient
+        .from('content_acs_mappings')
+        .select('content_id, acs_task_id, acs_tasks(area_code, task_code)')
+        .eq('content_type', 'dpe_question')
+        .in('content_id', storedIds)
+
+      const targetAcsTasks = Array.from(
+        new Map((mappings || []).map((m: any) => [m.acs_task_id, { acs_task_id: m.acs_task_id, area_code: m.acs_tasks?.area_code, task_code: m.acs_tasks?.task_code }])).values()
+      )
+
+      return json({
+        session_id: attempt.session_id,
+        mode: attempt.mode,
+        started_at: attempt.started_at,
+        completed_at: attempt.completed_at,
+        target_acs_tasks: targetAcsTasks,
+        questions: orderedQuestions.map((q: any) => ({ id: q.id, question: q.question, category: q.category })),
       })
     }
 

@@ -207,6 +207,26 @@ export interface MobilePracticeRevealResponse {
   real_world_application: string | null
 }
 
+// V119: authenticated resume -- re-fetch a caller's own in-progress or
+// completed ad-hoc practice session after the client lost its in-memory
+// state (restart, force-close). Never creates a new attempt, never
+// reorders/reshuffles the stored question set, never returns debrief
+// fields (model_answer / common_mistakes / dpe_evaluating /
+// real_world_application) -- those still only come from `reveal`.
+export interface MobilePracticeResumeRequest {
+  action: 'resume'
+  session_id: string
+}
+
+export interface MobilePracticeResumeResponse {
+  session_id: string
+  mode: string
+  started_at: string
+  completed_at: string | null
+  target_acs_tasks: MobileAcsTaskRef[]
+  questions: MobilePracticeQuestion[]
+}
+
 // ---------------------------------------------------------------------
 // mobile-readiness (POST action: 'latest' (default) | 'refresh')
 // ---------------------------------------------------------------------
