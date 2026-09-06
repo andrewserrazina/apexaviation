@@ -1,7 +1,9 @@
 # Sprint 1B Stage 1 -- v119 Practice Contract Hardening Report
 
-Status: **v119 Rev2 complete. NOT DEPLOYED. Source-controlled only.** See section 10 for the Rev2
-independent-review findings and fixes; sections 1-9 are the original (Rev1) writeup, left intact.
+Status: **v119 Rev2 DEPLOYED AND VERIFIED in production (`wqzfhcjsfzwrimvsudxy`).** See section 10
+for the Rev2 independent-review findings and fixes, and section 11 for the production deployment
+and smoke-test verification. Sections 1-9 are the original (Rev1) writeup, left intact. Sprint 1B
+native Practice UI work has still NOT begun.
 
 ## 1. Sprint 1A merge to main
 
@@ -387,6 +389,172 @@ Re-confirmed:
 `shared/mobile-dto/index.ts` was **not** changed -- the wire contract's shapes did not change, only
 server-side validation and authorization got stricter.
 
+## 11. Production deployment and verification
+
+Target: Supabase project `wqzfhcjsfzwrimvsudxy`. All 22 preflight/verification/smoke items below
+were performed directly against production using the Supabase MCP connection and real HTTP calls
+to the deployed Edge Function -- not the local harness -- closing the "Edge Function HTTP-path
+execution remains unverified" gap this repo's earlier Sprint 0 reports explicitly and repeatedly
+flagged as outstanding.
+
+### Pre-flight (re-confirmed immediately before touching anything)
+
+- `resume_mobile_practice_session(uuid)` did **not** exist yet.
+- `portal_access_purchases` existed with exactly the 8 expected columns (`id, profile_id, email,
+  full_name, stripe_session_id, amount_cents, tier, created_at`).
+- `complete_mobile_practice_session()`'s deployed body still contained the v118 Daily Drill
+  completion update (`update public.daily_drills set status='completed'...`) and contained **no**
+  `mobile_practice_completed` reference anywhere.
+- Live content-mapping query (not trusted from the task description) confirmed: ACS I.A had 43
+  mapped / 37 eligible questions (`59e82efe-4aa2-4f2f-a707-10cd13535fb6`); ACS I.H had 2 mapped / 0
+  eligible (`15b1a413-dc50-4d66-af13-268528fa469f`). All pre-flight assumptions held -- no STOP
+  condition triggered.
+
+### 1. Migration result
+
+Applied `portal-schema-v119-practice-resume.sql` verbatim (byte-identical to the reviewed branch
+file) via `apply_migration`. Success.
+
+### 2. Edge Function deployment result
+
+Deployed `mobile-practice` (version 2 -> version 3, `ACTIVE`, `verify_jwt: true` unchanged) with
+exactly `index.ts` and `validateAcsTaskId.ts` from the reviewed branch, plus the existing
+`_shared/premiumAccess.ts` (fetched from the currently-deployed bundle, byte-identical, **not**
+modified). The only textual difference from the git-tracked `index.ts` is the shared-dependency
+import path (`'../_shared/premiumAccess.ts'` in the repo's real sibling-directory layout ->
+`'./_shared/premiumAccess.ts'` in the deployed bundle) -- this matches the exact self-contained
+per-function bundling convention the previously-deployed version already used; confirmed via
+`diff` before upload that this was the only line that differed. No other Edge Function was touched
+(`mobile-daily-drill` untouched, confirmed still at its prior version).
+
+### 3. Post-apply function/grant verification (all 17 required checks)
+
+Queried `pg_proc`/`has_function_privilege` directly:
+
+1. `resume_mobile_practice_session(uuid)` exists. ✓
+2. `SECURITY DEFINER` = true. ✓
+3. `search_path` = `public`. ✓
+4. `PUBLIC` execute = false. ✓
+5. `anon` execute = false. ✓
+6. `authenticated` execute = true. ✓
+7. Entitlement check runs before session lookup (confirmed by reading the function body's
+   statement order, and by Smoke I below). ✓
+8. Entitlement predicate is exactly `profiles.checkride_prep_unlocked = true OR EXISTS a
+   portal_access_purchases row for auth.uid()`. ✓
+9. Ownership uses `auth.uid()` (`v_profile_id uuid := auth.uid()`). ✓
+10. No client-supplied `profile_id` -- the only parameter is `p_attempt_id`. ✓
+11. Empty `question_ids` fails closed (`jsonb_array_length(...) = 0` check). ✓
+12. Blank element fails closed (per-element blank/non-string check). ✓
+13. Duplicate question ids fail closed (distinct-count check). ✓
+14. Dangling question ids fail closed (`join dpe_questions` count-match check). ✓
+15. Stored order is returned unchanged -- the function returns the stored `jsonb` array directly,
+    never resorted. ✓
+16. No `INSERT`/`UPDATE`/`DELETE` against `portal_practice_attempts` anywhere in the function body
+    -- only a single `SELECT`. ✓
+17. No XP/evidence/study-activity writes anywhere in the function body. ✓
+
+### 4-16. Smoke tests (real HTTP calls against the deployed Edge Function)
+
+Three existing disposable Sprint 0/Sprint 1A test accounts were reused (all `checkride_prep_unlocked
+= true`, zero `portal_access_purchases` rows, matching this repo's own established methodology for
+production smoke testing -- see `SPRINT_1A_DAILY_DRILL_PRACTICE_BRIDGE_REPORT.md` section on
+disposable test accounts): Account A (`1d78d464-8e9d-49b8-a7e4-42dacafbbfef`), Account B
+(`247c0630-e803-488c-b48b-70d1f028a184`), Account C (`917c1b45-3bdb-4e60-9bb5-2374002b6068`). Real
+JWTs were obtained by temporarily setting each account's password via `pgcrypto` (`crypt(...,
+gen_salt('bf'))`) and signing in through GoTrue's password grant, then calling the deployed
+`mobile-practice` Edge Function URL directly with `curl` -- genuine production HTTP execution, not
+a database-level proxy.
+
+- **Smoke A (general start):** `{action:"start", session_size:5}` as Account A -- 200, 5 questions,
+  exactly 1 new `portal_practice_attempts` row, `mode=dpe_questions`, `question_ids` matched the
+  returned questions exactly. **PASS.**
+- **Smoke B (targeted start, real content, ACS I.A):** `{action:"start", acs_task_id:"<I.A>",
+  session_size:10}` -- 200, 10 questions returned. Read-only DB reconciliation confirmed **every**
+  returned question was genuinely mapped to I.A, `exam_type=private_pilot`, `is_scenario=false` --
+  zero unrelated general questions. **PASS.**
+- **Smoke C (targeted start, zero eligible, ACS I.H):** 404, "No practice questions are available
+  for this ACS task yet.", attempt count for Account A unchanged (still 5) -- zero attempts
+  created, no fallback to general practice. **PASS.**
+- **Smoke D (invalid explicit `acs_task_id`):** empty string, whitespace, `null`, `"not-a-uuid"`,
+  and `123` each returned a clean 400 with zero new attempts (count stayed at 5 throughout); omitting
+  the field entirely still produced normal general practice (200, 3 questions). **PASS.**
+- **Smoke E (resume own session):** resumed Smoke B's session -- same `session_id`, `mode`,
+  `started_at`; `completed_at: null`; question order **byte-for-byte identical** to Smoke B's
+  original order; response contained only `id`/`question`/`category` -- no `model_answer`,
+  `common_mistakes`, `dpe_evaluating`, or `real_world_application` fields anywhere in the payload.
+  **PASS.**
+- **Smoke F (repeated resume):** resumed the same session 3 more times -- identical question order
+  every time; attempt count, `total_xp`, and study-activity seconds for Account A were identical
+  before and after (6 / 110 / 360, unchanged). **PASS.**
+- **Smoke G (wrong owner):** Account B attempted to resume Account A's session -- 403,
+  `not_your_session`, no session/question data in the response, Account B's own attempt count
+  unchanged (1), Account A's session `completed_at` unchanged (still null). **PASS.**
+- **Smoke H (missing session):** a well-formed but nonexistent UUID -- 404, `session_not_found`.
+  **PASS.**
+- **Smoke I (direct-RPC entitlement defense):** created a session for Account C, confirmed resume
+  succeeded while entitled. Revoked `checkride_prep_unlocked` via the same trusted
+  `service_role`-equivalent path this repo already uses for entitlement toggling in tests (setting
+  the `request.jwt.claim.role` session GUC that `auth.role()` reads, matching how PostgREST itself
+  authenticates a service-role caller -- required because production carries the same
+  `lock_profile_privileged_columns` trigger this session's local regression harness was extended to
+  model). Then called `resume_mobile_practice_session` **directly via PostgREST**
+  (`POST /rest/v1/rpc/resume_mobile_practice_session`), bypassing the Edge Function entirely --
+  denied with `premium_access_required: Checkride Prep is not unlocked on this account` (HTTP 400
+  from PostgREST's own error-wrapping, `P0001`), zero session/question data returned, zero
+  mutation (the session row was confirmed byte-identical before and after). Then, with the profile
+  flag still `false`, inserted a disposable test `portal_access_purchases` row for Account C only
+  -- the same direct RPC call and the normal Edge Function path **both** then succeeded, proving
+  the RPC mirrors `requirePremiumAccess()`'s exact OR predicate rather than a tightened,
+  `checkride_prep_unlocked`-only rule. The test purchase row was deleted and the profile flag
+  restored to `true` immediately after. **PASS.**
+- **Smoke J (completion/XP regression):** completed a non-perfect (1 of 2) session for Account C --
+  success, exactly 25 XP (`practice_set_completed`) recorded once; an immediate retry with an empty
+  responses array returned `already_completed: true` with no error and no duplicate XP. A second,
+  perfect-score (2 of 2) session for the same account recorded exactly 40 XP total (25 + 15
+  `perfect_score_bonus`), once. Zero `mobile_practice_completed` rows exist anywhere in the ledger.
+  **PASS.**
+- **Smoke K (Daily Drill regression):** fetched Account B's today's drill (a fresh one, since
+  today's date had no drill yet -- yesterday's drill was already completed and was left untouched);
+  started it (`start_daily_drill_practice_session()` linkage succeeded, `session_id` populated);
+  completed it via the same `mobile-practice` `complete` action with a perfect response set --
+  succeeded, and the linked `daily_drills` row's `completed_at` was byte-identical to the linked
+  `portal_practice_attempts` row's `completed_at` (same transaction, atomic, exactly as v118
+  designed it). `mobile-daily-drill` itself was not redeployed and was not modified by v119.
+  **PASS.**
+
+### 17. Customer data integrity result
+
+Checked every write-producing table for rows outside the three disposable test accounts created
+since this session's deployment work began (~02:33 UTC): `portal_practice_attempts` (0 new),
+`xp_ledger` (0 new), `task_evidence` (0 new), `daily_drills` for today's date (0 new). One
+pre-existing row in each of `portal_practice_attempts` and `daily_drills` was found for the real
+account owner (`aserrazina101@gmail.com`) -- both created at 00:58 UTC, roughly 90 minutes **before**
+this deployment session's first write, confirming it was pre-existing real usage, not something
+this work touched. All entitlement flags for the three disposable accounts were confirmed restored
+to their original `true` value; the one test-only `portal_access_purchases` row was deleted; all
+three disposable accounts' passwords were rotated to random, Postgres-generated,
+never-returned-to-me values (`crypt(gen_random_uuid()::text || gen_random_uuid()::text,
+gen_salt('bf'))`) immediately after testing concluded.
+
+### 18. Final local regression count
+
+`test/run_security_regression_tests.sh`, full run against a freshly rebuilt local harness database
+(unrelated to and run independently of the production work above): **364 passed, 0 failed** --
+identical to the pre-deployment Rev2 count. No test was altered to accommodate production behavior.
+
+### 19. Skipped smoke items and reasons
+
+None skipped. All items A-K, plus the customer-data-integrity sweep, were performed as specified.
+
+### 20. Rollback status
+
+No rollback was necessary -- all 22 verification items passed on the first attempt with no STOP
+condition triggered. `resume_mobile_practice_session()` remains deployed; `mobile-practice` remains
+at version 3. Per the migration file's own header comment, a schema rollback (dropping the
+function) would be a simple `drop function if exists public.resume_mobile_practice_session(uuid);`
+if ever needed, and would not affect `complete_mobile_practice_session()`, Daily Drill, or any
+already-written production data.
+
 ---
 
-**SPRINT 1B V119 PRACTICE CONTRACT REV2 READY -- AWAITING REVIEW**
+**V119 PRACTICE CONTRACT DEPLOYED AND VERIFIED — READY FOR SPRINT 1B NATIVE UI**
