@@ -1,12 +1,14 @@
 // Narrow structural check for the Practice tab's nested navigator (Final
-// pre-device navigation fix): the Practice TAB contains two screens (its
-// own root and a pushed drill session), so it needs a Stack navigator of
-// its own per Expo Router's documented "Stack inside a Tab" pattern --
-// the parent Tabs layout's single `<Tabs.Screen name="practice" />`
-// resolves to this whole nested navigator. This isn't a route-resolution
-// integration test (that needs a real Expo Router test harness, out of
-// scope for this narrow fix) -- it just proves the layout module itself
-// declares exactly the two expected screens, with `index` first.
+// pre-device navigation fix, extended by Sprint 1B.1 for the new ad-hoc
+// practice session route): the Practice TAB contains three screens (its
+// own root, a pushed Daily Drill session, and a pushed ad-hoc practice
+// session), so it needs a Stack navigator of its own per Expo Router's
+// documented "Stack inside a Tab" pattern -- the parent Tabs layout's
+// single `<Tabs.Screen name="practice" />` resolves to this whole nested
+// navigator. This isn't a route-resolution integration test (that needs a
+// real Expo Router test harness, out of scope for this narrow fix) -- it
+// just proves the layout module itself declares exactly the three
+// expected screens, with `index` first.
 import { render } from '@testing-library/react-native'
 import PracticeLayout, { unstable_settings } from '../app/(app)/practice/_layout'
 
@@ -33,8 +35,8 @@ describe('Practice tab nested navigator', () => {
     expect(unstable_settings.initialRouteName).toBe('index')
   })
 
-  it('declares exactly the tab root and the drill session screen, root first', async () => {
+  it('declares exactly the tab root, the drill session screen, and the ad-hoc practice session screen, root first', async () => {
     await render(<PracticeLayout />)
-    expect(mockScreenNames).toEqual(['index', '[drillId]'])
+    expect(mockScreenNames).toEqual(['index', '[drillId]', 'session/[sessionId]'])
   })
 })

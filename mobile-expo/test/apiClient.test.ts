@@ -109,7 +109,21 @@ describe('practice.ts ad-hoc start is a distinct, independent call', () => {
   beforeEach(() => mockInvoke.mockReset())
 
   it('startAdHocPractice invokes mobile-practice, not mobile-daily-drill', async () => {
-    mockInvoke.mockResolvedValue({ data: { session_id: 's2', mode: 'dpe_questions', started_at: '', target_acs_tasks: [], questions: [] }, error: null })
+    // Sprint 1B.1: startAdHocPractice is now validated (it wasn't before)
+    // -- v119's start action always returns a nonempty question set (it
+    // fails closed to a 404 before ever creating an attempt with zero
+    // eligible questions), so this fixture must be a realistic, valid
+    // response, not an empty placeholder.
+    mockInvoke.mockResolvedValue({
+      data: {
+        session_id: 's2',
+        mode: 'dpe_questions',
+        started_at: '2026-01-01T00:00:00Z',
+        target_acs_tasks: [],
+        questions: [{ id: 'q1', question: 'Q1?', category: null }],
+      },
+      error: null,
+    })
     await startAdHocPractice({ session_size: 5 })
     expect(mockInvoke).toHaveBeenCalledWith('mobile-practice', { body: { action: 'start', session_size: 5 } })
   })

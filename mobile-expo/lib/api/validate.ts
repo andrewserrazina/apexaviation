@@ -76,7 +76,18 @@ export function isValidTodaysDrillOrNull(value: unknown): boolean {
 }
 
 // A Daily Drill question as the Sprint 1A UI actually consumes it
-// (question/reveal screens) -- id/question text, optional category.
+// (question/reveal screens) -- id/question text, optional category. Ad-hoc
+// practice questions (mobile-practice start/resume) share this exact
+// shape, so Sprint 1B.1 reuses this same validator rather than defining a
+// second, identical one.
 export function isValidQuestion(value: unknown): boolean {
   return isPlainObject(value) && isNonEmptyString(value.id) && typeof value.question === 'string' && isNullableString(value.category)
+}
+
+// Sprint 1B.1: an ACS task reference as rendered by TodaysDrillCard's chip
+// row, the Practice hub's weak-area cards, and mobile-practice's
+// target_acs_tasks -- the ACS task id plus the two display codes, nothing
+// else (no fabricated title -- see practice.ts's isValidAcsTaskRef usage).
+export function isValidAcsTaskRef(value: unknown): boolean {
+  return isPlainObject(value) && isNonEmptyString(value.acs_task_id) && typeof value.area_code === 'string' && typeof value.task_code === 'string'
 }
