@@ -4,7 +4,7 @@ import { colors, fonts, type as typeScale } from '../constants/theme'
 type Variant = 'display' | 'title' | 'subtitle' | 'body' | 'caption' | 'label'
 type Weight = 'regular' | 'medium' | 'semibold' | 'bold'
 
-interface AppTextProps extends TextProps {
+export interface AppTextProps extends TextProps {
   variant?: Variant
   weight?: Weight
   heading?: boolean

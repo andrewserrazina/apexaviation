@@ -110,7 +110,7 @@ export default function HomeScreen() {
             TRAINING CONTEXT
           </AppText>
           <AppText variant="body" weight="semibold">
-            {[formatCertificate(training.certificate_type), training.aircraft_class, training.acs_version]
+            {[formatSnakeCaseLabel(training.certificate_type), training.aircraft_class, training.acs_version]
               .filter(Boolean)
               .join(' • ')}
           </AppText>
@@ -120,7 +120,13 @@ export default function HomeScreen() {
       <View style={styles.metricsRow}>
         <MetricCard label="XP" value={String(progress.xp)} accent />
         <MetricCard label="Streak" value={`${progress.current_streak}d`} helper={`Best: ${progress.longest_streak}d`} />
-        <MetricCard label="Rank" value={progress.current_rank ?? '—'} />
+        {/* Physical-device fix: the server's rank identity string (e.g.
+            "student_pilot") is authoritative and never altered -- only
+            reformatted for display -- and rendered at a smaller,
+            two-line-friendly variant than XP's giant numeric display
+            size, since a textual value wraps awkwardly at that size in
+            this narrow flex:1 column. */}
+        <MetricCard label="Rank" value={formatSnakeCaseLabel(progress.current_rank) ?? '—'} valueVariant="title" />
       </View>
 
       <ReadinessCard
@@ -167,7 +173,14 @@ export default function HomeScreen() {
   )
 }
 
-function formatCertificate(value: string | null): string | null {
+// Presentation-only: the server value (certificate_type, current_rank)
+// is authoritative and never altered, only reformatted for display --
+// e.g. "student_pilot" -> "Student Pilot". A value with no underscores
+// (already human-formatted, or a single word) passes through with only
+// its first character capitalized, so this is safe to apply
+// unconditionally rather than needing to guess whether a given field is
+// "snake_case-shaped" first.
+function formatSnakeCaseLabel(value: string | null): string | null {
   if (!value) return null
   return value
     .split('_')

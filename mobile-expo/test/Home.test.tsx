@@ -114,6 +114,29 @@ describe('HomeScreen', () => {
     expect(screen.getByText('Best: 20d')).toBeTruthy()
   })
 
+  // Physical-device fix: a raw snake_case server rank value ("student_
+  // pilot") was rendering with the literal underscore and wrapping
+  // mid-word ("stud/ent_/pilot") in the giant numeric display font.
+  // Presentation-only formatting must turn it into "Student Pilot" with
+  // no underscore, and it must not render at the same "display" variant
+  // XP uses.
+  it('formats a long snake_case rank for display, with no underscore, and not at the giant numeric display size', async () => {
+    mockUseBootstrapContext.mockReturnValue(
+      bootstrapContextFixture({
+        data: bootstrapFixture({
+          progress: { xp: 100, current_rank: 'student_pilot', current_streak: 1, longest_streak: 1, readiness_summary: null },
+        }),
+      })
+    )
+    mockUseHomeDrill.mockReturnValue(homeDrillFixture())
+
+    await render(<HomeScreen />)
+
+    expect(screen.getByText('Student Pilot')).toBeTruthy()
+    expect(screen.queryByText(/student_pilot/i)).toBeNull()
+    expect(screen.queryByText('stud')).toBeNull()
+  })
+
   // J: readiness includes evidence level alongside the score.
   it('renders readiness with its evidence level', async () => {
     mockUseBootstrapContext.mockReturnValue(
@@ -208,15 +231,21 @@ describe('HomeScreen', () => {
       expect(screen.getByText('Continue Drill')).toBeTruthy()
     })
 
-    it('shows a completed/view state for a completed drill', async () => {
+    // Physical-device fix: "View Summary" promised a completion summary
+    // the current contract can't actually show -- replaced with an
+    // honest, non-interactive "Completed" state.
+    it('shows an honest, non-interactive "Completed" state for a completed drill, never a promised summary', async () => {
       mockUseBootstrapContext.mockReturnValue(bootstrapContextFixture())
       mockUseHomeDrill.mockReturnValue(
         homeDrillFixture({ drill: { id: 'd1', status: 'completed', estimated_minutes: 10, target_acs_tasks: [] } })
       )
 
       await render(<HomeScreen />)
-      expect(screen.getByText('View Summary')).toBeTruthy()
       expect(screen.getByText("Today's Drill — Done")).toBeTruthy()
+      expect(screen.queryByText('View Summary')).toBeNull()
+      const completedButton = screen.getByRole('button', { name: 'Completed' })
+      expect(completedButton).toBeTruthy()
+      expect(completedButton.props.accessibilityState?.disabled).toBe(true)
     })
   })
 
