@@ -121,50 +121,58 @@ export default function DrillSessionScreen() {
   )
 }
 
+// Physical-device fix: this screen previously used `<Screen scroll=
+// {false}>` with a `flex: 1, justifyContent: 'center'` wrapper, relying
+// on Screen's non-scrolling branch to hand that wrapper a bounded full-
+// screen height to center within. On a real iPhone (unlike this
+// project's test renderer) that inner View did not actually stretch --
+// see Screen.tsx's own fix -- so the whole card visibly collapsed/
+// clipped. Rendering as a normal SCROLLING Screen (the default) removes
+// the fragile centering assumption entirely and, per this fix's explicit
+// guidance, is also the more robust choice for smaller phones, larger
+// Dynamic Type, and longer readiness reason-code content -- none of
+// which need to fit inside one fixed viewport anymore.
 function CompletionScreen({ score, total, alreadyCompleted }: { score: number; total: number; alreadyCompleted: boolean }) {
   const { loading, progress, readiness } = usePostCompleteRefresh(true, alreadyCompleted)
 
   return (
-    <Screen scroll={false}>
-      <View style={styles.completionWrap}>
-        <AppText variant="display" heading weight="bold" center>
-          Drill Complete
-        </AppText>
-        {/* Self-rated, not objectively graded -- "marked" says that
-            honestly rather than implying the system scored an oral
-            response (Sprint 1A Rev2 section 5). */}
-        <AppText variant="subtitle" color={colors.mutedText} center>
-          You marked {score} of {total} correct
-        </AppText>
+    <Screen>
+      <AppText variant="display" heading weight="bold" center>
+        Drill Complete
+      </AppText>
+      {/* Self-rated, not objectively graded -- "marked" says that
+          honestly rather than implying the system scored an oral
+          response (Sprint 1A Rev2 section 5). */}
+      <AppText variant="subtitle" color={colors.mutedText} center>
+        You marked {score} of {total} correct
+      </AppText>
 
-        {loading ? (
-          <LoadingState label="Updating your progress…" />
-        ) : (
-          <>
-            {progress ? (
-              <Card>
-                <AppText variant="body" center>
-                  {progress.xp} XP • {progress.current_streak} day streak
-                </AppText>
-              </Card>
-            ) : null}
-            {readiness ? (
-              <ReadinessCard
-                overallScore={readiness.overall_score}
-                evidenceLevel={readiness.evidence_level}
-                reasonCodes={readiness.reason_codes}
-              />
-            ) : null}
-          </>
-        )}
+      {loading ? (
+        <LoadingState label="Updating your progress…" />
+      ) : (
+        <>
+          {progress ? (
+            <Card>
+              <AppText variant="body" center>
+                {progress.xp} XP • {progress.current_streak} day streak
+              </AppText>
+            </Card>
+          ) : null}
+          {readiness ? (
+            <ReadinessCard
+              overallScore={readiness.overall_score}
+              evidenceLevel={readiness.evidence_level}
+              reasonCodes={readiness.reason_codes}
+            />
+          ) : null}
+        </>
+      )}
 
-        <Button label="Back to Home" onPress={() => router.replace('/(app)')} />
-      </View>
+      <Button label="Back to Home" onPress={() => router.replace('/(app)')} />
     </Screen>
   )
 }
 
 const styles = StyleSheet.create({
   ratingBlock: { gap: spacing.sm },
-  completionWrap: { flex: 1, justifyContent: 'center', gap: spacing.lg },
 })
