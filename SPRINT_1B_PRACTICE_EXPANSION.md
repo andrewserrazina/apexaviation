@@ -152,3 +152,94 @@ All run from `mobile-expo/` unless noted:
 - **No TestFlight/App Store build was submitted, and no physical-device testing has occurred.** Everything above is Jest/simulator/source-level validation only.
 
 **SPRINT 1B.1 NATIVE PRACTICE EXPANSION READY — AWAITING SOURCE REVIEW**
+
+---
+
+# Sprint 1B.1 Rev2 — Independent Source Review Fixes
+
+Five native-client issues identified by independent source review of commit `1cd849b8ca2109e5d6fa72f65a23f76f122dd0d2` are fixed below. **No backend file changed in this revision** -- every fix is scoped to `mobile-expo/`, confirmed at the end of this section by diffing against that commit.
+
+## 1. Active-session load race could create orphaned sessions
+
+`app/(app)/practice/index.tsx`'s per-user active-session pointer lookup (`loadActive()`) is itself asynchronous. The previous `disableNewAdHoc = starting || hasActiveAdHoc` formula left Quick/Standard/Weak-Area Start enabled while that lookup was still pending -- `hasActiveAdHoc` was `false` not because no session existed, but because it wasn't known yet. A learner who tapped Start in that window while a real unfinished session already existed could create a second, orphaned server attempt.
+
+Fixed: `disableNewAdHoc = starting || !activeSessionLoaded || hasActiveAdHoc`. New ad-hoc Starts now stay disabled until the lookup has actually completed, whatever it finds. Today's Drill is unaffected -- it has its own, independent resume mechanism and was never gated on this pointer. A restrained inline caption ("Checking for an existing practice session…") replaces the "Finish your current..." copy during the pending window, rather than hiding the whole hub.
+
+## 2. Active-pointer clear was per-user, not per-session
+
+The active-session pointer is a single slot per user (`apex-advantage-active-practice:<userId>`), not one per `session_id`. The hook previously cleared it with a blind `clearActivePracticeSession(userId)` after successful completion, already-completed-resume cleanup, and "Remove Saved Session" -- any of which could silently wipe out a *different*, still-unfinished session's saved pointer (e.g. a learner with saved active "Session B" who deep-links to an older, already-completed "Session A").
+
+Fixed: added `clearActivePracticeSessionIfMatches(userId, sessionId)` to `lib/activePracticeStorage.ts` -- a compare-and-clear that loads the current pointer, and only removes it if `pointer.sessionId === sessionId`; a mismatched or absent pointer is left untouched. All three call sites in `useAdHocPracticeSession.ts` (`complete()`, the already-completed branch of `resume()`, `removeSavedSession()`) now use this instead of the blind clear.
+
+## 3. Completion UI could render before local cleanup finished
+
+`complete()` previously called `setCompleteResult(...)` (which renders the completion screen and its "Back to Practice" CTA) *before* awaiting `clearDrillProgress`/`clearActivePracticeSessionIfMatches`. On a slower device, a learner could tap "Back to Practice" and return to a hub whose focus-refresh ran before that cleanup had actually written its result, briefly showing a stale "Continue Practice" card for an already-completed session. The already-completed-resume branch had the same ordering problem with `alreadyCompletedOnResume`.
+
+Fixed: both cleanup calls are now awaited *before* `setCompleteResult(...)` / `setAlreadyCompletedOnResume(true)` are called. These storage helpers already fail safe internally (they never throw), so awaiting them cannot turn a successful server completion into a failure -- proven by a dedicated test.
+
+## 4. `invalid_question_set` was permanently unrecoverable
+
+v119's `resume` action returns `{ error, code: 'invalid_question_set' }` with HTTP 500 for a genuinely corrupt stored question set -- a permanent, per-session failure, never a transient one. `invokeMobileFunction()`'s 5xx branch called `serverError(error, status)`, which discarded the extracted `code`, so `classifyResumeError()` only ever saw `kind: 'server'` -- indistinguishable from an ordinary infra failure -- and classified it transient. That meant Retry was offered forever and "Remove Saved Session" was never offered, permanently stranding the learner behind disabled Quick/Standard/Weak-Area buttons (a session pointer that could never resolve, and no way to clear it).
+
+Fixed: `serverError(raw, status, code?)` (`lib/api/errors.ts`) now accepts and preserves the machine-readable `code`; `client.ts`'s 5xx branch passes it through (`serverError(error, status, code)`). `classifyResumeError()` now checks `error.kind === 'server' && error.code === 'invalid_question_set'` and classifies it `permanent`, offering "Remove Saved Session." Every other server-kind error (no code, or a different/unknown code) still classifies `transient` -- this is deliberately narrow, not "every server error is permanent." The learner-facing message stays the existing generic, safe one; only the internal `code` field (never rendered) changed.
+
+## 5. Bootstrap `weak_areas` had no per-item runtime validation
+
+Before Sprint 1B.1, `home.weak_areas` only needed to be checked as an array. Sprint 1B.1 now directly renders `area_code`/`task_code`/`evidence_score` and passes `acs_task_id` straight through, unmodified, as a targeted Start's request body -- a malformed or `undefined` `acs_task_id` can be silently omitted during JSON serialization, which would make v119's server interpret the request as *general* practice, degrading a visually-targeted "Practice I.A" CTA into untargeted practice without any indication to the learner.
+
+Fixed: added `isValidWeakArea()` to `lib/api/validate.ts`, building on the existing `isValidAcsTaskRef()` rather than duplicating its field checks, additionally requiring non-empty `area_code`/`task_code` and a finite `evidence_score` in the same `0..1` range `task_evidence.evidence_score` is authoritatively stored in server-side (confirmed by reading `supabase-portal-schema-v114-readiness-snapshots.sql`'s `weak_tasks` aggregation -- read-only, not modified). `bootstrap.ts`'s `isValidBootstrap()` now requires `home.weak_areas.every(isValidWeakArea)`. A malformed bootstrap 200 becomes the same normalized `ApiError` every other malformed response already produces -- Practice renders the retryable bootstrap error, and no targeted Start CTA can ever be built from malformed data.
+
+## Storage hardening (small addition, while touching `activePracticeStorage.ts`)
+
+A stored `ActivePracticeSession` record with a non-integer, zero, or negative `sessionSize`, or an empty `title`/`startedAt`/optional `acsTaskId`/`areaCode`/`taskCode`, is exactly as unusable to the UI as a missing field -- now rejected the same way (`loadActivePracticeSession` returns `null`), rather than silently rendering "0 of 0 rated" or a blank title. This stays local corruption defense only, not a schema-validation library.
+
+## Files changed (Rev2)
+
+All within `mobile-expo/`:
+
+- `app/(app)/practice/index.tsx` -- blocker 1 (disable formula + pending-lookup caption)
+- `lib/activePracticeStorage.ts` -- blocker 2 (`clearActivePracticeSessionIfMatches`) + storage hardening
+- `hooks/useAdHocPracticeSession.ts` -- blockers 2, 3, 4
+- `lib/api/errors.ts` -- blocker 4 (`serverError` now carries `code`)
+- `lib/api/client.ts` -- blocker 4 (passes `code` through on 5xx)
+- `lib/api/validate.ts` -- blocker 5 (`isValidWeakArea`)
+- `lib/api/bootstrap.ts` -- blocker 5 (validates every `weak_areas` item)
+- `test/PracticeHub.test.tsx`, `test/activePracticeStorage.test.ts`, `test/useAdHocPracticeSession.test.tsx`, `test/apiClient.test.ts`, `test/apiValidation.test.ts`, `test/entitlementGating.test.tsx` -- extended
+- `test/useAdHocPracticeSession.sessionMatchedCleanup.test.tsx` -- new (end-to-end, real-storage proof for blocker 2)
+
+## New test coverage (Rev2)
+
+40 new tests were added, covering each blocker's required shapes:
+
+| Blocker | Coverage |
+|---|---|
+| A. Active pointer load unresolved -> Starts disabled | 3 new tests in `PracticeHub.test.tsx` (`active-session lookup race` describe block): disabled + no `startAdHocPractice` call + Today's Drill usable while pending; enabled once resolved null; stays disabled once resolved to an existing pointer |
+| B. Session-matched pointer clearing | 4 real-storage tests in `activePracticeStorage.test.ts` (matching removed / mismatching preserved / no-pointer no-op / never affects a different user even with the same session id) + 4 end-to-end tests in the new `useAdHocPracticeSession.sessionMatchedCleanup.test.tsx` (complete/already-completed-resume/Remove-Saved-Session on Session A never clears a saved Session B; completing Session A does clear its own matching pointer) + updated call-shape assertions in `useAdHocPracticeSession.test.tsx` |
+| C. Cleanup-before-completion-render ordering | 3 new tests in `useAdHocPracticeSession.test.tsx`'s `cleanup-before-render ordering` describe block: `completeResult` stays null while cleanup is pending; `alreadyCompletedOnResume` stays false while cleanup is pending, then becomes true once it settles; a successful completion still resolves even when cleanup internally no-ops |
+| D. `invalid_question_set` permanent classification | 2 unit tests + 1 end-to-end hook test in `useAdHocPracticeSession.test.tsx`; 2 tests in `apiClient.test.ts` proving `code` survives a 5xx and the learner-facing message stays generic |
+| E. Weak-area bootstrap runtime validation | 13 new tests in `apiValidation.test.ts` (missing/empty `acs_task_id`/`area_code`/`task_code`, non-numeric/NaN/Infinity/out-of-range `evidence_score`, boundary values 0 and 1 accepted, empty array accepted) |
+| Storage hardening | 8 new tests in `activePracticeStorage.test.ts` (bad `sessionSize` values, empty `title`/`startedAt`/`acsTaskId`, valid populated record accepted) |
+
+## Validation results (Rev2)
+
+All run from `mobile-expo/`:
+
+- `npm test -- --runInBand` run three consecutive times: **21 suites, 221 tests, 0 failed, all three runs identical.** (Baseline before Rev2 was 20 suites / 181 tests; Rev2 added one new test file and extended six existing ones.)
+- `npm run typecheck` -- clean, 0 errors.
+- `npm run lint` -- clean, 0 errors, 0 warnings.
+- `npx expo-doctor` -- 21/21 checks passed.
+- `npx expo export --platform ios` -- exported successfully.
+- `test/run_security_regression_tests.sh` (repo root) -- **364 passed, 0 failed** -- byte-identical to the pre-Rev2 baseline, confirming no backend behavior changed.
+
+## Diff scope confirmation
+
+`git diff --stat 1cd849b8ca2109e5d6fa72f65a23f76f122dd0d2` shows changes in exactly 13 files, all under `mobile-expo/` (7 source/test files modified for the fixes, 6 test files extended, 1 new test file) plus this report. Nothing under `portal/`, `shared/`, `test/run_security_regression_tests.sh`, or `test/sql/` changed -- the shared DTO was read (to confirm `evidence_score`'s `0..1` range and v119's exact `invalid_question_set` response shape) but not modified; no factual defect in it was found.
+
+## Explicit confirmations (Rev2)
+
+- **No backend file was modified, no migration applied, no Edge Function deployed, no production Supabase state touched.** The backend regression suite's unchanged 364/0 result is direct evidence.
+- **No deployment occurred** -- Supabase, TestFlight, and the App Store are all untouched.
+- **No merge to `main` occurred.** All work remains on `claude/sprint-1b-practice-expansion`.
+- **Physical-device testing remains pending**, as it was after the initial Sprint 1B.1 pass -- everything above is Jest/simulator/source-level validation only.
+
+**SPRINT 1B.1 REV2 NATIVE PRACTICE FIXES READY — AWAITING SOURCE REVIEW**

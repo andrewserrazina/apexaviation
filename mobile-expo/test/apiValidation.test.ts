@@ -117,6 +117,107 @@ describe('mobile-bootstrap malformed response', () => {
   })
 })
 
+// Rev2 blocker 5: before Sprint 1B.1, home.weak_areas was only checked to
+// be an array -- the Practice hub now directly renders
+// weak_area.area_code/task_code/evidence_score AND passes acs_task_id
+// straight through, unmodified, as a targeted Start's request body. A
+// malformed/undefined acs_task_id can be silently OMITTED during JSON
+// serialization, which would make v119's server interpret the request as
+// GENERAL practice -- so a visually-targeted "Practice I.A" CTA must
+// never be allowed to degrade into untargeted practice just because
+// bootstrap's own payload happened to be malformed.
+describe('mobile-bootstrap home.weak_areas runtime validation (Rev2 blocker 5)', () => {
+  function weakAreaFixture(overrides: Record<string, unknown> = {}) {
+    return { acs_task_id: 'task-uuid-1', area_code: 'I', task_code: 'A', evidence_score: 0.5, ...overrides }
+  }
+
+  it('rejects a weak area missing acs_task_id', async () => {
+    const { acs_task_id: _drop, ...rest } = weakAreaFixture()
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [rest] } }))
+    const err = await captureError(fetchBootstrap())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a weak area with an empty-string acs_task_id', async () => {
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [weakAreaFixture({ acs_task_id: '' })] } }))
+    const err = await captureError(fetchBootstrap())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a weak area missing area_code', async () => {
+    const { area_code: _drop, ...rest } = weakAreaFixture()
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [rest] } }))
+    const err = await captureError(fetchBootstrap())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a weak area with an empty-string area_code', async () => {
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [weakAreaFixture({ area_code: '' })] } }))
+    const err = await captureError(fetchBootstrap())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a weak area missing task_code', async () => {
+    const { task_code: _drop, ...rest } = weakAreaFixture()
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [rest] } }))
+    const err = await captureError(fetchBootstrap())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a weak area with an empty-string task_code', async () => {
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [weakAreaFixture({ task_code: '' })] } }))
+    const err = await captureError(fetchBootstrap())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a weak area with a non-numeric evidence_score', async () => {
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [weakAreaFixture({ evidence_score: '0.5' })] } }))
+    const err = await captureError(fetchBootstrap())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a weak area with evidence_score=NaN', async () => {
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [weakAreaFixture({ evidence_score: NaN })] } }))
+    const err = await captureError(fetchBootstrap())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a weak area with evidence_score=Infinity', async () => {
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [weakAreaFixture({ evidence_score: Infinity })] } }))
+    const err = await captureError(fetchBootstrap())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a weak area with an out-of-range evidence_score above 1', async () => {
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [weakAreaFixture({ evidence_score: 1.5 })] } }))
+    const err = await captureError(fetchBootstrap())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a weak area with a negative evidence_score', async () => {
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [weakAreaFixture({ evidence_score: -0.1 })] } }))
+    const err = await captureError(fetchBootstrap())
+    expect(err.kind).toBe('server')
+  })
+
+  it('accepts a well-formed weak_areas array with boundary evidence_score values 0 and 1', async () => {
+    ok(
+      bootstrapFixture({
+        home: {
+          todays_drill: null,
+          weak_areas: [weakAreaFixture({ acs_task_id: 'task-uuid-1', evidence_score: 0 }), weakAreaFixture({ acs_task_id: 'task-uuid-2', evidence_score: 1 })],
+        },
+      })
+    )
+    await expect(fetchBootstrap()).resolves.toBeTruthy()
+  })
+
+  it('accepts an empty weak_areas array', async () => {
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [] } }))
+    await expect(fetchBootstrap()).resolves.toBeTruthy()
+  })
+})
+
 describe('mobile-daily-drill: fetch vs start have different session_id invariants (Rev3 section 1)', () => {
   const QUESTIONS = [{ id: 'q1', question: 'Q', category: null }]
 

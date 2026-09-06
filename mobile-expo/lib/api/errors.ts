@@ -37,8 +37,15 @@ export function authError(raw?: unknown): ApiError {
   return new ApiError({ kind: 'auth', userMessage: GENERIC_AUTH_MESSAGE, status: 401, raw })
 }
 
-export function serverError(raw?: unknown, status: number | null = 500): ApiError {
-  return new ApiError({ kind: 'server', userMessage: GENERIC_SERVER_MESSAGE, status, raw })
+// Rev2 blocker 4: a 5xx response still carries a machine-readable `code`
+// from the Edge Function body (e.g. v119 resume's `invalid_question_set`)
+// even though the learner-facing message stays the generic, safe one --
+// `code` is never itself shown to the learner, only used by callers like
+// useAdHocPracticeSession's classifyResumeError() to distinguish a
+// specific, permanent server-data-integrity failure from an ordinary
+// transient infra failure that also happens to be a 5xx.
+export function serverError(raw?: unknown, status: number | null = 500, code?: string | null): ApiError {
+  return new ApiError({ kind: 'server', userMessage: GENERIC_SERVER_MESSAGE, status, code: code ?? null, raw })
 }
 
 // For a validation/domain error the server already phrased for a human

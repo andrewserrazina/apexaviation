@@ -36,6 +36,7 @@ jest.mock('../lib/activePracticeStorage', () => ({
   loadActivePracticeSession: (...args: unknown[]) => mockLoadActivePracticeSession(...args),
   saveActivePracticeSession: (...args: unknown[]) => mockSaveActivePracticeSession(...args),
   clearActivePracticeSession: jest.fn(),
+  clearActivePracticeSessionIfMatches: jest.fn(),
 }))
 
 const mockLoadDrillProgress = jest.fn()
@@ -313,6 +314,78 @@ it('disables Quick/Standard/Weak-Area starts while a valid local active session 
 
   fireEvent.press(screen.getByRole('button', { name: 'Start Quick Practice' }))
   expect(mockStartAdHocPractice).not.toHaveBeenCalled()
+})
+
+// Rev2 blocker 1: the per-user active-session pointer lookup is itself
+// async -- while it's still pending, the hub must not enable new ad-hoc
+// Starts just because `activeSession` happens to still be null (that's
+// "unknown yet," not "no active session"). Enabling Start during that
+// window let a learner who already has an unfinished session create a
+// second, orphaned one before the lookup resolved.
+describe('active-session lookup race (Rev2 blocker 1)', () => {
+  it('disables Quick/Standard/Weak-Area starts (never calling startAdHocPractice), while leaving Today’s Drill usable, until the active-session lookup resolves', async () => {
+    mockUseBootstrapContext.mockReturnValue(
+      bootstrapContext({
+        data: bootstrapFixture({ home: { todays_drill: null, weak_areas: [{ acs_task_id: 'task-uuid-123', area_code: 'I', task_code: 'A', evidence_score: 0.5 }] } }),
+      })
+    )
+    mockUseDailyDrill.mockReturnValue({
+      data: { drill: { id: 'd1', status: 'pending', estimated_minutes: 8, target_acs_tasks: [] }, session_id: null, questions: [] },
+      loading: false,
+      error: null,
+      refetch: jest.fn(),
+    })
+    // Never resolves within this test -- the lookup is permanently
+    // "still pending" from the hub's point of view.
+    mockLoadActivePracticeSession.mockReturnValue(new Promise(() => {}))
+
+    await render(<PracticeTabScreen />)
+
+    expect(screen.getByRole('button', { name: 'Start Quick Practice' }).props.accessibilityState.disabled).toBe(true)
+    expect(screen.getByRole('button', { name: 'Start Standard Practice' }).props.accessibilityState.disabled).toBe(true)
+    expect(screen.getByRole('button', { name: 'Practice I.A' }).props.accessibilityState.disabled).toBe(true)
+    expect(screen.getByText('Checking for an existing practice session…')).toBeTruthy()
+    // Not yet resolved either way -- "Continue Practice" (which requires
+    // a known, truthy active session) must not appear during the pending
+    // window, and neither must the "Finish your current..." copy, which
+    // is specific to a CONFIRMED active session, not an unknown state.
+    expect(screen.queryByText('Continue Practice')).toBeNull()
+    expect(screen.queryByText('Finish your current practice session before starting another.')).toBeNull()
+
+    fireEvent.press(screen.getByRole('button', { name: 'Start Quick Practice' }))
+    expect(mockStartAdHocPractice).not.toHaveBeenCalled()
+
+    const drillButton = screen.getByRole('button', { name: 'Start Drill' })
+    expect(drillButton.props.accessibilityState.disabled).toBeFalsy()
+  })
+
+  it('enables new ad-hoc Starts once the active-session lookup resolves to null (no unfinished session)', async () => {
+    mockUseBootstrapContext.mockReturnValue(bootstrapContext())
+    mockLoadActivePracticeSession.mockResolvedValue(null)
+
+    await render(<PracticeTabScreen />)
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Quick Practice' }).props.accessibilityState.disabled).toBe(false))
+    expect(screen.getByRole('button', { name: 'Start Standard Practice' }).props.accessibilityState.disabled).toBe(false)
+  })
+
+  it('keeps new ad-hoc Starts disabled once the active-session lookup resolves to an existing unfinished session', async () => {
+    mockUseBootstrapContext.mockReturnValue(bootstrapContext())
+    mockLoadActivePracticeSession.mockResolvedValue({
+      sessionId: 'existing-session',
+      userId: 'u1',
+      kind: 'quick',
+      title: 'Quick Practice',
+      startedAt: '2026-01-01T00:00:00Z',
+      sessionSize: 5,
+    })
+
+    await render(<PracticeTabScreen />)
+
+    await waitFor(() => expect(screen.getByText('Continue Practice')).toBeTruthy())
+    expect(screen.getByRole('button', { name: 'Start Quick Practice' }).props.accessibilityState.disabled).toBe(true)
+    expect(screen.getByRole('button', { name: 'Start Standard Practice' }).props.accessibilityState.disabled).toBe(true)
+  })
 })
 
 // 17. Today's Drill remains usable with an active ad-hoc session

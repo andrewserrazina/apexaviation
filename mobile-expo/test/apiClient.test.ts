@@ -61,6 +61,36 @@ describe('invokeMobileFunction error normalization', () => {
     expect(err.userMessage).not.toMatch(/42703|column/i)
   })
 
+  // Rev2 blocker 4: a 5xx response's machine-readable `code` (e.g. v119
+  // resume's own `{ error: detail, code: 'invalid_question_set' }, 500`
+  // body -- see mobile-practice/index.ts's resume error mapping) must
+  // survive normalization even though the learner-facing message stays
+  // generic. Before this fix, status >= 500 dropped the extracted `code`
+  // entirely, making useAdHocPracticeSession.classifyResumeError() unable
+  // to ever distinguish this permanent, per-session failure from an
+  // ordinary transient infra 5xx.
+  it('preserves a 5xx response’s machine-readable code, while still keeping the learner-facing message generic', async () => {
+    mockInvoke.mockResolvedValue({
+      data: null,
+      error: { message: 'non-2xx', context: { status: 500, json: async () => ({ error: 'invalid_question_set', code: 'invalid_question_set' }) } },
+    })
+    const err = await captureError(invokeMobileFunction('mobile-practice', { action: 'resume', session_id: 's1' }))
+    expect(err).toBeInstanceOf(ApiError)
+    expect(err.kind).toBe('server')
+    expect(err.code).toBe('invalid_question_set')
+    expect(err.userMessage).not.toMatch(/invalid_question_set/i)
+  })
+
+  it('a 5xx response with no code in the body normalizes with code=null, not a fabricated value', async () => {
+    mockInvoke.mockResolvedValue({
+      data: null,
+      error: { message: 'non-2xx', context: { status: 500, json: async () => ({ error: 'Something broke' }) } },
+    })
+    const err = await captureError(invokeMobileFunction('mobile-practice'))
+    expect(err.kind).toBe('server')
+    expect(err.code).toBeNull()
+  })
+
   it('normalizes a thrown/unreachable failure into a network ApiError', async () => {
     mockInvoke.mockRejectedValue(new TypeError('Network request failed'))
     const err = await captureError(invokeMobileFunction('mobile-bootstrap'))

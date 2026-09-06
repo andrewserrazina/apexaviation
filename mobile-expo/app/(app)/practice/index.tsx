@@ -154,7 +154,16 @@ export default function PracticeTabScreen() {
 
   const weakAreas: WeakArea[] = (bootstrap.data.home.weak_areas ?? []).slice(0, 3)
   const hasActiveAdHoc = activeSessionLoaded && !!activeSession
-  const disableNewAdHoc = starting || hasActiveAdHoc
+  // Rev2 blocker 1: the per-user active-session pointer lookup
+  // (loadActive(), above) is itself async -- while it's still pending,
+  // `hasActiveAdHoc` is false not because no session exists, but because
+  // we simply don't know yet. Enabling Start during that window let a
+  // learner who already has an unfinished session create a second,
+  // orphaned one before the lookup resolved. New ad-hoc Starts now stay
+  // disabled until the lookup has actually completed, whatever it finds;
+  // Today's Drill is unaffected -- it has its own, independent resume
+  // mechanism and was never gated on this pointer.
+  const disableNewAdHoc = starting || !activeSessionLoaded || hasActiveAdHoc
 
   async function handleStart(kind: AdHocPracticeKind, sessionSize: number, area?: WeakArea) {
     if (startInFlight.current || disableNewAdHoc) return
@@ -280,7 +289,11 @@ export default function PracticeTabScreen() {
           ) : null}
         </Card>
 
-        {hasActiveAdHoc ? (
+        {!activeSessionLoaded ? (
+          <AppText variant="caption" color={colors.mutedText}>
+            Checking for an existing practice session…
+          </AppText>
+        ) : hasActiveAdHoc ? (
           <AppText variant="caption" color={colors.mutedText}>
             Finish your current practice session before starting another.
           </AppText>

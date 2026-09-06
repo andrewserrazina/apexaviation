@@ -18,9 +18,19 @@ jest.mock('../lib/api/practice', () => ({
   completePractice: (...args: unknown[]) => mockCompletePractice(...args),
 }))
 
-const mockClearActivePracticeSession = jest.fn()
+// Rev2 blocker 2: the hook now clears the local active-session pointer
+// through the session-matched clearActivePracticeSessionIfMatches(userId,
+// sessionId) rather than the blind, per-user clearActivePracticeSession(
+// userId) -- these tests assert the hook passes the RIGHT sessionId
+// through on every call site. The underlying compare-and-clear semantics
+// themselves (matching pointer removed, mismatching pointer preserved,
+// no pointer is a no-op) are proven against the real storage module in
+// activePracticeStorage.test.ts; the true end-to-end "completing Session
+// A never clears Session B's saved pointer" proof (real storage, not
+// mocked) lives in useAdHocPracticeSession.sessionMatchedCleanup.test.tsx.
+const mockClearActivePracticeSessionIfMatches = jest.fn()
 jest.mock('../lib/activePracticeStorage', () => ({
-  clearActivePracticeSession: (...args: unknown[]) => mockClearActivePracticeSession(...args),
+  clearActivePracticeSessionIfMatches: (...args: unknown[]) => mockClearActivePracticeSessionIfMatches(...args),
 }))
 
 const mockLoadDrillProgress = jest.fn()
@@ -53,7 +63,7 @@ describe('useAdHocPracticeSession', () => {
     mockResumePractice.mockReset()
     mockRevealQuestion.mockReset()
     mockCompletePractice.mockReset()
-    mockClearActivePracticeSession.mockReset().mockResolvedValue(undefined)
+    mockClearActivePracticeSessionIfMatches.mockReset().mockResolvedValue(undefined)
     mockLoadDrillProgress.mockReset().mockResolvedValue(null)
     mockSaveDrillProgress.mockReset().mockResolvedValue(undefined)
     mockClearDrillProgress.mockReset().mockResolvedValue(undefined)
@@ -203,7 +213,7 @@ describe('useAdHocPracticeSession', () => {
     })
 
     expect(mockClearDrillProgress).toHaveBeenCalledWith('session-1')
-    expect(mockClearActivePracticeSession).toHaveBeenCalledWith('u1')
+    expect(mockClearActivePracticeSessionIfMatches).toHaveBeenCalledWith('u1', 'session-1')
     expect(result.current.completeResult).toEqual({ score: 2, total: 2, alreadyCompleted: false })
   })
 
@@ -244,7 +254,7 @@ describe('useAdHocPracticeSession', () => {
     const { result } = await renderHook(() => useAdHocPracticeSession('session-1', { enabled: true, userId: 'u1' }))
     await waitFor(() => expect(result.current.resuming).toBe(false))
 
-    expect(mockClearActivePracticeSession).toHaveBeenCalledWith('u1')
+    expect(mockClearActivePracticeSessionIfMatches).toHaveBeenCalledWith('u1', 'session-1')
     expect(mockClearDrillProgress).toHaveBeenCalledWith('session-1')
   })
 
@@ -252,6 +262,34 @@ describe('useAdHocPracticeSession', () => {
   it('classifies not_found and forbidden resume errors as permanent', () => {
     expect(classifyResumeError(new ApiError({ kind: 'not_found', userMessage: 'x' }))).toBe('permanent')
     expect(classifyResumeError(new ApiError({ kind: 'forbidden', userMessage: 'x' }))).toBe('permanent')
+  })
+
+  // Rev2 blocker 4: v119's invalid_question_set is a permanent, per-
+  // session server-data-integrity failure -- classified permanent even
+  // though its ApiError.kind is 'server' (the same kind an ordinary infra
+  // 5xx also carries), by checking the machine-readable `code` client.ts
+  // now preserves through serverError(raw, status, code) rather than
+  // discarding it. Every OTHER server-kind error (no code, or an unknown/
+  // different code) must still classify transient -- this is deliberately
+  // narrow, not "every server error is permanent."
+  it('classifies a server error with code=invalid_question_set as permanent, but an ordinary server error as transient', () => {
+    expect(classifyResumeError(new ApiError({ kind: 'server', userMessage: 'x', code: 'invalid_question_set' }))).toBe('permanent')
+    expect(classifyResumeError(new ApiError({ kind: 'server', userMessage: 'x' }))).toBe('transient')
+    expect(classifyResumeError(new ApiError({ kind: 'server', userMessage: 'x', code: 'some_other_code' }))).toBe('transient')
+  })
+
+  it('an invalid_question_set resume failure resolves resumeErrorKind to permanent end-to-end through the hook', async () => {
+    mockResumePractice.mockRejectedValue(
+      new ApiError({ kind: 'server', status: 500, code: 'invalid_question_set', userMessage: 'Something went wrong on our end. Please try again in a moment.' })
+    )
+
+    const { result } = await renderHook(() => useAdHocPracticeSession('session-1', { enabled: true, userId: 'u1' }))
+    await waitFor(() => expect(result.current.resuming).toBe(false))
+
+    expect(result.current.resumeErrorKind).toBe('permanent')
+    // The learner-facing message must stay generic/safe -- never the raw
+    // server code or a Postgres-shaped message.
+    expect(result.current.resumeError?.userMessage).not.toMatch(/invalid_question_set|postgres|PGRST/i)
   })
 
   // 41. transient Resume failure does not silently discard local session
@@ -267,7 +305,7 @@ describe('useAdHocPracticeSession', () => {
 
     expect(result.current.resumeError?.kind).toBe('network')
     expect(result.current.resumeErrorKind).toBe('transient')
-    expect(mockClearActivePracticeSession).not.toHaveBeenCalled()
+    expect(mockClearActivePracticeSessionIfMatches).not.toHaveBeenCalled()
     expect(mockClearDrillProgress).not.toHaveBeenCalled()
   })
 
@@ -284,8 +322,91 @@ describe('useAdHocPracticeSession', () => {
       await result.current.removeSavedSession()
     })
 
-    expect(mockClearActivePracticeSession).toHaveBeenCalledWith('u1')
+    expect(mockClearActivePracticeSessionIfMatches).toHaveBeenCalledWith('u1', 'session-1')
     expect(mockClearDrillProgress).toHaveBeenCalledWith('session-1')
     expect(mockCompletePractice).not.toHaveBeenCalled()
+  })
+
+  // Rev2 blocker 3: ordering -- completeResult (which renders the
+  // completion screen + "Back to Practice" CTA) must never be published
+  // before local cleanup has actually settled. Uses a manually-controlled
+  // deferred promise for clearActivePracticeSessionIfMatches to prove the
+  // ordering, not just the eventual outcome.
+  describe('cleanup-before-render ordering (Rev2 blocker 3)', () => {
+    it('completeResult stays null while local cleanup is still pending', async () => {
+      mockResumePractice.mockResolvedValue(resumeFixture())
+      mockCompletePractice.mockResolvedValue({ session_id: 'session-1', score: 2, total: 2, completed_at: '2026-01-01T00:00:00Z', already_completed: false })
+      // Never resolves within this test -- proves completeResult cannot
+      // become set while this cleanup call is still outstanding. The
+      // separate "eventual success" path (cleanup resolves normally, then
+      // completeResult gets set) is already proven by the earlier "a
+      // successful complete() clears both the active-session pointer and
+      // local ratings" test, which runs the full flow without pausing.
+      mockClearActivePracticeSessionIfMatches.mockReturnValue(new Promise(() => {}))
+
+      const { result } = await renderHook(() => useAdHocPracticeSession('session-1', { enabled: true, userId: 'u1' }))
+      await waitFor(() => expect(result.current.resuming).toBe(false))
+
+      await act(async () => {
+        result.current.complete()
+        await Promise.resolve()
+      })
+
+      // Let complete() run up through its awaits on completePractice() and
+      // clearDrillProgress(), landing on the still-pending clear-pointer
+      // call -- waitFor's own polling (rather than a guessed microtask
+      // count) is what actually proves we've reached that point.
+      await waitFor(() => expect(mockClearActivePracticeSessionIfMatches).toHaveBeenCalledWith('u1', 'session-1'))
+      expect(result.current.completeResult).toBeNull()
+      expect(result.current.completing).toBe(true)
+    })
+
+    it('alreadyCompletedOnResume stays false while local cleanup is still pending on an already-completed resume, then becomes true once cleanup settles', async () => {
+      let resolveClear: (value: unknown) => void = () => {}
+      mockClearActivePracticeSessionIfMatches.mockReturnValue(
+        new Promise((resolve) => {
+          resolveClear = resolve
+        })
+      )
+      mockResumePractice.mockResolvedValue(resumeFixture({ completed_at: '2026-01-01T00:00:00Z' }))
+
+      const { result } = await renderHook(() => useAdHocPracticeSession('session-1', { enabled: true, userId: 'u1' }))
+
+      // resuming stays true (and alreadyCompletedOnResume stays false)
+      // until the resume() callback's cleanup awaits actually settle.
+      await waitFor(() => expect(mockResumePractice).toHaveBeenCalled())
+      expect(result.current.alreadyCompletedOnResume).toBe(false)
+
+      await act(async () => {
+        resolveClear(undefined)
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      await waitFor(() => expect(result.current.alreadyCompletedOnResume).toBe(true))
+    })
+
+    it('a successful server completion still resolves to completeResult even when local cleanup internally no-ops', async () => {
+      mockResumePractice.mockResolvedValue(resumeFixture())
+      mockCompletePractice.mockResolvedValue({ session_id: 'session-1', score: 2, total: 2, completed_at: '2026-01-01T00:00:00Z', already_completed: false })
+      // The real clearDrillProgress/clearActivePracticeSessionIfMatches
+      // catch their own AsyncStorage failures internally and always
+      // resolve (never reject) -- this is that same "no-op, but still
+      // resolves" contract from the hook's point of view, proving
+      // complete() never turns an already-successful server completion
+      // into a completeError just because local cleanup had nothing
+      // useful to do.
+      mockClearActivePracticeSessionIfMatches.mockResolvedValue(undefined)
+
+      const { result } = await renderHook(() => useAdHocPracticeSession('session-1', { enabled: true, userId: 'u1' }))
+      await waitFor(() => expect(result.current.resuming).toBe(false))
+
+      await act(async () => {
+        await result.current.complete()
+      })
+
+      expect(result.current.completeError).toBeNull()
+      expect(result.current.completeResult).toEqual({ score: 2, total: 2, alreadyCompleted: false })
+    })
   })
 })

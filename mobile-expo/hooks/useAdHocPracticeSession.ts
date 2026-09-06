@@ -2,7 +2,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import type { MobileAcsTaskRef, MobilePracticeRevealResponse, SelfRating } from '../../shared/mobile-dto'
 import { completePractice, resumePractice, revealQuestion } from '../lib/api/practice'
 import { ApiError, logDevError } from '../lib/api/errors'
-import { clearActivePracticeSession } from '../lib/activePracticeStorage'
+import { clearActivePracticeSessionIfMatches } from '../lib/activePracticeStorage'
 import { clearDrillProgress, loadDrillProgress, saveDrillProgress } from '../lib/drillProgressStorage'
 import {
   allQuestionsRated,
@@ -36,22 +36,26 @@ interface SessionMeta {
 // a stale pointer, but also not to silently discard a valid session on a
 // transient failure. Classified from the SAME normalized ApiError.kind
 // every other screen already renders from (`session_not_found` ->
-// 'not_found', `not_your_session` -> 'forbidden') -- v119's
-// `invalid_question_set` case currently also surfaces as a generic 500
-// ('server' kind, no stable code passed through by the existing error-
-// normalization pipeline -- see mobile-practice/index.ts's resume error
-// mapping), which is indistinguishable here from a transient
-// infrastructure failure. Treating it as transient (retry-only) is the
-// conservative, honest choice: it never risks discarding a resumable
-// session pointer on a real infra blip, at the cost of a genuinely
-// corrupt (very rare) server-side question set needing a manual "Remove
-// Saved Session" tap after the learner sees repeated retry failures,
-// rather than being offered it immediately.
+// 'not_found', `not_your_session` -> 'forbidden').
+//
+// Rev2 blocker 4: v119's `invalid_question_set` case is a genuine,
+// permanent server-data-integrity failure for that ONE stored session
+// (an empty/duplicate/dangling stored question_ids array) -- it is not a
+// transient infra blip, and offering only Retry forever would strand the
+// learner behind permanently disabled Quick/Standard/Weak-Area buttons
+// (Sprint 1B.1 section 12 explicitly forbids that). client.ts's
+// invokeMobileFunction now preserves the Edge Function's machine-readable
+// `code` even for 5xx responses (errors.ts's serverError(raw, status,
+// code)), so this specific code is checked before falling back to the
+// kind-only classification. Every OTHER 5xx (an actual infra failure, or
+// any future/unknown server code) still classifies transient -- this is
+// deliberately narrow, not "every server error is permanent."
 export type ResumeErrorKind = 'permanent' | 'transient'
 
 export function classifyResumeError(error: ApiError | null): ResumeErrorKind | null {
   if (!error) return null
   if (error.kind === 'not_found' || error.kind === 'forbidden') return 'permanent'
+  if (error.kind === 'server' && error.code === 'invalid_question_set') return 'permanent'
   return 'transient'
 }
 
@@ -105,11 +109,21 @@ export function useAdHocPracticeSession(sessionId: string, options: UseAdHocPrac
         // stale local pointer/ratings for THIS session are cleared here
         // (not left for the learner to clear manually) since there is
         // nothing left to resume toward.
-        setAlreadyCompletedOnResume(true)
-        setResumedCompletedAt(result.completed_at)
+        //
+        // Rev2 blockers 2 + 3: clearActivePracticeSessionIfMatches only
+        // removes the stored pointer if it still points at THIS sessionId
+        // -- a deep-linked older/already-completed session must never
+        // wipe out a DIFFERENT, still-unfinished session's saved pointer.
+        // And alreadyCompletedOnResume (the flag the screen actually
+        // renders on) is only published AFTER both cleanup awaits settle,
+        // so the "already complete" screen can never appear while a
+        // stale pointer or rating cache might still exist underneath it
+        // on a slower device.
         setSessionMeta({ mode: result.mode, startedAt: result.started_at, targetAcsTasks: result.target_acs_tasks })
-        if (options.userId) await clearActivePracticeSession(options.userId)
+        if (options.userId) await clearActivePracticeSessionIfMatches(options.userId, sessionId)
         await clearDrillProgress(sessionId)
+        setResumedCompletedAt(result.completed_at)
+        setAlreadyCompletedOnResume(true)
         return
       }
 
@@ -191,9 +205,19 @@ export function useAdHocPracticeSession(sessionId: string, options: UseAdHocPrac
     try {
       const responses = buildCompleteResponses(state)
       const result = await completePractice(sessionId, responses)
-      setCompleteResult({ score: result.score, total: result.total, alreadyCompleted: result.already_completed })
+      // Rev2 blocker 3: perform local cleanup BEFORE publishing
+      // completeResult -- these storage helpers already fail safe/no-op
+      // internally, so awaiting them can never turn a successful server
+      // completion into a failure, but publishing completeResult (which
+      // renders the completion screen and its "Back to Practice" CTA)
+      // before cleanup finishes let a fast tap on a slower device return
+      // to the hub while a stale active-session pointer still existed,
+      // making a completed session's "Continue Practice" card briefly
+      // reappear. Blocker 2: session-matched, never a blind per-user
+      // clear -- this must only ever remove THIS session's own pointer.
       await clearDrillProgress(sessionId)
-      if (options.userId) await clearActivePracticeSession(options.userId)
+      if (options.userId) await clearActivePracticeSessionIfMatches(options.userId, sessionId)
+      setCompleteResult({ score: result.score, total: result.total, alreadyCompleted: result.already_completed })
     } catch (err) {
       logDevError('useAdHocPracticeSession.complete', err)
       setCompleteError(
@@ -211,7 +235,10 @@ export function useAdHocPracticeSession(sessionId: string, options: UseAdHocPrac
   // never resolve), so the learner isn't stranded behind disabled
   // Quick/Standard/Weak-Area buttons indefinitely.
   const removeSavedSession = useCallback(async () => {
-    if (options.userId) await clearActivePracticeSession(options.userId)
+    // Blocker 2: session-matched -- never clear a different session's
+    // saved pointer just because THIS route's resume turned out to be
+    // permanently non-resumable.
+    if (options.userId) await clearActivePracticeSessionIfMatches(options.userId, sessionId)
     await clearDrillProgress(sessionId)
   }, [sessionId, options.userId])
 

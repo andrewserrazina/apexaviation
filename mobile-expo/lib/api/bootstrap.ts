@@ -5,7 +5,7 @@
 // of this exact contract.
 import type { MobileBootstrapDTO } from '../../../shared/mobile-dto'
 import { invokeMobileFunction } from './client'
-import { assertShape, isNullableString, isPlainObject, isValidReadinessSummaryOrNull, isValidTodaysDrillOrNull } from './validate'
+import { assertShape, isNullableString, isPlainObject, isValidReadinessSummaryOrNull, isValidTodaysDrillOrNull, isValidWeakArea } from './validate'
 
 // Sprint 1A Rev3 section 3: checks the exact nested fields Home actually
 // reads -- not the full DTO shape, and not a schema-validation
@@ -39,7 +39,14 @@ function isValidBootstrap(data: unknown): data is MobileBootstrapDTO {
     return false
   }
 
-  if (!isPlainObject(home) || !isValidTodaysDrillOrNull(home.todays_drill) || !Array.isArray(home.weak_areas)) return false
+  if (
+    !isPlainObject(home) ||
+    !isValidTodaysDrillOrNull(home.todays_drill) ||
+    !Array.isArray(home.weak_areas) ||
+    !home.weak_areas.every(isValidWeakArea)
+  ) {
+    return false
+  }
 
   return true
 }

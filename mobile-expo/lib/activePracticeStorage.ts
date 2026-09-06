@@ -35,19 +35,38 @@ export interface ActivePracticeSession {
   taskCode?: string
 }
 
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0
+}
+
+// Rev2 storage hardening: a stored record with a non-integer, zero, or
+// negative sessionSize, or an empty title/startedAt, is exactly as
+// unusable to the UI as one missing the field entirely (Continue
+// Practice's "N of `sessionSize` rated" line, the header label) -- so
+// these now fail the same way a missing field already did, rather than
+// silently rendering "0 of 0 rated" or a blank title. This stays local
+// corruption defense only, not a schema-validation library: the optional
+// acsTaskId/areaCode/taskCode fields, when present, only need to be
+// non-empty strings too.
 function isActivePracticeSession(value: unknown): value is ActivePracticeSession {
   if (typeof value !== 'object' || value === null) return false
   const v = value as Record<string, unknown>
-  return (
-    typeof v.sessionId === 'string' &&
-    v.sessionId.length > 0 &&
-    typeof v.userId === 'string' &&
-    v.userId.length > 0 &&
-    (v.kind === 'quick' || v.kind === 'standard' || v.kind === 'weak_area') &&
-    typeof v.title === 'string' &&
-    typeof v.startedAt === 'string' &&
-    typeof v.sessionSize === 'number'
-  )
+  if (
+    !isNonEmptyString(v.sessionId) ||
+    !isNonEmptyString(v.userId) ||
+    (v.kind !== 'quick' && v.kind !== 'standard' && v.kind !== 'weak_area') ||
+    !isNonEmptyString(v.title) ||
+    !isNonEmptyString(v.startedAt) ||
+    typeof v.sessionSize !== 'number' ||
+    !Number.isInteger(v.sessionSize) ||
+    v.sessionSize <= 0
+  ) {
+    return false
+  }
+  if (v.acsTaskId !== undefined && !isNonEmptyString(v.acsTaskId)) return false
+  if (v.areaCode !== undefined && !isNonEmptyString(v.areaCode)) return false
+  if (v.taskCode !== undefined && !isNonEmptyString(v.taskCode)) return false
+  return true
 }
 
 export async function saveActivePracticeSession(session: ActivePracticeSession): Promise<void> {
@@ -87,5 +106,31 @@ export async function clearActivePracticeSession(userId: string): Promise<void> 
     // No-op -- a stale leftover pointer is harmless; the next
     // loadActivePracticeSession() call for this user will just resume (or
     // fail closed on) whatever it finds.
+  }
+}
+
+// Rev2 blocker 2: the per-user pointer is a single slot, not one per
+// session -- a blind clearActivePracticeSession(userId) call from an ad-
+// hoc session route unconditionally deletes WHATEVER is currently stored
+// for that user, even if it belongs to a completely different session
+// than the one the route is actually acting on. A learner with saved
+// active pointer "Session B" who deep-links to an older, already-
+// completed (or otherwise non-resumable) "Session A" would have Session
+// B's pointer silently deleted -- orphaning their real, still-unfinished
+// practice.
+//
+// This compare-and-clear only removes the stored pointer when it
+// actually still points at the caller's own sessionId; a mismatched or
+// absent pointer is left untouched. Use this (never the blind
+// clearActivePracticeSession) from anywhere acting on one specific
+// session_id: successful completion, already-completed-on-resume
+// cleanup, and "Remove Saved Session."
+export async function clearActivePracticeSessionIfMatches(userId: string, sessionId: string): Promise<void> {
+  try {
+    const current = await loadActivePracticeSession(userId)
+    if (!current || current.sessionId !== sessionId) return
+    await AsyncStorage.removeItem(KEY_PREFIX + userId)
+  } catch {
+    // No-op, matching clearActivePracticeSession's existing failure mode.
   }
 }

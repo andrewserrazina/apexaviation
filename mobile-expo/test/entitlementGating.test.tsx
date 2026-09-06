@@ -39,6 +39,7 @@ jest.mock('../lib/activePracticeStorage', () => ({
   loadActivePracticeSession: jest.fn().mockResolvedValue(null),
   saveActivePracticeSession: jest.fn(),
   clearActivePracticeSession: jest.fn(),
+  clearActivePracticeSessionIfMatches: jest.fn(),
 }))
 jest.mock('../lib/drillProgressStorage', () => ({
   loadDrillProgress: jest.fn().mockResolvedValue(null),
