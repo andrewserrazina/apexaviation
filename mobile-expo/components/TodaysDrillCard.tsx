@@ -13,14 +13,23 @@ interface TodaysDrillCardProps {
   onPress: () => void
 }
 
+// Physical-device fix: "View Summary" promised a completion summary the
+// current bootstrap/start contract can't actually show -- revisiting a
+// completed drill only ever re-renders the same "this drill is already
+// complete" acknowledgment, never real historical detail (score, which
+// questions, etc.). Rather than promise a summary Sprint 1A can't
+// deliver, the completed state is now an honest, non-interactive
+// "Completed" label -- a real historical-summary screen is Sprint 1B+,
+// not a backend endpoint added just to backfill this copy.
 const STATUS_COPY: Record<DrillStatus, { title: string; cta: string }> = {
   pending: { title: "Today's Drill", cta: 'Start Drill' },
   in_progress: { title: "Today's Drill", cta: 'Continue Drill' },
-  completed: { title: "Today's Drill — Done", cta: 'View Summary' },
+  completed: { title: "Today's Drill — Done", cta: 'Completed' },
 }
 
 export function TodaysDrillCard({ status, estimatedMinutes, targetAcsTasks, onPress }: TodaysDrillCardProps) {
   const copy = STATUS_COPY[status]
+  const isCompleted = status === 'completed'
 
   return (
     <Card>
@@ -41,8 +50,9 @@ export function TodaysDrillCard({ status, estimatedMinutes, targetAcsTasks, onPr
       <Button
         label={copy.cta}
         onPress={onPress}
-        variant={status === 'completed' ? 'ghost' : 'primary'}
-        accessibilityHint={status === 'completed' ? 'View a summary of your completed drill' : 'Begin today’s practice drill'}
+        variant={isCompleted ? 'ghost' : 'primary'}
+        disabled={isCompleted}
+        accessibilityHint={isCompleted ? undefined : 'Begin today’s practice drill'}
       />
     </Card>
   )
