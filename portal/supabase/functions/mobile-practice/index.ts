@@ -51,6 +51,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { requirePremiumAccess, PremiumAccessError } from '../_shared/premiumAccess.ts'
+import { validateAcsTaskId } from './validateAcsTaskId.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -89,7 +90,17 @@ serve(async (req) => {
     const action = body?.action
 
     if (action === 'start') {
-      const acsTaskId = typeof body?.acs_task_id === 'string' ? body.acs_task_id : null
+      // Rev2 (independent review, Blocker 3): distinguish "acs_task_id
+      // omitted" (-> general practice, unchanged) from "acs_task_id
+      // explicitly supplied but invalid" (-> a clean 400, NEVER a silent
+      // fallback to general practice). Logic lives in validateAcsTaskId()
+      // so it is unit-testable under plain Node -- see
+      // test/v119_validateAcsTaskId.test.mjs.
+      const acsTaskIdValidation = validateAcsTaskId(body?.acs_task_id)
+      if (!acsTaskIdValidation.ok) {
+        return json({ error: 'acs_task_id must be a valid ACS task id when supplied' }, 400)
+      }
+      const acsTaskId = acsTaskIdValidation.acsTaskId
       const sessionSize = Number.isInteger(body?.session_size) && body.session_size > 0 && body.session_size <= 20
         ? body.session_size
         : DEFAULT_SESSION_SIZE
@@ -101,12 +112,17 @@ serve(async (req) => {
       // unrelated general session.
       let candidates: Array<{ id: string; question: string; category: string | null; acs_reference: string | null }>
       if (acsTaskId) {
+        // Rev2 (independent review, Blocker 2): no .limit() here. This
+        // query must resolve EVERY mapped content id for the task before
+        // eligibility filtering happens -- truncating first could pick an
+        // arbitrary subset that happens to be all-scenario or
+        // wrong-exam-type, silently 404ing a task that genuinely has
+        // eligible content further down the mapping list.
         const { data: mapped, error: mapErr } = await serviceClient
           .from('content_acs_mappings')
           .select('content_id')
           .eq('content_type', 'dpe_question')
           .eq('acs_task_id', acsTaskId)
-          .limit(sessionSize * 3)
         if (mapErr) throw mapErr
         const mappedIds = (mapped || []).map((r: { content_id: string }) => r.content_id)
         if (mappedIds.length === 0) {
@@ -231,10 +247,13 @@ serve(async (req) => {
       })
       if (error) {
         const msg = error.message || ''
-        const codeMatch = msg.match(/^(session_not_found|not_your_session|invalid_question_set):\s*(.*)$/)
+        // Rev2: premium_access_required is the RPC's own direct-caller
+        // entitlement re-check (defense in depth -- requirePremiumAccess()
+        // above already gates the normal Edge Function path).
+        const codeMatch = msg.match(/^(session_not_found|not_your_session|invalid_question_set|premium_access_required):\s*(.*)$/)
         if (codeMatch) {
           const [, code, detail] = codeMatch
-          const status = code === 'session_not_found' ? 404 : code === 'not_your_session' ? 403 : 500
+          const status = code === 'session_not_found' ? 404 : code === 'not_your_session' ? 403 : code === 'premium_access_required' ? 403 : 500
           return json({ error: detail || code, code }, status)
         }
         throw error

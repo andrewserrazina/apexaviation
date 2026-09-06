@@ -12,3 +12,8 @@ dist/
 .design-sync/node_modules
 .ds-sync/
 ds-bundle/
+
+# test/run_security_regression_tests.sh compiles validateAcsTaskId.ts to
+# plain JS here so it can be unit-tested under Node (v119 Rev2) -- never
+# a tracked artifact.
+test/__v119_compiled/

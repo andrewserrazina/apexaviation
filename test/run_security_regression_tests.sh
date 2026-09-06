@@ -1428,6 +1428,117 @@ expect_rows "V119.21: zero 'mobile_practice_completed' XP rows exist anywhere in
   "select count(*)::text from public.xp_ledger where event_type='mobile_practice_completed';" "0"
 
 echo
+echo "########## 42. V119 REV2 (INDEPENDENT REVIEW): DIRECT-RPC ENTITLEMENT, TARGETED-MAPPING TRUNCATION, EXPLICIT-INVALID acs_task_id ##########"
+echo "=== Re-applying v119 (Rev2 -- resume_mobile_practice_session() now re-checks entitlement before any session lookup) ==="
+"${PSQL_BASE[@]}" -v ON_ERROR_STOP=1 -f portal/supabase-portal-schema-v119-practice-resume.sql >/tmp/apex_test_v119_rev2.log 2>&1 || { echo "V119 REV2 MIGRATION FAILED"; cat /tmp/apex_test_v119_rev2.log; exit 1; }
+
+echo "--- BLOCKER 1: resume_mobile_practice_session() is granted directly to 'authenticated' -- it must re-check the SAME"
+echo "authoritative entitlement predicate as requirePremiumAccess() (checkride_prep_unlocked=true OR a portal_access_"
+echo "purchases row exists), BEFORE any session lookup, so a direct caller can never use response shape to distinguish"
+echo "an existing session from a missing one or someone else's while unentitled. ---"
+
+V119R2_MEMBER=00000000-0000-0000-0000-000000000085
+run_sql postgres "" \
+  "insert into public.profiles (id, email, full_name, role, checkride_prep_unlocked, timezone) values ('$V119R2_MEMBER','v119f@test.local','V119 Rev2 Member','student',true,'UTC') on conflict (id) do nothing;" >/dev/null
+V119R2_SESSION=$(run_sql postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$V119R2_MEMBER','dpe_questions','[\"v119_map_q1\",\"v119_map_q2\"]'::jsonb, 2, now()) returning id::text;" | tail -1 | xargs)
+
+expect_success "REV2.1: an entitled owner (checkride_prep_unlocked=true) can resume their own session" authenticated "$V119R2_MEMBER" \
+  "select * from public.resume_mobile_practice_session('$V119R2_SESSION');"
+
+run_sql service_role "" "update public.profiles set checkride_prep_unlocked=false where id='$V119R2_MEMBER';" >/dev/null
+expect_rows "REV2.1b: confirmed no portal_access_purchases row exists yet for this member (the denial below is genuinely because of zero entitlement, not incidental)" postgres "" \
+  "select count(*)::text from public.portal_access_purchases where profile_id='$V119R2_MEMBER';" "0"
+
+expect_error_matching "REV2.2: a direct authenticated RPC call after entitlement is removed is denied -- premium_access_required, checked before session lookup" authenticated "$V119R2_MEMBER" \
+  "select * from public.resume_mobile_practice_session('$V119R2_SESSION');" "premium_access_required"
+
+V119R2_DENIED_OUTPUT=$(run_sql authenticated "$V119R2_MEMBER" "select * from public.resume_mobile_practice_session('$V119R2_SESSION');")
+if echo "$V119R2_DENIED_OUTPUT" | grep -q "v119_map_q1\|v119_map_q2"; then
+  echo "FAIL: REV2.3: a denied resume must return NO session/question data -- found leaked question ids in the error response"; FAIL=$((FAIL+1)); FAILURES+=("REV2.3 denied resume must not leak question data")
+else
+  echo "PASS: REV2.3: a denied resume returns no session/question data (the exception aborts the whole statement -- no partial row set is ever returned)"; PASS=$((PASS+1))
+fi
+
+expect_rows "REV2.4: the denied resume attempt created/mutated nothing -- the session's question_ids are byte-identical to what was stored, still uncompleted" postgres "" \
+  "select (question_ids = '[\"v119_map_q1\",\"v119_map_q2\"]'::jsonb and total=2 and completed_at is null)::text from public.portal_practice_attempts where id='$V119R2_SESSION';" "true"
+
+run_sql postgres "" \
+  "insert into public.portal_access_purchases (profile_id, email, stripe_session_id, amount_cents, tier) values ('$V119R2_MEMBER','v119f@test.local','v119r2_stripe_session_1',29900,'standard') on conflict (stripe_session_id) do nothing;" >/dev/null
+expect_success "REV2.5: profile flag is FALSE but a portal_access_purchases row now exists -- resume IS allowed (the RPC mirrors requirePremiumAccess()'s OR predicate exactly, never a tightened checkride_prep_unlocked-only rule)" authenticated "$V119R2_MEMBER" \
+  "select * from public.resume_mobile_practice_session('$V119R2_SESSION');"
+
+echo
+echo "--- BLOCKER 2: targeted start's content_acs_mappings fetch must resolve EVERY mapped content id for the requested"
+echo "task before eligibility filtering, never truncate to an arbitrary early subset that could hide eligible content"
+echo "further down the mapping list. ---"
+
+run_sql postgres "" \
+  "insert into public.acs_tasks (acs_version_id, area_code, area_title, task_code, task_title, sort_order)
+   select v.id, 'ZV4', 'V119 Test Area (Large Mapping)', 'LARGE', 'V119 Large Mapping Task', 9004 from public.acs_versions v where v.certificate_type='private_pilot' and v.version_code='FAA-S-ACS-6C'
+   on conflict (acs_version_id, area_code, task_code) do nothing;" >/dev/null
+V119_TASK_LARGE="(select t.id from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot' and v.version_code='FAA-S-ACS-6C' and t.area_code='ZV4' and t.task_code='LARGE')"
+
+run_sql postgres "" \
+  "insert into public.dpe_questions (id, category, question, model_answer, common_mistakes, dpe_evaluating, real_world_application, acs_reference, is_scenario, exam_type)
+   select 'v119r2_bad_' || g, 'test_category', 'V119 Rev2 Bad Q' || g || '?', 'A', null, null, null, 'V119 Rev2 fixture', true, 'private_pilot'
+   from generate_series(1,34) g
+   on conflict (id) do nothing;" >/dev/null
+run_sql postgres "" \
+  "insert into public.dpe_questions (id, category, question, model_answer, common_mistakes, dpe_evaluating, real_world_application, acs_reference, is_scenario, exam_type) values
+     ('v119r2_eligible_1', 'test_category', 'V119 Rev2 Eligible Q?', 'A', null, null, null, 'V119 Rev2 fixture', false, 'private_pilot')
+   on conflict (id) do nothing;" >/dev/null
+run_sql postgres "" \
+  "insert into public.content_acs_mappings (content_type, content_id, acs_task_id)
+   select 'dpe_question', 'v119r2_bad_' || g, $V119_TASK_LARGE from generate_series(1,34) g
+   union all
+   select 'dpe_question', 'v119r2_eligible_1', $V119_TASK_LARGE
+   on conflict (content_type, content_id, acs_task_id) do nothing;" >/dev/null
+
+expect_rows "REV2.6: this task has 35 mapped questions -- more than the old .limit(session_size*3) truncation point (30 at the default session_size=10) -- yet exactly ONE of them is eligible (private_pilot, non-scenario)" postgres "" \
+  "select (
+     (select count(*) from public.content_acs_mappings where content_type='dpe_question' and acs_task_id=$V119_TASK_LARGE) = 35
+     and
+     (select count(*) from public.dpe_questions where id in (select content_id from public.content_acs_mappings where content_type='dpe_question' and acs_task_id=$V119_TASK_LARGE) and exam_type='private_pilot' and is_scenario=false) = 1
+   )::text;" "true"
+
+V119R2_MAPPING_FETCH_BLOCK=$(sed -n "/if (acsTaskId) {/,/if (mapErr) throw mapErr/p" portal/supabase/functions/mobile-practice/index.ts | head -20 | grep -v '^\s*//')
+if echo "$V119R2_MAPPING_FETCH_BLOCK" | grep -q "\.limit("; then
+  echo "FAIL: REV2.7 (source check): the targeted content_acs_mappings fetch still truncates via .limit() before eligibility filtering -- the one eligible question in REV2.6's 35-row mapped set could be silently missed depending on scan order"
+  FAIL=$((FAIL+1)); FAILURES+=("REV2.7 targeted mapping fetch must not truncate before eligibility filtering")
+else
+  echo "PASS: REV2.7 (source check): the targeted content_acs_mappings fetch has no .limit() -- ALL mapped content ids are resolved before the dpe_questions eligibility filter runs, so REV2.6's one eligible question among 35 mapped ids is always found regardless of physical row order"
+  PASS=$((PASS+1))
+fi
+
+echo
+echo "--- BLOCKER 3: an explicitly-supplied invalid acs_task_id must be REJECTED (400), never silently treated as"
+echo "general practice. This decision logic (validateAcsTaskId(), extracted to its own dependency-free module"
+echo "specifically so it is unit-testable) is plain TypeScript with zero Deno-specific imports -- unlike the rest of"
+echo "the Edge Function, it runs directly under plain Node, so these are real executions of the actual shipped logic,"
+echo "not a hand-written duplicate and not a database-level proxy. This still is NOT an Edge Function integration"
+echo "test -- it does not exercise the HTTP layer, the 400 status code mapping, or requirePremiumAccess() -- only the"
+echo "acs_task_id decision function itself. ---"
+
+rm -rf test/__v119_compiled
+if tsc --module esnext --target es2020 --moduleResolution bundler --outDir test/__v119_compiled portal/supabase/functions/mobile-practice/validateAcsTaskId.ts > /tmp/v119_tsc_compile.log 2>&1; then
+  V119R2_NODE_OUTPUT=$(node test/v119_validateAcsTaskId.test.mjs 2>&1)
+  V119R2_NODE_RC=$?
+  echo "$V119R2_NODE_OUTPUT"
+  V119R2_NODE_PASS_COUNT=$(echo "$V119R2_NODE_OUTPUT" | grep -c "^PASS:")
+  V119R2_NODE_FAIL_COUNT=$(echo "$V119R2_NODE_OUTPUT" | grep -c "^FAIL:")
+  PASS=$((PASS + V119R2_NODE_PASS_COUNT))
+  if [ "$V119R2_NODE_RC" -ne 0 ] || [ "$V119R2_NODE_FAIL_COUNT" -gt 0 ]; then
+    FAIL=$((FAIL + (V119R2_NODE_FAIL_COUNT > 0 ? V119R2_NODE_FAIL_COUNT : 1)))
+    FAILURES+=("REV2.8-12 validateAcsTaskId() Node unit tests")
+  fi
+else
+  echo "FAIL: REV2.8-12: validateAcsTaskId.ts failed to compile"; cat /tmp/v119_tsc_compile.log
+  FAIL=$((FAIL+1)); FAILURES+=("REV2.8-12 validateAcsTaskId.ts compile")
+fi
+rm -rf test/__v119_compiled
+
+echo
 echo "=================================================="
 echo "RESULTS: $PASS passed, $FAIL failed"
 if [ $FAIL -gt 0 ]; then

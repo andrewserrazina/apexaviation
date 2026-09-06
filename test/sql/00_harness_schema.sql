@@ -78,6 +78,24 @@ alter table public.profiles enable row level security;
 create policy "Users can view their own profile" on public.profiles for select using (auth.uid() = id);
 create policy "Members can update their own profile" on public.profiles for update using (auth.uid() = id) with check (auth.uid() = id);
 
+-- Rev2 (v119 independent review, Blocker 1): needed so
+-- resume_mobile_practice_session()'s entitlement re-check (mirroring
+-- requirePremiumAccess()'s exact OR predicate) can be tested. Columns
+-- copied from the real table (portal-schema-v3.sql) -- profile_id,
+-- stripe_session_id (unique), amount_cents, tier are all it actually
+-- references.
+create table public.portal_access_purchases (
+  id uuid primary key default gen_random_uuid(),
+  profile_id uuid references public.profiles(id),
+  email text not null,
+  full_name text,
+  stripe_session_id text not null unique,
+  amount_cents integer not null,
+  tier text not null check (tier in ('founding', 'standard')),
+  created_at timestamptz not null default now()
+);
+alter table public.portal_access_purchases enable row level security;
+
 create table public.pilot_ranks (
   rank_key text primary key,
   min_xp integer not null

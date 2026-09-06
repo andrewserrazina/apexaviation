@@ -1,6 +1,7 @@
 # Sprint 1B Stage 1 -- v119 Practice Contract Hardening Report
 
-Status: **v119 source + tests complete. NOT DEPLOYED. Source-controlled only.**
+Status: **v119 Rev2 complete. NOT DEPLOYED. Source-controlled only.** See section 10 for the Rev2
+independent-review findings and fixes; sections 1-9 are the original (Rev1) writeup, left intact.
 
 ## 1. Sprint 1A merge to main
 
@@ -217,6 +218,175 @@ Every pre-existing assertion from the prior 322-test suite still passes unchange
   native Sprint 1B UI work began. All of the above ran only against the local disposable
   `apex_test` harness database.
 
+## 10. Rev2 (independent review)
+
+Independent review found three defects in the Rev1 source, all confirmed real and fixed below.
+Architecture was approved; no deployment occurred in Rev1 and none has occurred in Rev2 either.
+
+### Blocker 1 -- direct-RPC entitlement bypass
+
+`resume_mobile_practice_session()` is granted directly to `authenticated`, not only reachable
+through the Edge Function. Rev1 checked `auth.uid()`, session existence, ownership, and
+question-set integrity, but never re-checked current Checkride Prep entitlement -- a direct
+authenticated PostgREST/supabase-js caller with a lapsed or never-purchased entitlement could still
+resume a session, bypassing the Edge Function's `requirePremiumAccess()` call entirely (the same
+class of gap independently caught and fixed during v118).
+
+**Fix:** the RPC now re-checks, before any session lookup, the exact same authoritative predicate
+`requirePremiumAccess()` uses -- not a different or narrower rule:
+
+```
+profiles.checkride_prep_unlocked = true
+OR
+a portal_access_purchases row exists for that profile
+```
+
+On failure it raises `premium_access_required: Checkride Prep is not unlocked on this account`,
+which the Edge Function maps to a 403 -- exactly like `session_not_found` -> 404 and
+`not_your_session` -> 403 already did. The check runs before the session is looked up, so an
+unentitled direct caller gets the identical response regardless of whether the session exists,
+belongs to someone else, or is theirs -- response shape can never be used to enumerate sessions.
+The normal Edge Function path is unchanged and still gates it too (defense in depth, as directed).
+
+**Tests added (`test/run_security_regression_tests.sh`, section 42, all passing):**
+
+- **REV2.1** -- an entitled owner (`checkride_prep_unlocked=true`) resumes successfully.
+- **REV2.1b** -- confirms zero `portal_access_purchases` rows exist yet, so the denial in REV2.2 is
+  genuinely because of zero entitlement, not incidental.
+- **REV2.2** -- after entitlement is revoked (`checkride_prep_unlocked=false`, via `service_role` --
+  a `lock_profile_privileged_columns` trigger in the harness, mirroring production, silently
+  reverts that column when written by any non-`service_role`/non-admin actor, matching how section
+  40's own entitlement-loss test already had to do this), a direct authenticated RPC call is
+  denied with `premium_access_required`.
+- **REV2.3** -- the denied call's output contains no leaked question ids (a raised exception aborts
+  the whole statement in Postgres -- there is no such thing as a partial row set on failure, so
+  this is structurally guaranteed, not just incidentally true).
+- **REV2.4** -- the denied attempt created/mutated nothing -- the session row is byte-identical to
+  before (`question_ids`, `total`, `completed_at` unchanged).
+- **REV2.5** -- profile flag is `false` but a `portal_access_purchases` row now exists for that
+  profile -- resume **is allowed**, proving the RPC mirrors `requirePremiumAccess()`'s OR
+  predicate exactly rather than a tightened, `checkride_prep_unlocked`-only rule.
+
+**Harness change required:** `portal_access_purchases` did not exist in
+`test/sql/00_harness_schema.sql` (it predates the harness's own baseline). Added with the same
+columns the entitlement predicate and the real table actually use (`profile_id`,
+`stripe_session_id` unique, `amount_cents`, `tier` check), copied from the real
+`portal-schema-v3.sql` definition -- not a redesigned or narrowed shape.
+
+### Blocker 2 -- targeted-mapping pre-eligibility truncation
+
+The `content_acs_mappings` fetch in targeted `start` applied `.limit(session_size * 3)` **before**
+`dpe_questions` eligibility filtering (`exam_type='private_pilot' AND is_scenario=false`) ran. If a
+task had more mapped questions than that limit and the arbitrary early subset happened to be all
+ineligible, the request would 404 even though eligible mapped content existed further down the
+mapping list -- the fix's own fail-closed 404 firing on a false premise.
+
+**Fix:** removed the `.limit()` from that query entirely. Every mapped content id for the requested
+task is now resolved before eligibility filtering runs, so an eligible question can never be hidden
+by an arbitrary truncation regardless of physical row order. (The `dpe_questions` eligibility query
+that follows was never limited -- only the mapping fetch was, and only that one needed the fix.)
+
+**Tests added:**
+
+- **REV2.6** (data-level proof) -- a new fixture task (`ZV4`/`LARGE`) is mapped to 35 questions (34
+  ineligible `is_scenario=true`, 1 eligible), exceeding the old 30-row truncation point
+  (`session_size * 3` at the default `session_size=10`). Confirms both the mapped-set size (35) and
+  the eligible count within the full mapped set (exactly 1) in a single assertion.
+- **REV2.7** (source check) -- greps the actual `start` action's targeted-mapping-fetch block
+  (comment lines excluded, so the explanatory comment mentioning `.limit()` doesn't cause a false
+  positive) and fails if any `.limit(` reappears there. Combined with REV2.6, this proves the fix:
+  since the full mapped set is always retrieved with no limit, and REV2.6 shows that set contains
+  exactly one eligible question among 34 ineligible ones, that question is guaranteed to be found
+  regardless of scan order.
+
+This is a source/data-level proof, not an Edge Function integration test -- see the test-runtime
+limitation note below.
+
+### Blocker 3 -- explicit invalid `acs_task_id` silently became general practice
+
+`typeof body?.acs_task_id === 'string' ? body.acs_task_id : null` could not distinguish "field
+omitted" from "field explicitly supplied but invalid" -- `{action: "start", acs_task_id: ""}` (or
+`null`, or a non-string, or a malformed non-UUID string) silently fell through to general practice,
+violating the fail-closed targeted-practice contract the rest of v119 established.
+
+**Fix:** extracted the decision into a new, dependency-free `validateAcsTaskId()` function
+(`portal/supabase/functions/mobile-practice/validateAcsTaskId.ts`, zero imports by design) that
+`start` now calls instead of the inline ternary:
+
+- `undefined` (field omitted) -> `{ok: true, acsTaskId: null}` -- general practice, unchanged.
+- Anything else that is not a non-blank string matching the ACS task UUID shape (empty string,
+  whitespace-only, `null`, a number, a boolean, an object, or a malformed non-UUID string) ->
+  `{ok: false}` -- the Edge Function returns a clean 400 (`acs_task_id must be a valid ACS task id
+  when supplied`) and **never** falls back to general practice.
+- A valid UUID (optionally with surrounding whitespace, trimmed) -> `{ok: true, acsTaskId:
+  <trimmed>}`.
+
+**Why a separate file, and why this counts as real unit coverage, not a workaround:** this function
+has zero imports, so unlike the rest of the Edge Function (which imports `https://deno.land/std`
+and `@supabase/supabase-js`, both Deno-only in this sandbox), it compiles and runs under plain
+`tsc`/`node` with no Deno runtime required. `index.ts` imports and calls this exact function -- the
+test is not a hand-written duplicate of the logic that could silently drift from what ships.
+
+**Tests added** (`test/v119_validateAcsTaskId.test.mjs`, compiled by the shell test runner via
+`tsc` immediately before execution, then run with plain `node`; its PASS/FAIL lines are folded into
+the same regression suite counters):
+
+- **REV2.8** -- omitted -> valid, general practice (`null`).
+- **REV2.9** -- empty string -> rejected.
+- **REV2.10** -- whitespace-only string -> rejected.
+- **REV2.11a-e** -- `null`, a number, a boolean, an object, and a malformed non-UUID string (all
+  explicitly supplied) -> rejected.
+- **REV2.12 / REV2.12b** -- a valid UUID, with and without surrounding whitespace, is accepted and
+  passed through (trimmed) -- a positive sanity check alongside the negative cases above.
+
+### Test-runtime limitation (unchanged from Rev1, restated per review request)
+
+V119.1-V119.5 and REV2.6/REV2.7 prove the database-level conditions and source shape
+`start`'s TypeScript branches depend on -- they do **not** execute `mobile-practice`'s HTTP layer,
+status-code mapping, or `requirePremiumAccess()` call, because there is still no deno/supabase-cli
+runtime in this sandbox. REV2.8-REV2.12 go one step further for the `acs_task_id` decision
+specifically, by actually executing that one exported function under Node -- but this is still not
+an Edge Function integration test, and this report does not claim otherwise. The actual deployed
+Edge Function will receive disposable-account production smoke tests only after this Rev2 source
+review approves deployment.
+
+### Validation
+
+Full `test/run_security_regression_tests.sh` run against a freshly rebuilt harness database:
+
+**364 passed, 0 failed** (346 from Rev1 + 18 new: REV2.1, REV2.1b, REV2.2-REV2.7, REV2.8-REV2.12
+with 5 sub-cases under REV2.11). Every one of the original 346 assertions still passes unchanged.
+
+Re-confirmed:
+
+- No production migration applied -- `portal-schema-v119-practice-resume.sql` was only applied to
+  the local disposable `apex_test` harness database (twice: once for Rev1, re-applied via
+  `CREATE OR REPLACE FUNCTION` for Rev2 -- idempotent, no data loss).
+- `mobile-practice` was not deployed.
+- No production rows were read, written, or mutated.
+- `mobile-expo/` remains untouched.
+
+### Files changed (Rev2)
+
+- `portal/supabase-portal-schema-v119-practice-resume.sql` -- entitlement check added to
+  `resume_mobile_practice_session()` (in place -- not a new v120 file, since v119 was never
+  deployed).
+- `portal/supabase/functions/mobile-practice/index.ts` -- Blocker 2 (`.limit()` removed) and
+  Blocker 3 (`validateAcsTaskId()` call) fixes; `premium_access_required` added to the `resume`
+  error-code mapping.
+- `portal/supabase/functions/mobile-practice/validateAcsTaskId.ts` (new) -- extracted, unit-testable
+  `acs_task_id` validation.
+- `test/v119_validateAcsTaskId.test.mjs` (new) -- Node unit tests for the above.
+- `test/run_security_regression_tests.sh` -- new section 42 (REV2.1-REV2.12).
+- `test/sql/00_harness_schema.sql` -- added `portal_access_purchases` (did not previously exist in
+  the harness; required to test Blocker 1's entitlement predicate at all).
+- `.gitignore` -- ignores the throwaway `test/__v119_compiled/` directory the test runner produces
+  when compiling `validateAcsTaskId.ts` for the Node unit tests.
+- This report.
+
+`shared/mobile-dto/index.ts` was **not** changed -- the wire contract's shapes did not change, only
+server-side validation and authorization got stricter.
+
 ---
 
-**SPRINT 1B V119 PRACTICE CONTRACT READY -- AWAITING REVIEW**
+**SPRINT 1B V119 PRACTICE CONTRACT REV2 READY -- AWAITING REVIEW**

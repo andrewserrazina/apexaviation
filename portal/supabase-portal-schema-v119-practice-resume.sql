@@ -38,6 +38,19 @@
 -- carries every column resume needs (id, profile_id, mode, question_ids,
 -- started_at, completed_at). No column, index, or constraint changes.
 --
+-- REV2 (independent review): resume_mobile_practice_session() is granted
+-- directly to `authenticated`, not just reachable through the Edge
+-- Function -- the original version checked auth.uid(), session existence,
+-- ownership, and question-set integrity, but NOT current Checkride Prep
+-- entitlement, so a direct authenticated PostgREST/supabase-js caller
+-- could resume a session with a lapsed or never-purchased entitlement
+-- even though the Edge Function path re-checks it via
+-- requirePremiumAccess(). Fixed by re-checking the exact same
+-- authoritative predicate (profiles.checkride_prep_unlocked = true OR a
+-- portal_access_purchases row exists) inside the RPC itself, before any
+-- session lookup. Defense in depth is intentional: the Edge Function's
+-- own requirePremiumAccess() call is unchanged and still gates it too.
+--
 -- NOT YET DEPLOYED. Source-controlled only, alongside the rest of
 -- Sprint 1B Stage 1 -- see SPRINT_1B_PRACTICE_EXPANSION.md.
 
@@ -56,6 +69,7 @@ create or replace function public.resume_mobile_practice_session(p_attempt_id uu
 as $function$
 declare
   v_profile_id uuid := auth.uid();
+  v_entitled boolean;
   v_attempt public.portal_practice_attempts%rowtype;
   v_stored_ids jsonb;
   v_count integer;
@@ -64,6 +78,24 @@ declare
 begin
   if v_profile_id is null then
     raise exception 'Not signed in.';
+  end if;
+
+  -- Rev2 (independent review, Blocker 1): this RPC is granted directly to
+  -- `authenticated`, so a client could call it straight through PostgREST,
+  -- bypassing the Edge Function's requirePremiumAccess() call entirely.
+  -- Mirror that exact same authoritative predicate here -- the same OR of
+  -- profiles.checkride_prep_unlocked and a portal_access_purchases row --
+  -- so entitlement can never be checked in only one of the two places.
+  -- Checked BEFORE any session lookup so an unentitled direct caller can't
+  -- use response shape (404 vs 403 vs data) to distinguish an existing
+  -- session from a missing one or someone else's.
+  select
+    coalesce((select p.checkride_prep_unlocked from public.profiles p where p.id = v_profile_id), false)
+    or exists (select 1 from public.portal_access_purchases pur where pur.profile_id = v_profile_id)
+  into v_entitled;
+
+  if not v_entitled then
+    raise exception 'premium_access_required: Checkride Prep is not unlocked on this account';
   end if;
 
   select * into v_attempt from public.portal_practice_attempts
