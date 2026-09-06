@@ -1,6 +1,6 @@
 # Sprint 1A -- Apex Advantage Native Mobile Vertical Slice
 
-Status: **implementation complete, Rev2 + Rev3 revisions and the navigation fix applied, ready for physical device test. Not merged to main. Not deployed. Not submitted to any app store.**
+Status: **physical iPhone testing performed via Expo Go; two narrow UI defects found and fixed. Not merged to main. Not deployed. Not submitted to any app store.**
 
 This report covers the native Expo/React Native vertical slice built in `mobile-expo/` per the "RESUME SPRINT 1A" authorization, which followed the closed backend stop-gate (the v118 Daily Drill / mobile-practice bridge, reviewed and production-verified in `SPRINT_1A_DAILY_DRILL_PRACTICE_BRIDGE_REPORT.md`).
 
@@ -168,6 +168,8 @@ Protected routing: `(auth)/_layout.tsx` redirects a signed-in learner into `(app
 
 Home renders, in order: greeting with the learner's name; training context (certificate type / aircraft class / ACS version, shown only when present); XP, streak, and rank as `MetricCard`s; `ReadinessCard` (always pairs `overall_score` with `evidence_level` and a restrained `reason_codes` explanation -- **Rev2**: now renders every recognized reason code, not just the first match, see section 27 item 4); Today's Drill (`hooks/useHomeDrill.ts` now takes an explicit `enabled` flag -- it never calls `mobile-daily-drill` until bootstrap has resolved AND the learner is entitled, see section 27 item 2); and `weak_areas` rendered exactly as `home.weak_areas` came back, with zero on-device weak-area computation. An unentitled account (`access.checkride_prep === false`) sees `components/StateViews.tsx`'s `LockedState` -- a neutral "contact your instructor or Apex support" message with **no URL, browser instruction, or purchase language of any kind** (Rev2 replaced the prior copy, which named a website -- section 27 item 3). Pull-to-refresh re-runs the bootstrap fetch (Today's Drill re-syncs automatically once the refreshed `bootstrapDrill` prop flows back down, no separate re-fetch call needed), guarded against a second concurrent refresh. **(Rev2)** Home also refreshes bootstrap automatically whenever it regains navigation focus (skipping the very first, redundant mount-time focus) -- see section 27 item 8 -- so returning from a completed drill shows current XP/streak/readiness without a manual pull-to-refresh.
 
+**(Physical-device fix -- section 30 item 2)** The Rank `MetricCard` rendered the server's raw identity string (e.g. `student_pilot`) verbatim at the same giant "display" size used for numeric XP, which on a real iPhone wrapped mid-word ("stud/ent_/pilot"). `MetricCard` now accepts a `valueVariant` prop so a textual metric can opt into a smaller size than a numeric one; Home reformats `current_rank` for display only (`student_pilot` -> `Student Pilot`, same snake_case-to-Title-Case transform already used for `training.certificate_type`) and renders it at the `title` variant. The stored/server rank value itself is never altered -- only how Home displays it.
+
 ## 11. Daily Drill implementation
 
 `hooks/useDrillSession.ts` calls `mobile-daily-drill`'s `start` action with the drill's id -- **never** `mobile-practice`'s `start` (which would create an unrelated ad-hoc session with its own randomly-selected questions). The response's `session_id`/`questions` populate a pure reducer (`lib/drillSessionReducer.ts`, unit-tested in isolation) via a single atomic `initialize` action, so the question list and any locally-restored ratings/reveals can never observe an inconsistent intermediate state. A completed drill (`drillStatus === 'completed'`, no fresh `completeResult`) renders a "this drill is already complete" summary and is never restarted -- consistent with the v118 bridge's own server-side guarantee that Start on a completed drill just returns the existing state.
@@ -182,7 +184,11 @@ Before Reveal: only the question text, category, and progress indicator render -
 
 **(Rev2 -- section 27 item 5)** The completion screen's copy and content were both tightened: the session score now reads **"You marked X of Y correct"** rather than a bare "X of Y correct," making explicit that this is a self-rated tally, not an objectively-graded result. The completion screen also now renders the actual refreshed readiness score and evidence level via the real `ReadinessCard` primitive (reused as-is, same component Home uses) instead of a generic "Readiness indicator updated -- low evidence" line -- so a learner sees the same numeric indicator and evidence badge here as on Home, still with no pass/probability language anywhere. Covered by `test/DrillCompletion.test.tsx`.
 
-**(Rev3 fix -- section 28 item 4)** That readiness rendering was still showing STALE data for a genuinely new completion. `hooks/usePostCompleteRefresh.ts` called `fetchLatestReadiness()` unconditionally, but `mobile-readiness`'s `latest` action explicitly never recomputes -- only `refresh` (`compute_readiness_snapshot()`) does. A learner who just recorded real new evidence via a Daily Drill completion would see the exact same snapshot they had before completing it. Fixed by passing `completeResult.alreadyCompleted` into `usePostCompleteRefresh`: a genuinely new completion (`alreadyCompleted === false`) now calls `refreshReadiness()`, sequenced to complete BEFORE `fetchBootstrap()` runs (so bootstrap's own `progress.readiness_summary`, which reads the same table fresh on every call, can never observe the old snapshot as current either); an idempotent replay (`alreadyCompleted === true`) still calls only `fetchLatestReadiness()`, since no new evidence was recorded and generating another snapshot would be an unnecessary duplicate write. No local readiness calculation occurs in either branch. Covered by `test/usePostCompleteRefresh.test.tsx` (which action fires for which case, and the sequencing) and `test/DrillCompletion.test.tsx` (the screen forwards the right flag through).
+**(Rev3 fix -- section 28 item 4)** That readiness rendering was still showing STALE data for a genuinely new completion. `hooks/usePostCompleteRefresh.ts` called `fetchLatestReadiness()` unconditionally, but `mobile-readiness`'s `latest` action explicitly never recomputes -- only `refresh` (`compute_readiness_snapshot()`) does. A learner who just recorded real new evidence via a Daily Drill completion would see the exact same snapshot they had before completing it. Fixed by passing `completeResult.alreadyCompleted` into `usePostCompleteRefresh`: a genuinely new completion (`alreadyCompleted === false`) now calls `refreshReadiness()`, sequenced to complete BEFORE `fetchBootstrap()` runs (so bootstrap's own `progress.readiness_summary`, which reads the same table fresh on every call, can never observe the old snapshot as current either); an idempotent replay (`alreadyCompleted === true`) still calls only `fetchLatestReadiness()`, since no new evidence was recorded and generating another snapshot would be an unnecessary duplicate write. No local readiness calculation occurs in either branch. Covered by `test/usePostCompleteRefresh.test.tsx` (which action fires for which case, and the sequencing) and `test/DrillCompletion.test.tsx` (the screen forwards the right flag through). **Physical device testing subsequently confirmed this works end to end: XP updated correctly on Home after a real completion, with no manual refresh needed.**
+
+**(Physical-device fix -- section 30 item 1)** On a real iPhone, the completion screen itself failed to lay out: the title, self-rated score, XP/streak card, and readiness content were all invisible/clipped, though "Back to Home" remained visible and the underlying completion/XP write had genuinely succeeded (confirmed by XP updating correctly on Home afterward -- this was purely a client rendering defect). Root cause: `components/Screen.tsx`'s non-scrolling branch wrapped children in an outer `flex: 1` View, then an inner padded content View with no flex of its own -- so the completion screen's `flex: 1` + `justifyContent: 'center'` wrapper had no bounded-height parent to actually center within. This project's test renderer doesn't measure real layout, so the bug was invisible to every unit/component test despite passing cleanly. Fixed two ways: (1) `Screen`'s inner content View now also stretches (`flex: 1`) whenever `scroll` is false, restoring the layout contract its non-scrolling children expect; (2) independently, the completion screen itself no longer uses `scroll={false}` at all -- it renders as a normal scrolling `Screen` (matching every other screen in the app) with no special centering wrapper, which is both the more robust choice for smaller phones / larger Dynamic Type / longer readiness reason-code content, and removes the fragile assumption entirely rather than just patching around it. See `test/Screen.test.tsx` (style-level regression proving the inner View's flex contract) and `test/DrillCompletion.test.tsx` (proving every required element -- title, score, XP/streak, full `ReadinessCard`, Back to Home -- renders together, including with two simultaneous reason codes).
+
+**(Physical-device fix -- section 30 item 3)** `components/TodaysDrillCard.tsx`'s completed state offered a **"View Summary"** button, but neither the current bootstrap nor `mobile-daily-drill`'s `start` contract actually exposes a historical completion summary -- revisiting a completed drill only ever re-renders the same "this drill is already complete" acknowledgment. Rather than promise detail Sprint 1A can't deliver (and without adding any backend endpoint to backfill it), the completed CTA now reads **"Completed"** and is disabled/non-interactive (`Button`'s existing `disabled` prop, which already communicates the state via `accessibilityState`). A real historical-summary screen remains a Sprint 1B+ idea, not something this fix attempts. Covered by an updated test in `test/Home.test.tsx`.
 
 ## 14. Restart / resume behavior
 
@@ -202,17 +208,17 @@ Tested behaviorally against the pure reducer and hook logic (a full physical-dev
 
 ## 16. Test count / results
 
-**Post-navigation-fix (current):**
+**Post-physical-device-fixes (current):**
 ```
-Test Suites: 14 passed, 14 total
-Tests:       119 passed, 119 total
+Test Suites: 16 passed, 16 total
+Tests:       125 passed, 125 total
 ```
-(Rev3's 13/117 plus the navigation fix's new `test/practiceNavigation.test.tsx`, 2 tests -- section 29.)
+(The navigation fix's 14/119 plus the physical-device-pass fixes' new `test/Screen.test.tsx` (2 tests) and `test/MetricCard.test.tsx` (2 tests), plus new/updated cases in `test/Home.test.tsx` and `test/DrillCompletion.test.tsx` -- section 30.)
 
-Files (6 original + 6 added in Rev2 + 1 added in Rev3): `test/authErrors.test.ts`, `test/drillSessionReducer.test.ts`, `test/apiClient.test.ts`, `test/AuthContext.test.tsx`, `test/useDrillSession.test.tsx`, `test/security.test.ts`, Rev2's `test/ReadinessCard.test.tsx`, `test/Home.test.tsx`, `test/entitlementGating.test.tsx`, `test/DrillCompletion.test.tsx`, `test/HomeFocusRefresh.test.tsx`, `test/apiValidation.test.ts`, plus Rev3's new `test/usePostCompleteRefresh.test.tsx`. Coverage against this Sprint's required list (section 20 of the original task):
+Files (6 original + 6 added in Rev2 + 1 added in Rev3 + 1 added by the navigation fix + 2 added by the physical-device-pass fixes): `test/authErrors.test.ts`, `test/drillSessionReducer.test.ts`, `test/apiClient.test.ts`, `test/AuthContext.test.tsx`, `test/useDrillSession.test.tsx`, `test/security.test.ts`, Rev2's `test/ReadinessCard.test.tsx`, `test/Home.test.tsx`, `test/entitlementGating.test.tsx`, `test/DrillCompletion.test.tsx`, `test/HomeFocusRefresh.test.tsx`, `test/apiValidation.test.ts`, Rev3's `test/usePostCompleteRefresh.test.tsx`, the navigation fix's `test/practiceNavigation.test.tsx`, plus the physical-device-pass fixes' new `test/Screen.test.tsx` and `test/MetricCard.test.tsx`. Coverage against this Sprint's required list (section 20 of the original task):
 
 - **AUTH (A-G)**: session restoration, no-session state, exactly-once stale-token cleanup for both `refresh_token_not_found` and `refresh_token_already_used`, transient-error tolerance, sign-in success/failure messaging, sign-out -- all in `AuthContext.test.tsx`. **(Rev2 additions)** AppState-driven auto-refresh start/stop/cleanup, and an unexpected `getSession()` rejection never triggering a destructive sign-out -- same file.
-- **HOME (H-M)**: **(Rev2 -- closes the prior gap)** real component-render tests now exist in `test/Home.test.tsx` against production-shaped `MobileBootstrapDTO` fixtures -- H (learner/training state renders), I (XP/rank/streak reflect server values exactly), J (readiness score + evidence level), K (missing-readiness empty state), L (`insufficient_content_coverage` surfaced with no pass-probability copy), M (Today's Drill CTA per status: Start/Continue/View Summary). `test/entitlementGating.test.tsx` additionally proves, against the REAL (unmocked) `useHomeDrill`/`useDailyDrill` hooks, that an unentitled Home/Practice never calls `mobile-daily-drill` and the locked-state copy carries no URL/browser/purchase language. **(Rev3 addition)** the same file now also proves Practice distinguishes a bootstrap *failure* from *locked access* -- a retryable error, never the locked-access message, and never a `mobile-daily-drill` call, while bootstrap is errored.
+- **HOME (H-M)**: **(Rev2 -- closes the prior gap)** real component-render tests now exist in `test/Home.test.tsx` against production-shaped `MobileBootstrapDTO` fixtures -- H (learner/training state renders), I (XP/rank/streak reflect server values exactly), J (readiness score + evidence level), K (missing-readiness empty state), L (`insufficient_content_coverage` surfaced with no pass-probability copy), M (Today's Drill CTA per status: Start/Continue/Completed). `test/entitlementGating.test.tsx` additionally proves, against the REAL (unmocked) `useHomeDrill`/`useDailyDrill` hooks, that an unentitled Home/Practice never calls `mobile-daily-drill` and the locked-state copy carries no URL/browser/purchase language. **(Rev3 addition)** the same file now also proves Practice distinguishes a bootstrap *failure* from *locked access* -- a retryable error, never the locked-access message, and never a `mobile-daily-drill` call, while bootstrap is errored. **(Physical-device-pass additions -- section 30)** a long snake_case rank ("student_pilot") renders as "Student Pilot" with no underscore, and a completed drill's CTA reads "Completed" (disabled), never the retired "View Summary."
 - **DAILY DRILL (N-X)**: `apiClient.test.ts` proves Start calls `mobile-daily-drill` (never `mobile-practice`); `drillSessionReducer.test.ts` proves question ordering, model-answer/rating-control gating before reveal, reveal rendering readiness, exact `correct`/`partial`/`incorrect` wire values, and one-rating-per-question. **(Rev2 addition)** `useDrillSession.test.tsx`'s "restart/resume regression" tests prove the reveal-deadlock fix: a restored question is never `isRevealed` with no content, its saved rating is retained, Reveal can always be called again, and only ratings (never `revealedQuestionIds`) are persisted locally. **(Rev3 correction)** `test/apiValidation.test.ts`'s Daily Drill section was rewritten with the corrected fetch-vs-start session_id contract (section 28 item 1) -- tests A-F prove fetch accepts a null session_id for pending/legacy-in_progress/completed, start requires a non-null session_id specifically for an in_progress result, and both accept the completed+unlinked edge case.
 - **COMPLETE (Y-AE)**: `drillSessionReducer.test.ts` (unique-response payload) and `useDrillSession.test.tsx` (debounced duplicate taps, `already_completed` as success, retry after network failure, no local XP field, completed-drill-not-restarted is a design property verified by the v118 backend's own extensive suite plus this app's screen-level guard). **(Rev2 addition)** `test/DrillCompletion.test.tsx` proves the completion screen renders the actual refreshed readiness score/evidence level and the self-rated "You marked X of Y correct" copy. **(Rev3 addition)** the same file now also proves the screen forwards `alreadyCompleted` correctly to `usePostCompleteRefresh`; the new `test/usePostCompleteRefresh.test.tsx` proves a genuinely new completion calls `refreshReadiness()` (never `fetchLatestReadiness()`), sequenced before `fetchBootstrap()`, while an `already_completed` replay calls only `fetchLatestReadiness()`.
 - **SECURITY/CONFIG (AF-AH)**: `security.test.ts`'s static source scan -- no service-role/Stripe-secret/lifecycle-secret/admin-token string, no local XP arithmetic, no local entitlement/readiness recomputation, anywhere in `app/`, `components/`, `contexts/`, `hooks/`, `lib/`, `constants/`.
@@ -234,16 +240,16 @@ npx tsc --noEmit
 
 ## 19. Expo validation result
 
-**Post-navigation-fix (current):**
+**Post-physical-device-fixes (current):**
 ```
 npx expo-doctor
 21/21 checks passed. No issues detected!
 ```
 ```
 npx expo export --platform ios
-iOS Bundled 8416ms node_modules/expo-router/entry.js (1316 modules)
+iOS Bundled 6863ms node_modules/expo-router/entry.js (1316 modules)
 ```
-A complete production JS bundle was produced -- every screen, hook, component, and the cross-directory `shared/mobile-dto` import all resolved and bundled successfully. Module count is up by exactly 1 from Rev3 (1315 -> 1316) -- the new `app/(app)/practice/_layout.tsx` nested navigator, confirming it's actually part of the bundled route tree, not a dead file. `dist/` was deleted after export -- it's a validation artifact, not a committed build. (`--platform web` was not attempted: this is a mobile-only app and adding `react-dom`/`react-native-web` purely for an unused web target was judged out of scope.)
+A complete production JS bundle was produced -- every screen, hook, component, and the cross-directory `shared/mobile-dto` import all resolved and bundled successfully. Module count is unchanged from the navigation fix (1316) -- this pass only edited existing screens/components and added test files, which aren't part of the app bundle. `dist/` was deleted after export -- it's a validation artifact, not a committed build. (`--platform web` was not attempted: this is a mobile-only app and adding `react-dom`/`react-native-web` purely for an unused web target was judged out of scope.)
 
 **Rev2 also added `expo-asset` as a direct dependency.** It's a real (if undeclared) transitive dependency of `expo-font`'s font-loading code path, which `@expo/vector-icons` pulls in; without it declared directly, npm nested it only under `node_modules/expo/node_modules/expo-asset` instead of hoisting it, which broke Jest's plain Node module resolution the first time a real `@testing-library/react-native` `render()` of a full screen (rather than just a hook) was attempted for the new Home tests. Metro's bundler resolution is more lenient than Jest's and already found it fine (the original submission's `expo export` succeeded even though `@expo/vector-icons` was already in use), but the gap was real and is now closed via `npx expo install expo-asset`, which also updated `app.json`'s `plugins` array.
 
@@ -264,7 +270,7 @@ No customer row was read, written, or altered. The only writes were to the one d
 
 ## 21. Simulator/device testing actually performed
 
-**None was performed, and none is claimed.** This sandbox has no iOS Simulator, no Android emulator, and no physical device attached -- there is no Mac, no Xcode, and no Android SDK in this environment. What *was* validated without a simulator/device (sections 17-20) is real: static analysis (tsc/lint/expo-doctor), a genuine production Metro bundle, unit/integration tests against the actual hook and reducer code, and live HTTP calls against the real production Edge Functions. None of that substitutes for seeing the UI render and respond to touch on an actual iOS/Android runtime -- that step still needs to happen on Andrew's Mac before this is considered visually/interactively verified.
+**Updated -- physical device testing has now been performed.** Every prior revision of this report through the navigation fix stated plainly that this sandbox has no iOS Simulator, no Android emulator, and no physical device attached, and made no device-testing claim. That remains true of *this sandbox* -- all work in sections 1-29 (and the fixes in section 30) was still built and validated here via static analysis, unit/integration tests, and a production Metro bundle only. What changed is that Andrew has now run the app on a real physical iPhone via Expo Go, following section 22's exact commands, and reported the results back -- see **section 30** for the full pass/fail list and the two narrow UI defects that testing pass found (both now fixed here, but not yet re-verified on the device).
 
 ## 22. Exact Mac setup / run commands
 
@@ -355,14 +361,19 @@ All new files under `mobile-expo/` (nothing outside it was touched -- see sectio
 - `app/(app)/practice/_layout.tsx` (new) -- nested `Stack` navigator for the Practice tab.
 - `test/practiceNavigation.test.tsx` (new) -- narrow structural test proving the layout declares exactly `index` then `[drillId]`, with `initialRouteName: 'index'`.
 
+**Physical-device-pass fix additions (section 30):**
+- Modified: `components/Screen.tsx` (inner content View now stretches to fill height when `scroll` is false), `app/(app)/practice/[drillId].tsx` (completion screen no longer uses `scroll={false}` / the centering wrapper), `components/MetricCard.tsx` (new `valueVariant` prop), `components/AppText.tsx` (exports its `AppTextProps` type so `MetricCard` can reference it), `app/(app)/index.tsx` (renamed/reused `formatSnakeCaseLabel` helper applied to `current_rank`, rendered at `valueVariant="title"`), `components/TodaysDrillCard.tsx` (completed CTA copy `View Summary` -> `Completed`, now disabled).
+- New tests: `test/Screen.test.tsx`, `test/MetricCard.test.tsx`.
+- Modified tests: `test/DrillCompletion.test.tsx` (new scrolling-layout/all-content-present regression case), `test/Home.test.tsx` (long snake_case rank formatting case; completed-CTA test updated for the new copy and disabled state).
+
 ## 25. Confirmation: backend was not modified
 
-- No file under `portal/supabase/functions/`, no `portal/supabase-portal-schema-*.sql` migration, and no `test/run_security_regression_tests.sh` change was made during this Sprint 1A implementation work, **nor during the Rev2 revision, the Rev3 revision, or the navigation fix** -- `git diff --stat -- portal/ shared/` against this revision's base is empty.
-- `shared/mobile-dto/index.ts` was **not** modified in this session, in Rev2, in Rev3, or in the navigation fix -- it was already updated (adding `session_id`) during the prior v118 Rev2 work and is consumed here as-is.
+- No file under `portal/supabase/functions/`, no `portal/supabase-portal-schema-*.sql` migration, and no `test/run_security_regression_tests.sh` change was made during this Sprint 1A implementation work, **nor during the Rev2 revision, the Rev3 revision, the navigation fix, or the physical-device-pass fixes** -- `git diff --stat -- portal/ shared/` against this revision's base is empty.
+- `shared/mobile-dto/index.ts` was **not** modified in this session, in Rev2, in Rev3, in the navigation fix, or in the physical-device-pass fixes -- it was already updated (adding `session_id`) during the prior v118 Rev2 work and is consumed here as-is.
 - **Rev3 specifically re-read the actual deployed Edge Function source** (`portal/supabase/functions/mobile-daily-drill/index.ts`, `mobile-bootstrap/index.ts`, `mobile-practice/index.ts`, `mobile-readiness/index.ts`) and the v118 migration's `start_daily_drill_practice_session()`/`complete_mobile_practice_session()` RPC bodies directly, rather than assuming the prior validation was correct. The one contract question this raised -- whether `session_id: null` is ever legitimate for a `pending`/`in_progress` Daily Drill -- resolved as "yes, for fetch" (confirmed against the RPC's own status-transition logic and the deployed function's `session_id: drill.practice_attempt_id ?? null` shape), so this was a client-side validation bug, not a backend contract mismatch, and no STOP was required.
 - `mobile/` (the existing Capacitor WebView wrapper) was not touched, read, or referenced by any file in `mobile-expo/`.
-- No production deployment, database migration, or Edge Function redeploy occurred during this session, the Rev2 revision, the Rev3 revision, or the navigation fix. The navigation fix touched only Expo Router layout/route structure -- `app/(app)/practice/_layout.tsx` and its one narrow test -- no API client, hook, or DTO file was touched by it. The only production interaction on record remains the original submission's section 20 read/write validation, scoped entirely to one disposable test account with its temporary password rotated back to random immediately after.
-- No blocking backend contract defect was discovered in Rev3 or the navigation fix -- every review item across both was resolvable entirely within `mobile-expo/`.
+- No production deployment, database migration, or Edge Function redeploy occurred during this session, the Rev2 revision, the Rev3 revision, the navigation fix, or the physical-device-pass fixes. The physical-device-pass fixes touched only presentation-layer files (`Screen`, `MetricCard`, `AppText`, `TodaysDrillCard`, the completion screen, and Home's own display formatting) -- no API client, hook, DTO, or entitlement/XP/readiness logic was touched. The XP write and Daily Drill completion that the physical device test exercised were real production writes made by Andrew's own device against the already-deployed backend, not something this session performed.
+- No blocking backend contract defect was discovered in Rev3, the navigation fix, or the physical-device-pass fixes -- every review item across all three was resolvable entirely within `mobile-expo/`.
 
 ## 26. Sprint 1B recommendations
 
@@ -502,6 +513,56 @@ iOS Bundled 8416ms node_modules/expo-router/entry.js (1316 modules)
 
 `git status`/`git diff --stat` confirm only `mobile-expo/app/(app)/practice/_layout.tsx`, `mobile-expo/test/practiceNavigation.test.tsx`, and this report changed for this fix -- no file under `portal/`, no migration, and no change to `shared/mobile-dto/index.ts`. No production deployment or live Supabase API call occurred. **No physical-device or simulator verification is claimed here** -- this fix removes the one known structural blocker to that step, but the device/simulator pass itself (section 21, section 22's exact Mac commands) still has not been performed in this sandbox.
 
+## 30. Physical device pass (real iPhone, Expo Go) -- results and fixes
+
+Andrew ran the app on a real physical iPhone via Expo Go, following section 22's exact commands. This is the first actual device/simulator verification this project has had -- everything before this section was built and validated in this sandbox without one.
+
+**PASSED, exactly as designed:**
+- App opens successfully in Expo Go.
+- Authentication works.
+- Native Home renders real production data.
+- Practice tab navigation works (the section 29 nested-Stack fix holds up on device).
+- Daily Drill starts correctly.
+- Reveal / self-rate works.
+- Force-close mid-drill, then reopen: works.
+- A saved self-rating is restored after restart.
+- A previously-revealed answer is **not** falsely restored as already-revealed (the section 27 item 1 reveal-deadlock fix holds up on device) -- the learner correctly has to tap Reveal again.
+- No restart/resume deadlock of any kind.
+- Drill completion succeeds.
+- XP is awarded server-side (confirmed as a real backend write, not a client-side computation).
+- Updated XP appears on Home afterward.
+- Home reflects the completed Daily Drill without a manual pull-to-refresh (the section 27 item 8 focus-refresh fix holds up on device).
+
+**FOUND, and fixed in this pass (see sections 10, 13, 24, and their respective components/tests for full detail):**
+1. **Completion screen layout collapse on physical iOS** -- the title, self-rated score, XP/streak card, and readiness content were all invisible/clipped after completing a drill (Back to Home remained visible; the underlying XP/completion write had genuinely succeeded). Root cause: `Screen`'s non-scrolling branch didn't give its inner content View the height its `flex: 1` child expected. Fixed in `components/Screen.tsx` and by making the completion screen a normal scrolling `Screen`.
+2. **Raw snake_case rank display** -- `student_pilot` rendered literally, wrapping mid-word in the giant numeric display font ("stud/ent_/pilot"). Fixed with presentation-only Title Case formatting (`student_pilot` -> `Student Pilot`, server value unchanged) and a smaller `MetricCard` variant for Rank.
+3. **Misleading completed-drill CTA copy** -- "View Summary" promised detail the app can't actually show. Replaced with an honest, disabled "Completed" state; no backend endpoint was added to backfill a real summary (Sprint 1B+ territory).
+
+**Explicitly noted:** the floating blue gear/menu button visible in physical-test screenshots is **Expo Go's own development UI** (its dev-menu shake/tap affordance) -- it is not part of the Apex Advantage application and will not exist in a standalone/production build.
+
+**All ten Rev2/Rev3/navigation-fix guarantees the task asked to preserve were preserved** (verified by re-running their existing dedicated tests unchanged alongside this pass's new ones): ratings-only restart persistence, fresh-Reveal-required-after-restart, same-`session_id` resume behavior, entitlement gating, the `AppState` auth lifecycle, the malformed-response guards, Home's focus refresh, readiness reason-code rendering, the nested Practice `Stack`, the v118 Daily Drill session path, and completion idempotency.
+
+**Validation, run clean together in this session:**
+```
+npx jest --runInBand
+Test Suites: 16 passed, 16 total
+Tests:       125 passed, 125 total
+
+npx tsc --noEmit
+(0 errors)
+
+npx expo lint
+(0 errors, 0 warnings)
+
+npx expo-doctor
+21/21 checks passed. No issues detected!
+
+npx expo export --platform ios
+iOS Bundled 6863ms node_modules/expo-router/entry.js (1316 modules)
+```
+
+`git status`/`git diff --stat` confirm only the files listed in section 24's "Physical-device-pass fix additions" and this report changed -- no file under `portal/`, no migration, and no change to `shared/mobile-dto/index.ts`. No production deployment or live Supabase API call was made by this session (the XP award and Daily Drill completion referenced above were real writes made earlier by Andrew's own device against the already-deployed backend, not something performed here). **The three fixes in this section have not yet been re-verified on the physical device** -- that retest is the next step, not something this session could perform itself.
+
 ---
 
-**SPRINT 1A NAVIGATION FIX COMPLETE -- READY FOR PHYSICAL DEVICE TEST**
+**SPRINT 1A PHYSICAL DEVICE UI FIX READY -- AWAITING RETEST**
