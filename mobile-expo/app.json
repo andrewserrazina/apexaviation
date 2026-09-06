@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "Apex Advantage",
+    "slug": "apex-advantage-mobile",
+    "scheme": "apexadvantage",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.apexaviationtx.advantage"
+    },
+    "android": {
+      "package": "com.apexaviationtx.advantage",
+      "adaptiveIcon": {
+        "backgroundColor": "#0B1F3A",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0B1F3A"
+        }
+      ],
+      "expo-secure-store",
+      [
+        "expo-system-ui",
+        {
+          "backgroundColor": "#0B1F3A"
+        }
+      ],
+      "expo-asset"
+    ]
+  }
+}
