@@ -170,7 +170,7 @@ addition to* those automatic ones.
 
 ### `readiness_paid_recommendation_viewed`
 **Trigger:** The Readiness Plan card's "Ready To Go Further?" paid step becomes visible -- gated on the card's free action having a real completion signal (`categoryPct()` for an unlocked member's weak-area category, or the daily question's own `studied` flag for a locked member), matching the "free value before the paid ask" requirement. Guarded so a re-render never double-fires it.
-**Properties:** `profile_id`, `route`, `product` (`'ground_school'` | `'checkride_prep'` | `null` for Mock Oral, which has no unlock-gated product id).
+**Properties:** `profile_id`, `route`, `product` (`'ground_school'` | `'checkride_prep'` | `'mock_oral'`).
 **Expected frequency:** Should be below `readiness_plan_viewed`'s count -- only fires once the member has engaged with the free recommendation first.
 
 ### `readiness_paid_recommendation_clicked`

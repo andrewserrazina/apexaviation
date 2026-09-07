@@ -7255,8 +7255,13 @@
         go: function () { goToCategory(weakestCat); }
       };
     } else if (qotdQuestion) {
+      // Foundation's free-action label is deliberately distinct from its
+      // paid CTA's label below ("VIEW GROUND SCHOOL OPTIONS") -- both used
+      // to read "BUILD MY TRAINING PLAN", making the free QOTD action and
+      // the paid Ground School pitch look like the same button to a
+      // member scanning the card.
       freeAction = {
-        label: route === 'foundation' ? 'BUILD MY TRAINING PLAN' : (route === 'imminent' ? 'PRESSURE-TEST MY KNOWLEDGE' : 'PRACTICE MY WEAK AREAS'),
+        label: route === 'foundation' ? "ANSWER TODAY'S QUESTION" : (route === 'imminent' ? 'PRESSURE-TEST MY KNOWLEDGE' : 'PRACTICE MY WEAK AREAS'),
         detail: "Answer today's oral exam question",
         done: !!studied[qotdQuestion.id],
         go: function () {
@@ -7283,10 +7288,14 @@
     if (route === 'foundation') {
       paidCta = member.groundSchoolPackUnlocked
         ? null
-        : { product: 'ground_school', label: 'BUILD MY TRAINING PLAN', go: function () { showSection('ground-school'); } };
+        : { product: 'ground_school', label: 'VIEW GROUND SCHOOL OPTIONS', go: function () { showSection('ground-school'); } };
     } else if (route === 'imminent') {
+      // product: 'mock_oral' -- the canonical analytics product identifier
+      // (matches mock_oral_page_view/mock_oral_checkout_started/etc. in
+      // site/analytics-events.js), not null. Booking/entitlement behavior
+      // is unchanged -- this only fixes what the funnel events record.
       paidCta = unlocked
-        ? { product: null, label: 'BOOK A MOCK ORAL', go: function () { showSection('mock-oral'); } }
+        ? { product: 'mock_oral', label: 'BOOK A MOCK ORAL', go: function () { showSection('mock-oral'); } }
         : { product: 'checkride_prep', label: 'CONTINUE CHECKRIDE PREP', go: function () { openUnlockModal(ctx); } };
     } else {
       paidCta = unlocked

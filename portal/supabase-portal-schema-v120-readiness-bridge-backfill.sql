@@ -9,22 +9,44 @@
 -- then decide whether to run it.
 --
 -- ── Why this exists ──────────────────────────────────────────────────
--- Phase 0/1 of the Readiness Conversion Bridge found the real root cause
--- of "analytics shows real portal activity but profiles.first_portal_
--- login_at / activated_at / training_stage / primary_focus_area stay
--- unset": both claim_first_portal_login()/claim_activation_completed()
--- (v83/v84) calls and the onboarding-answer profile updates were
--- fire-and-forget with no error handling, so a transient failure (most
--- likely a session-hydration race right after the post-signup magic-
--- link/password-reset redirect every Readiness signup goes through)
--- silently discarded the write while the paired analytics event still
--- fired from the client before or independent of that write's outcome.
+-- Two separate, real root causes were found for "analytics shows real
+-- portal activity but profiles.first_portal_login_at / activated_at /
+-- training_stage / primary_focus_area stay unset":
+--
+-- 1. Silent write failures. claim_first_portal_login()/claim_activation_
+--    completed() (v83/v84) calls and the onboarding-answer profile
+--    updates were fire-and-forget with no error handling, so a
+--    transient failure (most likely a session-hydration race right
+--    after the post-signup magic-link/password-reset redirect every
+--    Readiness signup goes through) silently discarded the write while
+--    the paired analytics event still fired from the client before or
+--    independent of that write's outcome.
+--
+-- 2. A separate, structural onboarding-visibility bug (found and fixed
+--    independently of this backfill, already live in site/portal-
+--    stable.js before this branch): showWelcomeOnboarding() used to be
+--    shown ONLY inside claim_first_portal_login()'s one-shot "won"
+--    branch -- the same one-time-per-profile-ever gate as the
+--    portal_first_login analytics event. That's correct for an event
+--    that must fire exactly once, but wrong for a UI prompt that's
+--    supposed to keep asking until it actually gets an answer: a member
+--    who dismissed the card, or closed the tab before answering on
+--    their very first session, permanently lost any future chance to
+--    set training_stage/primary_focus_area, even on every later login.
+--    maybeShowWelcomeOnboarding() (already in production) decouples
+--    onboarding visibility from that one-shot claim -- it re-checks
+--    `member.trainingStage` on every render and re-prompts for as long
+--    as it stays null, independent of whether first_portal_login_at was
+--    ever successfully claimed.
+--
 -- site/portal-stable.js's claimFirstPortalLoginOnce()/
 -- claimActivationCompletedOnce()/showWelcomeOnboarding() are fixed (this
 -- branch) to log real errors and retry on the next dashboard render
--- instead of silently giving up -- that stops the bug for every future
--- session. It does nothing for the ~157 profiles already stuck with a
--- null first_portal_login_at/activated_at from before the fix shipped.
+-- instead of silently giving up, closing root cause #1 for every future
+-- session. Root cause #2 was already fixed in production and is
+-- preserved, unmodified, by this branch. Neither fix does anything for
+-- the ~157 profiles already stuck with a null first_portal_login_at/
+-- activated_at from before either fix shipped.
 --
 -- This migration backfills ONLY those two timestamp columns, and ONLY
 -- from signals that already exist and already prove the real event
@@ -33,15 +55,21 @@
 --   first_portal_login_at <- the EARLIEST of:
 --     1. analytics_events.created_at where event_name = 'portal_first_login'
 --        (the exact same event the broken claim call was supposed to
---        gate -- direct proof the login happened)
+--        gate -- direct proof an authenticated portal login happened)
 --     2. else analytics_events.created_at where event_name in
 --        ('onboarding_viewed', 'first_action_presented') (still direct
 --        proof of an authenticated portal session, just from a
 --        different milestone in the same session)
---     3. else portal_study_activity.activity_date (proves a study
---        session happened that day, so a portal login necessarily
---        preceded it -- least precise of the three, used only when
---        neither analytics signal exists)
+--     If neither exists: leave first_portal_login_at NULL.
+--
+--     portal_study_activity.activity_date is deliberately NOT used as a
+--     fallback here (an earlier draft of this file did). activity_date
+--     is date-level, not a real login timestamp; study activity proves
+--     training activity happened, not that it happened through a WEB
+--     PORTAL login specifically (Apex now has multiple client
+--     surfaces); and casting a date to timestamptz would manufacture an
+--     artificial midnight timestamp with false precision. Leaving these
+--     rows null is more honest than backfilling a fabricated time.
 --
 --   activated_at <- the EARLIEST of:
 --     1. portal_question_progress.first_viewed_at where completed = true
@@ -50,6 +78,10 @@
 --        hasMeaningfulActivity()'s own definition in
 --        site/portal-stable.js, which counts running an AI DPE session
 --        at all, not just a completed one)
+--     This one is left unchanged from the original draft: all three
+--     signals are real, direct proof of the same "meaningful training
+--     action" activated_at is defined to mean, with no date-only/
+--     timestamp-precision concern like portal_study_activity has above.
 --
 -- training_stage / primary_focus_area are DELIBERATELY NOT backfilled.
 -- Unlike the two timestamps above, there is no reliable existing signal
@@ -58,9 +90,9 @@
 -- "just_starting" from low readiness/study-activity) would fabricate
 -- self-reported data the member never gave, which the task brief
 -- explicitly prohibits. Members whose onboarding answer was lost to
--- this bug will simply be re-asked -- showWelcomeOnboarding() already
--- shows the onboarding card again for anyone with training_stage IS
--- NULL, so this resolves itself the next time they log in, with no
+-- this bug will simply be re-asked -- maybeShowWelcomeOnboarding()
+-- already re-shows the onboarding card for anyone with training_stage
+-- IS NULL, so this resolves itself the next time they log in, with no
 -- backfill needed or possible.
 --
 -- ── Why this is safe ─────────────────────────────────────────────────
@@ -88,7 +120,8 @@
 -- ═══════════════════════════════════════════════════════════════════════
 
 -- How many profiles would first_portal_login_at be backfilled for, and
--- from which signal tier?
+-- from which signal tier? (Two tiers only -- no portal_study_activity
+-- fallback, see above.)
 /*
 with signal as (
   select
@@ -96,17 +129,14 @@ with signal as (
     (select min(ae.created_at) from public.analytics_events ae
        where ae.profile_id = p.id and ae.event_name = 'portal_first_login') as tier1,
     (select min(ae.created_at) from public.analytics_events ae
-       where ae.profile_id = p.id and ae.event_name in ('onboarding_viewed', 'first_action_presented')) as tier2,
-    (select min(psa.activity_date)::timestamptz from public.portal_study_activity psa
-       where psa.profile_id = p.id) as tier3
+       where ae.profile_id = p.id and ae.event_name in ('onboarding_viewed', 'first_action_presented')) as tier2
   from public.profiles p
   where p.first_portal_login_at is null
 )
 select
   count(*) filter (where tier1 is not null) as would_backfill_from_event,
   count(*) filter (where tier1 is null and tier2 is not null) as would_backfill_from_onboarding_event,
-  count(*) filter (where tier1 is null and tier2 is null and tier3 is not null) as would_backfill_from_study_activity,
-  count(*) filter (where tier1 is null and tier2 is null and tier3 is null) as no_signal_stays_null
+  count(*) filter (where tier1 is null and tier2 is null) as no_signal_stays_null
 from signal;
 */
 
@@ -144,18 +174,14 @@ set first_portal_login_at = coalesce(
   (select min(ae.created_at) from public.analytics_events ae
      where ae.profile_id = p.id and ae.event_name = 'portal_first_login'),
   (select min(ae.created_at) from public.analytics_events ae
-     where ae.profile_id = p.id and ae.event_name in ('onboarding_viewed', 'first_action_presented')),
-  (select min(psa.activity_date)::timestamptz from public.portal_study_activity psa
-     where psa.profile_id = p.id)
+     where ae.profile_id = p.id and ae.event_name in ('onboarding_viewed', 'first_action_presented'))
 )
 where p.first_portal_login_at is null
   and coalesce(
     (select min(ae.created_at) from public.analytics_events ae
        where ae.profile_id = p.id and ae.event_name = 'portal_first_login'),
     (select min(ae.created_at) from public.analytics_events ae
-       where ae.profile_id = p.id and ae.event_name in ('onboarding_viewed', 'first_action_presented')),
-    (select min(psa.activity_date)::timestamptz from public.portal_study_activity psa
-       where psa.profile_id = p.id)
+       where ae.profile_id = p.id and ae.event_name in ('onboarding_viewed', 'first_action_presented'))
   ) is not null;
 
 update public.profiles p
