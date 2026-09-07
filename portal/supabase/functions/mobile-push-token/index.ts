@@ -18,6 +18,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { validatePreferencesUpdate } from './validatePreferencesUpdate.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -120,12 +121,16 @@ serve(async (req) => {
     }
 
     if (action === 'update_preferences') {
-      const allowedFields = ['daily_drill_enabled', 'daily_drill_time', 'checkride_countdown_enabled', 'weak_area_enabled', 'streak_enabled'] as const
-      const update: Record<string, unknown> = {}
-      for (const field of allowedFields) {
-        if (body?.[field] !== undefined) update[field] = body[field]
-      }
-      if (Object.keys(update).length === 0) return json({ error: 'No preference fields provided' }, 400)
+      // Rev2 (independent review): validated by a dependency-free module
+      // (validatePreferencesUpdate.ts) specifically so this decision
+      // logic is directly unit-testable under plain Node -- see
+      // test/mobile_push_token_validatePreferencesUpdate.test.mjs. Each
+      // boolean field must be a real boolean when supplied (an explicit
+      // null is rejected, not silently dropped); daily_drill_time must
+      // match a valid 24-hour time; a body with no recognized fields (or
+      // only unknown ones, which are never read at all) is a clean 400.
+      const validation = validatePreferencesUpdate(body)
+      if (!validation.ok) return json({ error: validation.error }, 400)
 
       // Upsert-safe merge: PostgREST's upsert only sets the columns
       // actually present in this payload, so an existing row's untouched
@@ -134,7 +139,7 @@ serve(async (req) => {
       // didn't send -- never a client-invented default.
       const { data, error } = await supabase
         .from('notification_preferences')
-        .upsert({ profile_id: userId, ...update }, { onConflict: 'profile_id' })
+        .upsert({ profile_id: userId, ...validation.update }, { onConflict: 'profile_id' })
         .select('daily_drill_enabled, daily_drill_time, checkride_countdown_enabled, weak_area_enabled, streak_enabled')
         .single()
       if (error) throw error

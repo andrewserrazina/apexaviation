@@ -1539,6 +1539,33 @@ fi
 rm -rf test/__v119_compiled
 
 echo
+echo "########## SPRINT 1C REV2 (INDEPENDENT REVIEW): update_preferences INPUT VALIDATION ##########"
+echo "mobile-push-token's update_preferences action now validates its request body through a"
+echo "dependency-free module (validatePreferencesUpdate.ts) specifically so it is unit-testable) --"
+echo "plain TypeScript with zero Deno-specific imports, so this runs directly under plain Node as a"
+echo "real execution of the actual shipped logic, not a hand-written duplicate. This is NOT an Edge"
+echo "Function integration test -- it does not exercise the HTTP layer, the 400 status mapping, JWT"
+echo "verification, or the RLS-scoped Postgres upsert -- only the validation decision function itself."
+
+rm -rf test/__mobile_push_token_compiled
+if tsc --module esnext --target es2020 --moduleResolution bundler --outDir test/__mobile_push_token_compiled portal/supabase/functions/mobile-push-token/validatePreferencesUpdate.ts > /tmp/mobile_push_token_tsc_compile.log 2>&1; then
+  MPT_NODE_OUTPUT=$(node test/mobile_push_token_validatePreferencesUpdate.test.mjs 2>&1)
+  MPT_NODE_RC=$?
+  echo "$MPT_NODE_OUTPUT"
+  MPT_NODE_PASS_COUNT=$(echo "$MPT_NODE_OUTPUT" | grep -c "^PASS:")
+  MPT_NODE_FAIL_COUNT=$(echo "$MPT_NODE_OUTPUT" | grep -c "^FAIL:")
+  PASS=$((PASS + MPT_NODE_PASS_COUNT))
+  if [ "$MPT_NODE_RC" -ne 0 ] || [ "$MPT_NODE_FAIL_COUNT" -gt 0 ]; then
+    FAIL=$((FAIL + (MPT_NODE_FAIL_COUNT > 0 ? MPT_NODE_FAIL_COUNT : 1)))
+    FAILURES+=("Sprint 1C Rev2 validatePreferencesUpdate() Node unit tests")
+  fi
+else
+  echo "FAIL: validatePreferencesUpdate.ts failed to compile"; cat /tmp/mobile_push_token_tsc_compile.log
+  FAIL=$((FAIL+1)); FAILURES+=("Sprint 1C Rev2 validatePreferencesUpdate.ts compile")
+fi
+rm -rf test/__mobile_push_token_compiled
+
+echo
 echo "=================================================="
 echo "RESULTS: $PASS passed, $FAIL failed"
 if [ $FAIL -gt 0 ]; then
