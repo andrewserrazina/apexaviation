@@ -6,13 +6,14 @@
 // (Sprint 1A Rev2 section 9, hardened in Rev3 section 3). A failure here
 // becomes the same normalized, user-safe ApiError every other failure
 // mode produces -- the raw payload is only ever dev-logged.
-import type { DrillStatus, EvidenceLevel, MobileStudyPackContent } from '../../../shared/mobile-dto'
+import type { DrillStatus, EvidenceLevel, MobilePlatform, MobileStudyPackContent } from '../../../shared/mobile-dto'
 import { ApiError, logDevError } from './errors'
 
 const MALFORMED_RESPONSE_MESSAGE = 'Something went wrong loading that. Please try again.'
 
 const DRILL_STATUSES: readonly DrillStatus[] = ['pending', 'in_progress', 'completed']
 const EVIDENCE_LEVELS: readonly EvidenceLevel[] = ['low', 'moderate', 'high']
+const MOBILE_PLATFORMS: readonly MobilePlatform[] = ['ios', 'android']
 
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -276,5 +277,40 @@ export function isValidStudyPackContent(value: unknown): value is MobileStudyPac
     value.checkride_corner.every(isValidCheckrideQuestion) &&
     isValidMasteryCheck(value.mastery_check) &&
     isValidQuickReference(value.quick_reference)
+  )
+}
+
+// Sprint 1C Phase 7: the exact fields register/revoke/list actually
+// render (registration-lifecycle bookkeeping, the Profile devices list) --
+// mirrors mobile-push-token/index.ts's own select() column lists.
+export function isValidMobilePlatform(value: unknown): value is MobilePlatform {
+  return typeof value === 'string' && (MOBILE_PLATFORMS as readonly string[]).includes(value)
+}
+
+export function isValidMobileDevice(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    isNonEmptyString(value.id) &&
+    isValidMobilePlatform(value.platform) &&
+    isNullableString(value.installation_id) &&
+    isNullableString(value.app_version) &&
+    isNonEmptyString(value.last_seen_at) &&
+    isNonEmptyString(value.created_at)
+  )
+}
+
+// Sprint 1C Phase 9: notification_preferences (v116) mirrored exactly --
+// no field this validator doesn't require is ever read by the native
+// preferences UI, and no field it does require is optional on the wire
+// (get_preferences always returns all five, whether from a real row or
+// the table-default fallback -- see mobile-push-token/index.ts).
+export function isValidNotificationPreferences(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    typeof value.daily_drill_enabled === 'boolean' &&
+    typeof value.daily_drill_time === 'string' &&
+    typeof value.checkride_countdown_enabled === 'boolean' &&
+    typeof value.weak_area_enabled === 'boolean' &&
+    typeof value.streak_enabled === 'boolean'
   )
 }

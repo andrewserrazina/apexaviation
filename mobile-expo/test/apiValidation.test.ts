@@ -16,6 +16,7 @@ import { fetchDailyDrill, startDailyDrill } from '../lib/api/dailyDrill'
 import { revealQuestion, completePractice, startAdHocPractice, resumePractice } from '../lib/api/practice'
 import { fetchLatestReadiness } from '../lib/api/readiness'
 import { fetchLibraryCatalog, fetchLibraryContent } from '../lib/api/library'
+import { registerPushToken, revokePushToken, listPushTokens, getNotificationPreferences, updateNotificationPreferences } from '../lib/api/pushToken'
 
 async function captureError(promise: Promise<unknown>): Promise<ApiError> {
   try {
@@ -700,6 +701,110 @@ describe('mobile-library content malformed response', () => {
     const { checkride_corner: _drop, ...rest } = studyPackContentFixture()
     ok({ version: '1.0.0', content: rest })
     const err = await captureError(fetchLibraryContent('airspace_mastery'))
+    expect(err.kind).toBe('server')
+  })
+})
+
+function deviceFixture(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'device-1',
+    platform: 'ios',
+    installation_id: 'install-1',
+    app_version: '0.1.0',
+    last_seen_at: '2026-01-01T00:00:00Z',
+    created_at: '2026-01-01T00:00:00Z',
+    ...overrides,
+  }
+}
+
+function preferencesFixture(overrides: Record<string, unknown> = {}) {
+  return {
+    daily_drill_enabled: true,
+    daily_drill_time: '07:00:00',
+    checkride_countdown_enabled: true,
+    weak_area_enabled: true,
+    streak_enabled: true,
+    ...overrides,
+  }
+}
+
+describe('mobile-push-token malformed response', () => {
+  it('accepts a well-formed register response', async () => {
+    ok({ device: deviceFixture() })
+    const result = await registerPushToken({ platform: 'ios', expo_push_token: 'ExponentPushToken[abc]' })
+    expect(result.device.id).toBe('device-1')
+  })
+
+  it('rejects a register response with an invalid platform', async () => {
+    ok({ device: deviceFixture({ platform: 'windows' }) })
+    const err = await captureError(registerPushToken({ platform: 'ios', expo_push_token: 'ExponentPushToken[abc]' }))
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a register response missing required device fields', async () => {
+    const { last_seen_at: _drop, ...rest } = deviceFixture()
+    ok({ device: rest })
+    const err = await captureError(registerPushToken({ platform: 'ios', expo_push_token: 'ExponentPushToken[abc]' }))
+    expect(err.kind).toBe('server')
+  })
+
+  it('accepts a well-formed revoke response', async () => {
+    ok({ device: deviceFixture() })
+    const result = await revokePushToken('device-1')
+    expect(result.device.id).toBe('device-1')
+  })
+
+  it('rejects a revoke response with a malformed device', async () => {
+    ok({ device: { id: 'device-1' } })
+    const err = await captureError(revokePushToken('device-1'))
+    expect(err.kind).toBe('server')
+  })
+
+  it('accepts a well-formed list response, including an empty list', async () => {
+    ok({ devices: [] })
+    await expect(listPushTokens()).resolves.toEqual({ devices: [] })
+  })
+
+  it('rejects a list response where devices is not an array', async () => {
+    ok({ devices: null })
+    const err = await captureError(listPushTokens())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a list response containing one malformed device among valid ones', async () => {
+    ok({ devices: [deviceFixture(), { id: 'device-2', platform: 'android' }] })
+    const err = await captureError(listPushTokens())
+    expect(err.kind).toBe('server')
+  })
+
+  it('accepts a well-formed get_preferences response', async () => {
+    ok({ preferences: preferencesFixture() })
+    const result = await getNotificationPreferences()
+    expect(result.daily_drill_time).toBe('07:00:00')
+  })
+
+  it('rejects a preferences response with a non-boolean toggle', async () => {
+    ok({ preferences: preferencesFixture({ streak_enabled: 'yes' }) })
+    const err = await captureError(getNotificationPreferences())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a preferences response missing a required field', async () => {
+    const { weak_area_enabled: _drop, ...rest } = preferencesFixture()
+    ok({ preferences: rest })
+    const err = await captureError(getNotificationPreferences())
+    expect(err.kind).toBe('server')
+  })
+
+  it('accepts a well-formed update_preferences response', async () => {
+    ok({ preferences: preferencesFixture({ daily_drill_enabled: false }) })
+    const result = await updateNotificationPreferences({ daily_drill_enabled: false })
+    expect(result.daily_drill_enabled).toBe(false)
+  })
+
+  it('rejects a malformed update_preferences response', async () => {
+    ok({ preferences: null })
+    const err = await captureError(updateNotificationPreferences({ daily_drill_enabled: false }))
     expect(err.kind).toBe('server')
   })
 })

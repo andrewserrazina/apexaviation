@@ -1,11 +1,17 @@
-// Mobile push token -- register/list/revoke mobile_devices (v116) rows.
-// mobile_devices already carries self-scoped RLS ("auth.uid() = profile_id"
-// for all), so a plain authenticated client (not service-role) is used
-// here deliberately: RLS itself is the enforcement that a learner can
-// only ever see or touch their own device rows (Phase C10 requirement),
-// not an extra check duplicated in this function's own code.
+// Mobile push token -- register/list/revoke mobile_devices (v116) rows,
+// plus (Sprint 1C Phase 9) get_preferences/update_preferences for the
+// also-already-existing notification_preferences (v116) table.
+// mobile_devices and notification_preferences both already carry
+// self-scoped RLS ("auth.uid() = profile_id" for all), so a plain
+// authenticated client (not service-role) is used here deliberately: RLS
+// itself is the enforcement that a learner can only ever see or touch
+// their own rows (Phase C10 requirement), not an extra check duplicated
+// in this function's own code.
 //
-// NOT YET DEPLOYED. Source-controlled only.
+// DEPLOYED (version 2, register/revoke/list only) as of Sprint 1C. The
+// get_preferences/update_preferences actions below are SOURCE-CONTROLLED
+// ONLY -- deploying this file is a Sprint 1C stop gate; see the Sprint
+// report for the exact backend deployment delta.
 //
 // Env vars required (Supabase Edge Function secrets):
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (both auto-provided)
@@ -83,6 +89,56 @@ serve(async (req) => {
       const { data, error } = await supabase.rpc('revoke_mobile_device', { p_device_id: deviceId })
       if (error) throw error
       return json({ device: data })
+    }
+
+    // Sprint 1C Phase 9: notification_preferences (v116) already exists
+    // in production with its own self-scoped RLS identical in shape to
+    // mobile_devices' -- reuses the same auth-carrying `supabase` client
+    // (never service_role) so RLS is what actually enforces "only your
+    // own row," exactly like every other action in this function.
+    // Identity comes ONLY from the verified JWT (`userId` above) -- no
+    // caller-supplied profile_id is ever read from the body.
+    if (action === 'get_preferences') {
+      const { data, error } = await supabase
+        .from('notification_preferences')
+        .select('daily_drill_enabled, daily_drill_time, checkride_countdown_enabled, weak_area_enabled, streak_enabled')
+        .eq('profile_id', userId)
+        .maybeSingle()
+      if (error) throw error
+      // No row yet is a normal, expected state (no insert trigger creates
+      // one on signup) -- returns the exact same defaults the v116
+      // migration itself declares on the table, never a client-invented
+      // value, and never writes a row just because it was read.
+      const preferences = data ?? {
+        daily_drill_enabled: true,
+        daily_drill_time: '07:00:00',
+        checkride_countdown_enabled: true,
+        weak_area_enabled: true,
+        streak_enabled: true,
+      }
+      return json({ preferences })
+    }
+
+    if (action === 'update_preferences') {
+      const allowedFields = ['daily_drill_enabled', 'daily_drill_time', 'checkride_countdown_enabled', 'weak_area_enabled', 'streak_enabled'] as const
+      const update: Record<string, unknown> = {}
+      for (const field of allowedFields) {
+        if (body?.[field] !== undefined) update[field] = body[field]
+      }
+      if (Object.keys(update).length === 0) return json({ error: 'No preference fields provided' }, 400)
+
+      // Upsert-safe merge: PostgREST's upsert only sets the columns
+      // actually present in this payload, so an existing row's untouched
+      // fields are left exactly as they were, and a brand-new row picks
+      // up the table's own column defaults for every field this request
+      // didn't send -- never a client-invented default.
+      const { data, error } = await supabase
+        .from('notification_preferences')
+        .upsert({ profile_id: userId, ...update }, { onConflict: 'profile_id' })
+        .select('daily_drill_enabled, daily_drill_time, checkride_countdown_enabled, weak_area_enabled, streak_enabled')
+        .single()
+      if (error) throw error
+      return json({ preferences: data })
     }
 
     // Default action: list this learner's own non-revoked devices.

@@ -12,6 +12,7 @@ import { ApiError } from '../lib/api/errors'
 import { startDailyDrill, fetchDailyDrill } from '../lib/api/dailyDrill'
 import { startAdHocPractice } from '../lib/api/practice'
 import { fetchLibraryCatalog, fetchLibraryContent } from '../lib/api/library'
+import { registerPushToken, revokePushToken, listPushTokens, getNotificationPreferences, updateNotificationPreferences } from '../lib/api/pushToken'
 
 async function captureError(promise: Promise<unknown>): Promise<ApiError> {
   try {
@@ -186,5 +187,51 @@ describe('mobile-library request contract', () => {
     })
     await fetchLibraryContent('airspace_mastery')
     expect(mockInvoke).toHaveBeenCalledWith('mobile-library', { body: { action: 'content', pack_id: 'airspace_mastery' } })
+  })
+})
+
+describe('mobile-push-token request contract', () => {
+  beforeEach(() => mockInvoke.mockReset())
+
+  function deviceFixture() {
+    return { id: 'device-1', platform: 'ios', installation_id: null, app_version: null, last_seen_at: '2026-01-01T00:00:00Z', created_at: '2026-01-01T00:00:00Z' }
+  }
+
+  it('registerPushToken sends action=register with exactly the platform and token given, plus optional metadata', async () => {
+    mockInvoke.mockResolvedValue({ data: { device: deviceFixture() }, error: null })
+    await registerPushToken({ platform: 'ios', expo_push_token: 'ExponentPushToken[abc]', app_version: '0.1.0' })
+    expect(mockInvoke).toHaveBeenCalledWith('mobile-push-token', {
+      body: { action: 'register', platform: 'ios', expo_push_token: 'ExponentPushToken[abc]', app_version: '0.1.0' },
+    })
+  })
+
+  it('revokePushToken sends action=revoke with exactly the given device_id', async () => {
+    mockInvoke.mockResolvedValue({ data: { device: deviceFixture() }, error: null })
+    await revokePushToken('device-1')
+    expect(mockInvoke).toHaveBeenCalledWith('mobile-push-token', { body: { action: 'revoke', device_id: 'device-1' } })
+  })
+
+  it('listPushTokens sends no action (list is the default)', async () => {
+    mockInvoke.mockResolvedValue({ data: { devices: [] }, error: null })
+    await listPushTokens()
+    expect(mockInvoke).toHaveBeenCalledWith('mobile-push-token', undefined)
+  })
+
+  it('getNotificationPreferences sends action=get_preferences', async () => {
+    mockInvoke.mockResolvedValue({
+      data: { preferences: { daily_drill_enabled: true, daily_drill_time: '07:00:00', checkride_countdown_enabled: true, weak_area_enabled: true, streak_enabled: true } },
+      error: null,
+    })
+    await getNotificationPreferences()
+    expect(mockInvoke).toHaveBeenCalledWith('mobile-push-token', { body: { action: 'get_preferences' } })
+  })
+
+  it('updateNotificationPreferences sends action=update_preferences with only the changed fields', async () => {
+    mockInvoke.mockResolvedValue({
+      data: { preferences: { daily_drill_enabled: false, daily_drill_time: '07:00:00', checkride_countdown_enabled: true, weak_area_enabled: true, streak_enabled: true } },
+      error: null,
+    })
+    await updateNotificationPreferences({ daily_drill_enabled: false })
+    expect(mockInvoke).toHaveBeenCalledWith('mobile-push-token', { body: { action: 'update_preferences', daily_drill_enabled: false } })
   })
 })

@@ -424,7 +424,8 @@ export interface MobileLibraryContentResponse {
 }
 
 // ---------------------------------------------------------------------
-// mobile-push-token (POST action: 'register' | 'revoke' | list (default))
+// mobile-push-token (POST action: 'register' | 'revoke' | 'get_preferences'
+// | 'update_preferences' | list (default))
 // ---------------------------------------------------------------------
 
 export interface MobileDeviceDTO {
@@ -444,11 +445,56 @@ export interface MobilePushTokenRegisterRequest {
   app_version?: string
 }
 
+export interface MobilePushTokenRegisterResponse {
+  device: MobileDeviceDTO
+}
+
 export interface MobilePushTokenRevokeRequest {
   action: 'revoke'
   device_id: string
 }
 
+export interface MobilePushTokenRevokeResponse {
+  device: MobileDeviceDTO
+}
+
 export interface MobilePushTokenListResponse {
   devices: MobileDeviceDTO[]
+}
+
+// Sprint 1C Phase 9: notification_preferences already exists in
+// production (v116) with these exact field names/defaults -- this DTO
+// intentionally mirrors the table 1:1 rather than inventing a different
+// client-facing shape, and adds no field the table doesn't already have.
+// daily_drill_time is the table's `time` column, serialized as
+// "HH:MM:SS" the way postgrest/supabase-js already returns `time` columns
+// -- never reinterpreted as a Date or combined with any timezone (the
+// table comment is explicit that profiles.timezone is the only source of
+// truth for a learner's local time).
+export interface MobileNotificationPreferences {
+  daily_drill_enabled: boolean
+  daily_drill_time: string
+  checkride_countdown_enabled: boolean
+  weak_area_enabled: boolean
+  streak_enabled: boolean
+}
+
+export interface MobileGetPreferencesRequest {
+  action: 'get_preferences'
+}
+
+export interface MobilePreferencesResponse {
+  preferences: MobileNotificationPreferences
+}
+
+// Every field optional -- update_preferences is a partial merge (upsert),
+// never a full-object replace, so a client only ever sends the one
+// toggle/time the learner actually changed.
+export interface MobileUpdatePreferencesRequest {
+  action: 'update_preferences'
+  daily_drill_enabled?: boolean
+  daily_drill_time?: string
+  checkride_countdown_enabled?: boolean
+  weak_area_enabled?: boolean
+  streak_enabled?: boolean
 }
