@@ -159,9 +159,24 @@ addition to* those automatic ones.
 **Expected frequency:** ~1 per real personalized-pitch view. This is the event the Readiness → Checkride Prep bridge's "did they actually see their own result before the ask" step is built on.
 
 ### `readiness_free_action_clicked`
-**Trigger:** The "Try today's free oral exam question first" secondary link inside the personalized unlock modal is clicked (only rendered when `readiness_checkride_prep_offer_viewed` also fires).
-**Properties:** `profile_id`.
+**Trigger:** The "Try today's free oral exam question first" secondary link inside the personalized unlock modal is clicked (only rendered when `readiness_checkride_prep_offer_viewed` also fires). Also fires from the Readiness Plan card's free-action button (`renderReadinessPlanCard()`, Readiness Bridge Phase 3/4) -- same real user action (the free, weak-area-linked recommendation was clicked), just a second real trigger surface.
+**Properties:** `profile_id`. From the Readiness Plan card: additionally `source: 'readiness_plan_card'`, `route`. (No `source` property from the unlock modal -- treat its absence as `'unlock_modal'`.)
 **Expected frequency:** Should be well below `readiness_checkride_prep_offer_viewed`'s count -- this is the "give value before the ask" off-ramp, not the primary path.
+
+### `readiness_plan_viewed`
+**Trigger:** `renderReadinessPlanCard()` (`site/portal-stable.js`) renders the top-of-dashboard Readiness Plan card visible for a member with a completed, profile-linked Readiness Assessment (`computeReadinessRoute()` returns non-null). Guarded by a session-local flag so a re-render (e.g. after `loadGroundSchool()` resolves) never double-fires it. Never fires for a member with no linked assessment -- the card stays `hidden` and this whole card is invisible to them.
+**Properties:** `profile_id`, `route` (`'foundation'` | `'active_prep'` | `'imminent'`), `score`, `weakest_category_1`, `weakest_category_2` -- all read from that member's real stored Readiness Assessment result, never hardcoded or score-bucketed.
+**Expected frequency:** ~1 per dashboard session for a Readiness-linked member. This is the "did they actually see their personalized plan" step the Readiness → paid-product bridge funnel is built on -- the direct successor to `readiness_checkride_prep_offer_viewed`'s older, single-deep-link-only version of the same idea.
+
+### `readiness_paid_recommendation_viewed`
+**Trigger:** The Readiness Plan card's "Ready To Go Further?" paid step becomes visible -- gated on the card's free action having a real completion signal (`categoryPct()` for an unlocked member's weak-area category, or the daily question's own `studied` flag for a locked member), matching the "free value before the paid ask" requirement. Guarded so a re-render never double-fires it.
+**Properties:** `profile_id`, `route`, `product` (`'ground_school'` | `'checkride_prep'` | `null` for Mock Oral, which has no unlock-gated product id).
+**Expected frequency:** Should be below `readiness_plan_viewed`'s count -- only fires once the member has engaged with the free recommendation first.
+
+### `readiness_paid_recommendation_clicked`
+**Trigger:** The Readiness Plan card's paid CTA button is clicked. For the `checkride_prep` product this opens the personalized unlock modal (`openUnlockModal(ctx)`), which then separately fires its own `readiness_checkride_prep_offer_viewed` once the modal itself renders -- that is a later, nested funnel step, not a duplicate of this click event.
+**Properties:** `profile_id`, `route`, `product`.
+**Expected frequency:** Should be well below `readiness_paid_recommendation_viewed`'s count -- this is the actual paid-CTA-click step ahead of `checkout_started`.
 
 ### `content_deeplink_topic_matched`
 **Trigger:** A `?topic=` deep link successfully matches a known content category.
