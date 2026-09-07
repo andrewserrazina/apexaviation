@@ -11,6 +11,7 @@ import { invokeMobileFunction } from '../lib/api/client'
 import { ApiError } from '../lib/api/errors'
 import { startDailyDrill, fetchDailyDrill } from '../lib/api/dailyDrill'
 import { startAdHocPractice } from '../lib/api/practice'
+import { fetchLibraryCatalog, fetchLibraryContent } from '../lib/api/library'
 
 async function captureError(promise: Promise<unknown>): Promise<ApiError> {
   try {
@@ -156,5 +157,34 @@ describe('practice.ts ad-hoc start is a distinct, independent call', () => {
     })
     await startAdHocPractice({ session_size: 5 })
     expect(mockInvoke).toHaveBeenCalledWith('mobile-practice', { body: { action: 'start', session_size: 5 } })
+  })
+})
+
+describe('mobile-library request contract', () => {
+  beforeEach(() => mockInvoke.mockReset())
+
+  it('fetchLibraryCatalog invokes mobile-library with no action (catalog is the default)', async () => {
+    mockInvoke.mockResolvedValue({ data: { packs: [] }, error: null })
+    await fetchLibraryCatalog()
+    expect(mockInvoke).toHaveBeenCalledWith('mobile-library', undefined)
+  })
+
+  it('fetchLibraryContent invokes mobile-library with action=content and the exact pack id, nothing else', async () => {
+    mockInvoke.mockResolvedValue({
+      data: {
+        version: '1.0.0',
+        content: {
+          product: { name: 'Apex Advantage Airspace Mastery' },
+          lessons: [],
+          scenarios: [],
+          checkride_corner: [],
+          mastery_check: { questions: [], passing_percent: 80, retakes_allowed: true },
+          quick_reference: { sections: [] },
+        },
+      },
+      error: null,
+    })
+    await fetchLibraryContent('airspace_mastery')
+    expect(mockInvoke).toHaveBeenCalledWith('mobile-library', { body: { action: 'content', pack_id: 'airspace_mastery' } })
   })
 })

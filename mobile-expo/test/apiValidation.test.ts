@@ -15,6 +15,7 @@ import { fetchBootstrap } from '../lib/api/bootstrap'
 import { fetchDailyDrill, startDailyDrill } from '../lib/api/dailyDrill'
 import { revealQuestion, completePractice, startAdHocPractice, resumePractice } from '../lib/api/practice'
 import { fetchLatestReadiness } from '../lib/api/readiness'
+import { fetchLibraryCatalog, fetchLibraryContent } from '../lib/api/library'
 
 async function captureError(promise: Promise<unknown>): Promise<ApiError> {
   try {
@@ -495,5 +496,210 @@ describe('mobile-readiness malformed response', () => {
       refreshed: false,
     })
     await expect(fetchLatestReadiness()).resolves.toBeTruthy()
+  })
+})
+
+// Sprint 1C Phase 1: mobile-library's catalog is browsable without
+// entitlement, so `owned` is the ONE thing a malformed catalog must never
+// be allowed to misrender -- see lib/api/library.ts and
+// portal/supabase/functions/mobile-library/index.ts.
+function packSummaryFixture(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'airspace_mastery',
+    name: 'Apex Advantage Airspace Mastery',
+    subtitle: 'Master the airspace system',
+    price_cents: 4900,
+    currency: 'usd',
+    certificate_type: 'private_pilot',
+    estimated_minutes_min: 120,
+    estimated_minutes_max: 180,
+    sort_order: 1,
+    owned: false,
+    ...overrides,
+  }
+}
+
+// A minimal but fully well-formed MobileStudyPackContent -- one of each
+// section, matching the exact wire shape Sprint 1C Phase 0's read-only
+// production inspection established (cross-checked against
+// site/portal-stable.js's Study Pack renderer).
+function studyPackContentFixture(overrides: Record<string, unknown> = {}): Record<string, any> {
+  return {
+    product: { name: 'Apex Advantage Airspace Mastery' },
+    lessons: [
+      {
+        id: 'lesson-1',
+        lesson_number: 1,
+        title: 'The Big Picture',
+        estimated_time: '15 minutes',
+        intro: ['Why airspace exists.'],
+        sections: {
+          what_is_it: ['...'],
+          why_it_matters: ['...'],
+          flight_operations: ['...'],
+          adm_legal_vs_wise: ['...'],
+          checkride_connection: ['...'],
+          safety_connection: ['...'],
+        },
+        knowledge_check: [
+          {
+            id: 'kc-1',
+            question_number: 1,
+            question: 'What is Class B airspace?',
+            correct_answer: 'Controlled airspace around the busiest airports.',
+            explanation: 'Class B surrounds the nation’s busiest airports.',
+            common_mistake: null,
+          },
+        ],
+      },
+    ],
+    scenarios: [
+      {
+        id: 'scenario-1',
+        scenario_number: 1,
+        title: 'Unexpected Class C transition',
+        situation: 'You are approaching Class C airspace.',
+        decision_point: 'Do you request clearance now?',
+        student_commitment_prompt: 'What would you do?',
+        reveal_discussion: 'Contact approach control before entry.',
+        recommended_action: 'Establish two-way radio contact.',
+        debrief: 'Always confirm contact before entering.',
+      },
+    ],
+    checkride_corner: [
+      {
+        id: 'ckc-1',
+        question_number: 1,
+        topic: 'Airspace',
+        question: 'What is required to enter Class D airspace?',
+        difficulty_label: 'Foundational',
+        model_answer: 'Two-way radio communication established.',
+        common_student_mistake: 'Confusing established contact with merely calling in.',
+        dpe_follow_up: null,
+        strong_follow_up_answer: null,
+      },
+    ],
+    mastery_check: {
+      questions: [
+        {
+          id: 'mc-1',
+          question: 'Which airspace requires an ATC clearance to enter?',
+          options: [
+            { key: 'a', text: 'Class B' },
+            { key: 'b', text: 'Class G' },
+          ],
+          correct_option: 'a',
+          explanation: 'Class B requires an explicit clearance.',
+        },
+      ],
+      passing_percent: 80,
+      retakes_allowed: true,
+    },
+    quick_reference: {
+      sections: [
+        {
+          title: 'Airspace Speed Limits',
+          tables: [{ rows: [['Class', 'Speed Limit'], ['B', '250 kt below 10,000 ft']] }],
+          paragraphs: ['Always check current NOTAMs.'],
+        },
+      ],
+    },
+    ...overrides,
+  }
+}
+
+describe('mobile-library catalog malformed response', () => {
+  it('accepts a well-formed catalog', async () => {
+    ok({ packs: [packSummaryFixture()] })
+    await expect(fetchLibraryCatalog()).resolves.toBeTruthy()
+  })
+
+  it('accepts an empty catalog', async () => {
+    ok({ packs: [] })
+    await expect(fetchLibraryCatalog()).resolves.toEqual({ packs: [] })
+  })
+
+  it('rejects a response where packs is not an array', async () => {
+    ok({ packs: null })
+    const err = await captureError(fetchLibraryCatalog())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a pack missing required fields', async () => {
+    const { certificate_type: _drop, ...rest } = packSummaryFixture()
+    ok({ packs: [rest] })
+    const err = await captureError(fetchLibraryCatalog())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a pack with a malformed (non-boolean) owned field', async () => {
+    ok({ packs: [packSummaryFixture({ owned: 'yes' })] })
+    const err = await captureError(fetchLibraryCatalog())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a pack with a malformed price_cents', async () => {
+    ok({ packs: [packSummaryFixture({ price_cents: '4900' })] })
+    const err = await captureError(fetchLibraryCatalog())
+    expect(err.kind).toBe('server')
+  })
+})
+
+describe('mobile-library content malformed response', () => {
+  it('accepts a well-formed content response', async () => {
+    ok({ version: '1.0.0', content: studyPackContentFixture() })
+    const result = await fetchLibraryContent('airspace_mastery')
+    expect(result.version).toBe('1.0.0')
+  })
+
+  it('rejects a response missing version at the outer contract level', async () => {
+    ok({ content: studyPackContentFixture() })
+    const err = await captureError(fetchLibraryContent('airspace_mastery'))
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a response where content is not an object', async () => {
+    ok({ version: '1.0.0', content: 'not-an-object' })
+    const err = await captureError(fetchLibraryContent('airspace_mastery'))
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects content missing the lessons array', async () => {
+    const { lessons: _drop, ...rest } = studyPackContentFixture()
+    ok({ version: '1.0.0', content: rest })
+    const err = await captureError(fetchLibraryContent('airspace_mastery'))
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a lesson missing a required section key', async () => {
+    const content = studyPackContentFixture()
+    const { what_is_it: _drop, ...restSections } = content.lessons[0].sections
+    content.lessons[0] = { ...content.lessons[0], sections: restSections }
+    ok({ version: '1.0.0', content })
+    const err = await captureError(fetchLibraryContent('airspace_mastery'))
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a mastery_check question with a non-array options field', async () => {
+    const content = studyPackContentFixture()
+    content.mastery_check = { ...content.mastery_check, questions: [{ ...content.mastery_check.questions[0], options: 'a' }] }
+    ok({ version: '1.0.0', content })
+    const err = await captureError(fetchLibraryContent('airspace_mastery'))
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a quick_reference table whose rows are not string arrays', async () => {
+    const content = studyPackContentFixture()
+    content.quick_reference = { sections: [{ ...content.quick_reference.sections[0], tables: [{ rows: [[1, 2]] }] }] }
+    ok({ version: '1.0.0', content })
+    const err = await captureError(fetchLibraryContent('airspace_mastery'))
+    expect(err.kind).toBe('server')
+  })
+
+  it('never fabricates a missing checkride_corner -- rejects rather than defaulting to empty', async () => {
+    const { checkride_corner: _drop, ...rest } = studyPackContentFixture()
+    ok({ version: '1.0.0', content: rest })
+    const err = await captureError(fetchLibraryContent('airspace_mastery'))
+    expect(err.kind).toBe('server')
   })
 })

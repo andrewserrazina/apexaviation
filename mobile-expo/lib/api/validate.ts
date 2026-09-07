@@ -6,7 +6,7 @@
 // (Sprint 1A Rev2 section 9, hardened in Rev3 section 3). A failure here
 // becomes the same normalized, user-safe ApiError every other failure
 // mode produces -- the raw payload is only ever dev-logged.
-import type { DrillStatus, EvidenceLevel } from '../../../shared/mobile-dto'
+import type { DrillStatus, EvidenceLevel, MobileStudyPackContent } from '../../../shared/mobile-dto'
 import { ApiError, logDevError } from './errors'
 
 const MALFORMED_RESPONSE_MESSAGE = 'Something went wrong loading that. Please try again.'
@@ -118,5 +118,163 @@ export function isValidWeakArea(value: unknown): boolean {
     Number.isFinite(v.evidence_score) &&
     v.evidence_score >= 0 &&
     v.evidence_score <= 1
+  )
+}
+
+export function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string')
+}
+
+// Sprint 1C: a mobile-library `content` action response's Study Pack
+// summary card -- the exact fields the Library catalog screen renders,
+// plus `owned`, the one server-authoritative ownership signal (see
+// portal/supabase/functions/mobile-library/index.ts's catalog action).
+// The client must never infer ownership itself -- this validator exists
+// so a malformed/missing `owned` on one pack can't silently be read as
+// falsy-but-present and misrender as locked, or crash the map/render.
+export function isValidStudyPackSummary(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    isNonEmptyString(value.id) &&
+    isNonEmptyString(value.name) &&
+    isNullableString(value.subtitle) &&
+    typeof value.price_cents === 'number' &&
+    Number.isFinite(value.price_cents) &&
+    typeof value.currency === 'string' &&
+    typeof value.certificate_type === 'string' &&
+    (value.estimated_minutes_min === null || typeof value.estimated_minutes_min === 'number') &&
+    (value.estimated_minutes_max === null || typeof value.estimated_minutes_max === 'number') &&
+    typeof value.sort_order === 'number' &&
+    typeof value.owned === 'boolean'
+  )
+}
+
+// Sprint 1C Phase 0/1: the narrowest truthful runtime model of
+// study_pack_versions.content the native Library pack renderer needs --
+// see shared/mobile-dto's MobileStudyPackContent doc comment for exactly
+// which wire fields this deliberately excludes and why. Fails closed
+// (rejects the whole response) rather than rendering a partially-valid
+// pack with missing sections, per Sprint 1C's "never fabricate missing
+// sections" instruction -- a Library pack detail screen either shows the
+// real, complete content or a safe error, never a half-populated pack.
+const LESSON_SECTION_KEYS = ['what_is_it', 'why_it_matters', 'flight_operations', 'adm_legal_vs_wise', 'checkride_connection', 'safety_connection'] as const
+
+function isValidLessonSections(value: unknown): boolean {
+  return isPlainObject(value) && LESSON_SECTION_KEYS.every((key) => isStringArray(value[key]))
+}
+
+function isValidKnowledgeCheckQuestion(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    isNonEmptyString(value.id) &&
+    typeof value.question_number === 'number' &&
+    isNonEmptyString(value.question) &&
+    isNonEmptyString(value.correct_answer) &&
+    typeof value.explanation === 'string' &&
+    isNullableString(value.common_mistake)
+  )
+}
+
+function isValidLesson(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    isNonEmptyString(value.id) &&
+    typeof value.lesson_number === 'number' &&
+    isNonEmptyString(value.title) &&
+    typeof value.estimated_time === 'string' &&
+    isStringArray(value.intro) &&
+    isValidLessonSections(value.sections) &&
+    Array.isArray(value.knowledge_check) &&
+    value.knowledge_check.every(isValidKnowledgeCheckQuestion)
+  )
+}
+
+function isValidScenario(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    isNonEmptyString(value.id) &&
+    typeof value.scenario_number === 'number' &&
+    isNonEmptyString(value.title) &&
+    typeof value.situation === 'string' &&
+    typeof value.decision_point === 'string' &&
+    typeof value.student_commitment_prompt === 'string' &&
+    typeof value.reveal_discussion === 'string' &&
+    typeof value.recommended_action === 'string' &&
+    typeof value.debrief === 'string'
+  )
+}
+
+function isValidCheckrideQuestion(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    isNonEmptyString(value.id) &&
+    typeof value.question_number === 'number' &&
+    isNonEmptyString(value.topic) &&
+    isNonEmptyString(value.question) &&
+    isNonEmptyString(value.difficulty_label) &&
+    typeof value.model_answer === 'string' &&
+    typeof value.common_student_mistake === 'string' &&
+    isNullableString(value.dpe_follow_up) &&
+    isNullableString(value.strong_follow_up_answer)
+  )
+}
+
+function isValidMasteryOption(value: unknown): boolean {
+  return isPlainObject(value) && isNonEmptyString(value.key) && typeof value.text === 'string'
+}
+
+function isValidMasteryQuestion(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    isNonEmptyString(value.id) &&
+    typeof value.question === 'string' &&
+    Array.isArray(value.options) &&
+    value.options.every(isValidMasteryOption) &&
+    isNonEmptyString(value.correct_option) &&
+    typeof value.explanation === 'string'
+  )
+}
+
+function isValidMasteryCheck(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    Array.isArray(value.questions) &&
+    value.questions.every(isValidMasteryQuestion) &&
+    typeof value.passing_percent === 'number' &&
+    typeof value.retakes_allowed === 'boolean'
+  )
+}
+
+function isValidQuickReferenceTable(value: unknown): boolean {
+  return isPlainObject(value) && Array.isArray(value.rows) && value.rows.every(isStringArray)
+}
+
+function isValidQuickReferenceSection(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    typeof value.title === 'string' &&
+    Array.isArray(value.tables) &&
+    value.tables.every(isValidQuickReferenceTable) &&
+    isStringArray(value.paragraphs)
+  )
+}
+
+function isValidQuickReference(value: unknown): boolean {
+  return isPlainObject(value) && Array.isArray(value.sections) && value.sections.every(isValidQuickReferenceSection)
+}
+
+export function isValidStudyPackContent(value: unknown): value is MobileStudyPackContent {
+  return (
+    isPlainObject(value) &&
+    isPlainObject(value.product) &&
+    typeof value.product.name === 'string' &&
+    Array.isArray(value.lessons) &&
+    value.lessons.every(isValidLesson) &&
+    Array.isArray(value.scenarios) &&
+    value.scenarios.every(isValidScenario) &&
+    Array.isArray(value.checkride_corner) &&
+    value.checkride_corner.every(isValidCheckrideQuestion) &&
+    isValidMasteryCheck(value.mastery_check) &&
+    isValidQuickReference(value.quick_reference)
   )
 }

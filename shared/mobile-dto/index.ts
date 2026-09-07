@@ -304,9 +304,123 @@ export interface MobileLibraryContentRequest {
   pack_id: string
 }
 
+// Sprint 1C Phase 0: a READ-ONLY production inspection of the one
+// published pack/version (airspace_mastery v1.0.0) established this
+// shape, cross-checked field-for-field against the existing trusted
+// renderer (site/portal-stable.js's Study Pack engine) -- every field
+// below is one that renderer actually reads; nothing here was guessed.
+// study_pack_versions.content carries additional top-level keys this
+// type deliberately omits because the web renderer itself never surfaces
+// them to a learner: $schema, schema_name, schema_version, architecture,
+// source_verification, content_freeze_notice, export_generated_from,
+// quality_control_notes, completion_requirements, learning_objectives,
+// acs_mapping, graphics_manifest -- plus each lesson's own
+// portal_presentation_guidance section (content-team authoring
+// direction, not student-facing copy -- see SP_LESSON_SECTION_LABELS in
+// portal-stable.js) and each scenario's self_rating_options/
+// source_self_rating_text/extra (present on the wire but never read by
+// the renderer, which hardcodes its own confident/needs_review buttons).
+// Only one pack/version exists in production today, so this has not been
+// cross-checked against a second pack -- a future pack whose content
+// doesn't match this shape fails closed as a normal malformed-content
+// error (see lib/api/library.ts), it does not crash the renderer.
+export interface MobileStudyPackLessonSections {
+  what_is_it: string[]
+  why_it_matters: string[]
+  flight_operations: string[]
+  adm_legal_vs_wise: string[]
+  checkride_connection: string[]
+  safety_connection: string[]
+}
+
+export interface MobileStudyPackKnowledgeCheckQuestion {
+  id: string
+  question_number: number
+  question: string
+  correct_answer: string
+  explanation: string
+  common_mistake: string | null
+}
+
+export interface MobileStudyPackLesson {
+  id: string
+  lesson_number: number
+  title: string
+  estimated_time: string
+  intro: string[]
+  sections: MobileStudyPackLessonSections
+  knowledge_check: MobileStudyPackKnowledgeCheckQuestion[]
+}
+
+export interface MobileStudyPackScenario {
+  id: string
+  scenario_number: number
+  title: string
+  situation: string
+  decision_point: string
+  student_commitment_prompt: string
+  reveal_discussion: string
+  recommended_action: string
+  debrief: string
+}
+
+export interface MobileStudyPackCheckrideQuestion {
+  id: string
+  question_number: number
+  topic: string
+  question: string
+  difficulty_label: string
+  model_answer: string
+  common_student_mistake: string
+  dpe_follow_up: string | null
+  strong_follow_up_answer: string | null
+}
+
+export interface MobileStudyPackMasteryOption {
+  key: string
+  text: string
+}
+
+export interface MobileStudyPackMasteryQuestion {
+  id: string
+  question: string
+  options: MobileStudyPackMasteryOption[]
+  correct_option: string
+  explanation: string
+}
+
+export interface MobileStudyPackMasteryCheck {
+  questions: MobileStudyPackMasteryQuestion[]
+  passing_percent: number
+  retakes_allowed: boolean
+}
+
+export interface MobileStudyPackQuickReferenceTable {
+  rows: string[][]
+}
+
+export interface MobileStudyPackQuickReferenceSection {
+  title: string
+  tables: MobileStudyPackQuickReferenceTable[]
+  paragraphs: string[]
+}
+
+export interface MobileStudyPackQuickReference {
+  sections: MobileStudyPackQuickReferenceSection[]
+}
+
+export interface MobileStudyPackContent {
+  product: { name: string }
+  lessons: MobileStudyPackLesson[]
+  scenarios: MobileStudyPackScenario[]
+  checkride_corner: MobileStudyPackCheckrideQuestion[]
+  mastery_check: MobileStudyPackMasteryCheck
+  quick_reference: MobileStudyPackQuickReference
+}
+
 export interface MobileLibraryContentResponse {
   version: string
-  content: unknown // opaque Study Pack content payload -- same shape the web portal renders, versioned per study_pack_versions
+  content: MobileStudyPackContent
 }
 
 // ---------------------------------------------------------------------
