@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { AppState, type AppStateStatus } from 'react-native'
 import Constants from 'expo-constants'
 import type { MobileNotificationPreferences } from '../../shared/mobile-dto'
 import { getNotificationPreferences, registerPushToken, revokePushToken, updateNotificationPreferences } from '../lib/api/pushToken'
 import { clearPushRegistration, loadPushRegistration, savePushRegistration, type StoredPushRegistration } from '../lib/pushRegistrationStorage'
 import { loadNotificationOptIn, saveNotificationOptIn } from '../lib/notificationOptInStorage'
+import { beginRegistrationMutation } from '../lib/notifications/pushMutationCoordinator'
 import {
   currentPlatform,
   ensureAndroidNotificationChannel,
@@ -101,12 +103,16 @@ export function usePushRegistration(userId: string | null): UsePushRegistrationR
     setPreferences(next)
   }, [])
 
+  // Rev4: `uid` pins this load to the session belonging to the user who
+  // INITIATED it (see getPinnedAccessToken in lib/api/client.ts) -- never
+  // trusted as authorization by itself, only an expected-user assertion
+  // checked against the real, current Supabase session.
   const loadPreferences = useCallback(
-    async (myGeneration: number) => {
+    async (myGeneration: number, uid: string) => {
       setPreferencesLoading(true)
       setPreferencesError(null)
       try {
-        const prefs = await getNotificationPreferences()
+        const prefs = await getNotificationPreferences(uid)
         if (generationRef.current !== myGeneration) return
         commitPreferences(prefs)
       } catch (err) {
@@ -132,31 +138,53 @@ export function usePushRegistration(userId: string | null): UsePushRegistrationR
   // explicit enable() flow below now also ensures it BEFORE requesting
   // permission at all (Rev3 Blocker 1).
   //
-  // Rev3: generation is re-checked before EVERY call below that can
-  // mutate server state or local storage (registerPushToken,
-  // savePushRegistration) -- not just before the final `setDevice`
-  // commit. Previously only the React state commit was guarded, so a
-  // stale/unmounted operation could still physically register a device
-  // and write local storage after the user it was acting for had already
-  // signed out or been replaced by a different account on the same
-  // device.
+  // Rev3: generation is re-checked before every call below that can
+  // mutate server state or local storage -- not just before the final
+  // `setDevice` commit. A stale/unmounted operation must never physically
+  // register a device or write local storage on behalf of a user it no
+  // longer represents.
+  //
+  // Rev4: immediately before the server mutation (never across the
+  // permission prompt or token-acquisition wait above, which can block
+  // indefinitely), this synchronously enters `uid`'s push-mutation
+  // critical section via beginRegistrationMutation(). If that user's
+  // sign-out has already closed the gate, this aborts here with ZERO
+  // server mutation -- access-token pinning alone cannot close this race,
+  // because a Supabase JWT captured before sign-out began can remain
+  // valid at the server for the rest of its natural lifetime, so
+  // AuthContext.signOut() must be able to structurally WAIT for (and then
+  // supersede) an already-in-flight registration rather than merely
+  // invalidate its token. See pushMutationCoordinator.ts.
+  //
+  // Rev4 (adversarial self-review finding): once registerPushToken has
+  // actually succeeded, savePushRegistration is now UNCONDITIONAL --
+  // never skipped for a stale generation. AuthContext.signOut()'s wait
+  // depends on this local pointer existing the moment the mutation
+  // settles, so it can read and revoke it; skipping the save on staleness
+  // (the Rev3 behavior) would leave a real, active mobile_devices row
+  // that sign-out never learns about and can never revoke -- an orphaned
+  // registration that survives sign-out cleanup. Only the REACT STATE
+  // commit (`setDevice`) still respects generation staleness.
   const registerDevice = useCallback(
     async (uid: string, myGeneration: number, onError?: (message: string) => void): Promise<StoredPushRegistration | null> => {
       if (generationRef.current !== myGeneration) return null
       if (registeringGenerationsRef.current.has(myGeneration)) return null
       registeringGenerationsRef.current.add(myGeneration)
+      let releaseMutation: (() => void) | null = null
       try {
         const platform = currentPlatform()
         if (!platform) return null
         const token = await getExpoPushToken()
         if (generationRef.current !== myGeneration) return null
+
+        releaseMutation = beginRegistrationMutation(uid)
+        if (!releaseMutation) return null
+
         // `uid` is pinned as the expected session owner for this
         // mutation (see getPinnedAccessToken in lib/api/client.ts) --
-        // even if this call somehow proceeded past the generation check
-        // above, it can still never register a device under whichever
-        // session happens to be ambient/current at this exact moment.
+        // it can still never register a device under whichever session
+        // happens to be ambient/current at this exact moment.
         const result = await registerPushToken({ platform, expo_push_token: token, app_version: Constants.expoConfig?.version }, uid)
-        if (generationRef.current !== myGeneration) return null
         const stored: StoredPushRegistration = { userId: uid, deviceId: result.device.id, expoPushToken: token, platform }
         await savePushRegistration(stored)
         if (generationRef.current !== myGeneration) return null
@@ -169,6 +197,7 @@ export function usePushRegistration(userId: string | null): UsePushRegistrationR
         }
         return null
       } finally {
+        releaseMutation?.()
         registeringGenerationsRef.current.delete(myGeneration)
       }
     },
@@ -226,7 +255,7 @@ export function usePushRegistration(userId: string | null): UsePushRegistrationR
       if (state === 'granted' && optedIn) {
         const registered = await registerDevice(userId, myGeneration)
         if (generationRef.current !== myGeneration) return
-        if (registered) await loadPreferences(myGeneration)
+        if (registered) await loadPreferences(myGeneration, userId)
       }
     }
     sync()
@@ -237,6 +266,56 @@ export function usePushRegistration(userId: string | null): UsePushRegistrationR
       generationRef.current += 1
     }
   }, [userId, registerDevice, loadPreferences, commitPreferences])
+
+  // Rev4: the learner can change notification permission in iOS/Android
+  // Settings while Apex is backgrounded -- without this, the rendered
+  // `permission` state could stay stale (e.g. still showing "enabled")
+  // until the app is fully force-quit and relaunched, since
+  // NotificationsProvider is mounted once for the whole app session and
+  // nothing else re-reads OS permission on a mere foreground transition.
+  //
+  // This only ever calls the READ-ONLY getPermissionState() -- never
+  // requestPermission() -- so returning to Apex from Settings can never
+  // itself trigger an OS permission prompt. It also never re-registers or
+  // touches account opt-in: a permission that has come back to `granted`
+  // still requires the learner's own explicit "Enable Notifications"
+  // action if they are not already opted in (design decision, documented
+  // in the Sprint report: even for an account that already has opt-in
+  // true, foreground reconciliation deliberately does NOT immediately
+  // re-register -- it only updates what's rendered; the existing silent
+  // re-register-on-launch effect above picks it up on the next app
+  // start). That keeps this reconciliation path a pure read, so it can
+  // never itself become a new way to mutate server or consent state.
+  useEffect(() => {
+    if (!userId) return
+    const myGeneration = generationRef.current
+
+    async function reconcile() {
+      let state: PermissionState
+      try {
+        state = await getPermissionState()
+      } catch (err) {
+        logDevError('usePushRegistration.foregroundReconcile', err)
+        return
+      }
+      // Guards against a listener callback that fires for a since-
+      // replaced user/mount (e.g. removal raced a rapid sign-out/sign-in)
+      // from ever committing state on behalf of whoever is current now.
+      if (generationRef.current !== myGeneration) return
+      setPermission(state)
+    }
+
+    function onAppStateChange(next: AppStateStatus) {
+      if (next === 'active') {
+        reconcile()
+      }
+    }
+
+    const subscription = AppState.addEventListener('change', onAppStateChange)
+    return () => {
+      subscription.remove()
+    }
+  }, [userId])
 
   const enable = useCallback(async () => {
     if (!userId || enabling || registeringGenerationsRef.current.has(generationRef.current)) return
@@ -289,7 +368,7 @@ export function usePushRegistration(userId: string | null): UsePushRegistrationR
           setEnableError('We couldn’t finish enabling notifications. Please try again.')
           return
         }
-        await loadPreferences(myGeneration)
+        await loadPreferences(myGeneration, uid)
       }
     } catch (err) {
       logDevError('usePushRegistration.enable', err)
@@ -359,8 +438,17 @@ export function usePushRegistration(userId: string | null): UsePushRegistrationR
   const updatePreference = useCallback(
     (partial: PreferenceUpdate): Promise<void> => {
       const myGeneration = generationRef.current
+      // Rev4: `uid` is captured HERE, synchronously, at the moment the
+      // learner actually triggered this write -- never re-read from the
+      // `userId` prop later, since by the time this queued write actually
+      // executes the account may have changed. Passed through to
+      // updateNotificationPreferences() as the expected-user pin so a
+      // since-changed ambient session can never have this write silently
+      // reattributed to (or mutate) a different account.
+      const uid = userId
       const run = async () => {
         if (generationRef.current !== myGeneration) return
+        if (!uid) return
         const current = latestPreferencesRef.current
         if (!current) return
         const previous = current
@@ -369,7 +457,7 @@ export function usePushRegistration(userId: string | null): UsePushRegistrationR
         setSavingFields((prev) => new Set([...prev, ...fieldNames]))
         setPreferencesError(null)
         try {
-          const updated = await updateNotificationPreferences(partial)
+          const updated = await updateNotificationPreferences(partial, uid)
           if (generationRef.current !== myGeneration) return
           commitPreferences(updated)
         } catch (err) {
@@ -396,7 +484,7 @@ export function usePushRegistration(userId: string | null): UsePushRegistrationR
       preferencesQueueRef.current = next
       return next
     },
-    [commitPreferences]
+    [userId, commitPreferences]
   )
 
   return {

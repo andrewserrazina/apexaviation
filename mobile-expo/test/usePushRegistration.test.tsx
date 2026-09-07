@@ -9,6 +9,12 @@
 // for a user the hook has since switched to.
 import { act, renderHook, waitFor } from '@testing-library/react-native'
 import { usePushRegistration } from '../hooks/usePushRegistration'
+// Rev4: the sign-out/registration coordinator is a real, dependency-free
+// module -- exercised directly (not mocked) here to prove
+// usePushRegistration's registerDevice() actually integrates with it,
+// mirroring AuthContext.test.tsx's own approach on the sign-out side.
+import { closeUserForSignOut, releaseUserGate } from '../lib/notifications/pushMutationCoordinator'
+import type { PermissionState } from '../lib/notifications/pushRegistration'
 
 const mockGetPermissionState = jest.fn()
 const mockRequestPermission = jest.fn()
@@ -90,6 +96,13 @@ beforeEach(() => {
   mockGetExpoPushToken.mockResolvedValue('ExponentPushToken[abc]')
   mockRegisterPushToken.mockResolvedValue({ device: { id: 'device-1', platform: 'ios', installation_id: null, app_version: null, last_seen_at: 'now', created_at: 'now' } })
   mockGetNotificationPreferences.mockResolvedValue(PREFS)
+
+  // The coordinator is module-level state keyed by user id -- reset
+  // every id these tests touch so one test's gate never leaks into
+  // another's.
+  releaseUserGate('u1')
+  releaseUserGate('user-a')
+  releaseUserGate('user-b')
 })
 
 it('never registers a device when the learner denies the permission prompt', async () => {
@@ -659,5 +672,297 @@ describe('Rev3 hardening (independent review)', () => {
     })
     expect(result.current.registered).toBe(false)
     expect(result.current.disableError).toBeNull()
+  })
+})
+
+// Sprint 1C Rev4 (independent review, narrow lifecycle-closure pass):
+// cross-system invariants between Auth, push registration, and OS
+// permissions -- see pushMutationCoordinator.ts and AuthContext.tsx's own
+// Rev4 comments for the exact race this closes.
+describe('Rev4 hardening (independent review)', () => {
+  it('registerDevice aborts with ZERO server mutation once this user’s sign-out gate has already closed', async () => {
+    mockGetPermissionState.mockResolvedValue('undetermined')
+    mockRequestPermission.mockResolvedValue('granted')
+
+    await closeUserForSignOut('u1')
+
+    const { result } = await renderHook(() => usePushRegistration('u1'))
+    await waitFor(() => expect(result.current.permission).toBe('undetermined'))
+
+    await act(async () => {
+      await result.current.enable()
+    })
+
+    expect(mockRegisterPushToken).not.toHaveBeenCalled()
+    expect(mockSavePushRegistration).not.toHaveBeenCalled()
+    expect(result.current.registered).toBe(false)
+  })
+
+  it('a registerDevice call genuinely enters the coordinator’s critical section -- closeUserForSignOut for that user waits for it to finish', async () => {
+    const tokenGate = deferred<string>()
+    mockGetPermissionState.mockResolvedValue('undetermined')
+    mockRequestPermission.mockResolvedValue('granted')
+    mockGetExpoPushToken.mockImplementation(() => tokenGate.promise)
+
+    const { result } = await renderHook(() => usePushRegistration('u1'))
+    await waitFor(() => expect(result.current.permission).toBe('undetermined'))
+
+    const enablePromise = result.current.enable()
+    await waitFor(() => expect(mockGetExpoPushToken).toHaveBeenCalledTimes(1))
+
+    // The token hasn't resolved yet, so registerDevice has not reached
+    // the critical section -- closeUserForSignOut must resolve
+    // immediately (nothing to wait for yet).
+    await closeUserForSignOut('u1')
+    releaseUserGate('u1')
+
+    // Now let the (still in-flight, but now-doomed since the gate closed
+    // and reopened) enable() settle so it doesn't leak into later tests.
+    tokenGate.resolve('ExponentPushToken[abc]')
+    await act(async () => {
+      await enablePromise
+    })
+  })
+
+  it('User B is never affected by User A’s closed sign-out gate -- coordinator state is scoped by user id', async () => {
+    await closeUserForSignOut('user-a')
+
+    mockGetPermissionState.mockResolvedValue('undetermined')
+    mockRequestPermission.mockResolvedValue('granted')
+
+    const { result } = await renderHook(() => usePushRegistration('user-b'))
+    await waitFor(() => expect(result.current.permission).toBe('undetermined'))
+
+    await act(async () => {
+      await result.current.enable()
+    })
+
+    expect(mockRegisterPushToken).toHaveBeenCalledWith(expect.any(Object), 'user-b')
+    expect(result.current.registered).toBe(true)
+  })
+
+  // Test D: a failed registration mutation must always release its
+  // critical section, so a subsequent sign-out for that user is never
+  // stuck waiting forever.
+  it('a failed registerPushToken call still releases the coordinator critical section', async () => {
+    mockGetPermissionState.mockResolvedValue('undetermined')
+    mockRequestPermission.mockResolvedValue('granted')
+    mockRegisterPushToken.mockRejectedValue(new Error('network down'))
+
+    const { result } = await renderHook(() => usePushRegistration('u1'))
+    await waitFor(() => expect(result.current.permission).toBe('undetermined'))
+
+    await act(async () => {
+      await result.current.enable()
+    })
+
+    expect(result.current.registered).toBe(false)
+
+    // If the critical section had leaked, this would hang the test
+    // (jest's own timeout would fail it) rather than resolve.
+    await closeUserForSignOut('u1')
+  })
+
+  // Adversarial self-review finding (Part 4, scenario 2): once
+  // registerPushToken has actually succeeded, the local pointer MUST
+  // still be saved even if the generation went stale in the meantime --
+  // otherwise sign-out's coordinator wait would unblock with no pointer
+  // to find, leaving an orphaned, un-revocable active mobile_devices row.
+  it('still saves the local registration pointer for a stale generation once the server mutation already succeeded, without committing stale React state', async () => {
+    const registerGate = deferred<{ device: { id: string; platform: string; installation_id: null; app_version: null; last_seen_at: string; created_at: string } }>()
+    mockGetPermissionState.mockResolvedValue('granted')
+    mockLoadNotificationOptIn.mockImplementation(async (userId: string) => userId === 'user-a')
+    mockLoadPushRegistration.mockImplementation(async (userId: string) => (userId === 'user-b' ? { userId, deviceId: 'device-b', expoPushToken: 'tok-b', platform: 'ios' as const } : null))
+    mockRegisterPushToken.mockImplementation(() => registerGate.promise)
+
+    const { result, rerender } = await renderHook((props: { userId: string | null }) => usePushRegistration(props.userId), {
+      initialProps: { userId: 'user-a' as string | null },
+    })
+    await waitFor(() => expect(mockRegisterPushToken).toHaveBeenCalledTimes(1))
+
+    // User A's registration has entered the critical section and called
+    // registerPushToken, but it hasn't resolved yet. The account now
+    // switches to User B before it does.
+    rerender({ userId: 'user-b' })
+    await waitFor(() => expect(result.current.registered).toBe(true))
+    expect(result.current.device?.deviceId).toBe('device-b')
+
+    // User A's mutation now succeeds, long after the switch.
+    await act(async () => {
+      registerGate.resolve({ device: { id: 'device-a', platform: 'ios', installation_id: null, app_version: null, last_seen_at: 'now', created_at: 'now' } })
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    // The local pointer for A MUST have been saved despite the
+    // staleness (so a sign-out for A could find and revoke it) --
+    expect(mockSavePushRegistration).toHaveBeenCalledWith(expect.objectContaining({ userId: 'user-a', deviceId: 'device-a' }))
+    // -- but User B's rendered state must be completely unaffected.
+    expect(result.current.device?.deviceId).toBe('device-b')
+    expect(result.current.registered).toBe(true)
+  })
+
+  describe('foreground OS-permission reconciliation', () => {
+    function getForegroundHandler(): (state: string) => void {
+      const addEventListenerMock = require('react-native').AppState.addEventListener as jest.Mock
+      const call = addEventListenerMock.mock.calls[addEventListenerMock.mock.calls.length - 1]
+      return call[1]
+    }
+
+    it('denied -> OS permission changed to granted in Settings -> foreground updates rendered state without remount, and never auto-registers if opt-in is false', async () => {
+      mockGetPermissionState.mockResolvedValueOnce('denied')
+      const { result } = await renderHook(() => usePushRegistration('u1'))
+      await waitFor(() => expect(result.current.permission).toBe('denied'))
+
+      mockGetPermissionState.mockResolvedValue('granted')
+      const handler = getForegroundHandler()
+      await act(async () => {
+        handler('active')
+      })
+
+      await waitFor(() => expect(result.current.permission).toBe('granted'))
+      expect(result.current.registered).toBe(false)
+      expect(mockRegisterPushToken).not.toHaveBeenCalled()
+      expect(mockRequestPermission).not.toHaveBeenCalled()
+    })
+
+    it('granted+registered -> OS permission changed to denied externally -> foreground updates rendered state so the UI no longer claims notifications are enabled', async () => {
+      mockGetPermissionState.mockResolvedValueOnce('granted')
+      mockLoadNotificationOptIn.mockResolvedValue(true)
+      mockLoadPushRegistration.mockResolvedValue({ userId: 'u1', deviceId: 'device-1', expoPushToken: 'tok', platform: 'ios' })
+
+      const { result } = await renderHook(() => usePushRegistration('u1'))
+      await waitFor(() => expect(result.current.registered).toBe(true))
+      expect(result.current.permission).toBe('granted')
+
+      mockGetPermissionState.mockResolvedValue('denied')
+      const handler = getForegroundHandler()
+      await act(async () => {
+        handler('active')
+      })
+
+      await waitFor(() => expect(result.current.permission).toBe('denied'))
+      // `registered` (device !== null) is a separate signal from
+      // `permission` -- the UI branches on BOTH (see
+      // NotificationsSection.tsx), and `permission === 'denied'` alone
+      // is what stops it from ever rendering the "enabled" message once
+      // this updates.
+    })
+
+    it('foreground reconciliation never calls requestPermission, even when permission is currently undetermined', async () => {
+      mockGetPermissionState.mockResolvedValue('undetermined')
+      const { result } = await renderHook(() => usePushRegistration('u1'))
+      await waitFor(() => expect(result.current.permission).toBe('undetermined'))
+
+      const handler = getForegroundHandler()
+      await act(async () => {
+        handler('active')
+      })
+
+      expect(mockRequestPermission).not.toHaveBeenCalled()
+    })
+
+    it('a stale foreground callback for a since-replaced user cannot mutate the current user’s rendered permission', async () => {
+      const permissionGate = deferred<PermissionState>()
+      mockGetPermissionState.mockResolvedValueOnce('denied')
+
+      const { result, rerender } = await renderHook((props: { userId: string | null }) => usePushRegistration(props.userId), {
+        initialProps: { userId: 'user-a' as string | null },
+      })
+      await waitFor(() => expect(result.current.permission).toBe('denied'))
+
+      const staleHandler = getForegroundHandler()
+      mockGetPermissionState.mockImplementation(() => permissionGate.promise)
+      staleHandler('active') // User A's foreground reconcile is now gated, in flight
+
+      // Account switches to User B before A's reconcile resolves.
+      mockGetPermissionState.mockResolvedValue('denied')
+      mockLoadNotificationOptIn.mockResolvedValue(false)
+      mockLoadPushRegistration.mockResolvedValue(null)
+      rerender({ userId: 'user-b' })
+      await waitFor(() => expect(mockLoadNotificationOptIn).toHaveBeenCalledWith('user-b'))
+
+      // User A's stale reconcile now resolves to 'granted' -- it must
+      // never overwrite User B's own current state.
+      await act(async () => {
+        permissionGate.resolve('granted')
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(result.current.permission).toBe('denied')
+    })
+
+    it('removes the AppState listener on unmount', async () => {
+      const removeMock = jest.fn()
+      const addEventListenerMock = require('react-native').AppState.addEventListener as jest.Mock
+      addEventListenerMock.mockReturnValueOnce({ remove: removeMock })
+
+      const { unmount } = await renderHook(() => usePushRegistration('u1'))
+      await act(async () => {
+        unmount()
+      })
+
+      expect(removeMock).toHaveBeenCalled()
+    })
+  })
+
+  describe('preference mutations pinned to the initiating user', () => {
+    it('getNotificationPreferences and updateNotificationPreferences are always called with the initiating user id', async () => {
+      mockGetPermissionState.mockResolvedValue('granted')
+      mockLoadNotificationOptIn.mockResolvedValue(true)
+      mockLoadPushRegistration.mockResolvedValue({ userId: 'u1', deviceId: 'device-1', expoPushToken: 'tok', platform: 'ios' })
+      mockUpdateNotificationPreferences.mockResolvedValue({ ...PREFS, streak_enabled: false })
+
+      const { result } = await renderHook(() => usePushRegistration('u1'))
+      await waitFor(() => expect(result.current.preferences).toEqual(PREFS))
+      expect(mockGetNotificationPreferences).toHaveBeenCalledWith('u1')
+
+      await act(async () => {
+        await result.current.updatePreference({ streak_enabled: false })
+      })
+      expect(mockUpdateNotificationPreferences).toHaveBeenCalledWith({ streak_enabled: false }, 'u1')
+    })
+
+    // Required test: a preference update queued for User A must never be
+    // sent tagged as (or able to mutate) User B's account, even though
+    // the write itself doesn't resolve until after the switch. Real
+    // pinning enforcement (getPinnedAccessToken rejecting an ambient
+    // session that no longer matches) is proven directly in
+    // apiClient.test.ts; this proves the hook always threads the
+    // INITIATING id through, never whatever is current when the write
+    // finally executes.
+    it('a preference update queued for User A is still sent pinned to User A even if the account switches to User B before it resolves', async () => {
+      const updateGate = deferred<typeof PREFS>()
+      mockGetPermissionState.mockResolvedValue('granted')
+      mockLoadNotificationOptIn.mockResolvedValue(true)
+      mockLoadPushRegistration.mockImplementation(async (userId: string) => ({ userId, deviceId: `device-${userId}`, expoPushToken: `tok-${userId}`, platform: 'ios' as const }))
+      mockUpdateNotificationPreferences.mockImplementation(() => updateGate.promise)
+
+      const { result, rerender } = await renderHook((props: { userId: string | null }) => usePushRegistration(props.userId), {
+        initialProps: { userId: 'user-a' as string | null },
+      })
+      await waitFor(() => expect(result.current.preferences).toEqual(PREFS))
+
+      const updatePromise = result.current.updatePreference({ streak_enabled: false })
+      await waitFor(() => expect(mockUpdateNotificationPreferences).toHaveBeenCalledTimes(1))
+      expect(mockUpdateNotificationPreferences).toHaveBeenCalledWith({ streak_enabled: false }, 'user-a')
+
+      rerender({ userId: 'user-b' })
+      await waitFor(() => expect(result.current.preferences).toEqual(PREFS))
+
+      await act(async () => {
+        updateGate.resolve({ ...PREFS, streak_enabled: false })
+        await updatePromise
+      })
+
+      // Never called a second time (e.g. re-attributed/retried) as 'user-b'.
+      expect(mockUpdateNotificationPreferences).toHaveBeenCalledTimes(1)
+      expect(mockUpdateNotificationPreferences).toHaveBeenCalledWith({ streak_enabled: false }, 'user-a')
+      // And User B's own rendered preferences were never overwritten by
+      // A's stale (now-resolved) write.
+      expect(result.current.preferences).toEqual(PREFS)
+    })
   })
 })
