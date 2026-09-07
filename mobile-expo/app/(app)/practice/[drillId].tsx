@@ -7,7 +7,7 @@ import { Card } from '../../../components/Card'
 import { ProgressIndicator } from '../../../components/ProgressIndicator'
 import { RevealContent } from '../../../components/RevealContent'
 import { RatingButtons } from '../../../components/RatingButtons'
-import { ReadinessCard } from '../../../components/ReadinessCard'
+import { PracticeCompletionView } from '../../../components/PracticeCompletionView'
 import { ErrorState, LoadingState, EmptyState } from '../../../components/StateViews'
 import { useDrillSession } from '../../../hooks/useDrillSession'
 import { usePostCompleteRefresh } from '../../../hooks/usePostCompleteRefresh'
@@ -121,55 +121,36 @@ export default function DrillSessionScreen() {
   )
 }
 
-// Physical-device fix: this screen previously used `<Screen scroll=
-// {false}>` with a `flex: 1, justifyContent: 'center'` wrapper, relying
-// on Screen's non-scrolling branch to hand that wrapper a bounded full-
-// screen height to center within. On a real iPhone (unlike this
-// project's test renderer) that inner View did not actually stretch --
+// Physical-device fix (unchanged by the Sprint 1B.1 refactor below): this
+// screen previously used `<Screen scroll={false}>` with a `flex: 1,
+// justifyContent: 'center'` wrapper, relying on Screen's non-scrolling
+// branch to hand that wrapper a bounded full-screen height to center
+// within. On a real iPhone that inner View did not actually stretch --
 // see Screen.tsx's own fix -- so the whole card visibly collapsed/
-// clipped. Rendering as a normal SCROLLING Screen (the default) removes
-// the fragile centering assumption entirely and, per this fix's explicit
-// guidance, is also the more robust choice for smaller phones, larger
-// Dynamic Type, and longer readiness reason-code content -- none of
-// which need to fit inside one fixed viewport anymore.
+// clipped. Rendering through the shared, scrolling PracticeCompletionView
+// (see that file) removes the fragile centering assumption entirely.
+//
+// Sprint 1B.1: this is now a thin wrapper around PracticeCompletionView,
+// the same completion component ad-hoc practice (Quick/Standard/Weak
+// Area) uses -- title/score-line/CTA are parameterized, but the rendered
+// output for Daily Drill is byte-for-byte identical to before this
+// refactor (see test/DrillCompletion.test.tsx, unchanged).
 function CompletionScreen({ score, total, alreadyCompleted }: { score: number; total: number; alreadyCompleted: boolean }) {
   const { loading, progress, readiness } = usePostCompleteRefresh(true, alreadyCompleted)
 
   return (
-    <Screen>
-      <AppText variant="display" heading weight="bold" center>
-        Drill Complete
-      </AppText>
-      {/* Self-rated, not objectively graded -- "marked" says that
-          honestly rather than implying the system scored an oral
-          response (Sprint 1A Rev2 section 5). */}
-      <AppText variant="subtitle" color={colors.mutedText} center>
-        You marked {score} of {total} correct
-      </AppText>
-
-      {loading ? (
-        <LoadingState label="Updating your progress…" />
-      ) : (
-        <>
-          {progress ? (
-            <Card>
-              <AppText variant="body" center>
-                {progress.xp} XP • {progress.current_streak} day streak
-              </AppText>
-            </Card>
-          ) : null}
-          {readiness ? (
-            <ReadinessCard
-              overallScore={readiness.overall_score}
-              evidenceLevel={readiness.evidence_level}
-              reasonCodes={readiness.reason_codes}
-            />
-          ) : null}
-        </>
-      )}
-
-      <Button label="Back to Home" onPress={() => router.replace('/(app)')} />
-    </Screen>
+    <PracticeCompletionView
+      title="Drill Complete"
+      // Self-rated, not objectively graded -- "marked" says that
+      // honestly rather than implying the system scored an oral response
+      // (Sprint 1A Rev2 section 5).
+      scoreLine={`You marked ${score} of ${total} correct`}
+      loading={loading}
+      progress={progress}
+      readiness={readiness}
+      ctaLabel="Back to Home"
+      onCta={() => router.replace('/(app)')}
+    />
   )
 }
 

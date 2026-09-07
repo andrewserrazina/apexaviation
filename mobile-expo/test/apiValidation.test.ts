@@ -13,7 +13,7 @@ jest.mock('../lib/supabase', () => ({
 import { ApiError } from '../lib/api/errors'
 import { fetchBootstrap } from '../lib/api/bootstrap'
 import { fetchDailyDrill, startDailyDrill } from '../lib/api/dailyDrill'
-import { revealQuestion, completePractice } from '../lib/api/practice'
+import { revealQuestion, completePractice, startAdHocPractice, resumePractice } from '../lib/api/practice'
 import { fetchLatestReadiness } from '../lib/api/readiness'
 
 async function captureError(promise: Promise<unknown>): Promise<ApiError> {
@@ -113,6 +113,107 @@ describe('mobile-bootstrap malformed response', () => {
         progress: { xp: 0, current_rank: null, current_streak: 0, longest_streak: 0, readiness_summary: null },
       })
     )
+    await expect(fetchBootstrap()).resolves.toBeTruthy()
+  })
+})
+
+// Rev2 blocker 5: before Sprint 1B.1, home.weak_areas was only checked to
+// be an array -- the Practice hub now directly renders
+// weak_area.area_code/task_code/evidence_score AND passes acs_task_id
+// straight through, unmodified, as a targeted Start's request body. A
+// malformed/undefined acs_task_id can be silently OMITTED during JSON
+// serialization, which would make v119's server interpret the request as
+// GENERAL practice -- so a visually-targeted "Practice I.A" CTA must
+// never be allowed to degrade into untargeted practice just because
+// bootstrap's own payload happened to be malformed.
+describe('mobile-bootstrap home.weak_areas runtime validation (Rev2 blocker 5)', () => {
+  function weakAreaFixture(overrides: Record<string, unknown> = {}) {
+    return { acs_task_id: 'task-uuid-1', area_code: 'I', task_code: 'A', evidence_score: 0.5, ...overrides }
+  }
+
+  it('rejects a weak area missing acs_task_id', async () => {
+    const { acs_task_id: _drop, ...rest } = weakAreaFixture()
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [rest] } }))
+    const err = await captureError(fetchBootstrap())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a weak area with an empty-string acs_task_id', async () => {
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [weakAreaFixture({ acs_task_id: '' })] } }))
+    const err = await captureError(fetchBootstrap())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a weak area missing area_code', async () => {
+    const { area_code: _drop, ...rest } = weakAreaFixture()
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [rest] } }))
+    const err = await captureError(fetchBootstrap())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a weak area with an empty-string area_code', async () => {
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [weakAreaFixture({ area_code: '' })] } }))
+    const err = await captureError(fetchBootstrap())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a weak area missing task_code', async () => {
+    const { task_code: _drop, ...rest } = weakAreaFixture()
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [rest] } }))
+    const err = await captureError(fetchBootstrap())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a weak area with an empty-string task_code', async () => {
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [weakAreaFixture({ task_code: '' })] } }))
+    const err = await captureError(fetchBootstrap())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a weak area with a non-numeric evidence_score', async () => {
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [weakAreaFixture({ evidence_score: '0.5' })] } }))
+    const err = await captureError(fetchBootstrap())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a weak area with evidence_score=NaN', async () => {
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [weakAreaFixture({ evidence_score: NaN })] } }))
+    const err = await captureError(fetchBootstrap())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a weak area with evidence_score=Infinity', async () => {
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [weakAreaFixture({ evidence_score: Infinity })] } }))
+    const err = await captureError(fetchBootstrap())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a weak area with an out-of-range evidence_score above 1', async () => {
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [weakAreaFixture({ evidence_score: 1.5 })] } }))
+    const err = await captureError(fetchBootstrap())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a weak area with a negative evidence_score', async () => {
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [weakAreaFixture({ evidence_score: -0.1 })] } }))
+    const err = await captureError(fetchBootstrap())
+    expect(err.kind).toBe('server')
+  })
+
+  it('accepts a well-formed weak_areas array with boundary evidence_score values 0 and 1', async () => {
+    ok(
+      bootstrapFixture({
+        home: {
+          todays_drill: null,
+          weak_areas: [weakAreaFixture({ acs_task_id: 'task-uuid-1', evidence_score: 0 }), weakAreaFixture({ acs_task_id: 'task-uuid-2', evidence_score: 1 })],
+        },
+      })
+    )
+    await expect(fetchBootstrap()).resolves.toBeTruthy()
+  })
+
+  it('accepts an empty weak_areas array', async () => {
+    ok(bootstrapFixture({ home: { todays_drill: null, weak_areas: [] } }))
     await expect(fetchBootstrap()).resolves.toBeTruthy()
   })
 })
@@ -251,6 +352,116 @@ describe('mobile-practice reveal/complete malformed response', () => {
   it('complete accepts a zero score/total (a drill with no questions rated -- not expected in practice, but numerically valid)', async () => {
     ok({ session_id: 's1', score: 0, total: 0, completed_at: '2026-01-01T00:00:00Z', already_completed: false })
     await expect(completePractice('s1', [])).resolves.toBeTruthy()
+  })
+})
+
+// Sprint 1B.1: startAdHocPractice was previously unvalidated (no
+// assertShape call at all) and resumePractice is a brand-new client.
+// Both share assertCommonPracticeShape's render-critical checks --
+// nonempty session_id/mode/started_at, valid target_acs_tasks, and a
+// NONEMPTY questions array (v119's backend fails closed to a 404 before
+// ever creating an attempt with zero eligible questions, so an empty
+// questions array is never a legitimate response to either action).
+describe('mobile-practice start/resume malformed response (Sprint 1B.1)', () => {
+  const VALID_QUESTIONS = [{ id: 'q1', question: 'Q1?', category: 'eligibility' }]
+  const VALID_ACS_TASKS = [{ acs_task_id: 't1', area_code: 'I', task_code: 'A' }]
+
+  // 1. valid Start response accepted
+  it('startAdHocPractice accepts a well-formed response', async () => {
+    ok({
+      session_id: 's1',
+      mode: 'dpe_questions',
+      started_at: '2026-01-01T00:00:00Z',
+      target_acs_tasks: VALID_ACS_TASKS,
+      questions: VALID_QUESTIONS,
+    })
+    await expect(startAdHocPractice({ session_size: 5 })).resolves.toBeTruthy()
+  })
+
+  // 2. malformed Start 200 rejected safely
+  it('startAdHocPractice rejects a response with an empty questions array', async () => {
+    ok({ session_id: 's1', mode: 'dpe_questions', started_at: '2026-01-01T00:00:00Z', target_acs_tasks: [], questions: [] })
+    const err = await captureError(startAdHocPractice({ session_size: 5 }))
+    expect(err.kind).toBe('server')
+    expect(err.userMessage).not.toMatch(/undefined|null|TypeError/i)
+  })
+
+  it('startAdHocPractice rejects a response missing session_id', async () => {
+    ok({ mode: 'dpe_questions', started_at: '2026-01-01T00:00:00Z', target_acs_tasks: [], questions: VALID_QUESTIONS })
+    const err = await captureError(startAdHocPractice({ session_size: 5 }))
+    expect(err.kind).toBe('server')
+  })
+
+  it('startAdHocPractice rejects a target_acs_tasks entry missing task_code', async () => {
+    ok({
+      session_id: 's1',
+      mode: 'dpe_questions',
+      started_at: '2026-01-01T00:00:00Z',
+      target_acs_tasks: [{ acs_task_id: 't1', area_code: 'I' }],
+      questions: VALID_QUESTIONS,
+    })
+    const err = await captureError(startAdHocPractice({ session_size: 5 }))
+    expect(err.kind).toBe('server')
+  })
+
+  // 3. valid Resume response accepted
+  it('resumePractice accepts a well-formed in-progress response', async () => {
+    ok({
+      session_id: 's1',
+      mode: 'dpe_questions',
+      started_at: '2026-01-01T00:00:00Z',
+      completed_at: null,
+      target_acs_tasks: VALID_ACS_TASKS,
+      questions: VALID_QUESTIONS,
+    })
+    await expect(resumePractice('s1')).resolves.toBeTruthy()
+  })
+
+  // 4. malformed Resume 200 rejected safely
+  it('resumePractice rejects a response with an empty questions array', async () => {
+    ok({ session_id: 's1', mode: 'dpe_questions', started_at: '2026-01-01T00:00:00Z', completed_at: null, target_acs_tasks: [], questions: [] })
+    const err = await captureError(resumePractice('s1'))
+    expect(err.kind).toBe('server')
+  })
+
+  it('resumePractice rejects a non-null, non-string completed_at', async () => {
+    ok({
+      session_id: 's1',
+      mode: 'dpe_questions',
+      started_at: '2026-01-01T00:00:00Z',
+      completed_at: 12345,
+      target_acs_tasks: [],
+      questions: VALID_QUESTIONS,
+    })
+    const err = await captureError(resumePractice('s1'))
+    expect(err.kind).toBe('server')
+  })
+
+  // 5. completed_at null accepted
+  it('resumePractice accepts completed_at: null (an in-progress session)', async () => {
+    ok({
+      session_id: 's1',
+      mode: 'dpe_questions',
+      started_at: '2026-01-01T00:00:00Z',
+      completed_at: null,
+      target_acs_tasks: [],
+      questions: VALID_QUESTIONS,
+    })
+    await expect(resumePractice('s1')).resolves.toBeTruthy()
+  })
+
+  // 6. completed_at string accepted
+  it('resumePractice accepts completed_at as a string (an already-completed session)', async () => {
+    ok({
+      session_id: 's1',
+      mode: 'dpe_questions',
+      started_at: '2026-01-01T00:00:00Z',
+      completed_at: '2026-01-02T00:00:00Z',
+      target_acs_tasks: [],
+      questions: VALID_QUESTIONS,
+    })
+    const result = await resumePractice('s1')
+    expect(result.completed_at).toBe('2026-01-02T00:00:00Z')
   })
 })
 

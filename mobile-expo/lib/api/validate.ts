@@ -76,7 +76,47 @@ export function isValidTodaysDrillOrNull(value: unknown): boolean {
 }
 
 // A Daily Drill question as the Sprint 1A UI actually consumes it
-// (question/reveal screens) -- id/question text, optional category.
+// (question/reveal screens) -- id/question text, optional category. Ad-hoc
+// practice questions (mobile-practice start/resume) share this exact
+// shape, so Sprint 1B.1 reuses this same validator rather than defining a
+// second, identical one.
 export function isValidQuestion(value: unknown): boolean {
   return isPlainObject(value) && isNonEmptyString(value.id) && typeof value.question === 'string' && isNullableString(value.category)
+}
+
+// Sprint 1B.1: an ACS task reference as rendered by TodaysDrillCard's chip
+// row, the Practice hub's weak-area cards, and mobile-practice's
+// target_acs_tasks -- the ACS task id plus the two display codes, nothing
+// else (no fabricated title -- see practice.ts's isValidAcsTaskRef usage).
+export function isValidAcsTaskRef(value: unknown): boolean {
+  return isPlainObject(value) && isNonEmptyString(value.acs_task_id) && typeof value.area_code === 'string' && typeof value.task_code === 'string'
+}
+
+// Rev2 blocker 5: bootstrap's home.weak_areas was previously only checked
+// to be an array -- Sprint 1B.1's Practice hub now directly renders
+// weak_area.area_code/task_code/evidence_score AND passes acs_task_id
+// straight through as a targeted Start's request body. An
+// undefined/malformed acs_task_id can be silently OMITTED during JSON
+// serialization, which would make v119's server interpret the request as
+// GENERAL practice -- so a visually-targeted "Practice I.A" CTA must
+// never be allowed to degrade into untargeted practice because of a
+// malformed bootstrap payload. Builds on isValidAcsTaskRef() rather than
+// duplicating its field checks, adding the two things a weak area
+// specifically needs beyond a bare ACS task reference: non-empty display
+// codes (an empty string is exactly as unusable to the UI as a missing
+// one) and a finite evidence_score normalized to the same 0..1 range
+// task_evidence.evidence_score is authoritatively stored in server-side
+// (see supabase-portal-schema-v114-readiness-snapshots.sql's weak_tasks
+// aggregation) -- never silently clamped.
+export function isValidWeakArea(value: unknown): boolean {
+  if (!isValidAcsTaskRef(value)) return false
+  const v = value as Record<string, unknown>
+  return (
+    isNonEmptyString(v.area_code) &&
+    isNonEmptyString(v.task_code) &&
+    typeof v.evidence_score === 'number' &&
+    Number.isFinite(v.evidence_score) &&
+    v.evidence_score >= 0 &&
+    v.evidence_score <= 1
+  )
 }

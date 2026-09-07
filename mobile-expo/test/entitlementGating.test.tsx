@@ -21,6 +21,32 @@ jest.mock('../lib/api/dailyDrill', () => ({
   startDailyDrill: jest.fn(),
 }))
 
+// Sprint 1B.1: the Practice tab now also imports lib/api/practice.ts (for
+// Quick/Standard/Weak Area starts) and the two local storage modules --
+// all three otherwise pull in the real supabase.ts -> largeSecureStore.ts
+// -> AsyncStorage chain, which isn't available in this Jest environment
+// (see the other test files' identical AsyncStorage-avoidance mocks).
+// None of this suite's assertions are about ad-hoc practice, so these are
+// inert no-op mocks -- entitlement gating itself is still exercised
+// against the real useDailyDrill/mobile-daily-drill path above.
+jest.mock('../lib/api/practice', () => ({
+  startAdHocPractice: jest.fn(),
+  resumePractice: jest.fn(),
+  revealQuestion: jest.fn(),
+  completePractice: jest.fn(),
+}))
+jest.mock('../lib/activePracticeStorage', () => ({
+  loadActivePracticeSession: jest.fn().mockResolvedValue(null),
+  saveActivePracticeSession: jest.fn(),
+  clearActivePracticeSession: jest.fn(),
+  clearActivePracticeSessionIfMatches: jest.fn(),
+}))
+jest.mock('../lib/drillProgressStorage', () => ({
+  loadDrillProgress: jest.fn().mockResolvedValue(null),
+  saveDrillProgress: jest.fn(),
+  clearDrillProgress: jest.fn(),
+}))
+
 const mockUseBootstrapContext = jest.fn()
 jest.mock('../contexts/BootstrapContext', () => ({
   useBootstrapContext: () => mockUseBootstrapContext(),

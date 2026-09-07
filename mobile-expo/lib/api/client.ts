@@ -64,7 +64,7 @@ export async function invokeMobileFunction<TResponse, TBody extends Record<strin
       // this is the network-failure case, not a domain error.
       throw networkError(error)
     }
-    if (status >= 500) throw serverError(error, status)
+    if (status >= 500) throw serverError(error, status, code)
     throw domainError(message, status, code, error)
   }
 

@@ -1271,6 +1271,274 @@ echo "rejects any drill whose stored question_ids contain a dangling id BEFORE a
 echo "created, the Edge Function's fail-closed path is a defense-in-depth backstop, not the only guard."
 
 echo
+echo "########## 41. V119: TARGETED PRACTICE START FAIL-CLOSED + AUTHENTICATED RESUME ##########"
+echo "=== Applying v119 (mobile-practice contract hardening, Sprint 1B Stage 1, source-controlled only) ==="
+"${PSQL_BASE[@]}" -v ON_ERROR_STOP=1 -f portal/supabase-portal-schema-v119-practice-resume.sql >/tmp/apex_test_v119.log 2>&1 || { echo "V119 MIGRATION FAILED"; cat /tmp/apex_test_v119.log; exit 1; }
+
+V119_MEMBER=00000000-0000-0000-0000-000000000080
+V119_OTHER=00000000-0000-0000-0000-000000000081
+run_sql postgres "" \
+  "insert into public.profiles (id, email, full_name, role, checkride_prep_unlocked, timezone) values ('$V119_MEMBER','v119a@test.local','V119 Member','student',true,'UTC'), ('$V119_OTHER','v119b@test.local','V119 Other','student',true,'UTC') on conflict (id) do nothing;" >/dev/null
+
+echo "--- fixtures: three dedicated ACS tasks (mapped / unmapped / mapped-but-ineligible) and their questions ---"
+run_sql postgres "" \
+  "insert into public.acs_tasks (acs_version_id, area_code, area_title, task_code, task_title, sort_order)
+   select v.id, 'ZV1', 'V119 Test Area (Mapped)', 'MAPPED', 'V119 Mapped Task', 9001 from public.acs_versions v where v.certificate_type='private_pilot' and v.version_code='FAA-S-ACS-6C'
+   union all
+   select v.id, 'ZV2', 'V119 Test Area (Unmapped)', 'UNMAPPED', 'V119 Unmapped Task', 9002 from public.acs_versions v where v.certificate_type='private_pilot' and v.version_code='FAA-S-ACS-6C'
+   union all
+   select v.id, 'ZV3', 'V119 Test Area (Filtered)', 'FILTERED', 'V119 Filtered Task', 9003 from public.acs_versions v where v.certificate_type='private_pilot' and v.version_code='FAA-S-ACS-6C'
+   on conflict (acs_version_id, area_code, task_code) do nothing;" >/dev/null
+
+V119_TASK_MAPPED="(select t.id from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot' and v.version_code='FAA-S-ACS-6C' and t.area_code='ZV1' and t.task_code='MAPPED')"
+V119_TASK_UNMAPPED="(select t.id from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot' and v.version_code='FAA-S-ACS-6C' and t.area_code='ZV2' and t.task_code='UNMAPPED')"
+V119_TASK_FILTERED="(select t.id from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot' and v.version_code='FAA-S-ACS-6C' and t.area_code='ZV3' and t.task_code='FILTERED')"
+
+run_sql postgres "" \
+  "insert into public.dpe_questions (id, category, question, model_answer, common_mistakes, dpe_evaluating, real_world_application, acs_reference, is_scenario, exam_type) values
+     ('v119_map_q1', 'test_category', 'V119 Map Q1?', 'A', null, null, null, 'V119 fixture', false, 'private_pilot'),
+     ('v119_map_q2', 'test_category', 'V119 Map Q2?', 'A', null, null, null, 'V119 fixture', false, 'private_pilot'),
+     ('v119_map_q3', 'test_category', 'V119 Map Q3?', 'A', null, null, null, 'V119 fixture', false, 'private_pilot'),
+     ('v119_bad_q1', 'test_category', 'V119 Bad Q1?', 'A', null, null, null, 'V119 fixture', true, 'private_pilot'),
+     ('v119_general_q1', 'test_category', 'V119 General Q1?', 'A', null, null, null, 'V119 fixture', false, 'private_pilot'),
+     ('v119_general_q2', 'test_category', 'V119 General Q2?', 'A', null, null, null, 'V119 fixture', false, 'private_pilot')
+   on conflict (id) do nothing;" >/dev/null
+
+run_sql postgres "" \
+  "insert into public.content_acs_mappings (content_type, content_id, acs_task_id) values
+     ('dpe_question','v119_map_q1', $V119_TASK_MAPPED),
+     ('dpe_question','v119_map_q2', $V119_TASK_MAPPED),
+     ('dpe_question','v119_map_q3', $V119_TASK_MAPPED),
+     ('dpe_question','v119_bad_q1', $V119_TASK_FILTERED)
+   on conflict (content_type, content_id, acs_task_id) do nothing;" >/dev/null
+
+echo "--- TARGETED START fail-closed (Edge Function logic -- TypeScript, cannot execute in this sandbox,"
+echo "matching the same documented limitation as sections 24/38/40's Edge-Function-only logic. These tests"
+echo "prove, at the database level, the exact conditions mobile-practice's 'start' action now branches on:"
+echo "a zero-mapping task must 404 rather than fall through unconstrained, and a mapped-but-ineligible task"
+echo "must 404 rather than backfill with general questions.) ---"
+
+expect_rows "V119.1: a task with ZERO content_acs_mappings rows -- this is the exact condition that used to fall through to an unconstrained general query; start now short-circuits to a clean 404 here instead" postgres "" \
+  "select count(*) from public.content_acs_mappings where content_type='dpe_question' and acs_task_id=$V119_TASK_UNMAPPED;" "0"
+
+expect_rows "V119.2: a task WITH mapped content, but every mapped question fails the private_pilot/non-scenario eligibility filter (v119_bad_q1 is_scenario=true) -- eligible count is zero, so start must 404 rather than backfill" postgres "" \
+  "select count(*) from public.dpe_questions where id in (select content_id from public.content_acs_mappings where content_type='dpe_question' and acs_task_id=$V119_TASK_FILTERED) and exam_type='private_pilot' and is_scenario=false;" "0"
+
+expect_rows "V119.3: a task WITH genuinely eligible mapped questions resolves to EXACTLY those three ids -- the constrained query never reaches into the general pool" postgres "" \
+  "select (array_agg(id order by id) = array['v119_map_q1','v119_map_q2','v119_map_q3'])::text from public.dpe_questions where id in (select content_id from public.content_acs_mappings where content_type='dpe_question' and acs_task_id=$V119_TASK_MAPPED) and exam_type='private_pilot' and is_scenario=false;" "true"
+
+expect_rows "V119.4: general start (no acs_task_id) is unconstrained -- the unmapped general-pool questions ARE selectable, proving general start's own behavior is unchanged by this hardening" postgres "" \
+  "select (count(*) filter (where id in ('v119_general_q1','v119_general_q2')) = 2)::text from public.dpe_questions where exam_type='private_pilot' and is_scenario=false;" "true"
+
+expect_rows "V119.5: only 3 eligible mapped questions exist for the MAPPED task -- fewer than any typical requested session_size (up to 20), so a targeted session naturally comes back with fewer than requested rather than backfilling to reach the requested count" postgres "" \
+  "select (count(*) < 20)::text from public.dpe_questions where id in (select content_id from public.content_acs_mappings where content_type='dpe_question' and acs_task_id=$V119_TASK_MAPPED) and exam_type='private_pilot' and is_scenario=false;" "true"
+
+echo
+echo "--- AUTHENTICATED RESUME (resume_mobile_practice_session(), v119) -- unlike start/reveal, this new"
+echo "action's ownership, integrity, and order-preservation guarantees live in a real RPC and DO execute"
+echo "in this sandbox, exactly like complete_mobile_practice_session() and start_daily_drill_practice_"
+echo "session() before it. ---"
+
+V119_SESSION=$(run_sql postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$V119_MEMBER','dpe_questions','[\"v119_map_q2\",\"v119_map_q1\",\"v119_map_q3\"]'::jsonb, 3, now()) returning id::text;" | tail -1 | xargs)
+
+expect_success "V119.6: the owning learner can resume their own ad-hoc practice session" authenticated "$V119_MEMBER" \
+  "select * from public.resume_mobile_practice_session('$V119_SESSION');"
+
+expect_error_matching "V119.7: resuming a session id that does not exist -- session_not_found" authenticated "$V119_MEMBER" \
+  "select * from public.resume_mobile_practice_session('00000000-0000-0000-0000-0000000000fe');" "session_not_found"
+
+expect_error_matching "V119.8: a different learner cannot resume V119 Member's session -- not_your_session (ownership enforced inside the RPC, never by client-supplied profile_id)" authenticated "$V119_OTHER" \
+  "select * from public.resume_mobile_practice_session('$V119_SESSION');" "not_your_session"
+
+expect_rows "V119.9: resume returns the question set in EXACT stored order (q2, q1, q3) -- never resorted, never reshuffled" authenticated "$V119_MEMBER" \
+  "select (question_ids = '[\"v119_map_q2\",\"v119_map_q1\",\"v119_map_q3\"]'::jsonb)::text from public.resume_mobile_practice_session('$V119_SESSION');" "true"
+
+V119_COUNT_BEFORE=$(run_sql postgres "" "select count(*) from public.portal_practice_attempts where profile_id='$V119_MEMBER';" | tail -1 | xargs)
+run_sql authenticated "$V119_MEMBER" "select * from public.resume_mobile_practice_session('$V119_SESSION');" >/dev/null
+run_sql authenticated "$V119_MEMBER" "select * from public.resume_mobile_practice_session('$V119_SESSION');" >/dev/null
+V119_COUNT_AFTER=$(run_sql postgres "" "select count(*) from public.portal_practice_attempts where profile_id='$V119_MEMBER';" | tail -1 | xargs)
+if [ "$V119_COUNT_BEFORE" = "$V119_COUNT_AFTER" ]; then
+  echo "PASS: V119.10: calling resume repeatedly never creates a new attempt ($V119_COUNT_BEFORE before, $V119_COUNT_AFTER after)"; PASS=$((PASS+1))
+else
+  echo "FAIL: V119.10: resume changed the attempt count ($V119_COUNT_BEFORE before, $V119_COUNT_AFTER after)"; FAIL=$((FAIL+1)); FAILURES+=("V119.10 resume must never create a new attempt")
+fi
+
+run_sql postgres "" "update public.portal_practice_attempts set score=2, completed_at=now() where id='$V119_SESSION';" >/dev/null
+expect_rows "V119.11: resuming an already-COMPLETED session still succeeds and reports completed_at set -- not an error, not a restart" authenticated "$V119_MEMBER" \
+  "select (completed_at is not null)::text from public.resume_mobile_practice_session('$V119_SESSION');" "true"
+expect_rows "V119.12: resuming the completed session did not mutate it -- question_ids, total, and score are exactly as they were" postgres "" \
+  "select (question_ids = '[\"v119_map_q2\",\"v119_map_q1\",\"v119_map_q3\"]'::jsonb and total=3 and score=2)::text from public.portal_practice_attempts where id='$V119_SESSION';" "true"
+
+V119_EMPTY_SESSION=$(run_sql postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$V119_MEMBER','dpe_questions','[]'::jsonb, 0, now()) returning id::text;" | tail -1 | xargs)
+expect_error_matching "V119.13: a stored EMPTY question_ids array fails closed -- invalid_question_set, not a resumable empty session" authenticated "$V119_MEMBER" \
+  "select * from public.resume_mobile_practice_session('$V119_EMPTY_SESSION');" "invalid_question_set"
+
+V119_DUP_SESSION=$(run_sql postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$V119_MEMBER','dpe_questions','[\"v119_map_q1\",\"v119_map_q1\"]'::jsonb, 2, now()) returning id::text;" | tail -1 | xargs)
+expect_error_matching "V119.14: a stored DUPLICATE question id fails closed -- invalid_question_set, never silently deduped" authenticated "$V119_MEMBER" \
+  "select * from public.resume_mobile_practice_session('$V119_DUP_SESSION');" "invalid_question_set"
+
+V119_DANGLING_SESSION=$(run_sql postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$V119_MEMBER','dpe_questions','[\"v119_map_q1\",\"does_not_exist\"]'::jsonb, 2, now()) returning id::text;" | tail -1 | xargs)
+expect_error_matching "V119.15: a stored id that no longer resolves in dpe_questions fails closed -- invalid_question_set, never silently dropped" authenticated "$V119_MEMBER" \
+  "select * from public.resume_mobile_practice_session('$V119_DANGLING_SESSION');" "invalid_question_set"
+
+V119_BLANK_SESSION=$(run_sql postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$V119_MEMBER','dpe_questions','[\"v119_map_q1\",\"\"]'::jsonb, 2, now()) returning id::text;" | tail -1 | xargs)
+expect_error_matching "V119.16: a blank-string element in the stored question set fails closed -- invalid_question_set, never silently skipped" authenticated "$V119_MEMBER" \
+  "select * from public.resume_mobile_practice_session('$V119_BLANK_SESSION');" "invalid_question_set"
+
+echo
+echo "--- REGRESSION: Daily Drill, ad-hoc idempotency, and XP schedule are all unaffected by v119 ---"
+
+V119_DRILL_MEMBER=00000000-0000-0000-0000-000000000082
+run_sql postgres "" \
+  "insert into public.profiles (id, email, full_name, role, checkride_prep_unlocked, timezone) values ('$V119_DRILL_MEMBER','v119c@test.local','V119 Drill Member','student',true,'UTC') on conflict (id) do nothing;" >/dev/null
+expect_success "V119.17: Daily Drill generation + start still succeeds unchanged after v119 (routes through start_daily_drill_practice_session(), never through ad-hoc practice start)" authenticated "$V119_DRILL_MEMBER" \
+  "select public.get_or_create_daily_drill();"
+V119_DRILL=$(run_sql authenticated "$V119_DRILL_MEMBER" "select (public.get_or_create_daily_drill()).id;" | tail -1 | xargs)
+expect_success "V119.17b: Daily Drill start still succeeds unchanged" authenticated "$V119_DRILL_MEMBER" \
+  "select public.start_daily_drill_practice_session('$V119_DRILL');"
+
+V119_ADHOC_MEMBER=00000000-0000-0000-0000-000000000083
+run_sql postgres "" \
+  "insert into public.profiles (id, email, full_name, role, checkride_prep_unlocked, timezone) values ('$V119_ADHOC_MEMBER','v119d@test.local','V119 Adhoc Member','student',true,'UTC') on conflict (id) do nothing;" >/dev/null
+V119_ADHOC_SESSION=$(run_sql postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$V119_ADHOC_MEMBER','dpe_questions','[\"v119_map_q1\",\"v119_map_q2\"]'::jsonb, 2, now()) returning id::text;" | tail -1 | xargs)
+expect_success "V119.18a: first completion of an ad-hoc (non-perfect, 1 of 2) session succeeds" authenticated "$V119_ADHOC_MEMBER" \
+  "select * from public.complete_mobile_practice_session('$V119_ADHOC_SESSION', '[{\"question_id\":\"v119_map_q1\",\"self_rating\":\"correct\"},{\"question_id\":\"v119_map_q2\",\"self_rating\":\"incorrect\"}]'::jsonb);"
+expect_rows "V119.18b: re-completing the SAME session is idempotent -- already_completed true, no error" authenticated "$V119_ADHOC_MEMBER" \
+  "select already_completed::text from public.complete_mobile_practice_session('$V119_ADHOC_SESSION', '[]'::jsonb);" "true"
+expect_rows "V119.19: non-perfect ad-hoc completion earns exactly 25 XP (practice_set_completed), once -- the shared trigger schedule, unaffected by v119" postgres "" \
+  "select coalesce(sum(xp_amount),0)::text from public.xp_ledger where profile_id='$V119_ADHOC_MEMBER' and event_type in ('practice_set_completed','perfect_score_bonus') and source_id like '$V119_ADHOC_SESSION%';" "25"
+
+V119_PERFECT_MEMBER=00000000-0000-0000-0000-000000000084
+run_sql postgres "" \
+  "insert into public.profiles (id, email, full_name, role, checkride_prep_unlocked, timezone) values ('$V119_PERFECT_MEMBER','v119e@test.local','V119 Perfect Member','student',true,'UTC') on conflict (id) do nothing;" >/dev/null
+V119_PERFECT_SESSION=$(run_sql postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$V119_PERFECT_MEMBER','dpe_questions','[\"v119_map_q1\",\"v119_map_q2\"]'::jsonb, 2, now()) returning id::text;" | tail -1 | xargs)
+expect_success "V119.20a: perfect-score ad-hoc completion succeeds" authenticated "$V119_PERFECT_MEMBER" \
+  "select * from public.complete_mobile_practice_session('$V119_PERFECT_SESSION', '[{\"question_id\":\"v119_map_q1\",\"self_rating\":\"correct\"},{\"question_id\":\"v119_map_q2\",\"self_rating\":\"correct\"}]'::jsonb);"
+expect_rows "V119.20b: a perfect ad-hoc score earns exactly 40 XP (25 practice_set_completed + 15 perfect_score_bonus), once" postgres "" \
+  "select coalesce(sum(xp_amount),0)::text from public.xp_ledger where profile_id='$V119_PERFECT_MEMBER' and event_type in ('practice_set_completed','perfect_score_bonus') and source_id like '$V119_PERFECT_SESSION%';" "40"
+
+expect_rows "V119.21: zero 'mobile_practice_completed' XP rows exist anywhere in the ledger -- the removed mobile-only schedule (v117) was never reintroduced by v119" postgres "" \
+  "select count(*)::text from public.xp_ledger where event_type='mobile_practice_completed';" "0"
+
+echo
+echo "########## 42. V119 REV2 (INDEPENDENT REVIEW): DIRECT-RPC ENTITLEMENT, TARGETED-MAPPING TRUNCATION, EXPLICIT-INVALID acs_task_id ##########"
+echo "=== Re-applying v119 (Rev2 -- resume_mobile_practice_session() now re-checks entitlement before any session lookup) ==="
+"${PSQL_BASE[@]}" -v ON_ERROR_STOP=1 -f portal/supabase-portal-schema-v119-practice-resume.sql >/tmp/apex_test_v119_rev2.log 2>&1 || { echo "V119 REV2 MIGRATION FAILED"; cat /tmp/apex_test_v119_rev2.log; exit 1; }
+
+echo "--- BLOCKER 1: resume_mobile_practice_session() is granted directly to 'authenticated' -- it must re-check the SAME"
+echo "authoritative entitlement predicate as requirePremiumAccess() (checkride_prep_unlocked=true OR a portal_access_"
+echo "purchases row exists), BEFORE any session lookup, so a direct caller can never use response shape to distinguish"
+echo "an existing session from a missing one or someone else's while unentitled. ---"
+
+V119R2_MEMBER=00000000-0000-0000-0000-000000000085
+run_sql postgres "" \
+  "insert into public.profiles (id, email, full_name, role, checkride_prep_unlocked, timezone) values ('$V119R2_MEMBER','v119f@test.local','V119 Rev2 Member','student',true,'UTC') on conflict (id) do nothing;" >/dev/null
+V119R2_SESSION=$(run_sql postgres "" \
+  "insert into public.portal_practice_attempts (profile_id, mode, question_ids, total, started_at) values ('$V119R2_MEMBER','dpe_questions','[\"v119_map_q1\",\"v119_map_q2\"]'::jsonb, 2, now()) returning id::text;" | tail -1 | xargs)
+
+expect_success "REV2.1: an entitled owner (checkride_prep_unlocked=true) can resume their own session" authenticated "$V119R2_MEMBER" \
+  "select * from public.resume_mobile_practice_session('$V119R2_SESSION');"
+
+run_sql service_role "" "update public.profiles set checkride_prep_unlocked=false where id='$V119R2_MEMBER';" >/dev/null
+expect_rows "REV2.1b: confirmed no portal_access_purchases row exists yet for this member (the denial below is genuinely because of zero entitlement, not incidental)" postgres "" \
+  "select count(*)::text from public.portal_access_purchases where profile_id='$V119R2_MEMBER';" "0"
+
+expect_error_matching "REV2.2: a direct authenticated RPC call after entitlement is removed is denied -- premium_access_required, checked before session lookup" authenticated "$V119R2_MEMBER" \
+  "select * from public.resume_mobile_practice_session('$V119R2_SESSION');" "premium_access_required"
+
+V119R2_DENIED_OUTPUT=$(run_sql authenticated "$V119R2_MEMBER" "select * from public.resume_mobile_practice_session('$V119R2_SESSION');")
+if echo "$V119R2_DENIED_OUTPUT" | grep -q "v119_map_q1\|v119_map_q2"; then
+  echo "FAIL: REV2.3: a denied resume must return NO session/question data -- found leaked question ids in the error response"; FAIL=$((FAIL+1)); FAILURES+=("REV2.3 denied resume must not leak question data")
+else
+  echo "PASS: REV2.3: a denied resume returns no session/question data (the exception aborts the whole statement -- no partial row set is ever returned)"; PASS=$((PASS+1))
+fi
+
+expect_rows "REV2.4: the denied resume attempt created/mutated nothing -- the session's question_ids are byte-identical to what was stored, still uncompleted" postgres "" \
+  "select (question_ids = '[\"v119_map_q1\",\"v119_map_q2\"]'::jsonb and total=2 and completed_at is null)::text from public.portal_practice_attempts where id='$V119R2_SESSION';" "true"
+
+run_sql postgres "" \
+  "insert into public.portal_access_purchases (profile_id, email, stripe_session_id, amount_cents, tier) values ('$V119R2_MEMBER','v119f@test.local','v119r2_stripe_session_1',29900,'standard') on conflict (stripe_session_id) do nothing;" >/dev/null
+expect_success "REV2.5: profile flag is FALSE but a portal_access_purchases row now exists -- resume IS allowed (the RPC mirrors requirePremiumAccess()'s OR predicate exactly, never a tightened checkride_prep_unlocked-only rule)" authenticated "$V119R2_MEMBER" \
+  "select * from public.resume_mobile_practice_session('$V119R2_SESSION');"
+
+echo
+echo "--- BLOCKER 2: targeted start's content_acs_mappings fetch must resolve EVERY mapped content id for the requested"
+echo "task before eligibility filtering, never truncate to an arbitrary early subset that could hide eligible content"
+echo "further down the mapping list. ---"
+
+run_sql postgres "" \
+  "insert into public.acs_tasks (acs_version_id, area_code, area_title, task_code, task_title, sort_order)
+   select v.id, 'ZV4', 'V119 Test Area (Large Mapping)', 'LARGE', 'V119 Large Mapping Task', 9004 from public.acs_versions v where v.certificate_type='private_pilot' and v.version_code='FAA-S-ACS-6C'
+   on conflict (acs_version_id, area_code, task_code) do nothing;" >/dev/null
+V119_TASK_LARGE="(select t.id from public.acs_tasks t join public.acs_versions v on v.id=t.acs_version_id where v.certificate_type='private_pilot' and v.version_code='FAA-S-ACS-6C' and t.area_code='ZV4' and t.task_code='LARGE')"
+
+run_sql postgres "" \
+  "insert into public.dpe_questions (id, category, question, model_answer, common_mistakes, dpe_evaluating, real_world_application, acs_reference, is_scenario, exam_type)
+   select 'v119r2_bad_' || g, 'test_category', 'V119 Rev2 Bad Q' || g || '?', 'A', null, null, null, 'V119 Rev2 fixture', true, 'private_pilot'
+   from generate_series(1,34) g
+   on conflict (id) do nothing;" >/dev/null
+run_sql postgres "" \
+  "insert into public.dpe_questions (id, category, question, model_answer, common_mistakes, dpe_evaluating, real_world_application, acs_reference, is_scenario, exam_type) values
+     ('v119r2_eligible_1', 'test_category', 'V119 Rev2 Eligible Q?', 'A', null, null, null, 'V119 Rev2 fixture', false, 'private_pilot')
+   on conflict (id) do nothing;" >/dev/null
+run_sql postgres "" \
+  "insert into public.content_acs_mappings (content_type, content_id, acs_task_id)
+   select 'dpe_question', 'v119r2_bad_' || g, $V119_TASK_LARGE from generate_series(1,34) g
+   union all
+   select 'dpe_question', 'v119r2_eligible_1', $V119_TASK_LARGE
+   on conflict (content_type, content_id, acs_task_id) do nothing;" >/dev/null
+
+expect_rows "REV2.6: this task has 35 mapped questions -- more than the old .limit(session_size*3) truncation point (30 at the default session_size=10) -- yet exactly ONE of them is eligible (private_pilot, non-scenario)" postgres "" \
+  "select (
+     (select count(*) from public.content_acs_mappings where content_type='dpe_question' and acs_task_id=$V119_TASK_LARGE) = 35
+     and
+     (select count(*) from public.dpe_questions where id in (select content_id from public.content_acs_mappings where content_type='dpe_question' and acs_task_id=$V119_TASK_LARGE) and exam_type='private_pilot' and is_scenario=false) = 1
+   )::text;" "true"
+
+V119R2_MAPPING_FETCH_BLOCK=$(sed -n "/if (acsTaskId) {/,/if (mapErr) throw mapErr/p" portal/supabase/functions/mobile-practice/index.ts | head -20 | grep -v '^\s*//')
+if echo "$V119R2_MAPPING_FETCH_BLOCK" | grep -q "\.limit("; then
+  echo "FAIL: REV2.7 (source check): the targeted content_acs_mappings fetch still truncates via .limit() before eligibility filtering -- the one eligible question in REV2.6's 35-row mapped set could be silently missed depending on scan order"
+  FAIL=$((FAIL+1)); FAILURES+=("REV2.7 targeted mapping fetch must not truncate before eligibility filtering")
+else
+  echo "PASS: REV2.7 (source check): the targeted content_acs_mappings fetch has no .limit() -- ALL mapped content ids are resolved before the dpe_questions eligibility filter runs, so REV2.6's one eligible question among 35 mapped ids is always found regardless of physical row order"
+  PASS=$((PASS+1))
+fi
+
+echo
+echo "--- BLOCKER 3: an explicitly-supplied invalid acs_task_id must be REJECTED (400), never silently treated as"
+echo "general practice. This decision logic (validateAcsTaskId(), extracted to its own dependency-free module"
+echo "specifically so it is unit-testable) is plain TypeScript with zero Deno-specific imports -- unlike the rest of"
+echo "the Edge Function, it runs directly under plain Node, so these are real executions of the actual shipped logic,"
+echo "not a hand-written duplicate and not a database-level proxy. This still is NOT an Edge Function integration"
+echo "test -- it does not exercise the HTTP layer, the 400 status code mapping, or requirePremiumAccess() -- only the"
+echo "acs_task_id decision function itself. ---"
+
+rm -rf test/__v119_compiled
+if tsc --module esnext --target es2020 --moduleResolution bundler --outDir test/__v119_compiled portal/supabase/functions/mobile-practice/validateAcsTaskId.ts > /tmp/v119_tsc_compile.log 2>&1; then
+  V119R2_NODE_OUTPUT=$(node test/v119_validateAcsTaskId.test.mjs 2>&1)
+  V119R2_NODE_RC=$?
+  echo "$V119R2_NODE_OUTPUT"
+  V119R2_NODE_PASS_COUNT=$(echo "$V119R2_NODE_OUTPUT" | grep -c "^PASS:")
+  V119R2_NODE_FAIL_COUNT=$(echo "$V119R2_NODE_OUTPUT" | grep -c "^FAIL:")
+  PASS=$((PASS + V119R2_NODE_PASS_COUNT))
+  if [ "$V119R2_NODE_RC" -ne 0 ] || [ "$V119R2_NODE_FAIL_COUNT" -gt 0 ]; then
+    FAIL=$((FAIL + (V119R2_NODE_FAIL_COUNT > 0 ? V119R2_NODE_FAIL_COUNT : 1)))
+    FAILURES+=("REV2.8-12 validateAcsTaskId() Node unit tests")
+  fi
+else
+  echo "FAIL: REV2.8-12: validateAcsTaskId.ts failed to compile"; cat /tmp/v119_tsc_compile.log
+  FAIL=$((FAIL+1)); FAILURES+=("REV2.8-12 validateAcsTaskId.ts compile")
+fi
+rm -rf test/__v119_compiled
+
+echo
 echo "=================================================="
 echo "RESULTS: $PASS passed, $FAIL failed"
 if [ $FAIL -gt 0 ]; then

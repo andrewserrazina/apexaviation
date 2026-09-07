@@ -61,6 +61,36 @@ describe('invokeMobileFunction error normalization', () => {
     expect(err.userMessage).not.toMatch(/42703|column/i)
   })
 
+  // Rev2 blocker 4: a 5xx response's machine-readable `code` (e.g. v119
+  // resume's own `{ error: detail, code: 'invalid_question_set' }, 500`
+  // body -- see mobile-practice/index.ts's resume error mapping) must
+  // survive normalization even though the learner-facing message stays
+  // generic. Before this fix, status >= 500 dropped the extracted `code`
+  // entirely, making useAdHocPracticeSession.classifyResumeError() unable
+  // to ever distinguish this permanent, per-session failure from an
+  // ordinary transient infra 5xx.
+  it('preserves a 5xx response’s machine-readable code, while still keeping the learner-facing message generic', async () => {
+    mockInvoke.mockResolvedValue({
+      data: null,
+      error: { message: 'non-2xx', context: { status: 500, json: async () => ({ error: 'invalid_question_set', code: 'invalid_question_set' }) } },
+    })
+    const err = await captureError(invokeMobileFunction('mobile-practice', { action: 'resume', session_id: 's1' }))
+    expect(err).toBeInstanceOf(ApiError)
+    expect(err.kind).toBe('server')
+    expect(err.code).toBe('invalid_question_set')
+    expect(err.userMessage).not.toMatch(/invalid_question_set/i)
+  })
+
+  it('a 5xx response with no code in the body normalizes with code=null, not a fabricated value', async () => {
+    mockInvoke.mockResolvedValue({
+      data: null,
+      error: { message: 'non-2xx', context: { status: 500, json: async () => ({ error: 'Something broke' }) } },
+    })
+    const err = await captureError(invokeMobileFunction('mobile-practice'))
+    expect(err.kind).toBe('server')
+    expect(err.code).toBeNull()
+  })
+
   it('normalizes a thrown/unreachable failure into a network ApiError', async () => {
     mockInvoke.mockRejectedValue(new TypeError('Network request failed'))
     const err = await captureError(invokeMobileFunction('mobile-bootstrap'))
@@ -109,7 +139,21 @@ describe('practice.ts ad-hoc start is a distinct, independent call', () => {
   beforeEach(() => mockInvoke.mockReset())
 
   it('startAdHocPractice invokes mobile-practice, not mobile-daily-drill', async () => {
-    mockInvoke.mockResolvedValue({ data: { session_id: 's2', mode: 'dpe_questions', started_at: '', target_acs_tasks: [], questions: [] }, error: null })
+    // Sprint 1B.1: startAdHocPractice is now validated (it wasn't before)
+    // -- v119's start action always returns a nonempty question set (it
+    // fails closed to a 404 before ever creating an attempt with zero
+    // eligible questions), so this fixture must be a realistic, valid
+    // response, not an empty placeholder.
+    mockInvoke.mockResolvedValue({
+      data: {
+        session_id: 's2',
+        mode: 'dpe_questions',
+        started_at: '2026-01-01T00:00:00Z',
+        target_acs_tasks: [],
+        questions: [{ id: 'q1', question: 'Q1?', category: null }],
+      },
+      error: null,
+    })
     await startAdHocPractice({ session_size: 5 })
     expect(mockInvoke).toHaveBeenCalledWith('mobile-practice', { body: { action: 'start', session_size: 5 } })
   })
