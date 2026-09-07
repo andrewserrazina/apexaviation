@@ -23,6 +23,21 @@ jest.mock('../lib/supabase', () => ({
   },
 }))
 
+// Sprint 1C Phase 8: signOut() now reads pushRegistrationStorage (real
+// AsyncStorage-backed, per activePracticeStorage.test.ts's own precedent
+// for exercising genuine read/write behavior) and calls revokePushToken
+// (mocked here so these tests control success/failure independently of
+// the real mobile-push-token network call).
+jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
+
+const mockRevokePushToken = jest.fn()
+jest.mock('../lib/api/pushToken', () => ({
+  revokePushToken: (...args: unknown[]) => mockRevokePushToken(...args),
+}))
+
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { savePushRegistration } from '../lib/pushRegistrationStorage'
+
 function wrapper({ children }: { children: ReactNode }) {
   return <AuthProvider>{children}</AuthProvider>
 }
@@ -149,6 +164,95 @@ describe('AuthContext', () => {
       await result.current.signOut()
     })
     expect(result.current.session).toBeNull()
+  })
+
+  // Sprint 1C Phase 8: revocation must be attempted BEFORE the auth
+  // session is destroyed (revoke_mobile_device() requires auth), scoped
+  // to exactly the signed-in user's own stored device, and must never
+  // block or corrupt sign-out if it fails or there's nothing to revoke.
+  describe('signOut push-registration revocation (Phase 8)', () => {
+    beforeEach(async () => {
+      mockRevokePushToken.mockReset()
+      await AsyncStorage.clear()
+    })
+
+    it('revokes the current device before destroying the auth session', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null })
+      mockSignOut.mockResolvedValue({ error: null })
+      mockRevokePushToken.mockResolvedValue({ device: { id: 'device-1' } })
+      await savePushRegistration({ userId: 'u1', deviceId: 'device-1', expoPushToken: 'ExponentPushToken[abc]', platform: 'ios' })
+
+      const callOrder: string[] = []
+      mockRevokePushToken.mockImplementation(async (...args: unknown[]) => {
+        callOrder.push('revoke')
+        return { device: { id: args[0] } }
+      })
+      mockSignOut.mockImplementation(async () => {
+        callOrder.push('auth-sign-out')
+        return { error: null }
+      })
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.session).toEqual(FAKE_SESSION))
+
+      await act(async () => {
+        await result.current.signOut()
+      })
+
+      expect(mockRevokePushToken).toHaveBeenCalledWith('device-1')
+      expect(callOrder).toEqual(['revoke', 'auth-sign-out'])
+      expect(result.current.session).toBeNull()
+    })
+
+    it('only revokes the signed-in user’s own device, ignoring a different user’s stored registration', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null })
+      mockSignOut.mockResolvedValue({ error: null })
+      await savePushRegistration({ userId: 'some-other-user', deviceId: 'device-not-mine', expoPushToken: 'ExponentPushToken[other]', platform: 'android' })
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.session).toEqual(FAKE_SESSION))
+
+      await act(async () => {
+        await result.current.signOut()
+      })
+
+      expect(mockRevokePushToken).not.toHaveBeenCalled()
+      expect(result.current.session).toBeNull()
+    })
+
+    it('missing local device metadata is handled -- sign-out still completes with no revoke call', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null })
+      mockSignOut.mockResolvedValue({ error: null })
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.session).toEqual(FAKE_SESSION))
+
+      await act(async () => {
+        await result.current.signOut()
+      })
+
+      expect(mockRevokePushToken).not.toHaveBeenCalled()
+      expect(mockSignOut).toHaveBeenCalledTimes(1)
+      expect(result.current.session).toBeNull()
+    })
+
+    it('a revoke failure does not corrupt auth state or block sign-out', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null })
+      mockSignOut.mockResolvedValue({ error: null })
+      mockRevokePushToken.mockRejectedValue(new Error('network down'))
+      await savePushRegistration({ userId: 'u1', deviceId: 'device-1', expoPushToken: 'ExponentPushToken[abc]', platform: 'ios' })
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.session).toEqual(FAKE_SESSION))
+
+      await act(async () => {
+        await result.current.signOut()
+      })
+
+      expect(mockRevokePushToken).toHaveBeenCalledWith('device-1')
+      expect(mockSignOut).toHaveBeenCalledTimes(1)
+      expect(result.current.session).toBeNull()
+    })
   })
 
   // Rev2 section 6: an unexpected thrown/rejected getSession() (not a

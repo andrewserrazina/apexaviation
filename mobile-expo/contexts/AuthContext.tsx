@@ -15,6 +15,8 @@ import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { isStaleRefreshTokenError } from '../lib/authErrors'
 import { logDevError } from '../lib/api/errors'
+import { revokePushToken } from '../lib/api/pushToken'
+import { clearPushRegistration, loadPushRegistration } from '../lib/pushRegistrationStorage'
 
 export type AuthSignInResult =
   | { ok: true }
@@ -135,7 +137,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { ok: true }
   }
 
+  // Sprint 1C Phase 8: best-effort push-registration revocation BEFORE
+  // the Supabase session is destroyed -- revoke_mobile_device() (v116)
+  // requires auth (see mobile-push-token/index.ts), so this must run
+  // while `session` is still valid, never after.
+  //
+  // `userId` is read from the CURRENT render's `session` closure before
+  // anything below awaits, so this can never revoke a device belonging
+  // to a user other than the one actually signing out, even if signOut()
+  // itself is somehow invoked again before this one settles.
+  //
+  // Failure handling: any failure here (offline, revoke_mobile_device()
+  // erroring, a missing local device record) is caught and logged, never
+  // rethrown -- sign-out must always complete and must never leave the
+  // learner stuck unable to sign out because a network call failed. The
+  // local pointer is cleared regardless of whether the server-side revoke
+  // itself succeeded, so this app installation never again reports
+  // itself as "registered" for a device the server may or may not have
+  // actually revoked.
+  //
+  // Future stop gate (documented here, not implemented by this Sprint):
+  // this app does not yet send server-initiated push notifications, and
+  // this best-effort sign-out revocation is NOT a complete guarantee
+  // against every stale-token scenario -- mobile_devices' unique
+  // (profile_id, expo_push_token) constraint means a shared physical
+  // device where a second account signs in after this one signs out
+  // could, in principle, still be reasoned about incorrectly by a naive
+  // future sender if this revocation failed offline. Before any future
+  // system that actually sends push from the server is turned on, that
+  // cross-account/shared-device token-ownership question must be
+  // explicitly re-reviewed -- see the Sprint 1C report.
   async function signOut() {
+    const userId = session?.user.id ?? null
+    if (userId) {
+      try {
+        const stored = await loadPushRegistration(userId)
+        if (stored) {
+          try {
+            await revokePushToken(stored.deviceId)
+          } catch (err) {
+            logDevError('AuthContext.signOut.revokePushToken', err)
+          }
+        }
+        await clearPushRegistration(userId)
+      } catch (err) {
+        logDevError('AuthContext.signOut.pushRevocation', err)
+      }
+    }
+
     await supabase.auth.signOut()
     setSession(null)
   }
