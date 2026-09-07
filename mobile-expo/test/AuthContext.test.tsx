@@ -37,6 +37,7 @@ jest.mock('../lib/api/pushToken', () => ({
 
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { savePushRegistration } from '../lib/pushRegistrationStorage'
+import { beginRegistrationMutation, releaseUserGate } from '../lib/notifications/pushMutationCoordinator'
 
 function wrapper({ children }: { children: ReactNode }) {
   return <AuthProvider>{children}</AuthProvider>
@@ -199,7 +200,7 @@ describe('AuthContext', () => {
         await result.current.signOut()
       })
 
-      expect(mockRevokePushToken).toHaveBeenCalledWith('device-1')
+      expect(mockRevokePushToken).toHaveBeenCalledWith('device-1', 'u1')
       expect(callOrder).toEqual(['revoke', 'auth-sign-out'])
       expect(result.current.session).toBeNull()
     })
@@ -249,9 +250,126 @@ describe('AuthContext', () => {
         await result.current.signOut()
       })
 
-      expect(mockRevokePushToken).toHaveBeenCalledWith('device-1')
+      expect(mockRevokePushToken).toHaveBeenCalledWith('device-1', 'u1')
       expect(mockSignOut).toHaveBeenCalledTimes(1)
       expect(result.current.session).toBeNull()
+    })
+  })
+
+  // Sprint 1C Rev4 (independent review -- sign-out invariant): sign-out
+  // must structurally WAIT for an already-in-flight registration to
+  // finish (not merely rely on token pinning or a disabled button) before
+  // it decides which device row is "final" and revokes it. These tests
+  // drive the coordinator directly to simulate the registration side
+  // (usePushRegistration.registerDevice's own real usage is exercised in
+  // usePushRegistration.test.tsx), since AuthContext's job is only to
+  // coordinate with it correctly.
+  describe('signOut coordination with an in-flight registration (Rev4)', () => {
+    beforeEach(async () => {
+      mockRevokePushToken.mockReset()
+      await AsyncStorage.clear()
+      releaseUserGate('u1')
+    })
+
+    // Test A: registration entered its critical section first.
+    it('signOut waits for an already-in-flight registration critical section, then revokes the FINAL device id -- never the reverse order', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null })
+      await savePushRegistration({ userId: 'u1', deviceId: 'device-OLD', expoPushToken: 'tok-old', platform: 'ios' })
+
+      // Simulates registerDevice() having already entered its critical
+      // section (past OS permission + token acquisition) before signOut
+      // is pressed.
+      const release = beginRegistrationMutation('u1')
+      expect(release).not.toBeNull()
+
+      const callOrder: string[] = []
+      mockRevokePushToken.mockImplementation(async (deviceId: string) => {
+        callOrder.push(`revoke:${deviceId}`)
+        return { device: { id: deviceId } }
+      })
+      mockSignOut.mockImplementation(async () => {
+        callOrder.push('auth-sign-out')
+        return { error: null }
+      })
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.session).toEqual(FAKE_SESSION))
+
+      const signOutPromise = result.current.signOut()
+
+      // signOut has started and is now waiting on the coordinator --
+      // give the microtask queue every chance to let it proceed early.
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+      expect(mockRevokePushToken).not.toHaveBeenCalled()
+      expect(mockSignOut).not.toHaveBeenCalled()
+
+      // The "registration" now finishes: it saves the FINAL local
+      // pointer, THEN releases its critical section -- exactly the order
+      // registerDevice() itself follows.
+      await savePushRegistration({ userId: 'u1', deviceId: 'device-NEW', expoPushToken: 'tok-new', platform: 'ios' })
+      release!()
+
+      await act(async () => {
+        await signOutPromise
+      })
+
+      // The final server-intent sequence is register -> revoke -> auth
+      // signOut -- NEVER revoke -> auth signOut -> register. Revoking
+      // device-NEW (not the stale device-OLD) IS that proof: it can only
+      // have read device-NEW after this "registration" finished.
+      expect(mockRevokePushToken).toHaveBeenCalledWith('device-NEW', 'u1')
+      expect(callOrder).toEqual(['revoke:device-NEW', 'auth-sign-out'])
+      expect(result.current.session).toBeNull()
+    })
+
+    // Test B: sign-out's closing gate starts first.
+    it('once signOut has begun, a new registration attempt for that user aborts immediately with zero mutation', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null })
+      mockSignOut.mockResolvedValue({ error: null })
+      mockRevokePushToken.mockResolvedValue({ device: { id: 'device-1' } })
+      await savePushRegistration({ userId: 'u1', deviceId: 'device-1', expoPushToken: 'tok', platform: 'ios' })
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.session).toEqual(FAKE_SESSION))
+
+      const signOutPromise = result.current.signOut()
+
+      // closeUserForSignOut() marks the gate closing SYNCHRONOUSLY as its
+      // very first action -- by the time control returns here, a
+      // registration attempting to enter must already be rejected.
+      const release = beginRegistrationMutation('u1')
+      expect(release).toBeNull()
+
+      await act(async () => {
+        await signOutPromise
+      })
+    })
+
+    // Test D (partial -- the revoke-failure half; registerDevice's own
+    // release-on-failure is covered in usePushRegistration.test.tsx): a
+    // failed revoke must never prevent auth sign-out, and the gate must
+    // still be released so the same user can sign back in cleanly.
+    it('releases the coordinator gate even when the push cleanup fails, so the same user can sign back in with an open gate', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null })
+      mockSignOut.mockResolvedValue({ error: null })
+      mockRevokePushToken.mockRejectedValue(new Error('network down'))
+      await savePushRegistration({ userId: 'u1', deviceId: 'device-1', expoPushToken: 'tok', platform: 'ios' })
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.session).toEqual(FAKE_SESSION))
+
+      await act(async () => {
+        await result.current.signOut()
+      })
+
+      expect(result.current.session).toBeNull()
+      // The gate is open again -- proof releaseUserGate() ran despite
+      // the revoke failure above.
+      const release = beginRegistrationMutation('u1')
+      expect(release).not.toBeNull()
+      release!()
     })
   })
 

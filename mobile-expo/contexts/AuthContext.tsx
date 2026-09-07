@@ -17,6 +17,7 @@ import { isStaleRefreshTokenError } from '../lib/authErrors'
 import { logDevError } from '../lib/api/errors'
 import { revokePushToken } from '../lib/api/pushToken'
 import { clearPushRegistration, loadPushRegistration } from '../lib/pushRegistrationStorage'
+import { closeUserForSignOut, releaseUserGate } from '../lib/notifications/pushMutationCoordinator'
 
 export type AuthSignInResult =
   | { ok: true }
@@ -147,6 +148,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // to a user other than the one actually signing out, even if signOut()
   // itself is somehow invoked again before this one settles.
   //
+  // Rev4 (independent review -- sign-out invariant): a Supabase access
+  // token captured before sign-out began can remain valid at the server
+  // for the rest of its natural JWT lifetime, so token pinning ALONE
+  // cannot stop a registerDevice() call already in flight for this user
+  // from completing and upserting an ACTIVE mobile_devices row strictly
+  // AFTER this function has already read/revoked whatever row it knew
+  // about. `closeUserForSignOut()` closes this user's push-mutation gate
+  // to new registration attempts (they abort with zero server mutation --
+  // see usePushRegistration.registerDevice/pushMutationCoordinator.ts),
+  // then WAITS for any registration that had already entered its
+  // critical section to finish -- including saving its local pointer --
+  // before the read below ever runs. That is what guarantees `stored`
+  // here is genuinely the FINAL registration for this user, not a
+  // snapshot that a still-in-flight registration is about to supersede.
+  // This ordering is why closeUserForSignOut() must be awaited BEFORE
+  // loadPushRegistration(), not merely before supabase.auth.signOut().
+  //
   // Failure handling: any failure here (offline, revoke_mobile_device()
   // erroring, a missing local device record) is caught and logged, never
   // rethrown -- sign-out must always complete and must never leave the
@@ -154,7 +172,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // local pointer is cleared regardless of whether the server-side revoke
   // itself succeeded, so this app installation never again reports
   // itself as "registered" for a device the server may or may not have
-  // actually revoked.
+  // actually revoked. `releaseUserGate()` always runs (even on failure)
+  // so this same user id starts with a fresh, open gate the next time
+  // they sign in on this device.
   //
   // Future stop gate (documented here, not implemented by this Sprint):
   // this app does not yet send server-initiated push notifications, and
@@ -171,10 +191,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userId = session?.user.id ?? null
     if (userId) {
       try {
+        await closeUserForSignOut(userId)
         const stored = await loadPushRegistration(userId)
         if (stored) {
           try {
-            await revokePushToken(stored.deviceId)
+            await revokePushToken(stored.deviceId, userId)
           } catch (err) {
             logDevError('AuthContext.signOut.revokePushToken', err)
           }
@@ -182,6 +203,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await clearPushRegistration(userId)
       } catch (err) {
         logDevError('AuthContext.signOut.pushRevocation', err)
+      } finally {
+        releaseUserGate(userId)
       }
     }
 
