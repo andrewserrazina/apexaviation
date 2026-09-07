@@ -51,11 +51,12 @@ export function resolveNotificationTarget(data: unknown): NotificationTarget | n
 
 // Never called with a target resolveNotificationTarget didn't produce --
 // every pathname here is a fixed string literal, never interpolated from
-// payload data. library_pack deliberately routes with owned:'false'
-// (never asserting ownership from a push payload -- see library/
-// [packId].tsx's own comment): the learner sees that pack's real
-// catalog-driven Owned/Locked state only after visiting the Library tab,
-// this never bypasses the server's own entitlement re-check.
+// payload data. library_pack carries ONLY the validated pack id -- Rev2
+// removed `owned` from this contract entirely (it was never trustworthy
+// coming from a push payload, and [packId].tsx no longer accepts it from
+// route params at all: it resolves the pack's real owned/locked state
+// itself from the authenticated mobile-library catalog, and the server's
+// `content` action remains the final entitlement check regardless).
 export function navigateToNotificationTarget(target: NotificationTarget): void {
   switch (target.type) {
     case 'daily_drill':
@@ -63,7 +64,7 @@ export function navigateToNotificationTarget(target: NotificationTarget): void {
       router.push('/(app)/practice')
       break
     case 'library_pack':
-      router.push({ pathname: '/(app)/library/[packId]', params: { packId: target.packId, owned: 'false' } })
+      router.push({ pathname: '/(app)/library/[packId]', params: { packId: target.packId } })
       break
   }
 }

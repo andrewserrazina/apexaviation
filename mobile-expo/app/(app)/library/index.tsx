@@ -77,10 +77,11 @@ function PackCard({ pack }: { pack: MobileStudyPackSummary }) {
         label={pack.owned ? 'Open' : 'View Details'}
         variant={pack.owned ? 'primary' : 'ghost'}
         onPress={() =>
-          router.push({
-            pathname: '/(app)/library/[packId]',
-            params: { packId: pack.id, name: pack.name, owned: pack.owned ? 'true' : 'false' },
-          })
+          // Rev2: only the pack id is passed -- [packId].tsx no longer
+          // trusts `owned`/`name` from route params as entitlement
+          // authority; it re-resolves both from the authenticated
+          // mobile-library catalog itself.
+          router.push({ pathname: '/(app)/library/[packId]', params: { packId: pack.id } })
         }
         accessibilityHint={pack.owned ? `Open ${pack.name}` : `View details for ${pack.name}, not currently available on this account`}
       />

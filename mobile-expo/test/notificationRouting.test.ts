@@ -67,7 +67,10 @@ it('navigateToNotificationTarget pushes the exact Practice route for daily_drill
   expect(mockPush).toHaveBeenCalledWith('/(app)/practice')
 })
 
-it('navigateToNotificationTarget pushes the pack detail route with owned:false, never asserting ownership', () => {
+// Rev2: the payload contract no longer carries `owned` at all -- the
+// pack detail screen resolves ownership itself from the authenticated
+// mobile-library catalog, never from route params.
+it('navigateToNotificationTarget pushes the pack detail route with only the validated pack id', () => {
   navigateToNotificationTarget({ type: 'library_pack', packId: 'airspace_mastery' })
-  expect(mockPush).toHaveBeenCalledWith({ pathname: '/(app)/library/[packId]', params: { packId: 'airspace_mastery', owned: 'false' } })
+  expect(mockPush).toHaveBeenCalledWith({ pathname: '/(app)/library/[packId]', params: { packId: 'airspace_mastery' } })
 })

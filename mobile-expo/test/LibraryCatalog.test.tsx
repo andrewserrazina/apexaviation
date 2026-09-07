@@ -128,7 +128,11 @@ it('renders a locked pack as Locked, with no purchase CTA or checkout/website la
   expect(screen.getByRole('button', { name: 'View Details' })).toBeTruthy()
 })
 
-it('opening an owned pack pushes the exact pack id and owned=true', async () => {
+// Rev2: navigation carries ONLY the pack id -- [packId].tsx no longer
+// trusts owned/name route params as entitlement authority, it resolves
+// both itself from the authenticated mobile-library catalog. Opening
+// either an owned or a locked pack pushes the identical, minimal params.
+it('opening an owned pack pushes only the exact pack id', async () => {
   mockUseBootstrapContext.mockReturnValue(bootstrapContext())
   mockUseLibraryCatalog.mockReturnValue({ data: { packs: [ownedPack()] }, loading: false, refreshing: false, error: null, refresh: jest.fn() })
 
@@ -137,11 +141,11 @@ it('opening an owned pack pushes the exact pack id and owned=true', async () => 
 
   expect(mockPush).toHaveBeenCalledWith({
     pathname: '/(app)/library/[packId]',
-    params: { packId: 'airspace_mastery', name: 'Apex Advantage Airspace Mastery', owned: 'true' },
+    params: { packId: 'airspace_mastery' },
   })
 })
 
-it('opening a locked pack pushes owned=false -- never a client-side guess of ownership', async () => {
+it('opening a locked pack also pushes only the exact pack id -- never a client-side guess of ownership', async () => {
   mockUseBootstrapContext.mockReturnValue(bootstrapContext())
   mockUseLibraryCatalog.mockReturnValue({
     data: { packs: [ownedPack({ owned: false })] },
@@ -156,7 +160,7 @@ it('opening a locked pack pushes owned=false -- never a client-side guess of own
 
   expect(mockPush).toHaveBeenCalledWith({
     pathname: '/(app)/library/[packId]',
-    params: { packId: 'airspace_mastery', name: 'Apex Advantage Airspace Mastery', owned: 'false' },
+    params: { packId: 'airspace_mastery' },
   })
 })
 
