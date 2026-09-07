@@ -39,8 +39,21 @@ const PREFERENCE_FIELDS: { key: keyof Omit<MobileNotificationPreferences, 'daily
 // component only renders whatever state it reports, it makes no
 // permission/registration decisions of its own.
 export function NotificationsSection() {
-  const { permission, registered, enabling, enableError, enable, disabling, disable, preferences, preferencesLoading, preferencesError, savingFields, updatePreference } =
-    useNotificationsContext()
+  const {
+    permission,
+    registered,
+    enabling,
+    enableError,
+    enable,
+    disabling,
+    disableError,
+    disable,
+    preferences,
+    preferencesLoading,
+    preferencesError,
+    savingFields,
+    updatePreference,
+  } = useNotificationsContext()
 
   return (
     <Card>
@@ -73,6 +86,12 @@ export function NotificationsSection() {
           {preferencesError ? (
             <AppText variant="caption" color={colors.danger}>
               {preferencesError}
+            </AppText>
+          ) : null}
+
+          {disableError ? (
+            <AppText variant="caption" color={colors.danger}>
+              {disableError}
             </AppText>
           ) : null}
 

@@ -47,3 +47,43 @@ it('fails closed to not-opted-in on a malformed (non-boolean) stored value', asy
   await AsyncStorage.setItem('apex-advantage-notifications-opt-in:u1', JSON.stringify(null))
   await expect(loadNotificationOptIn('u1')).resolves.toBe(false)
 })
+
+// Rev3 (independent review): saveNotificationOptIn's return value is the
+// ONLY way a caller can tell whether the write actually landed -- these
+// tests exercise that contract directly, plus the "opt-out is
+// represented by key removal" model this Sprint's fix requires.
+describe('Rev3: observable persistence + key-removal opt-out model', () => {
+  it('reports success (true) for a normal opt-in write', async () => {
+    await expect(saveNotificationOptIn('u1', true)).resolves.toBe(true)
+  })
+
+  it('reports success (true) for a normal opt-out write, and the opt-out REMOVES the key rather than storing a literal false', async () => {
+    await saveNotificationOptIn('u1', true)
+    await expect(saveNotificationOptIn('u1', false)).resolves.toBe(true)
+    await expect(AsyncStorage.getItem('apex-advantage-notifications-opt-in:u1')).resolves.toBeNull()
+    await expect(loadNotificationOptIn('u1')).resolves.toBe(false)
+  })
+
+  // The actual security-relevant regression test: a pre-existing `true`
+  // value must survive untouched if the removal that was supposed to
+  // clear it fails -- and the function must report that failure (false)
+  // rather than silently letting the caller believe the opt-out landed.
+  it('a failed opt-out write leaves a pre-existing true value intact and reports failure, never silently claiming false was persisted', async () => {
+    await saveNotificationOptIn('u1', true)
+    const removeItemSpy = jest.spyOn(AsyncStorage, 'removeItem').mockRejectedValueOnce(new Error('disk full'))
+
+    await expect(saveNotificationOptIn('u1', false)).resolves.toBe(false)
+    await expect(loadNotificationOptIn('u1')).resolves.toBe(true)
+
+    removeItemSpy.mockRestore()
+  })
+
+  it('a failed opt-in write reports failure rather than silently claiming success', async () => {
+    const setItemSpy = jest.spyOn(AsyncStorage, 'setItem').mockRejectedValueOnce(new Error('disk full'))
+
+    await expect(saveNotificationOptIn('u1', true)).resolves.toBe(false)
+    await expect(loadNotificationOptIn('u1')).resolves.toBe(false)
+
+    setItemSpy.mockRestore()
+  })
+})
