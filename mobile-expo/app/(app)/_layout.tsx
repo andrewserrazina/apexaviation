@@ -2,6 +2,7 @@ import { Redirect, Tabs } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '../../contexts/AuthContext'
 import { BootstrapProvider } from '../../contexts/BootstrapContext'
+import { NotificationsProvider } from '../../contexts/NotificationsContext'
 import { LoadingState } from '../../components/StateViews'
 import { colors, fonts } from '../../constants/theme'
 
@@ -19,7 +20,9 @@ export default function AppLayout() {
 
   return (
     <BootstrapProvider>
-      <AppTabs />
+      <NotificationsProvider>
+        <AppTabs />
+      </NotificationsProvider>
     </BootstrapProvider>
   )
 }
