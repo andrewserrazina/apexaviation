@@ -21,8 +21,8 @@ This must happen **without regressing any of the guarantees Sprint 1A's four rev
 
 This Sprint is being delivered in stages, each independently reviewed before the next begins:
 
-1. **Stage 1 (this branch, this document)** -- audit the current `mobile-practice` contract against the two known-suspect behaviors named in the kickoff (a silent fallback to unrelated general questions when a targeted ACS-task start has zero mapped content, and the absence of an authenticated resume action), then, if confirmed, prepare a narrowly-scoped v119 backend contract hardening: fail-closed targeted start, a new authenticated `resume` action, and question-set integrity validation on resume. **Source-controlled only** -- no deployment, no native UI work. See `SPRINT_1B_V119_PRACTICE_CONTRACT_REPORT.md` for the full audit findings and implementation detail once Stage 1 completes.
-2. **Stage 2+ (future, not started)** -- once v119 is reviewed and deployed, build the native ad-hoc Practice UI in `mobile-expo/` on top of it: an ACS-task picker, a session-size choice, the resume-on-relaunch flow using the new `resume` action, and the Practice tab's "more practice modes coming" placeholder finally becoming real.
+1. **Stage 1 (COMPLETE, deployed and production-verified)** -- audited the current `mobile-practice` contract against the two known-suspect behaviors named in the kickoff (a silent fallback to unrelated general questions when a targeted ACS-task start has zero mapped content, and the absence of an authenticated resume action), confirmed both, and shipped a narrowly-scoped v119 backend contract hardening: fail-closed targeted start, a new authenticated `resume` action, and question-set integrity validation on resume. See `SPRINT_1B_V119_PRACTICE_CONTRACT_REPORT.md` for the full audit findings and implementation detail.
+2. **Stage 2 / Sprint 1B.1 (COMPLETE IN SOURCE, not yet merged/deployed/device-tested)** -- built the native ad-hoc Practice UI in `mobile-expo/` on top of v119: the Practice Hub (Quick/Standard/Weak-Area practice, Continue Practice), the ad-hoc session route using the `resume` action, and the Practice tab's old "more practice modes coming" placeholder is now real. Superseded the "future, not started" note this line originally carried -- see "Sprint 1B.1 -- Native Practice Expansion" and its Rev2/Rev3 follow-ups below for the full implementation, fix, and validation history.
 
 ## Explicitly out of scope for all of Sprint 1B unless a stage says otherwise
 
@@ -141,7 +141,7 @@ All run from `mobile-expo/` unless noted:
 ## Known limitations
 
 - No physical-device verification has occurred for any part of this stage -- everything above is source-level and simulator/Jest-level validation only.
-- The "Remove Saved Session" recovery action is offered for `not_found`/`forbidden` resume errors only; v119's `invalid_question_set` failure mode (a genuinely corrupt stored question set) currently surfaces as a generic `server`-kind error indistinguishable from a transient infra failure through the existing error-normalization pipeline, so it is conservatively treated as retry-only rather than immediately offering local-clear recovery. This is a documented, deliberate choice (see `classifyResumeError`'s comment in `useAdHocPracticeSession.ts`), not an oversight.
+- ~~The "Remove Saved Session" recovery action is offered for `not_found`/`forbidden` resume errors only; v119's `invalid_question_set` failure mode ... is conservatively treated as retry-only rather than immediately offering local-clear recovery.~~ **Superseded by Rev2 below**: `invalid_question_set` now classifies as a `permanent` resume failure (its machine-readable `code` is preserved through 5xx normalization) and DOES offer "Remove Saved Session" -- this limitation no longer applies.
 - No mobile analytics events were added for any new Practice Hub or ad-hoc session interaction, since no existing analytics helper exists in `mobile-expo/` to extend -- flagged per the kickoff's instruction rather than building a new subsystem to fill the gap.
 - Cross-device unfinished-session discovery, session abandonment, and a historical practice browser remain unimplemented, as explicitly scoped out of this stage.
 
@@ -243,3 +243,55 @@ All run from `mobile-expo/`:
 - **Physical-device testing remains pending**, as it was after the initial Sprint 1B.1 pass -- everything above is Jest/simulator/source-level validation only.
 
 **SPRINT 1B.1 REV2 NATIVE PRACTICE FIXES READY — AWAITING SOURCE REVIEW**
+
+---
+
+# Sprint 1B.1 Rev3 — Return-to-Practice Focus Race Fix
+
+One remaining client lifecycle race, found by independent source review of commit `12220fa18e9159f41f8ba1e828a08ff22141d7fa`, is fixed below. **No backend file changed in this revision.**
+
+## The blocker: return-to-practice focus race
+
+Rev2's blocker 1 fix closed the active-session load race for the *initial* mount, but the Practice hub stays **mounted** underneath the nested Stack while the learner is on the ad-hoc session route -- it is never remounted on Back. That means a fresh AsyncStorage lookup runs on every `useFocusEffect` return, not just on first mount, and the SAME race could reopen there: `loadActive()`'s pending-lookup flag (`activeSessionLoaded = false`) wasn't set until after `bootstrap.ready`/`bootstrap.entitled`/`uid` checks, and there was no synchronous ref a same-frame double-tap could be checked against. A learner who started Quick Practice, backed out before finishing, and immediately tapped Start again during that focus-triggered re-check's pending window could create a second, orphaned server attempt.
+
+## Fix A -- every active-session lookup enters a pending state synchronously
+
+`loadActive()` (`app/(app)/practice/index.tsx`) now sets a new `activeLookupInFlight` ref to `true` **and** calls `setActiveSessionLoaded(false)` before its first `await`, wrapping the actual lookup in a `try/finally` that always resets both. `handleStart()`'s guard now checks `activeLookupInFlight.current` directly (a synchronous ref read, not dependent on a render having committed) in addition to the existing `disableNewAdHoc` render-state check -- closing the same-frame gap between "a lookup started" and "the re-render that reflects it." This applies uniformly whether the lookup is the initial mount's or a focus-return's re-check; Today's Drill remains independent and unaffected.
+
+## Fix B -- a successful Start publishes into the hub's own memory immediately
+
+`handleStart()` now calls `setActiveSession(record)`, `setActiveProgress({ rated: 0, total: record.sessionSize })`, and `setActiveSessionLoaded(true)` **before** the best-effort `saveActivePracticeSession(record)` call and the `router.push(...)` navigation -- not after. Since the hub stays mounted underneath the session route, it now already knows a session exists the instant Start succeeds, rather than only finding out via a later focus-triggered AsyncStorage read. This means: a fast Back before the navigation transition (or the local persistence write) finishes no longer briefly exposes a no-active-session state, and even a failed local persistence write still leaves the *running app's* in-memory guard intact for the remainder of that process's lifetime. The documented best-effort local-storage limitation is unchanged: if the process itself dies before persistence completes, the pointer still cannot be recovered on a fresh launch -- no backend discovery endpoint was invented to cover that case, matching the explicit instruction not to.
+
+## Test coverage (Rev3)
+
+2 new tests were added to `test/PracticeHub.test.tsx`:
+
+- **`return-to-practice focus race (Rev3)`** describe block (1 test): captures the real `useFocusEffect` callback (previously mocked as a bare `jest.fn()` that never actually invoked its argument, so this path was never exercised) and drives the full scenario end-to-end -- initial load resolves null, Start Quick succeeds, the learner "leaves and returns" (first focus-callback invocation is the initial-mount focus the `hasFocusedOnce` guard skips, matching real navigation; the second is the actual return-to-focus), a deferred `loadActivePracticeSession` promise simulates the lookup staying pending, and while pending: Quick/Standard/Weak-Area stay disabled, `startAdHocPractice` cannot fire a second time, and Today's Drill remains usable. Resolving the lookup then shows Continue Practice with Starts still disabled.
+- **`a successful Start publishes the active session into the hub's own memory immediately, with no second lookup required`**: proves Fix B directly -- Continue Practice and the disabled state appear from the single initial-mount lookup call, with no second `loadActivePracticeSession` call required, and an immediate re-press cannot fire a second Start.
+
+**A second, unrelated test-order-flakiness bug was found and fixed during this work, not shipped:** the first draft of the new focus-race test corrupted the *next* test in the file (`Today's Drill stays enabled...`) when the full file ran together, even though every individual test passed in isolation -- diagnosed via a stray `toJSON()` returning `null` on the following test's render, indicating a delayed continuation from the first test's earlier `Start` press was still dispatching state updates into React's reconciler at the moment the next test's fresh tree was mounting. Fixed by replacing ad-hoc `Promise.resolve()` microtask waits with a real macrotask yield (`setTimeout(resolve, 0)` wrapped in `act()`) at every settle point in the new test, plus an explicit `unmount()` at its end as a second line of defense -- this is a test-harness-only fix, no production code changed as a result of it, and the full file now passes consistently across repeated runs.
+
+## Validation results (Rev3)
+
+All run from `mobile-expo/`:
+
+- `npm test -- --runInBand` run three consecutive times: **21 suites, 223 tests, 0 failed, all three runs identical.** (Baseline before Rev3 was 21 suites / 221 tests; Rev3 added 2 tests to `PracticeHub.test.tsx`.)
+- `npm run typecheck` -- clean, 0 errors.
+- `npm run lint` -- clean, 0 errors, 0 warnings.
+- `npx expo-doctor` -- 21/21 checks passed.
+- `npx expo export --platform ios` -- exported successfully.
+- `test/run_security_regression_tests.sh` (repo root) -- **364 passed, 0 failed** -- byte-identical to the pre-Rev3 baseline, confirming no backend behavior changed.
+
+## Diff scope confirmation
+
+`git diff --stat 12220fa18e9159f41f8ba1e828a08ff22141d7fa` shows changes in exactly 2 files: `mobile-expo/app/(app)/practice/index.tsx` and `mobile-expo/test/PracticeHub.test.tsx`, plus this report. Nothing under `portal/`, `shared/`, `test/run_security_regression_tests.sh`, or `test/sql/` changed.
+
+## Explicit confirmations (Rev3)
+
+- **No backend file was modified, no migration applied, no Edge Function deployed, no production Supabase state touched.** The backend regression suite's unchanged 364/0 result is direct evidence.
+- **No deployment occurred** -- Supabase, TestFlight, and the App Store are all untouched.
+- **No merge to `main` occurred.** All work remains on `claude/sprint-1b-practice-expansion`.
+- **Physical-device testing remains pending** -- everything above is Jest/simulator/source-level validation only.
+- **Every Rev1/Rev2 fix and guarantee is preserved**: initial active-pointer lookup gate, session-matched compare-and-clear, cleanup-before-completion rendering, `invalid_question_set` machine-code preservation and permanent-recovery classification, generic 5xx remains transient, weak-area runtime validation (including `evidence_score` 0..1 bounds), storage-shape hardening, user-scoped storage, Daily Drill independence, the v119 contract, restart-with-saved-ratings-and-fresh-Reveal, double-Start and double-Complete debouncing, and completion/readiness behavior -- none of these were touched in this revision, and the full regression suite continuing to pass at 223/223 is direct evidence.
+
+**SPRINT 1B.1 REV3 FOCUS-RACE FIX READY — AWAITING SOURCE REVIEW**

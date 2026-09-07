@@ -49,6 +49,17 @@ export default function PracticeTabScreen() {
   const [starting, setStarting] = useState(false)
   const [startError, setStartError] = useState<StartErrorState | null>(null)
   const startInFlight = useRef(false)
+  // Rev3 focus-race fix: the hub stays MOUNTED underneath the nested Stack
+  // while the learner is on the ad-hoc session route -- it isn't
+  // remounted on Back, so a fresh AsyncStorage lookup runs on every focus
+  // return (below), not just on first mount. `activeSessionLoaded`
+  // (render state) already gates the disabled buttons, but React state
+  // updates aren't visible until the NEXT render -- a same-frame gap
+  // still existed between "the lookup started" and "the render that
+  // reflects activeSessionLoaded=false actually committed." This ref is
+  // the synchronous guard handleStart checks directly, closing that gap
+  // regardless of render timing.
+  const activeLookupInFlight = useRef(false)
 
   // The entitlement/readiness gate lives INSIDE this callback (matching
   // useDailyDrill's own `load` shape) rather than in the effect body
@@ -58,6 +69,7 @@ export default function PracticeTabScreen() {
   // render risk.
   const loadActive = useCallback(async () => {
     if (!bootstrap.ready || !bootstrap.entitled) {
+      activeLookupInFlight.current = false
       setActiveSession(null)
       setActiveProgress(null)
       setActiveSessionLoaded(false)
@@ -65,20 +77,33 @@ export default function PracticeTabScreen() {
     }
     const uid = bootstrap.data?.user.id
     if (!uid) {
+      activeLookupInFlight.current = false
       setActiveSession(null)
       setActiveProgress(null)
       setActiveSessionLoaded(true)
       return
     }
-    const stored = await loadActivePracticeSession(uid)
-    setActiveSession(stored)
-    if (stored) {
-      const progress = await loadDrillProgress(stored.sessionId)
-      setActiveProgress({ rated: progress ? Object.keys(progress.ratings).length : 0, total: stored.sessionSize })
-    } else {
-      setActiveProgress(null)
+    // Rev3 focus-race fix: mark the lookup in flight -- both the ref
+    // (synchronous, checked directly by handleStart) and the render state
+    // (activeSessionLoaded=false, which the disabled-button computation
+    // reads) -- BEFORE awaiting AsyncStorage. Every call into this branch
+    // re-enters "unknown" state first, whether it's the initial mount or
+    // a focus-return re-check on a hub that never remounted.
+    activeLookupInFlight.current = true
+    setActiveSessionLoaded(false)
+    try {
+      const stored = await loadActivePracticeSession(uid)
+      setActiveSession(stored)
+      if (stored) {
+        const progress = await loadDrillProgress(stored.sessionId)
+        setActiveProgress({ rated: progress ? Object.keys(progress.ratings).length : 0, total: stored.sessionSize })
+      } else {
+        setActiveProgress(null)
+      }
+    } finally {
+      activeLookupInFlight.current = false
+      setActiveSessionLoaded(true)
     }
-    setActiveSessionLoaded(true)
   }, [bootstrap.ready, bootstrap.entitled, bootstrap.data?.user.id])
 
   useEffect(() => {
@@ -166,7 +191,12 @@ export default function PracticeTabScreen() {
   const disableNewAdHoc = starting || !activeSessionLoaded || hasActiveAdHoc
 
   async function handleStart(kind: AdHocPracticeKind, sessionSize: number, area?: WeakArea) {
-    if (startInFlight.current || disableNewAdHoc) return
+    // Rev3 focus-race fix: activeLookupInFlight.current is the same
+    // synchronous ref loadActive() sets BEFORE its first await -- checking
+    // it here (not just the render-state-derived disableNewAdHoc) closes
+    // the same-frame gap between a focus-triggered lookup starting and
+    // the re-render that reflects it actually committing.
+    if (startInFlight.current || activeLookupInFlight.current || disableNewAdHoc) return
     startInFlight.current = true
     setStarting(true)
     setStartError(null)
@@ -182,6 +212,19 @@ export default function PracticeTabScreen() {
         sessionSize: result.questions.length,
         ...(area ? { acsTaskId: area.acs_task_id, areaCode: area.area_code, taskCode: area.task_code } : {}),
       }
+      // Rev3 fix B: publish the new session into the hub's own in-memory
+      // state BEFORE navigating -- the hub stays mounted underneath the
+      // nested Stack while the learner is on the session route, so if
+      // they immediately hit Back before AsyncStorage persistence (or the
+      // navigation transition itself) finishes, the hub already knows a
+      // session exists rather than briefly showing a no-active-session
+      // state. This is in addition to, not instead of, the persisted
+      // pointer -- if the process dies before persistence completes, the
+      // documented best-effort local-storage limitation still applies;
+      // this fix only protects the running app's own in-memory state.
+      setActiveSession(record)
+      setActiveProgress({ rated: 0, total: record.sessionSize })
+      setActiveSessionLoaded(true)
       try {
         await saveActivePracticeSession(record)
       } catch {

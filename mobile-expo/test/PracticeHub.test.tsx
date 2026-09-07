@@ -10,9 +10,19 @@ import { ApiError } from '../lib/api/errors'
 import type { MobileBootstrapDTO } from '../../shared/mobile-dto'
 
 const mockPush = jest.fn()
+// Rev3 focus-race fix: unlike the earlier bare `jest.fn()` (which never
+// actually invoked its argument, so the focus-return path was never
+// exercised), this mock captures the registered callback so tests can
+// invoke it directly to simulate real focus events. The hub's own
+// `hasFocusedOnce` guard means the FIRST invocation is always the
+// (skipped) initial-mount focus, matching real navigation -- a SECOND
+// invocation is what simulates actually returning to this screen.
+let mockFocusCallback: (() => void) | null = null
 jest.mock('expo-router', () => ({
   router: { push: (...args: unknown[]) => mockPush(...args), replace: jest.fn() },
-  useFocusEffect: jest.fn(),
+  useFocusEffect: (cb: () => void) => {
+    mockFocusCallback = cb
+  },
 }))
 
 const mockUseBootstrapContext = jest.fn()
@@ -71,6 +81,7 @@ function bootstrapContext(overrides: Record<string, unknown> = {}) {
 const NO_DRILL = { data: null, loading: false, error: null, refetch: jest.fn() }
 
 beforeEach(() => {
+  mockFocusCallback = null
   mockPush.mockReset()
   mockUseBootstrapContext.mockReset()
   mockUseDailyDrill.mockReset()
@@ -234,6 +245,41 @@ it('a successful Start saves the active session pointer, then navigates to the s
   })
 })
 
+// Rev3 fix B: the hub stays MOUNTED underneath the nested Stack while the
+// learner is on the ad-hoc session route -- it is never remounted on
+// Back, so its own in-memory state (not just the persisted pointer) must
+// already reflect the new session the instant Start succeeds, before any
+// navigation or focus-triggered reload. Proven here by asserting Continue
+// Practice/the disabled state appear from a SINGLE loadActivePracticeSession
+// call (the initial mount's), with no second lookup call required, and
+// that an immediate re-press cannot fire a second Start.
+it('a successful Start publishes the active session into the hub’s own memory immediately, with no second lookup required', async () => {
+  mockUseBootstrapContext.mockReturnValue(bootstrapContext())
+  mockStartAdHocPractice.mockResolvedValue({
+    session_id: 'new-session-1',
+    mode: 'dpe_questions',
+    started_at: '2026-01-01T00:00:00Z',
+    target_acs_tasks: [],
+    questions: [{ id: 'q1', question: 'Q?', category: null }],
+  })
+
+  await render(<PracticeTabScreen />)
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Start Quick Practice' }).props.accessibilityState.disabled).toBe(false))
+
+  fireEvent.press(screen.getByRole('button', { name: 'Start Quick Practice' }))
+  await waitFor(() => expect(mockPush).toHaveBeenCalledTimes(1))
+
+  expect(screen.getByText('Continue Practice')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Start Quick Practice' }).props.accessibilityState.disabled).toBe(true)
+  // Only the initial mount's lookup ever ran -- Fix B publishes the new
+  // session directly, it doesn't trigger (or require) a second
+  // AsyncStorage read to know about its own just-created session.
+  expect(mockLoadActivePracticeSession).toHaveBeenCalledTimes(1)
+
+  fireEvent.press(screen.getByRole('button', { name: 'Start Quick Practice' }))
+  expect(mockStartAdHocPractice).toHaveBeenCalledTimes(1)
+})
+
 // 15. double tap produces one Start
 it('pressing Start Quick Practice twice in quick succession only calls startAdHocPractice once', async () => {
   mockUseBootstrapContext.mockReturnValue(bootstrapContext())
@@ -385,6 +431,108 @@ describe('active-session lookup race (Rev2 blocker 1)', () => {
     await waitFor(() => expect(screen.getByText('Continue Practice')).toBeTruthy())
     expect(screen.getByRole('button', { name: 'Start Quick Practice' }).props.accessibilityState.disabled).toBe(true)
     expect(screen.getByRole('button', { name: 'Start Standard Practice' }).props.accessibilityState.disabled).toBe(true)
+  })
+})
+
+// Rev3: the hub stays MOUNTED underneath the nested Stack while the
+// learner is on the ad-hoc session route -- it is never remounted, so a
+// fresh AsyncStorage lookup runs on every FOCUS RETURN (useFocusEffect),
+// not just on first mount. The same async-lookup race Rev2 fixed for the
+// initial load could still occur here if a focus-triggered loadActive()
+// didn't ALSO immediately mark itself pending. Uses the captured
+// mockFocusCallback (see the module-level useFocusEffect mock above) to
+// actually invoke the focus-return code path, which the earlier bare
+// `jest.fn()` mock never did.
+describe('return-to-practice focus race (Rev3)', () => {
+  it('disables new ad-hoc Starts (never firing a second startAdHocPractice) while a focus-triggered lookup is pending, then shows Continue Practice once it resolves', async () => {
+    mockUseBootstrapContext.mockReturnValue(bootstrapContext())
+    mockUseDailyDrill.mockReturnValue({
+      data: { drill: { id: 'd1', status: 'pending', estimated_minutes: 8, target_acs_tasks: [] }, session_id: null, questions: [] },
+      loading: false,
+      error: null,
+      refetch: jest.fn(),
+    })
+    // 1. initial load resolves null.
+    mockLoadActivePracticeSession.mockResolvedValueOnce(null)
+    mockStartAdHocPractice.mockResolvedValue({
+      session_id: 'new-session-1',
+      mode: 'dpe_questions',
+      started_at: '2026-01-01T00:00:00Z',
+      target_acs_tasks: [],
+      questions: [{ id: 'q1', question: 'Q?', category: null }],
+    })
+
+    const { unmount } = await render(<PracticeTabScreen />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Quick Practice' }).props.accessibilityState.disabled).toBe(false))
+
+    // A real macrotask yield (setTimeout 0), not just a microtask
+    // (Promise.resolve()) -- Node always drains the FULL microtask queue
+    // before a timer fires, regardless of how many chained `await`s a
+    // continuation needs, so this reliably settles an entire async chain
+    // (including its trailing `finally`) rather than guessing a tick
+    // count. Reused at every settle point below for the same reason.
+    const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+    // 2. Start Quick succeeds -- 3. the active session is saved (and, per
+    // Fix B, already published into the hub's own memory).
+    fireEvent.press(screen.getByRole('button', { name: 'Start Quick Practice' }))
+    await waitFor(() => expect(mockPush).toHaveBeenCalledTimes(1))
+    await act(flush)
+    expect(screen.getByText('Continue Practice')).toBeTruthy()
+
+    // 4. Simulate leaving this screen (the learner is now on the session
+    // route) and returning to it via Back -- the FIRST focus callback
+    // invocation is the hub's own initial-mount focus (skipped by the
+    // `hasFocusedOnce` guard, matching real navigation); the SECOND is
+    // the actual return-to-focus that triggers the refresh.
+    let resolveFocusLookup: (value: unknown) => void = () => {}
+    mockLoadActivePracticeSession.mockReturnValue(
+      new Promise((resolve) => {
+        resolveFocusLookup = resolve
+      })
+    )
+    mockFocusCallback?.()
+    await act(flush)
+    mockFocusCallback?.()
+    await act(flush)
+
+    // 5 + 6. While the focus-triggered lookup is still pending, new
+    // ad-hoc Starts must stay disabled and no second Start can fire, but
+    // Today's Drill remains independently usable. Confirming the second
+    // lookup call actually fired (rather than a UI-text snapshot) is what
+    // proves we're synced up to the "still pending" window itself.
+    await waitFor(() => expect(mockLoadActivePracticeSession).toHaveBeenCalledTimes(2))
+    expect(mockStartAdHocPractice).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'Start Quick Practice' }).props.accessibilityState.disabled).toBe(true)
+    expect(screen.getByRole('button', { name: 'Start Standard Practice' }).props.accessibilityState.disabled).toBe(true)
+    fireEvent.press(screen.getByRole('button', { name: 'Start Quick Practice' }))
+    expect(mockStartAdHocPractice).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'Start Drill' }).props.accessibilityState.disabled).toBeFalsy()
+
+    // 7. Resolve the focus-triggered lookup with the same saved session.
+    resolveFocusLookup({
+      sessionId: 'new-session-1',
+      userId: 'u1',
+      kind: 'quick',
+      title: 'Quick Practice',
+      startedAt: '2026-01-01T00:00:00Z',
+      sessionSize: 1,
+    })
+    await act(flush)
+    await act(flush)
+
+    // 8 + 9. Continue Practice appears, and new ad-hoc Starts remain
+    // disabled (a real, confirmed unfinished session, not just "unknown
+    // yet").
+    await waitFor(() => expect(mockLoadDrillProgress).toHaveBeenCalledWith('new-session-1'))
+    await waitFor(() => expect(screen.getByText('Continue Practice')).toBeTruthy())
+    expect(screen.getByRole('button', { name: 'Start Quick Practice' }).props.accessibilityState.disabled).toBe(true)
+    await act(flush)
+
+    // Belt-and-suspenders: explicitly unmount so this render tree can
+    // never touch a later test's own render, regardless of anything left
+    // pending in this test's promise chains.
+    unmount()
   })
 })
 
