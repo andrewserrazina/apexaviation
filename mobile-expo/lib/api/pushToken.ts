@@ -13,7 +13,7 @@ import type {
   MobilePushTokenRevokeResponse,
   MobileUpdatePreferencesRequest,
 } from '../../../shared/mobile-dto'
-import { invokeMobileFunction } from './client'
+import { getPinnedAccessToken, invokeMobileFunction } from './client'
 import { assertShape, isPlainObject, isValidMobileDevice, isValidNotificationPreferences } from './validate'
 
 function validateDeviceResponse(data: unknown, context: string): { device: MobileDeviceDTO } {
@@ -21,18 +21,34 @@ function validateDeviceResponse(data: unknown, context: string): { device: Mobil
   return data as unknown as { device: MobileDeviceDTO }
 }
 
-export async function registerPushToken(params: {
-  platform: MobilePlatform
-  expo_push_token: string
-  installation_id?: string
-  app_version?: string
-}): Promise<MobilePushTokenRegisterResponse> {
-  const data = await invokeMobileFunction('mobile-push-token', { action: 'register', ...params })
+// Rev3: `expectedUserId`, when given, pins this mutation to the session
+// belonging to that exact user id (see getPinnedAccessToken in
+// client.ts) rather than whatever session happens to be active when this
+// call actually executes -- callers with a long-running async operation
+// that could still be in flight after an account switch (usePushRegistration's
+// registerDevice/disable) MUST pass the user id that initiated the
+// operation. Omitting it preserves the exact prior behavior (the ambient
+// session), which is correct for call sites that are already
+// synchronous/short-lived relative to any possible account change (e.g.
+// AuthContext.signOut's own revoke, captured and invoked before that
+// session is destroyed).
+export async function registerPushToken(
+  params: {
+    platform: MobilePlatform
+    expo_push_token: string
+    installation_id?: string
+    app_version?: string
+  },
+  expectedUserId?: string
+): Promise<MobilePushTokenRegisterResponse> {
+  const accessToken = expectedUserId ? await getPinnedAccessToken(expectedUserId) : undefined
+  const data = await invokeMobileFunction('mobile-push-token', { action: 'register', ...params }, accessToken ? { accessToken } : undefined)
   return validateDeviceResponse(data, 'registerPushToken')
 }
 
-export async function revokePushToken(deviceId: string): Promise<MobilePushTokenRevokeResponse> {
-  const data = await invokeMobileFunction('mobile-push-token', { action: 'revoke', device_id: deviceId })
+export async function revokePushToken(deviceId: string, expectedUserId?: string): Promise<MobilePushTokenRevokeResponse> {
+  const accessToken = expectedUserId ? await getPinnedAccessToken(expectedUserId) : undefined
+  const data = await invokeMobileFunction('mobile-push-token', { action: 'revoke', device_id: deviceId }, accessToken ? { accessToken } : undefined)
   return validateDeviceResponse(data, 'revokePushToken')
 }
 

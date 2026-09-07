@@ -40,13 +40,29 @@ async function extractErrorBody(error: InvokeErrorLike): Promise<{ message: stri
 
 // Calls one mobile-* Edge Function with a typed body and typed response.
 // Throws ApiError -- callers never see a raw supabase-js FunctionsError.
+//
+// Rev3: `options.accessToken`, when given, overrides the Authorization
+// header supabase-js would otherwise attach automatically from whatever
+// session happens to be active in this client AT THE MOMENT this call
+// actually executes -- which is not necessarily the session that
+// initiated the call (see getPinnedAccessToken below). Omitting it keeps
+// the exact prior behavior for every caller that doesn't need pinning.
 export async function invokeMobileFunction<TResponse, TBody extends Record<string, unknown> | undefined = undefined>(
   name: EdgeFunctionName,
-  body?: TBody
+  body?: TBody,
+  options?: { accessToken?: string }
 ): Promise<TResponse> {
   let result
   try {
-    result = await supabase.functions.invoke(name, body === undefined ? undefined : { body })
+    if (options?.accessToken) {
+      const invokeOptions: { body?: TBody; headers: Record<string, string> } = {
+        headers: { Authorization: `Bearer ${options.accessToken}` },
+      }
+      if (body !== undefined) invokeOptions.body = body
+      result = await supabase.functions.invoke(name, invokeOptions)
+    } else {
+      result = await supabase.functions.invoke(name, body === undefined ? undefined : { body })
+    }
   } catch (err) {
     logDevError(`${name} threw before responding`, err)
     throw networkError(err)
@@ -78,6 +94,30 @@ export async function invokeMobileFunction<TResponse, TBody extends Record<strin
   }
 
   return data as TResponse
+}
+
+// Rev3 (independent review): a mutation whose result determines whether
+// another Apex account gets registered/revoked must never rely on
+// "whichever session is active when the call finally executes" -- an
+// async operation that started for one authenticated user can still be
+// in flight after that user signs out and a different user signs in on
+// the same device, and supabase-js's functions.invoke() always attaches
+// the CURRENT session's token, not a snapshot from when the calling code
+// began. This resolves the session that is actually active right now and
+// verifies it still belongs to `expectedUserId` -- the user id the
+// calling code captured when IT started -- before handing back a token
+// to pin the mutation to. A caller-supplied id is never trusted as
+// authorization by itself; this only ever returns a token for a session
+// supabase-js itself currently recognizes as belonging to that id, and
+// throws (never falling back to the ambient/current session) the moment
+// that doesn't hold, so a stale caller can never have its mutation
+// silently reattributed to whoever is signed in now.
+export async function getPinnedAccessToken(expectedUserId: string): Promise<string> {
+  const { data, error } = await supabase.auth.getSession()
+  if (error || !data.session || data.session.user.id !== expectedUserId) {
+    throw authError(error ?? new Error('The signed-in account changed before this action finished.'))
+  }
+  return data.session.access_token
 }
 
 export { ApiError }
