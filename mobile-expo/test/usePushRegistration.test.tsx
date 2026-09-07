@@ -14,12 +14,14 @@ const mockGetPermissionState = jest.fn()
 const mockRequestPermission = jest.fn()
 const mockGetExpoPushToken = jest.fn()
 const mockCurrentPlatform = jest.fn()
+const mockEnsureAndroidNotificationChannel = jest.fn()
 class MockPushNotConfiguredError extends Error {}
 jest.mock('../lib/notifications/pushRegistration', () => ({
   getPermissionState: (...args: unknown[]) => mockGetPermissionState(...args),
   requestPermission: (...args: unknown[]) => mockRequestPermission(...args),
   getExpoPushToken: (...args: unknown[]) => mockGetExpoPushToken(...args),
   currentPlatform: (...args: unknown[]) => mockCurrentPlatform(...args),
+  ensureAndroidNotificationChannel: (...args: unknown[]) => mockEnsureAndroidNotificationChannel(...args),
   PushNotConfiguredError: MockPushNotConfiguredError,
 }))
 
@@ -67,6 +69,8 @@ beforeEach(() => {
   mockRequestPermission.mockReset()
   mockGetExpoPushToken.mockReset()
   mockCurrentPlatform.mockReset()
+  mockEnsureAndroidNotificationChannel.mockReset()
+  mockEnsureAndroidNotificationChannel.mockResolvedValue(undefined)
   mockRegisterPushToken.mockReset()
   mockRevokePushToken.mockReset()
   mockGetNotificationPreferences.mockReset()
@@ -81,7 +85,7 @@ beforeEach(() => {
   mockSavePushRegistration.mockResolvedValue(undefined)
   mockClearPushRegistration.mockResolvedValue(undefined)
   mockLoadNotificationOptIn.mockResolvedValue(false)
-  mockSaveNotificationOptIn.mockResolvedValue(undefined)
+  mockSaveNotificationOptIn.mockResolvedValue(true)
   mockCurrentPlatform.mockReturnValue('ios')
   mockGetExpoPushToken.mockResolvedValue('ExponentPushToken[abc]')
   mockRegisterPushToken.mockResolvedValue({ device: { id: 'device-1', platform: 'ios', installation_id: null, app_version: null, last_seen_at: 'now', created_at: 'now' } })
@@ -117,7 +121,7 @@ it('registers exactly once when the learner grants the permission prompt, and pe
 
   expect(result.current.registered).toBe(true)
   expect(mockRegisterPushToken).toHaveBeenCalledTimes(1)
-  expect(mockRegisterPushToken).toHaveBeenCalledWith(expect.objectContaining({ platform: 'ios', expo_push_token: 'ExponentPushToken[abc]' }))
+  expect(mockRegisterPushToken).toHaveBeenCalledWith(expect.objectContaining({ platform: 'ios', expo_push_token: 'ExponentPushToken[abc]' }), 'u1')
   expect(mockSaveNotificationOptIn).toHaveBeenCalledWith('u1', true)
 })
 
@@ -289,7 +293,7 @@ it('disable revokes the stored device, persists opt-in=false, and clears local r
   })
 
   expect(mockSaveNotificationOptIn).toHaveBeenCalledWith('u1', false)
-  expect(mockRevokePushToken).toHaveBeenCalledWith('device-1')
+  expect(mockRevokePushToken).toHaveBeenCalledWith('device-1', 'u1')
   expect(mockClearPushRegistration).toHaveBeenCalledWith('u1')
   expect(result.current.registered).toBe(false)
 })
@@ -395,5 +399,265 @@ describe('auth-transition race protection (Rev2)', () => {
     // showing -- the first write's failure rollback (to the ORIGINAL
     // PREFS) must not have been applied after the second write landed.
     expect(result.current.preferences).toEqual({ ...PREFS, daily_drill_enabled: false })
+  })
+})
+
+// Sprint 1C Rev3 (independent review, narrow hardening pass): three
+// blockers on top of Rev2 -- Android's channel-before-permission
+// ordering, a stale auth operation still being able to physically
+// mutate the server, and opt-out persistence failing open.
+describe('Rev3 hardening (independent review)', () => {
+  it('Blocker 1: on Android, explicit enable() creates the notification channel before requesting permission, then acquires the token, then registers', async () => {
+    mockCurrentPlatform.mockReturnValue('android')
+    mockGetPermissionState.mockResolvedValue('undetermined')
+    mockRequestPermission.mockResolvedValue('granted')
+
+    const callOrder: string[] = []
+    mockEnsureAndroidNotificationChannel.mockImplementation(async () => {
+      callOrder.push('channel')
+    })
+    mockRequestPermission.mockImplementation(async () => {
+      callOrder.push('permission')
+      return 'granted'
+    })
+    mockGetExpoPushToken.mockImplementation(async () => {
+      callOrder.push('token')
+      return 'ExponentPushToken[abc]'
+    })
+    mockRegisterPushToken.mockImplementation(async () => {
+      callOrder.push('register')
+      return { device: { id: 'device-1', platform: 'android', installation_id: null, app_version: null, last_seen_at: 'now', created_at: 'now' } }
+    })
+
+    const { result } = await renderHook(() => usePushRegistration('u1'))
+    await waitFor(() => expect(result.current.permission).toBe('undetermined'))
+
+    await act(async () => {
+      await result.current.enable()
+    })
+
+    expect(callOrder).toEqual(['channel', 'permission', 'token', 'register'])
+    expect(result.current.registered).toBe(true)
+  })
+
+  it('Blocker 1: never creates an Android notification channel from enable() on iOS', async () => {
+    mockCurrentPlatform.mockReturnValue('ios')
+    mockGetPermissionState.mockResolvedValue('undetermined')
+    mockRequestPermission.mockResolvedValue('granted')
+
+    const { result } = await renderHook(() => usePushRegistration('u1'))
+    await waitFor(() => expect(result.current.permission).toBe('undetermined'))
+
+    await act(async () => {
+      await result.current.enable()
+    })
+
+    expect(mockEnsureAndroidNotificationChannel).not.toHaveBeenCalled()
+    expect(result.current.registered).toBe(true)
+  })
+
+  // Blocker 2 required test A: a stale token acquisition must cause ZERO
+  // server-side mutation once the initiating user is no longer current --
+  // not just "the UI never shows it as registered" (which the Rev2 test
+  // above already covered), but the actual mutating calls themselves must
+  // never fire.
+  it('Blocker 2 (Test A): a stale token acquisition never calls registerPushToken or savePushRegistration once the account has changed', async () => {
+    const tokenGate = deferred<string>()
+    mockGetPermissionState.mockResolvedValue('granted')
+    mockLoadNotificationOptIn.mockImplementation(async (userId: string) => userId === 'user-a')
+    mockLoadPushRegistration.mockResolvedValue(null)
+    mockGetExpoPushToken.mockImplementation(() => tokenGate.promise)
+
+    const { rerender } = await renderHook((props: { userId: string | null }) => usePushRegistration(props.userId), {
+      initialProps: { userId: 'user-a' as string | null },
+    })
+    await waitFor(() => expect(mockGetExpoPushToken).toHaveBeenCalledTimes(1))
+
+    // Account switches before User A's token resolves.
+    rerender({ userId: 'user-b' })
+    await waitFor(() => expect(mockLoadNotificationOptIn).toHaveBeenCalledWith('user-b'))
+
+    await act(async () => {
+      tokenGate.resolve('ExponentPushToken[stale-a]')
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockRegisterPushToken).not.toHaveBeenCalled()
+    expect(mockSavePushRegistration).not.toHaveBeenCalled()
+  })
+
+  // Blocker 2 required test B: replacing the single shared boolean
+  // registeringRef with a generation-scoped lock means a stale
+  // generation's still-in-flight registration can never block a
+  // DIFFERENT (newer) generation's own registration -- and once that
+  // stale operation does resolve, it still can't mutate anything.
+  it('Blocker 2 (Test B): a stale in-flight registration for User A cannot block User B from registering, and cannot mutate anything once resolved', async () => {
+    const tokenGateA = deferred<string>()
+    let tokenCallCount = 0
+    mockGetPermissionState.mockResolvedValue('granted')
+    mockLoadNotificationOptIn.mockResolvedValue(true)
+    mockLoadPushRegistration.mockImplementation(async (userId: string) => (userId === 'user-b' ? null : null))
+    mockGetExpoPushToken.mockImplementation(() => {
+      tokenCallCount += 1
+      if (tokenCallCount === 1) return tokenGateA.promise
+      return Promise.resolve('ExponentPushToken[b]')
+    })
+
+    const { result, rerender } = await renderHook((props: { userId: string | null }) => usePushRegistration(props.userId), {
+      initialProps: { userId: 'user-a' as string | null },
+    })
+    await waitFor(() => expect(mockGetExpoPushToken).toHaveBeenCalledTimes(1))
+    // User A's registerDevice is now stuck awaiting tokenGateA, holding
+    // generation 1's lock.
+
+    rerender({ userId: 'user-b' })
+
+    // User B's own registration (generation 2) must proceed and succeed
+    // exactly once, entirely unblocked by A's still-held lock.
+    await waitFor(() => expect(result.current.registered).toBe(true))
+    expect(mockRegisterPushToken).toHaveBeenCalledTimes(1)
+    expect(mockRegisterPushToken).toHaveBeenCalledWith(expect.objectContaining({ expo_push_token: 'ExponentPushToken[b]' }), 'user-b')
+
+    // Now User A's stale registration finally resolves -- it must not
+    // register again, and must not disturb User B's now-current state.
+    await act(async () => {
+      tokenGateA.resolve('ExponentPushToken[stale-a]')
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockRegisterPushToken).toHaveBeenCalledTimes(1)
+    expect(result.current.registered).toBe(true)
+  })
+
+  // Blocker 2 required test C: an explicit enable() interrupted by an
+  // account switch must not leave `enabling` stuck true for the NEXT
+  // user, who never called enable() at all.
+  it('Blocker 2 (Test C): enabling never remains stuck true for a new user after an account switch interrupts an in-flight enable()', async () => {
+    const permissionGate = deferred<'granted'>()
+    mockGetPermissionState.mockResolvedValue('undetermined')
+    mockRequestPermission.mockImplementation(() => permissionGate.promise)
+
+    const { result, rerender } = await renderHook((props: { userId: string | null }) => usePushRegistration(props.userId), {
+      initialProps: { userId: 'user-a' as string | null },
+    })
+    await waitFor(() => expect(result.current.permission).toBe('undetermined'))
+
+    const enablePromise = result.current.enable()
+    await waitFor(() => expect(result.current.enabling).toBe(true))
+
+    mockLoadNotificationOptIn.mockResolvedValue(false)
+    mockLoadPushRegistration.mockResolvedValue(null)
+    rerender({ userId: 'user-b' })
+
+    await waitFor(() => expect(result.current.enabling).toBe(false))
+
+    // User A's stale permission prompt finally resolves -- must not flip
+    // `enabling` back to true or register anything for User B.
+    await act(async () => {
+      permissionGate.resolve('granted')
+      await enablePromise
+    })
+
+    expect(result.current.enabling).toBe(false)
+    expect(mockRegisterPushToken).not.toHaveBeenCalled()
+  })
+
+  // Blocker 2 (d): registerPushToken/revokePushToken must be called with
+  // the initiating user's own id so the mobile API client can pin the
+  // mutation to that session rather than whatever session happens to be
+  // ambient when the call executes.
+  it('Blocker 2 (d): registerPushToken and revokePushToken are always called with the initiating user id, never a bare/untagged call', async () => {
+    mockGetPermissionState.mockResolvedValue('granted')
+    mockLoadNotificationOptIn.mockResolvedValue(true)
+    mockLoadPushRegistration.mockResolvedValue({ userId: 'u1', deviceId: 'device-1', expoPushToken: 'tok', platform: 'ios' })
+    mockRevokePushToken.mockResolvedValue({ device: { id: 'device-1', platform: 'ios', installation_id: null, app_version: null, last_seen_at: 'now', created_at: 'now' } })
+
+    const { result } = await renderHook(() => usePushRegistration('u1'))
+    await waitFor(() => expect(result.current.registered).toBe(true))
+    expect(mockRegisterPushToken).toHaveBeenCalledWith(expect.any(Object), 'u1')
+
+    await act(async () => {
+      await result.current.disable()
+    })
+    expect(mockRevokePushToken).toHaveBeenCalledWith('device-1', 'u1')
+  })
+
+  // Blocker 3: a failed opt-out persistence must not be silently treated
+  // as success -- disable() must surface it and must not go on to revoke
+  // the server registration or clear local state (leaving the account
+  // still correctly tracked as registered/opted-in, matching the
+  // pre-existing true value that survives the failed write).
+  it('Blocker 3: a failed opt-out persistence surfaces disableError and does not revoke or clear local registration', async () => {
+    mockGetPermissionState.mockResolvedValue('granted')
+    mockLoadNotificationOptIn.mockResolvedValue(true)
+    mockLoadPushRegistration.mockResolvedValue({ userId: 'u1', deviceId: 'device-1', expoPushToken: 'tok', platform: 'ios' })
+
+    const { result } = await renderHook(() => usePushRegistration('u1'))
+    await waitFor(() => expect(result.current.registered).toBe(true))
+
+    // Now the opt-out write fails.
+    mockSaveNotificationOptIn.mockResolvedValue(false)
+
+    await act(async () => {
+      await result.current.disable()
+    })
+
+    expect(result.current.disableError).toBeTruthy()
+    expect(mockRevokePushToken).not.toHaveBeenCalled()
+    expect(mockClearPushRegistration).not.toHaveBeenCalled()
+    expect(result.current.registered).toBe(true)
+  })
+
+  // Blocker 3: if the server registration succeeds but persisting
+  // opt-in=true then fails, enable() must not leave an active-but-
+  // untracked registration -- it compensates by revoking what it just
+  // created and clearing local state, and surfaces the failure.
+  it('Blocker 3: a failed opt-in persistence after a successful registration is compensated by revoking the just-created device', async () => {
+    mockGetPermissionState.mockResolvedValue('undetermined')
+    mockRequestPermission.mockResolvedValue('granted')
+    mockSaveNotificationOptIn.mockResolvedValue(false)
+    mockRevokePushToken.mockResolvedValue({ device: { id: 'device-1', platform: 'ios', installation_id: null, app_version: null, last_seen_at: 'now', created_at: 'now' } })
+
+    const { result } = await renderHook(() => usePushRegistration('u1'))
+    await waitFor(() => expect(result.current.permission).toBe('undetermined'))
+
+    await act(async () => {
+      await result.current.enable()
+    })
+
+    expect(mockSaveNotificationOptIn).toHaveBeenCalledWith('u1', true)
+    expect(mockRevokePushToken).toHaveBeenCalledWith('device-1', 'u1')
+    expect(mockClearPushRegistration).toHaveBeenCalledWith('u1')
+    expect(result.current.registered).toBe(false)
+    expect(result.current.enableError).toBeTruthy()
+  })
+
+  // Blocker 3: normal enable/disable behavior is unchanged when
+  // persistence succeeds (regression guard against over-correcting).
+  it('Blocker 3: normal enable then disable still succeeds end-to-end when persistence never fails', async () => {
+    mockGetPermissionState.mockResolvedValue('undetermined')
+    mockRequestPermission.mockResolvedValue('granted')
+    mockRevokePushToken.mockResolvedValue({ device: { id: 'device-1', platform: 'ios', installation_id: null, app_version: null, last_seen_at: 'now', created_at: 'now' } })
+
+    const { result } = await renderHook(() => usePushRegistration('u1'))
+    await waitFor(() => expect(result.current.permission).toBe('undetermined'))
+
+    await act(async () => {
+      await result.current.enable()
+    })
+    expect(result.current.registered).toBe(true)
+    expect(result.current.enableError).toBeNull()
+
+    mockLoadPushRegistration.mockResolvedValue({ userId: 'u1', deviceId: 'device-1', expoPushToken: 'ExponentPushToken[abc]', platform: 'ios' })
+
+    await act(async () => {
+      await result.current.disable()
+    })
+    expect(result.current.registered).toBe(false)
+    expect(result.current.disableError).toBeNull()
   })
 })
