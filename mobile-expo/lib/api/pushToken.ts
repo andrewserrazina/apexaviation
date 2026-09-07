@@ -63,14 +63,26 @@ function validatePreferencesResponse(data: unknown, context: string): MobilePref
   return data as unknown as MobilePreferencesResponse
 }
 
-export async function getNotificationPreferences(): Promise<MobileNotificationPreferences> {
-  const data = await invokeMobileFunction('mobile-push-token', { action: 'get_preferences' })
+// Rev4: notification preferences get the exact same account-isolation
+// guarantee as register/revoke above -- `expectedUserId`, when given,
+// pins the mutation to the session belonging to that user id rather than
+// whatever session happens to be active when this call actually
+// executes. usePushRegistration passes the uid that INITIATED the load/
+// write; a since-changed ambient session (a sign-out/sign-in on the same
+// device while this call was in flight) makes getPinnedAccessToken throw
+// before any Edge Function invocation, rather than silently mutating or
+// reading a different account's preferences.
+export async function getNotificationPreferences(expectedUserId?: string): Promise<MobileNotificationPreferences> {
+  const accessToken = expectedUserId ? await getPinnedAccessToken(expectedUserId) : undefined
+  const data = await invokeMobileFunction('mobile-push-token', { action: 'get_preferences' }, accessToken ? { accessToken } : undefined)
   return validatePreferencesResponse(data, 'getNotificationPreferences').preferences
 }
 
 export async function updateNotificationPreferences(
-  update: Omit<MobileUpdatePreferencesRequest, 'action'>
+  update: Omit<MobileUpdatePreferencesRequest, 'action'>,
+  expectedUserId?: string
 ): Promise<MobileNotificationPreferences> {
-  const data = await invokeMobileFunction('mobile-push-token', { action: 'update_preferences', ...update })
+  const accessToken = expectedUserId ? await getPinnedAccessToken(expectedUserId) : undefined
+  const data = await invokeMobileFunction('mobile-push-token', { action: 'update_preferences', ...update }, accessToken ? { accessToken } : undefined)
   return validatePreferencesResponse(data, 'updateNotificationPreferences').preferences
 }
