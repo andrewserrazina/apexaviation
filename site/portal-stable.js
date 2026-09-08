@@ -267,8 +267,13 @@
       // unlock-modal trigger point -- not just the one-shot
       // ?upgrade=checkride-prep deep link -- can show the personalized
       // "train your weak areas" pitch instead of the generic one. See
-      // loadMemberReadinessContext()/openUnlockModal().
-      loadMemberReadinessContext();
+      // loadMemberReadinessContext()/openUnlockModal(). Also re-renders
+      // the Readiness Plan card once this resolves -- initPortalData()'s
+      // own renderReadinessPlanCard() call can run before this fetch
+      // completes, and a fire-and-forget promise that resolves after the
+      // first render must not leave the card permanently hidden for a
+      // fresh Readiness signup (Test 1).
+      loadMemberReadinessContext().then(function () { renderReadinessPlanCard(); });
       // Fire-and-forget: feeds the 7-day inactivity nudge
       // (send-lifecycle-emails, Phase 3) a real "last seen" signal.
       // Once per page load is enough — this isn't a click-tracking beacon.
@@ -644,27 +649,42 @@
   // instead means every trigger point shows the real score/weak-areas
   // pitch to any member with a linked assessment result, every time, not
   // just a single deep-link visit.
+  // Readiness Bridge Phase 2: this is deliberately the SAME cached
+  // context every unlock-modal trigger point already reads (see the
+  // header comment on memberReadinessContext above) -- extended to also
+  // carry checkride_timing so the Readiness Plan routing engine
+  // (computeReadinessRoute() below) can use it, rather than adding a
+  // second query for the same lead row. Loaded regardless of
+  // checkridePrepUnlocked (unlike before) -- an already-unlocked member
+  // who arrived via the Readiness Assessment still deserves the
+  // personalized "here's what you should train" framing on their
+  // Readiness Plan card, they just never see the (irrelevant) unlock
+  // pitch this same context also feeds.
   var memberReadinessContext = null;
   var memberReadinessContextPromise = null;
   function loadMemberReadinessContext() {
-    if (!member || member.checkridePrepUnlocked) return Promise.resolve(null);
+    if (!member) return Promise.resolve(null);
     if (memberReadinessContextPromise) return memberReadinessContextPromise;
     memberReadinessContextPromise = apexSupabase.from('readiness_assessment_leads')
-      .select('score, readiness_level, weakest_category_1, weakest_category_2')
+      .select('score, readiness_level, weakest_category_1, weakest_category_2, checkride_timing')
       .eq('profile_id', member.id)
       .order('created_at', { ascending: false })
       .limit(1)
       .then(function (res) {
         var lead = res && res.data && res.data[0];
-        var weakestCats = lead ? [lead.weakest_category_1, lead.weakest_category_2].filter(Boolean) : [];
-        if (lead && weakestCats.length) {
-          memberReadinessContext = {
-            score: lead.score,
-            band: lead.readiness_level,
-            weakestCats: weakestCats,
-            weakestLabels: weakestCats.map(function (c) { return READINESS_CATEGORY_LABELS[c] || c; })
-          };
-        }
+        if (!lead) return null;
+        var weakestCats = [lead.weakest_category_1, lead.weakest_category_2].filter(Boolean);
+        memberReadinessContext = {
+          score: lead.score,
+          band: lead.readiness_level,
+          weakestCats: weakestCats,
+          weakestLabels: weakestCats.map(function (c) { return READINESS_CATEGORY_LABELS[c] || c; }),
+          // Falls back to the profile's own checkride_timing (kept in
+          // sync by the same signup flow, and updatable later via the
+          // checkride-date UI) only if this specific lead row somehow
+          // predates the column -- normal signups always have both.
+          checkrideTiming: lead.checkride_timing || (member && member.checkrideTiming) || null
+        };
         return memberReadinessContext;
       }, function () { return null; });
     return memberReadinessContextPromise;
@@ -5563,12 +5583,38 @@
       // what keeps them firing at most once per page load even though
       // checkLifecycleMilestones() (and therefore this function) gets
       // called many times per session via renderReadiness().
-      firstLoginClaimPromise = apexSupabase.rpc('claim_first_portal_login', { p_profile_id: member.id })
-        .then(function (res) { return !res.error && res.data === true; })
-        .catch(function () { return false; })
+      //
+      // Readiness Bridge Phase 1 fix: a live production audit found
+      // first_portal_login_at unset for every profile in the database
+      // (157/157) despite the paired portal_first_login analytics event
+      // firing for real accounts -- proof the RPC call was failing
+      // somewhere between "analytics believed it won the claim" and "the
+      // column actually persisted," but the previous `.catch(function ()
+      // { return false })` discarded the real error, so the failure was
+      // completely invisible and never diagnosed. Two changes: (1) log
+      // the real error instead of swallowing it, so this class of failure
+      // is finally observable; (2) clear the memoized promise on failure
+      // so the very next checkLifecycleMilestones() call (renderReadiness()
+      // calls it repeatedly per session, not just once) retries
+      // immediately, instead of only on the next full page reload.
+      var claimingProfileId = member.id;
+      firstLoginClaimPromise = apexSupabase.rpc('claim_first_portal_login', { p_profile_id: claimingProfileId })
+        .then(function (res) {
+          if (res.error) {
+            console.error('claim_first_portal_login failed', res.error);
+            firstLoginClaimPromise = null;
+            return false;
+          }
+          return res.data === true;
+        })
+        .catch(function (err) {
+          console.error('claim_first_portal_login threw', err);
+          firstLoginClaimPromise = null;
+          return false;
+        })
         .then(function (won) {
           if (!won) return false;
-          if (window.apexTrack) apexTrack('portal_first_login', { profile_id: member.id });
+          if (window.apexTrack) apexTrack('portal_first_login', { profile_id: claimingProfileId });
           // CompleteRegistration -- fires once, at the member's actual
           // first login (password set + portal opened for real), not at
           // account creation (that's Lead, fired in portal-login.html's
@@ -5661,9 +5707,25 @@
   function claimActivationCompletedOnce() {
     if (!member || !hasMeaningfulActivity()) return Promise.resolve(false);
     if (!activationClaimPromise) {
+      // Readiness Bridge Phase 1 fix -- same class of bug, same fix, as
+      // claimFirstPortalLoginOnce() above: log the real error instead of
+      // swallowing it, and clear the memoized promise on failure so this
+      // retries on the very next checkLifecycleMilestones() call rather
+      // than silently never persisting activated_at.
       activationClaimPromise = apexSupabase.rpc('claim_activation_completed', { p_profile_id: member.id })
-        .then(function (res) { return !res.error && res.data === true; })
-        .catch(function () { return false; })
+        .then(function (res) {
+          if (res.error) {
+            console.error('claim_activation_completed failed', res.error);
+            activationClaimPromise = null;
+            return false;
+          }
+          return res.data === true;
+        })
+        .catch(function (err) {
+          console.error('claim_activation_completed threw', err);
+          activationClaimPromise = null;
+          return false;
+        })
         .then(function (won) {
           if (!won) return false;
           if (window.apexTrack) {
@@ -5831,56 +5893,105 @@
     var step2 = document.getElementById('welcomeOnboardingStep2');
     var step3 = document.getElementById('welcomeOnboardingStep3');
 
+    // Readiness Bridge Phase 1 fix: both handlers below used to fire the
+    // profiles update as pure fire-and-forget (no .then()/.catch()) and
+    // then IMMEDIATELY update member state + fire the "saved" analytics
+    // event + advance the wizard step, all before the write even
+    // resolved. A live production audit found this is exactly why
+    // training_stage/primary_focus_area read unset for every profile in
+    // the database despite these very events having fired for real
+    // accounts -- the UI and analytics both optimistically believed the
+    // write succeeded regardless of its actual outcome. Now the click
+    // handler awaits the real result: member state, the analytics event,
+    // and advancing to the next step only happen after a CONFIRMED
+    // successful write; a failure keeps the current step visible, shows
+    // an inline retry-safe message, and logs the real error instead of
+    // silently discarding it.
+    function saveOnboardingAnswer(column, value, btn) {
+      btn.disabled = true;
+      return apexSupabase.from('profiles').update((function () { var u = {}; u[column] = value; return u; })()).eq('id', member.id)
+        .then(function (res) {
+          if (res && res.error) {
+            console.error('onboarding answer save failed (' + column + ')', res.error);
+            return false;
+          }
+          return true;
+        })
+        .catch(function (err) {
+          console.error('onboarding answer save threw (' + column + ')', err);
+          return false;
+        })
+        .then(function (ok) {
+          btn.disabled = false;
+          return ok;
+        });
+    }
+
+    function showOnboardingSaveError(stepEl) {
+      var existing = stepEl.querySelector('.portal-onboarding-save-error');
+      if (existing) return;
+      var msg = document.createElement('p');
+      msg.className = 'portal-onboarding-save-error';
+      msg.style.cssText = 'color:#f87171;font-size:12.5px;margin-top:10px';
+      msg.textContent = 'We couldn’t save that. Check your connection and try again.';
+      stepEl.appendChild(msg);
+    }
+
     document.querySelectorAll('[data-onboarding-stage] [data-value]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var value = btn.dataset.value;
-        apexSupabase.from('profiles').update({ training_stage: value }).eq('id', member.id);
-        // Was missing -- the focus-area handler just below updates
-        // member.primaryFocusArea locally, but this handler never did the
-        // same for trainingStage. onboarding_completed (fired from that
-        // next step) read member.trainingStage for its event property, so
-        // every real completion logged training_stage: null even though
-        // the member had just picked one two clicks earlier.
-        member.trainingStage = value;
-        if (window.apexTrack) apexTrack('onboarding_training_goal_saved', { profile_id: member.id, training_stage: value });
-        step1.hidden = true;
-        step2.hidden = false;
+        saveOnboardingAnswer('training_stage', value, btn).then(function (ok) {
+          if (!ok) { showOnboardingSaveError(step1); return; }
+          // Was missing -- the focus-area handler just below updates
+          // member.primaryFocusArea locally, but this handler never did
+          // the same for trainingStage. onboarding_completed (fired from
+          // that next step) read member.trainingStage for its event
+          // property, so every real completion logged training_stage:
+          // null even though the member had just picked one two clicks
+          // earlier.
+          member.trainingStage = value;
+          if (window.apexTrack) apexTrack('onboarding_training_goal_saved', { profile_id: member.id, training_stage: value });
+          step1.hidden = true;
+          step2.hidden = false;
+        });
       });
     });
 
     document.querySelectorAll('[data-onboarding-focus] [data-value]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var value = btn.dataset.value;
-        apexSupabase.from('profiles').update({ primary_focus_area: value }).eq('id', member.id);
-        member.primaryFocusArea = value;
-        if (window.apexTrack) apexTrack('onboarding_focus_area_saved', { profile_id: member.id, primary_focus_area: value });
-        step2.hidden = true;
-        step3.hidden = false;
+        saveOnboardingAnswer('primary_focus_area', value, btn).then(function (ok) {
+          if (!ok) { showOnboardingSaveError(step2); return; }
+          member.primaryFocusArea = value;
+          if (window.apexTrack) apexTrack('onboarding_focus_area_saved', { profile_id: member.id, primary_focus_area: value });
+          step2.hidden = true;
+          step3.hidden = false;
 
-        var plan = computeTrainingPlan();
-        var firstTask = plan.tasks.filter(function (t) { return !t.done; })[0] || plan.tasks[0];
-        var labelEl = document.getElementById('welcomeOnboardingFirstTaskLabel');
-        if (labelEl) labelEl.textContent = firstTask ? firstTask.label : 'Explore your dashboard';
-        var goFn = firstTask ? firstTask.go : function () { showSection('dashboard'); };
+          var plan = computeTrainingPlan();
+          var firstTask = plan.tasks.filter(function (t) { return !t.done; })[0] || plan.tasks[0];
+          var labelEl = document.getElementById('welcomeOnboardingFirstTaskLabel');
+          if (labelEl) labelEl.textContent = firstTask ? firstTask.label : 'Explore your dashboard';
+          var goFn = firstTask ? firstTask.go : function () { showSection('dashboard'); };
 
-        // onboarding_completed fires here, not after the training-stage
-        // step -- this is the point both answers actually exist. Distinct
-        // from onboarding_first_training_started just below: completing
-        // the two questions is a funnel step, not activation (Phase 10 --
-        // activation is real training activity, never onboarding
-        // completion or a click alone).
-        if (window.apexTrack) apexTrack('onboarding_completed', { profile_id: member.id, training_stage: member.trainingStage || null, primary_focus_area: value });
-        if (window.apexTrack) apexTrack('first_action_presented', { profile_id: member.id, recommended_action: firstTask ? firstTask.label : null, training_stage: member.trainingStage || null });
+          // onboarding_completed fires here, not after the training-stage
+          // step -- this is the point both answers actually exist. Distinct
+          // from onboarding_first_training_started just below: completing
+          // the two questions is a funnel step, not activation (Phase 10 --
+          // activation is real training activity, never onboarding
+          // completion or a click alone).
+          if (window.apexTrack) apexTrack('onboarding_completed', { profile_id: member.id, training_stage: member.trainingStage || null, primary_focus_area: value });
+          if (window.apexTrack) apexTrack('first_action_presented', { profile_id: member.id, recommended_action: firstTask ? firstTask.label : null, training_stage: member.trainingStage || null });
 
-        var startFirstTask = function () {
-          card.hidden = true;
-          if (window.apexTrack) apexTrack('onboarding_first_training_started', { profile_id: member.id, task: firstTask ? firstTask.label : null });
-          goFn();
-        };
-        var taskBtn = document.getElementById('welcomeOnboardingFirstTask');
-        var startBtn = document.getElementById('welcomeOnboardingStartBtn');
-        if (taskBtn) taskBtn.onclick = startFirstTask;
-        if (startBtn) startBtn.onclick = startFirstTask;
+          var startFirstTask = function () {
+            card.hidden = true;
+            if (window.apexTrack) apexTrack('onboarding_first_training_started', { profile_id: member.id, task: firstTask ? firstTask.label : null });
+            goFn();
+          };
+          var taskBtn = document.getElementById('welcomeOnboardingFirstTask');
+          var startBtn = document.getElementById('welcomeOnboardingStartBtn');
+          if (taskBtn) taskBtn.onclick = startFirstTask;
+          if (startBtn) startBtn.onclick = startFirstTask;
+        });
       });
     });
   }
@@ -7086,6 +7197,210 @@
     return candidates[0] || null;
   }
 
+  // ── Readiness Plan Routing Engine ───────────────────────────────
+  // Readiness Bridge Phase 2: turns one completed, profile-linked
+  // Readiness Assessment (memberReadinessContext) into ONE next-best-
+  // action recommendation. Deliberately does NOT route on score --
+  // real production data showed scores clustering at 80%+ across every
+  // lead source (Meta avg ~94%, all 9 Meta-linked leads >=82%), so a
+  // score-threshold router would sort nearly everyone into the same
+  // bucket. Routes instead on checkride_timing (how soon the real
+  // checkride is, captured at signup) crossed with training_stage (how
+  // far into training they self-reported at onboarding) -- both real,
+  // already-persisted signals, matching the same taxonomy this file's
+  // onboarding survey and create-free-account already use.
+  //
+  // Returns null when there's no linked assessment to route from --
+  // callers must leave the existing portal experience completely
+  // untouched in that case (Test 6), never render an empty plan.
+  function computeReadinessRoute() {
+    if (!member || !memberReadinessContext) return null;
+    var ctx = memberReadinessContext;
+    var timing = ctx.checkrideTiming;
+    var stage = member.trainingStage;
+    var prepStage = stage === 'written_passed' || stage === 'checkride_preparation';
+    var unlocked = !!member.checkridePrepUnlocked;
+
+    var route;
+    if (timing === 'within_14_days') {
+      route = 'imminent';
+    } else if (timing === 'within_30_days' || (timing === 'within_60_days' && prepStage)) {
+      route = 'active_prep';
+    } else {
+      route = 'foundation';
+    }
+
+    // Free action: a real per-category free destination only exists for
+    // unlocked members -- CATEGORY_META/DPE_DATA are premium content,
+    // empty for locked members by design (server-side 403 gate in
+    // loadPremiumContent()), so goToCategory() would be a dead click for
+    // anyone who hasn't unlocked Checkride Prep. Locked/free members
+    // instead get the one real free action every member has today --
+    // the daily oral exam question -- framed around their weak area
+    // rather than pretending a per-category free lesson exists that
+    // doesn't. Never invents a content association that isn't real.
+    var weakestCat = ctx.weakestCats[0] || null;
+    var freeAction;
+    // `done` on each branch is a real, already-tracked signal (never
+    // fabricated) -- it's what gates the card's "Ready To Go Further?"
+    // paid step, matching the ASCII mockup's free-action-before-paid-ask
+    // sequencing without ever hiding the paid option from someone who
+    // wants it now (the existing unlock CTAs elsewhere in the portal --
+    // sidebar, Training Plan tasks -- are never gated by this card).
+    if (unlocked && weakestCat) {
+      freeAction = {
+        label: 'TRAIN THIS AREA',
+        detail: 'Train ' + (ctx.weakestLabels[0] || 'your weak area'),
+        done: categoryPct(weakestCat) > 0,
+        go: function () { goToCategory(weakestCat); }
+      };
+    } else if (qotdQuestion) {
+      // Foundation's free-action label is deliberately distinct from its
+      // paid CTA's label below ("VIEW GROUND SCHOOL OPTIONS") -- both used
+      // to read "BUILD MY TRAINING PLAN", making the free QOTD action and
+      // the paid Ground School pitch look like the same button to a
+      // member scanning the card.
+      freeAction = {
+        label: route === 'foundation' ? "ANSWER TODAY'S QUESTION" : (route === 'imminent' ? 'PRESSURE-TEST MY KNOWLEDGE' : 'PRACTICE MY WEAK AREAS'),
+        detail: "Answer today's oral exam question",
+        done: !!studied[qotdQuestion.id],
+        go: function () {
+          showSection('dashboard');
+          var el = document.getElementById('qotdRevealBtn');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      };
+    } else {
+      freeAction = { label: 'EXPLORE MY DASHBOARD', detail: 'Explore your dashboard', done: true, go: function () { showSection('dashboard'); } };
+    }
+
+    // Paid CTA: never shown for a product the member already owns
+    // (Test 7) -- an unlocked member is routed straight into that owned
+    // content (their DPE library for Active Prep, a real Mock Oral
+    // booking for Imminent) instead of a purchase pitch. Ground School
+    // (Foundation's paid path) is a SEPARATE product from Checkride
+    // Prep -- gated on member.groundSchoolPackUnlocked, not the
+    // `unlocked` (checkridePrepUnlocked) flag used everywhere else here,
+    // since a Checkride-Prep member who never bought Ground School still
+    // needs to see this CTA, and a Ground-School-only member routed here
+    // shouldn't see a purchase pitch for a class pack they already own.
+    var paidCta;
+    if (route === 'foundation') {
+      paidCta = member.groundSchoolPackUnlocked
+        ? null
+        : { product: 'ground_school', label: 'VIEW GROUND SCHOOL OPTIONS', go: function () { showSection('ground-school'); } };
+    } else if (route === 'imminent') {
+      // product: 'mock_oral' -- the canonical analytics product identifier
+      // (matches mock_oral_page_view/mock_oral_checkout_started/etc. in
+      // site/analytics-events.js), not null. Booking/entitlement behavior
+      // is unchanged -- this only fixes what the funnel events record.
+      paidCta = unlocked
+        ? { product: 'mock_oral', label: 'BOOK A MOCK ORAL', go: function () { showSection('mock-oral'); } }
+        : { product: 'checkride_prep', label: 'CONTINUE CHECKRIDE PREP', go: function () { openUnlockModal(ctx); } };
+    } else {
+      paidCta = unlocked
+        ? null
+        : { product: 'checkride_prep', label: 'CONTINUE MY CHECKRIDE PREP', go: function () { openUnlockModal(ctx); } };
+    }
+
+    var headline, subhead;
+    if (route === 'foundation') {
+      headline = 'Build the knowledge before you start cramming.';
+      subhead = ctx.weakestLabels.length
+        ? ctx.weakestLabels.join(' and ') + ' scored lowest on your assessment -- that\'s where to start.'
+        : 'Structured Ground School builds the foundation Checkride Prep later tests.';
+    } else if (route === 'imminent') {
+      headline = "You're close. Pressure-test what you know.";
+      subhead = ctx.weakestLabels.length
+        ? ctx.weakestLabels.join(' and ') + ' scored lowest -- confirm you\'ve got it before the DPE asks.'
+        : 'A final round of realistic, DPE-style pressure testing before your checkride.';
+    } else {
+      headline = "You're getting close.";
+      subhead = ctx.weakestLabels.length
+        ? ctx.weakestLabels.join(' and ') + ' scored lowest on your assessment -- targeted practice there moves readiness fastest.'
+        : 'Keep building toward your checkride with targeted, weak-area practice.';
+    }
+
+    return {
+      route: route, timing: timing, unlocked: unlocked,
+      score: ctx.score, band: ctx.band, weakestCats: ctx.weakestCats, weakestLabels: ctx.weakestLabels,
+      headline: headline, subhead: subhead,
+      freeAction: freeAction, paidCta: paidCta
+    };
+  }
+
+  // ── Readiness Plan Card ──────────────────────────────────────────
+  // Readiness Bridge Phase 3/4: renders computeReadinessRoute() into
+  // #readinessPlanCard (site/portal.html, between the activation
+  // celebration and the existing Training Plan card). Hidden entirely
+  // when there's no linked assessment (Test 6) -- every other member's
+  // dashboard renders exactly as before this feature existed. Safe to
+  // call repeatedly (every renderMyTraining() call site, plus once when
+  // loadMemberReadinessContext() itself resolves, since that fetch is
+  // fire-and-forget and can resolve after the first dashboard render) --
+  // "viewed" events are guarded with one-time flags so a re-render never
+  // double-fires them (Test 8).
+  //
+  // Analytics: readiness_plan_viewed and readiness_paid_recommendation_
+  // viewed/_clicked are new (no existing event captures "the plan card
+  // itself became visible" or "its paid step became visible/was
+  // clicked"). The free action's click reuses the existing readiness_
+  // free_action_clicked verbatim (same semantic: the free, weak-area-
+  // linked action inside a personalized readiness pitch was clicked) --
+  // just tagged with source: 'readiness_plan_card' so it's still
+  // distinguishable from the same event firing out of the unlock modal.
+  // When the paid CTA is Checkride Prep, clicking it calls
+  // openUnlockModal(ctx) which already fires the existing readiness_
+  // checkride_prep_offer_viewed once the modal itself opens -- that is
+  // a separate, later funnel step (the modal's own personalized offer
+  // rendering), not a duplicate of this card's paid-step-visible or
+  // paid-CTA-clicked events.
+  var readinessPlanViewedFired = false;
+  var readinessPaidStepViewedFired = false;
+  function renderReadinessPlanCard() {
+    var card = document.getElementById('readinessPlanCard');
+    if (!card) return;
+    var route = computeReadinessRoute();
+    if (!route) { card.hidden = true; return; }
+
+    card.hidden = false;
+    document.getElementById('readinessPlanHeadline').textContent = route.headline;
+    document.getElementById('readinessPlanSubhead').textContent = route.subhead;
+
+    var freeBtn = document.getElementById('readinessPlanFreeBtn');
+    freeBtn.textContent = route.freeAction.label;
+    freeBtn.onclick = function () {
+      if (window.apexTrack) apexTrack('readiness_free_action_clicked', { profile_id: member.id, source: 'readiness_plan_card', route: route.route });
+      route.freeAction.go();
+    };
+
+    var paidStep = document.getElementById('readinessPlanPaidStep');
+    var paidBtn = document.getElementById('readinessPlanPaidBtn');
+    var showPaid = !!route.paidCta && route.freeAction.done;
+    paidStep.hidden = !showPaid;
+    if (showPaid) {
+      paidBtn.textContent = route.paidCta.label;
+      paidBtn.onclick = function () {
+        if (window.apexTrack) apexTrack('readiness_paid_recommendation_clicked', { profile_id: member.id, route: route.route, product: route.paidCta.product });
+        route.paidCta.go();
+      };
+      if (!readinessPaidStepViewedFired) {
+        readinessPaidStepViewedFired = true;
+        if (window.apexTrack) apexTrack('readiness_paid_recommendation_viewed', { profile_id: member.id, route: route.route, product: route.paidCta.product });
+      }
+    }
+
+    if (!readinessPlanViewedFired) {
+      readinessPlanViewedFired = true;
+      if (window.apexTrack) {
+        apexTrack('readiness_plan_viewed', {
+          profile_id: member.id, route: route.route, score: route.score,
+          weakest_category_1: route.weakestCats[0] || null, weakest_category_2: route.weakestCats[1] || null
+        });
+      }
+    }
+  }
+
   // ── Apex Training Plan ──────────────────────────────────────────
   // Single source of truth for "what should this member do today,"
   // superseding what used to be three independently-computed answers
@@ -7621,8 +7936,9 @@
       renderXpRank();
       renderWeakAreas();
       renderAcsCoverage();
-      computeQotdQuestion().then(renderQotd);
+      computeQotdQuestion().then(function () { renderQotd(); renderReadinessPlanCard(); });
       renderMyTraining();
+      renderReadinessPlanCard();
       // Growth Sprint section 12 -- loadGroundSchool() is normally lazy
       // (only triggered on Ground School section entry), but the weak-area
       // cross-sell needs real class data on the very first dashboard

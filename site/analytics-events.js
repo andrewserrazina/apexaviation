@@ -100,6 +100,15 @@
     // modal_opened; _free_action_clicked is the "try something free
     // first" secondary link inside that same pitch.
     'readiness_checkride_prep_offer_viewed', 'readiness_free_action_clicked',
+    // Readiness Plan card (site/portal-stable.js's renderReadinessPlanCard(),
+    // fed by computeReadinessRoute()) -- Readiness Bridge Phase 3/4. Fires
+    // once per view when the card itself becomes visible (any Foundation/
+    // Active Prep/Imminent route) and once per view when its "Ready To Go
+    // Further?" paid step becomes visible; the paid CTA click is its own
+    // event. The free action's click deliberately reuses readiness_free_
+    // action_clicked above (tagged source: 'readiness_plan_card') rather
+    // than a new name, since it's the same real user action.
+    'readiness_plan_viewed', 'readiness_paid_recommendation_viewed', 'readiness_paid_recommendation_clicked',
     // Post-purchase activation (portal-login.html)
     'portal_activation_cta_viewed', 'portal_activation_cta_clicked',
     // Member-upgrade deep link (?upgrade=checkride-prep) -- real triggers
