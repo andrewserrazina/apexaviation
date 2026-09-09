@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
+import { formatDateOnly } from '../lib/date'
 
 const ENDORSEMENT_TYPES = [
   'Pre-Solo Knowledge Test (61.87b)',
@@ -215,7 +216,7 @@ export default function Endorsements() {
                       ) : endorsements.map(e => (
                         <tr key={e.id}>
                           <td style={{ fontWeight: 600 }}>{e.endorsement_type}</td>
-                          <td>{new Date(e.date_given).toLocaleDateString()}</td>
+                          <td>{formatDateOnly(e.date_given)}</td>
                           <td>{e.instructor?.full_name ?? '—'}</td>
                           <td style={{ color: 'var(--muted)', fontSize: 13 }}>{e.endorsement_text || '—'}</td>
                         </tr>
@@ -237,7 +238,7 @@ export default function Endorsements() {
                       ) : stageChecks.map(sc => (
                         <tr key={sc.id}>
                           <td style={{ fontWeight: 600 }}>{sc.stage_name}</td>
-                          <td>{new Date(sc.date).toLocaleDateString()}</td>
+                          <td>{formatDateOnly(sc.date)}</td>
                           <td>
                             <span className={sc.result === 'pass' ? 'badge badge--green' : sc.result === 'fail' ? 'badge badge--red' : 'badge badge--yellow'}>
                               {sc.result}
@@ -264,7 +265,7 @@ export default function Endorsements() {
                       ) : writtenTests.map(wt => (
                         <tr key={wt.id}>
                           <td style={{ fontWeight: 600 }}>{wt.test_type}</td>
-                          <td>{new Date(wt.date_taken).toLocaleDateString()}</td>
+                          <td>{formatDateOnly(wt.date_taken)}</td>
                           <td style={{ fontWeight: 700, fontSize: 18, color: wt.score >= 70 ? '#4ade80' : '#f87171' }}>{wt.score}%</td>
                           <td><span className={wt.score >= 70 ? 'badge badge--green' : 'badge badge--red'}>{wt.score >= 70 ? 'Pass' : 'Fail'}</span></td>
                         </tr>

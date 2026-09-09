@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import { formatDateOnly } from '../lib/date'
 import ApexLogo from './ApexLogo'
 import NotificationBell from './NotificationBell'
 
@@ -118,7 +119,7 @@ export default function Layout({ children }) {
 
       for (const p of profilesRes.data ?? []) combined.push({ label: p.full_name, sub: p.role, link: p.role === 'student' ? '/students' : '/instructors' })
       for (const l of lessonsRes.data ?? []) combined.push({ label: l.lesson_type ?? 'Lesson', sub: new Date(l.starts_at).toLocaleDateString(), link: '/schedule' })
-      for (const e of logbookRes.data ?? []) combined.push({ label: e.route ?? 'Flight', sub: new Date(e.date).toLocaleDateString(), link: '/logbook' })
+      for (const e of logbookRes.data ?? []) combined.push({ label: e.route ?? 'Flight', sub: formatDateOnly(e.date), link: '/logbook' })
       for (const i of invoicesRes.data ?? []) combined.push({ label: i.description, sub: i.status, link: '/billing' })
 
       setResults(combined)

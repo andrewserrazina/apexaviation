@@ -2,11 +2,20 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
+import { parseDateOnly, formatDateOnly } from '../lib/date'
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
+// a/b can each be either a real Date (every call site's "now") or a
+// date-only string from profiles (flight review/IPC/medical/CFI expiry,
+// all Postgres `date` columns) -- the latter must go through
+// parseDateOnly(), not the Date constructor directly, or it parses as
+// UTC midnight and can shift a currency badge across its threshold by
+// up to a day for any US-based (UTC-negative) browser.
 function daysBetween(a, b) {
-  return Math.round((new Date(b) - new Date(a)) / 86400000)
+  const da = a instanceof Date ? a : parseDateOnly(a)
+  const db = b instanceof Date ? b : parseDateOnly(b)
+  return Math.round((db - da) / 86400000)
 }
 
 function currencyStatus(lastDate, thresholdDays) {
@@ -233,30 +242,30 @@ export default function InstructorHub() {
                   <tbody>
                     <tr>
                       <td>Flight Review (BFR)</td>
-                      <td>{currency.flightReview ? new Date(currency.flightReview).toLocaleDateString() : '—'}</td>
+                      <td>{formatDateOnly(currency.flightReview)}</td>
                       <td><CurrencyBadge status={currencyStatus(currency.flightReview, 730)} /></td>
                     </tr>
                     <tr>
                       <td>IPC (Instrument)</td>
-                      <td>{currency.ipcDate ? new Date(currency.ipcDate).toLocaleDateString() : '—'}</td>
+                      <td>{formatDateOnly(currency.ipcDate)}</td>
                       <td><CurrencyBadge status={currencyStatus(currency.ipcDate, 180)} /></td>
                     </tr>
                     <tr>
                       <td>Medical Certificate</td>
-                      <td>{currency.medicalExpiry ? new Date(currency.medicalExpiry).toLocaleDateString() : '—'}</td>
+                      <td>{formatDateOnly(currency.medicalExpiry)}</td>
                       <td><CurrencyBadge status={
                         !currency.medicalExpiry ? 'expired'
-                          : new Date(currency.medicalExpiry) < new Date() ? 'expired'
+                          : parseDateOnly(currency.medicalExpiry) < new Date() ? 'expired'
                           : daysBetween(new Date(), currency.medicalExpiry) < 60 ? 'expiring'
                           : 'current'
                       } /></td>
                     </tr>
                     <tr>
                       <td>CFI Certificate</td>
-                      <td>{currency.cfiExpiry ? new Date(currency.cfiExpiry).toLocaleDateString() : '—'}</td>
+                      <td>{formatDateOnly(currency.cfiExpiry)}</td>
                       <td><CurrencyBadge status={
                         !currency.cfiExpiry ? 'expired'
-                          : new Date(currency.cfiExpiry) < new Date() ? 'expired'
+                          : parseDateOnly(currency.cfiExpiry) < new Date() ? 'expired'
                           : daysBetween(new Date(), currency.cfiExpiry) < 60 ? 'expiring'
                           : 'current'
                       } /></td>
