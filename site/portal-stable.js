@@ -8039,6 +8039,49 @@
 
   function spEscape(s) { return escapeHtmlSafe(s); }
 
+  // Lesson illustrations live in the private study-pack-resources bucket at
+  // lesson-images/<pack_id>/<asset_id>.png (mirrors the quick-reference/
+  // certificates path convention already established in v99). The
+  // graphics_manifest entry's own "group" field (e.g. "L1" or "L5/L7") is
+  // the only link between an asset and a lesson -- there is no per-asset
+  // DB row, so resolution is pure convention over content already in hand.
+  function spLessonImageAssets(content, lesson) {
+    var manifest = content.graphics_manifest || [];
+    var token = 'L' + lesson.lesson_number;
+    return manifest.filter(function (m) {
+      return (m.group || '').split('/').indexOf(token) !== -1;
+    });
+  }
+
+  function spRenderLessonImages(packId, assets, container) {
+    if (!container || !assets.length) { if (container) container.innerHTML = ''; return; }
+    var bucket = apexSupabase.storage.from('study-pack-resources');
+    Promise.all(assets.map(function (m) {
+      var path = 'lesson-images/' + packId + '/' + m.asset_id + '.png';
+      return bucket.createSignedUrl(path, 3600).then(function (res) {
+        return (res && res.data && res.data.signedUrl) ? { asset: m, url: res.data.signedUrl } : null;
+      }, function () { return null; });
+    })).then(function (results) {
+      // Assets not yet produced simply 404 on createSignedUrl -- skip them
+      // rather than rendering a broken image; the gallery only shows what
+      // actually exists in Storage right now.
+      var found = results.filter(Boolean);
+      if (!found.length) { container.innerHTML = ''; return; }
+      container.innerHTML =
+        '<h3 style="color:#fff;font-size:16px;font-weight:800;margin:24px 0 12px">Visual Reference</h3>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:8px">' +
+        found.map(function (f) {
+          var spec = f.asset.specification || {};
+          var caption = spec.primary_emphasis || spec.exact_visual_content || '';
+          return '<figure class="portal-card" style="margin:0;padding:8px">' +
+            '<img src="' + f.url + '" alt="' + spEscape(f.asset.asset_id) + '" style="width:100%;border-radius:8px;display:block" loading="lazy">' +
+            (caption ? '<figcaption style="color:rgba(255,255,255,0.5);font-size:12px;margin-top:8px">' + spEscape(caption) + '</figcaption>' : '') +
+            '</figure>';
+        }).join('') +
+        '</div>';
+    });
+  }
+
   function spParagraphs(arr) {
     return (arr || []).map(function (p) { return '<p style="color:rgba(255,255,255,0.65);font-size:14px;line-height:1.7;margin-bottom:10px">' + spEscape(p).replace(/\n\n/g, '</p><p style="color:rgba(255,255,255,0.65);font-size:14px;line-height:1.7;margin-bottom:10px">') + '</p>'; }).join('');
   }
@@ -8251,11 +8294,14 @@
       '<button type="button" class="btn btn--ghost" data-sp-back-home style="margin-bottom:16px">← ' + spEscape(content.product.name) + '</button>' +
       '<div class="portal-header"><div class="portal-header__eyebrow">Lesson ' + lesson.lesson_number + ' of ' + content.lessons.length + '</div><h1>' + spEscape(lesson.title) + '</h1></div>' +
       sectionsHtml +
+      '<div id="spLessonImages"></div>' +
       '<h3 style="color:#fff;font-size:16px;font-weight:800;margin:24px 0 12px">Knowledge Check</h3>' +
       kcHtml +
       (alreadyDone
         ? '<div style="display:flex;gap:12px"><span style="color:#4ade80;font-size:13px;font-weight:700;padding:12px 0">✓ Already completed</span>' + (index < content.lessons.length - 1 ? '<button type="button" class="btn btn--primary" data-sp-next-lesson>Next Lesson →</button>' : '<button type="button" class="btn btn--primary" data-sp-back-home-2>Back to ' + spEscape(content.product.name) + '</button>') + '</div>'
         : '<button type="button" class="btn btn--primary" id="spMarkLessonComplete">I\'ve Reviewed These — Mark Lesson Complete</button>');
+
+    spRenderLessonImages(studyPacksState.packId, spLessonImageAssets(content, lesson), document.getElementById('spLessonImages'));
 
     root.querySelectorAll('[data-sp-back-home], [data-sp-back-home-2]').forEach(function (b) { b.addEventListener('click', renderStudyPackHome); });
     root.querySelectorAll('[data-sp-kc-reveal]').forEach(function (btn) {
