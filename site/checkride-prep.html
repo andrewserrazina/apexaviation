@@ -945,7 +945,7 @@
        real Stripe price). -->
   <div class="cp-announce" data-cp-early-access>
     <div class="cp-announce__inner">
-      <span class="cp-announce__text">EARLY ACCESS: <span data-cp-price>$29</span> THROUGH AUGUST 31 &middot; REGULARLY $49</span>
+      <span class="cp-announce__text">EARLY ACCESS: <span data-cp-price>$29</span> THROUGH <span data-cp-deadline-label="upper">OCTOBER 10</span> &middot; REGULARLY $49</span>
       <span class="cp-countdown cp-announce__countdown" data-cp-countdown aria-hidden="true">Ends August 31</span>
     </div>
   </div>
@@ -1529,7 +1529,7 @@
             When does Early Access pricing end?
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div class="faq-item__answer"><p>Early Access pricing ($29) ends August 31, 2026, after which it moves to the standard rate of $49. There's also a limited number of founding spots at $29 that can run out before that date if enough pilots purchase &mdash; whichever comes first.</p></div>
+          <div class="faq-item__answer"><p>Early Access pricing ($29) ends <span data-cp-deadline-label="full">October 10, 2026</span>, after which it moves to the standard rate of $49. There's also a limited number of founding spots at $29 that can run out before that date if enough pilots purchase &mdash; whichever comes first.</p></div>
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
@@ -1589,7 +1589,7 @@
   <!-- Sticky mini-CTA — persistent bottom bar once past the hero, not a popup -->
   <div class="cp-sticky-cta" id="cpStickyCta">
     <div class="cp-sticky-cta__inner">
-      <div class="cp-sticky-cta__copy"><strong data-cp-price>$29</strong> <span data-cp-early-access>Early Access &mdash; ends Aug 31</span></div>
+      <div class="cp-sticky-cta__copy"><strong data-cp-price>$29</strong> <span data-cp-early-access>Early Access &mdash; ends <span data-cp-deadline-label="short">Oct 10</span></span></div>
       <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-cta-label data-cp-location="sticky">UNLOCK CHECKRIDE PREP &mdash; $29</a>
     </div>
   </div>
@@ -1692,7 +1692,7 @@
     })();
 
     // ── Early Access countdown + live pricing ──────────────────────
-    // Real deadline: Aug 31, 2026, 11:59 PM America/New_York, written
+    // Real deadline: Oct 10, 2026, 11:59 PM America/New_York, written
     // as its fixed UTC instant (EDT/UTC-4 is in effect on this date --
     // 2026 DST runs Mar 8-Nov 1) so no browser ever has to parse a
     // zone-name string. Recomputed fresh from this one constant on
@@ -1700,7 +1700,7 @@
     // timestamp, so refresh/cookies/return visits can't move it and it
     // can't become visitor-specific.
     //
-    // supabase-portal-schema-v66.sql's get_checkride_prep_pricing() is
+    // supabase-portal-schema-v122.sql's get_checkride_prep_pricing() is
     // the actual source of truth (same RPC that sets Stripe's real
     // price), and is authoritative here once it resolves. This
     // constant exists for two display-only purposes: rendering the
@@ -1708,19 +1708,49 @@
     // never resolves at all -- offline, ad blocker, apexSupabase not
     // loaded) so this page can never show stale $29 Early Access
     // messaging indefinitely just because a network call failed.
+    //
+    // The original v66 version of this page hardcoded "August 31" as a
+    // literal string in three places below (the banner, the FAQ answer,
+    // and the sticky CTA) -- so when the SQL deadline was later pushed
+    // out (supabase-portal-schema-v122.sql restarted the promo after
+    // the Aug 31 date passed), all three kept advertising the wrong,
+    // expired date even though the real price/tier were still correct
+    // via the RPC. Fixed the same way site/portal-stable.js's
+    // earlyAccessDeadlineLabel() already handles this for portal.html:
+    // every [data-cp-deadline-label] element is populated dynamically
+    // from the RPC's own launch_expires_at, so a future deadline change
+    // only ever requires updating the one SQL constant.
     (function () {
-      var DEADLINE = new Date('2026-09-01T03:59:00Z');
+      var DEADLINE = new Date('2026-10-11T03:59:00Z');
       var rpcResolved = false;
 
       function pad(n) { return n < 10 ? '0' + n : String(n); }
 
-      function applyState(active, price, urgencyText) {
+      // Mirrors site/portal-stable.js's earlyAccessDeadlineLabel() --
+      // same RPC field, same America/New_York formatting -- just with
+      // three style variants for this page's three different copy
+      // contexts (all-caps banner, full "Month D, YYYY" FAQ answer,
+      // abbreviated sticky CTA).
+      function formatDeadlineLabel(expiresAt, style) {
+        var d = expiresAt ? new Date(expiresAt) : null;
+        if (!d || isNaN(d.getTime())) return style === 'upper' ? 'SOON' : 'soon';
+        var opts = { month: style === 'short' ? 'short' : 'long', day: 'numeric', timeZone: 'America/New_York' };
+        if (style === 'full') opts.year = 'numeric';
+        var label = d.toLocaleDateString('en-US', opts);
+        return style === 'upper' ? label.toUpperCase() : label;
+      }
+
+      function applyState(active, price, urgencyText, deadlineIso) {
         window.cpEarlyAccessActive = active;
         document.querySelectorAll('[data-cp-price]').forEach(function (el) { el.textContent = price; });
         document.querySelectorAll('[data-cp-early-access]').forEach(function (el) { el.style.display = active ? '' : 'none'; });
         document.querySelectorAll('[data-cp-regular-price]').forEach(function (el) { el.style.display = active ? '' : 'none'; });
         document.querySelectorAll('[data-cp-urgency]').forEach(function (el) { el.textContent = urgencyText; });
         document.querySelectorAll('[data-cp-cta-label]').forEach(function (el) { el.textContent = 'UNLOCK CHECKRIDE PREP — ' + price; });
+        ['upper', 'full', 'short'].forEach(function (style) {
+          var label = formatDeadlineLabel(deadlineIso, style);
+          document.querySelectorAll('[data-cp-deadline-label="' + style + '"]').forEach(function (el) { el.textContent = label; });
+        });
       }
 
       function renderCountdown() {
@@ -1733,7 +1763,7 @@
           // 5-minute refresh), that result wins; this just prevents
           // stale $29 copy from sitting indefinitely if the RPC call
           // never completes at all.
-          if (!rpcResolved) applyState(false, '$49', 'Regular pricing — $49');
+          if (!rpcResolved) applyState(false, '$49', 'Regular pricing — $49', null);
           return;
         }
         var totalMinutes = Math.floor(remainingMs / 60000);
@@ -1754,20 +1784,21 @@
           rpcResolved = true;
           var price = '$' + Math.round(row.amount_cents / 100);
           var active = row.tier !== 'standard';
+          var deadlineShort = formatDeadlineLabel(row.launch_expires_at, 'short');
           var urgency = row.tier === 'founding'
-            ? row.founding_seats_remaining + ' of 25 founding spots left at ' + price + ' — Early Access ends August 31'
+            ? row.founding_seats_remaining + ' of 25 founding spots left at ' + price + ' — Early Access ends ' + deadlineShort
             : row.tier === 'launch'
-              ? 'Early Access pricing ends August 31 — then $49'
+              ? 'Early Access pricing ends ' + deadlineShort + ' — then $49'
               : 'Regular pricing — $49';
-          applyState(active, price, urgency);
+          applyState(active, price, urgency, row.launch_expires_at);
         }).catch(function () {});
       }
 
       fetchPricing();
       // Re-poll periodically (not just once on load) so a tab left open
-      // across the exact Aug 31 -> Sep 1 transition still picks up the
-      // real server-side change instead of being stuck with whatever
-      // tier it saw on page load.
+      // across the exact Early Access deadline transition still picks
+      // up the real server-side change instead of being stuck with
+      // whatever tier it saw on page load.
       setInterval(fetchPricing, 300000);
     })();
 
