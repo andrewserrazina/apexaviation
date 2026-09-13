@@ -7814,6 +7814,32 @@
     return cats.length ? cats[0] : null;
   }
 
+  // Sprint 3 Part F -- prefer the unified, evidence-based readiness
+  // snapshot's weakest category over the coverage-only weakestCategory()
+  // above wherever a fresh snapshot is already cached (latestReadinessSnapshot,
+  // populated by refreshDashboardReadinessGauge() on dashboard load).
+  // "Weakest" ranks by evidence sufficiency first (none < limited <
+  // developing < strong -- the least-evidenced area is the biggest blind
+  // spot, independent of its raw score) and score as a same-tier
+  // tiebreak. Returns the SAME {cat, label, pct} shape weakestCategory()
+  // does so every existing downstream consumer (matchingReview filter,
+  // weakScenario filter, task label text) works unchanged. Returns null
+  // -- triggering the coverage-based fallback one layer up -- whenever no
+  // snapshot has loaded yet, the RPC failed, or every assessed category
+  // is already "strong" (nothing evidence-based left to flag).
+  var READINESS_SUFFICIENCY_RANK = { none: 0, limited: 1, developing: 2, strong: 3 };
+  function snapshotWeakestCategory() {
+    if (!latestReadinessSnapshot) return null;
+    var cats = latestReadinessSnapshot.category_breakdown || [];
+    if (!cats.length) return null;
+    var weakest = cats.slice().sort(function (a, b) {
+      var rankDiff = (READINESS_SUFFICIENCY_RANK[a.evidence_level] || 0) - (READINESS_SUFFICIENCY_RANK[b.evidence_level] || 0);
+      return rankDiff !== 0 ? rankDiff : (a.score === null ? 0 : a.score) - (b.score === null ? 0 : b.score);
+    })[0];
+    if (weakest.evidence_level === 'strong') return null;
+    return { cat: weakest.category, label: weakest.label, pct: weakest.score === null ? 0 : weakest.score / 100 };
+  }
+
   function truncate(text, max) {
     return text.length > max ? text.slice(0, max - 1).trim() + '…' : text;
   }
@@ -8070,7 +8096,14 @@
     var checkrideDays = checkrideDate ? Math.ceil((new Date(checkrideDate + 'T00:00:00') - new Date()) / 86400000) : null;
     var unlocked = !!(member && member.checkridePrepUnlocked);
     var readinessPct = unlocked ? computeReadiness() : 0;
-    var weakest = unlocked ? weakestCategory() : null;
+    // Sprint 3 Part F -- prefer the unified evidence-based snapshot's
+    // weakest category when one is already cached; never trust a stale
+    // reference otherwise (same precedent as Sprint 1/2's other fallback
+    // chains) -- fall back to the coverage-only signal whenever no
+    // snapshot exists yet, the RPC failed, or nothing evidence-based is
+    // left to flag. computeTrainingPlan() itself stays fully synchronous;
+    // this never triggers a network call of its own.
+    var weakest = unlocked ? (snapshotWeakestCategory() || weakestCategory()) : null;
 
     var tasks = [];
     if (classImminent) {
