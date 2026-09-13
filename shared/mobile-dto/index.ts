@@ -110,7 +110,20 @@ export interface ReadinessCategoryBreakdown {
   evidence_level: ReadinessEvidenceLevel
   attempt_volume: number
   task_breadth_pct: number
+  // Sprint 4: exact integer counts alongside the pre-existing percentage
+  // fields above -- a consumer that needs to state "N of M tasks have
+  // evidence" must use these, not reverse-engineer them from the rounded
+  // task_breadth_pct (which cannot reliably reconstruct the original
+  // numerator/denominator). assessable_task_count is the category's own
+  // scoped-task denominator (sums to the full digitally-assessable task
+  // count across all categories); evidenced_task_count is how many of
+  // those have attempt_count > 0. Additive fields, present on 'v2'
+  // snapshots computed after this sprint; absent on older 'v2' rows
+  // computed before it.
+  assessable_task_count?: number
+  evidenced_task_count?: number
   weak_task_count: number
+  strong_task_count?: number
   last_demonstrated_at: string | null
   ai_dpe_reason_code: 'recent_ai_dpe_weak' | null
 }
