@@ -6,8 +6,6 @@
 // pass-probability-language ban get enforced identically to
 // mobile-bootstrap's readiness_summary shape.
 //
-// NOT YET DEPLOYED. Source-controlled only.
-//
 // PRODUCT CONSTRAINT: readiness is a training-readiness INDICATOR, never
 // a pass-probability estimate. This function must never add "chance of
 // passing" language, and must always surface evidence_level and
@@ -32,6 +30,18 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 }
 
+// v2 (Sprint 3) computes a more accurate 4-value evidence sufficiency
+// (none/limited/developing/strong, from a volume x breadth rule) for the
+// overall snapshot, but the top-level evidence_level column still only
+// ever stores v1's original 3-value vocabulary (low/moderate/high) --
+// verified directly against mobile-expo/components/ReadinessCard.tsx
+// before making this change: its EVIDENCE_LABEL is a TypeScript Record
+// keyed on exactly those three strings, and any other value would render
+// as `undefined` and crash `.toUpperCase()`. So evidence_level is passed
+// through unchanged here (mobile's existing contract, untouched), and
+// category_breakdown is exposed as a new, additive field only the web
+// Readiness Detail view (Sprint 3) reads -- mobile's ReadinessCard.tsx
+// does not consume it and is unaffected by its presence.
 function shape(row: Record<string, unknown> | null) {
   if (!row) return null
   return {
@@ -43,6 +53,7 @@ function shape(row: Record<string, unknown> | null) {
     evidence_level: row.evidence_level,
     weak_tasks: row.weak_tasks,
     reason_codes: row.reason_codes,
+    category_breakdown: row.category_breakdown ?? [],
     algorithm_version: row.algorithm_version,
     computed_at: row.created_at,
   }
@@ -73,7 +84,7 @@ serve(async (req) => {
 
     const { data, error } = await serviceClient
       .from('readiness_snapshots')
-      .select('overall_score, coverage_score, knowledge_score, risk_management_score, confidence_score, evidence_level, weak_tasks, reason_codes, algorithm_version, created_at')
+      .select('overall_score, coverage_score, knowledge_score, risk_management_score, confidence_score, evidence_level, weak_tasks, reason_codes, category_breakdown, algorithm_version, created_at')
       .eq('profile_id', userId)
       .order('created_at', { ascending: false })
       .limit(1)

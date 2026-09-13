@@ -3170,6 +3170,21 @@
     return done / items.length;
   }
 
+  // DEPRECATED as the authoritative readiness number (Sprint 3, Part H --
+  // web/mobile convergence): this is a client-side, coverage-only
+  // formula ("% marked studied," never correctness) with no counterpart
+  // in the real evidence-based engine (task_evidence/
+  // compute_readiness_snapshot()/readiness_snapshots) mobile has used
+  // since Sprint 0. It is kept, unmodified, ONLY as the offline/no-
+  // snapshot-yet fallback: refreshDashboardReadinessGauge() overwrites
+  // the dashboard gauge with the real v2 snapshot score whenever one is
+  // available, and snapshotWeakestCategory() (near weakestCategory(),
+  // below) does the same for computeTrainingPlan()'s weakest-category
+  // pick. Every OTHER caller of computeReadiness() -- Achievements,
+  // Training Report, the Readiness Plan routing card -- is untouched
+  // this sprint (Part G defers Training Report's own migration; the
+  // others are out of scope) and still reads this exact formula. Do not
+  // add new callers here -- point new work at the snapshot instead.
   function computeReadiness() {
     var qPct = DPE_DATA.filter(function (d) { return studied[d.id]; }).length / DPE_DATA.length;
     var sPct = SCENARIOS.filter(function (s) { return studied[s.id]; }).length / SCENARIOS.length;
@@ -3194,6 +3209,228 @@
       checkLifecycleMilestones();
       renderTestimonialPrompt();
     }
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     SPRINT 3 — UNIFIED ACS EVIDENCE + ACTIONABLE READINESS
+     ══════════════════════════════════════════════════════════════
+     The dashboard gauge above (computeReadiness()) is a client-side,
+     coverage-only formula -- it never reads whether a student actually
+     got questions right, only whether they've been marked "studied."
+     Mobile has had a real, evidence-based readiness engine
+     (compute_readiness_snapshot(), task_evidence, readiness_snapshots)
+     live in production since Sprint 0; this section makes that the
+     SAME authoritative number web shows, via the SAME mobile-readiness
+     Edge Function mobile already calls -- not a second, web-only
+     formula. computeReadiness() is demoted to a fallback (Part F/H):
+     it stays exactly as-is for the rare case no snapshot exists yet or
+     the RPC call fails, but is no longer the number of record once a
+     real snapshot is available. */
+  var latestReadinessSnapshot = null;
+  var EVIDENCE_SUFFICIENCY_LABELS = { none: 'Insufficient Evidence', limited: 'Limited Evidence', developing: 'Developing', strong: 'Strong Evidence' };
+  var GAUGE_EVIDENCE_LABELS = { low: 'Building Evidence', moderate: 'Developing Evidence', high: 'Strong Evidence' };
+
+  function fetchReadinessSnapshot(action) {
+    if (!member || !member.checkridePrepUnlocked) return Promise.resolve(null);
+    return apexSupabase.functions.invoke('mobile-readiness', {
+      body: { action: action },
+      headers: { Authorization: 'Bearer ' + accessToken }
+    }).then(function (res) {
+      if (res.error || !res.data) return null;
+      return res.data.snapshot || null;
+    }).catch(function () { return null; });
+  }
+
+  // Called once per dashboard load (initPortalData()) for unlocked
+  // members only -- swaps the gauge's NUMBER onto the real evidence-
+  // based v2 score without changing the gauge's visual design. If no
+  // snapshot has ever been computed for this member yet, requests one
+  // (mobile has already been doing this on its own schedule since
+  // Sprint 0 -- this is simply the first time web asks for it too).
+  // On any failure, the gauge silently keeps computeReadiness()'s
+  // value -- never a broken or blank gauge.
+  function refreshDashboardReadinessGauge() {
+    if (!member || !member.checkridePrepUnlocked) return;
+    fetchReadinessSnapshot('latest').then(function (snapshot) {
+      return snapshot ? snapshot : fetchReadinessSnapshot('refresh');
+    }).then(function (snapshot) {
+      if (!snapshot) return;
+      latestReadinessSnapshot = snapshot;
+      var score = Math.round(snapshot.overall_score);
+      document.getElementById('readinessPct').textContent = score;
+      var circumference = 352;
+      document.getElementById('readinessRing').style.strokeDashoffset = circumference - (circumference * score / 100);
+      var caption = document.getElementById('readinessCaption');
+      if (caption) caption.textContent = 'Based on the training evidence Apex Advantage can currently evaluate -- oral-exam knowledge, Ground School, and review performance.';
+      var evidenceEl = document.getElementById('readinessEvidenceBadge');
+      if (evidenceEl) {
+        evidenceEl.hidden = false;
+        evidenceEl.textContent = GAUGE_EVIDENCE_LABELS[snapshot.evidence_level] || '';
+      }
+    });
+  }
+
+  // ── Actionable Readiness detail view (Part D) ──────────────────
+  // Reuses #practiceOverlay -- the same generic full-screen overlay
+  // Review Session/Checkride Mode already use -- rather than a new
+  // section, matching this codebase's own established pattern for
+  // focused, modal-style flows.
+  function readinessCategoryActionLabel(cat) {
+    var due = myReviewQueue.filter(function (it) { return it.source_type === 'dpe_question' && it.acs_category === cat.category; });
+    if (due.length) return { type: 'review_queue', label: 'Continue Review (' + due.length + ')' };
+    if (cat.category === 'eligibility' && hasModuleAccess('PPL-M01')) return { type: 'ground_school', label: 'Open Ground School Module' };
+    if (qotdQuestion && qotdQuestion.section === cat.category && !answeredCounts[qotdQuestion.id]) return { type: 'qotd', label: "Answer Today's Question" };
+    return { type: 'dpe_library', label: 'Study ' + cat.label };
+  }
+
+  function routeReadinessCategoryAction(cat, actionType) {
+    closeReadinessDetail();
+    if (window.apexTrack) apexTrack('readiness_action_clicked', { category: cat.category, action_type: actionType });
+    if (actionType === 'review_queue') {
+      var due = myReviewQueue.filter(function (it) { return it.source_type === 'dpe_question' && it.acs_category === cat.category; });
+      openReviewSession(due);
+    } else if (actionType === 'ground_school') {
+      openGuidedNotesModule('PPL-M01');
+    } else if (actionType === 'qotd') {
+      showSection('dashboard');
+      var qotdEl = document.getElementById('qotdRevealBtn');
+      if (qotdEl) setTimeout(function () { qotdEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 150);
+    } else {
+      goToCategory(cat.category);
+    }
+  }
+
+  function readinessCategoryMetaText(cat) {
+    if (cat.evidence_level === 'none') return 'Not yet assessed.';
+    var parts = [cat.attempt_volume + ' training ' + (cat.attempt_volume === 1 ? 'attempt' : 'attempts')];
+    parts.push(Math.round(cat.task_breadth_pct) + '% of this area’s assessable tasks demonstrated');
+    if (cat.last_demonstrated_at) {
+      parts.push('Last demonstrated ' + new Date(cat.last_demonstrated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+    }
+    return parts.join(' · ');
+  }
+
+  function renderReadinessDetailContent(snapshot, deltaText) {
+    var overlay = document.getElementById('practiceOverlay');
+    var evidenceLabel = GAUGE_EVIDENCE_LABELS[snapshot.evidence_level] || snapshot.evidence_level;
+    var categories = snapshot.category_breakdown || [];
+
+    var categoriesHtml = categories.map(function (cat) {
+      var statusLabel = EVIDENCE_SUFFICIENCY_LABELS[cat.evidence_level] || cat.evidence_level;
+      var action = readinessCategoryActionLabel(cat);
+      var scoreDisplay = cat.score === null ? '—' : Math.round(cat.score) + '%';
+      var aiNote = cat.ai_dpe_reason_code === 'recent_ai_dpe_weak'
+        ? '<p class="portal-readiness-category__meta">Recent AI oral practice identified this area as needing reinforcement.</p>' : '';
+      return (
+        '<div class="portal-readiness-category">' +
+          '<button type="button" class="portal-readiness-category__toggle" data-cat="' + escapeHtmlSafe(cat.category) + '" aria-expanded="false">' +
+            '<span class="portal-readiness-category__name">' + escapeHtmlSafe(cat.label) + '</span>' +
+            '<span class="portal-readiness-category__score">' + scoreDisplay + '</span>' +
+          '</button>' +
+          '<div class="portal-readiness-category__detail" hidden>' +
+            '<span class="portal-readiness-category__status">' + escapeHtmlSafe(statusLabel) + '</span>' +
+            '<p class="portal-readiness-category__meta">' + escapeHtmlSafe(readinessCategoryMetaText(cat)) + '</p>' +
+            aiNote +
+            '<button type="button" class="btn btn--ghost portal-readiness-category__action" data-cat-action="' + escapeHtmlSafe(cat.category) + '" data-action-type="' + action.type + '">' + escapeHtmlSafe(action.label) + '</button>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join('');
+
+    overlay.innerHTML =
+      '<div class="portal-practice-panel portal-readiness-detail">' +
+        '<button class="portal-practice-panel__close" id="readinessDetailCloseBtn" type="button">' +
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
+        '</button>' +
+        '<div class="portal-readiness-detail__overview">' +
+          '<div class="portal-header__eyebrow">Knowledge &amp; Oral Readiness</div>' +
+          '<div class="portal-readiness-detail__score">' + Math.round(snapshot.overall_score) + '%</div>' +
+          '<span class="portal-readiness-detail__badge">' + escapeHtmlSafe(evidenceLabel) + '</span>' +
+          (deltaText ? '<div class="portal-readiness-detail__delta">' + escapeHtmlSafe(deltaText) + '</div>' : '') +
+          '<p class="portal-readiness-detail__caption">Based on the training evidence Apex Advantage can currently evaluate -- oral-exam knowledge, Ground School, and review performance. Apex does not yet assess hands-on flight maneuvers (takeoffs, landings, stalls, and similar Areas of Operation).</p>' +
+        '</div>' +
+        '<div class="portal-readiness-detail__categories">' + (categoriesHtml || '<p class="portal-report__empty">No category evidence yet.</p>') + '</div>' +
+      '</div>';
+
+    document.getElementById('readinessDetailCloseBtn').addEventListener('click', closeReadinessDetail);
+    overlay.querySelectorAll('.portal-readiness-category__toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var detail = btn.parentElement.querySelector('.portal-readiness-category__detail');
+        var expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        detail.hidden = expanded;
+        if (!expanded) {
+          var cat = categories.filter(function (c) { return c.category === btn.dataset.cat; })[0];
+          if (window.apexTrack && cat) apexTrack('readiness_category_opened', { category: cat.category, evidence_level: cat.evidence_level });
+        }
+      });
+    });
+    overlay.querySelectorAll('[data-cat-action]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var cat = categories.filter(function (c) { return c.category === btn.dataset.catAction; })[0];
+        if (cat) routeReadinessCategoryAction(cat, btn.dataset.actionType);
+      });
+    });
+  }
+
+  function closeReadinessDetail() {
+    document.getElementById('practiceOverlay').hidden = true;
+  }
+
+  var readinessDetailBtnEl = document.getElementById('readinessDetailBtn');
+  if (readinessDetailBtnEl) readinessDetailBtnEl.addEventListener('click', function (e) {
+    e.stopPropagation();
+    openReadinessDetail();
+  });
+
+  // Delta ("+6 this week") is only ever computed from two REAL stored
+  // snapshots sharing the same algorithm_version within the trailing 7
+  // days -- never a fabricated or estimated change. readiness_snapshots
+  // is append-only and RLS already permits a member to select their own
+  // rows directly (no new RPC needed for this read).
+  function readinessDeltaText(current) {
+    return apexSupabase.from('readiness_snapshots')
+      .select('overall_score, algorithm_version, created_at')
+      .eq('profile_id', member.id)
+      .order('created_at', { ascending: false })
+      .limit(2)
+      .then(function (res) {
+        var rows = (res && res.data) || [];
+        var prior = rows[1];
+        if (!prior || prior.algorithm_version !== current.algorithm_version) return null;
+        var ageMs = Date.now() - new Date(prior.created_at).getTime();
+        if (ageMs > 7 * 24 * 3600 * 1000) return null;
+        var delta = Math.round(current.overall_score - prior.overall_score);
+        if (delta === 0) return null;
+        return (delta > 0 ? '+' : '') + delta + ' since last week';
+      }).catch(function () { return null; });
+  }
+
+  function openReadinessDetail() {
+    if (!member || !member.checkridePrepUnlocked) return;
+    document.getElementById('practiceOverlay').hidden = false;
+    document.getElementById('practiceOverlay').innerHTML =
+      '<div class="portal-practice-panel portal-readiness-detail"><p style="color:rgba(255,255,255,0.5);font-size:14px;text-align:center;padding:30px 0">Loading readiness detail…</p></div>';
+    if (window.apexTrack) apexTrack('readiness_detail_viewed', {});
+
+    (latestReadinessSnapshot ? Promise.resolve(latestReadinessSnapshot) : fetchReadinessSnapshot('latest').then(function (s) { return s || fetchReadinessSnapshot('refresh'); }))
+      .then(function (snapshot) {
+        if (!snapshot) {
+          document.getElementById('practiceOverlay').innerHTML =
+            '<div class="portal-practice-panel portal-readiness-detail">' +
+              '<button class="portal-practice-panel__close" id="readinessDetailCloseBtn" type="button">' +
+                '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
+              '</button>' +
+              '<p style="color:rgba(255,255,255,0.5);font-size:14px;text-align:center;padding:30px 0">Readiness detail isn’t available right now. Try again in a moment.</p>' +
+            '</div>';
+          document.getElementById('readinessDetailCloseBtn').addEventListener('click', closeReadinessDetail);
+          return;
+        }
+        latestReadinessSnapshot = snapshot;
+        readinessDeltaText(snapshot).then(function (deltaText) {
+          renderReadinessDetailContent(snapshot, deltaText);
+        });
+      });
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -5686,6 +5923,25 @@
           // One click is already one intentional action -- no debounce, no
           // volume concern, unlike the free-text autosave events above.
           if (window.apexTrack) apexTrack('confidence_rating_set', { module_id: moduleDef.moduleId, source_type: ratingSectionId, rating: value });
+
+          // Sprint 3 -- unified ACS evidence. content_id matches exactly
+          // how v126's content_acs_mappings rows are keyed: checkride_corner
+          // is module-namespaced ("PPL-M01:cc-1", stripping the "-rating"
+          // suffix ratingId carries); scenario_workshop is the module id
+          // alone (one scenario per module). A no-op for any question/
+          // module with no mapping row (everything but PPL-M01 today).
+          var confidenceValue = value === 'confident' ? 1.0 : value === 'needs_review' ? 0.5 : 0.0;
+          var evidenceContentId = ratingSectionId === 'scenario-workshop'
+            ? moduleDef.moduleId
+            : moduleDef.moduleId + ':' + ratingId.replace(/-rating$/, '');
+          apexSupabase.rpc('record_ground_school_evidence', {
+            p_profile_id: member.id,
+            p_content_type: ratingSectionId === 'scenario-workshop' ? 'scenario_workshop' : 'checkride_corner',
+            p_content_id: evidenceContentId,
+            p_source_id: moduleDef.moduleId + ':' + ratingSectionId + ':' + ratingId,
+            p_is_correct: null,
+            p_self_confidence: confidenceValue
+          });
         });
       });
     });
@@ -5841,7 +6097,7 @@
         results: results,
         score: score,
         total: total
-      }).then(function (res) {
+      }).select('id').single().then(function (res) {
         submitBtn.disabled = false;
         var summary = document.getElementById('moduleQuizScoreSummary');
         if (res.error) {
@@ -5850,6 +6106,25 @@
         }
         summary.innerHTML = '<p style="color:#fff;font-size:15px;font-weight:700">Scored ' + score + ' / ' + total + ' on the multiple-choice questions.</p>';
         if (window.apexTrack) apexTrack('module_quiz_completed', { module_id: moduleDef.moduleId, score: score, total: total });
+
+        // Sprint 3 -- unified ACS evidence. Only questions with a real
+        // content_acs_mappings row (verified content-by-content against
+        // an actual ACS task, see v126) ever produce evidence; the RPC
+        // itself is a no-op for any unmapped question_id, so this is
+        // safe to call unconditionally for every scored question.
+        var attemptId = res.data && res.data.id;
+        if (attemptId) {
+          Object.keys(results).forEach(function (qid) {
+            apexSupabase.rpc('record_ground_school_evidence', {
+              p_profile_id: member.id,
+              p_content_type: 'module_quiz_question',
+              p_content_id: qid,
+              p_source_id: attemptId + ':' + qid,
+              p_is_correct: results[qid],
+              p_self_confidence: null
+            });
+          });
+        }
       });
     });
   }
@@ -7554,6 +7829,32 @@
     return cats.length ? cats[0] : null;
   }
 
+  // Sprint 3 Part F -- prefer the unified, evidence-based readiness
+  // snapshot's weakest category over the coverage-only weakestCategory()
+  // above wherever a fresh snapshot is already cached (latestReadinessSnapshot,
+  // populated by refreshDashboardReadinessGauge() on dashboard load).
+  // "Weakest" ranks by evidence sufficiency first (none < limited <
+  // developing < strong -- the least-evidenced area is the biggest blind
+  // spot, independent of its raw score) and score as a same-tier
+  // tiebreak. Returns the SAME {cat, label, pct} shape weakestCategory()
+  // does so every existing downstream consumer (matchingReview filter,
+  // weakScenario filter, task label text) works unchanged. Returns null
+  // -- triggering the coverage-based fallback one layer up -- whenever no
+  // snapshot has loaded yet, the RPC failed, or every assessed category
+  // is already "strong" (nothing evidence-based left to flag).
+  var READINESS_SUFFICIENCY_RANK = { none: 0, limited: 1, developing: 2, strong: 3 };
+  function snapshotWeakestCategory() {
+    if (!latestReadinessSnapshot) return null;
+    var cats = latestReadinessSnapshot.category_breakdown || [];
+    if (!cats.length) return null;
+    var weakest = cats.slice().sort(function (a, b) {
+      var rankDiff = (READINESS_SUFFICIENCY_RANK[a.evidence_level] || 0) - (READINESS_SUFFICIENCY_RANK[b.evidence_level] || 0);
+      return rankDiff !== 0 ? rankDiff : (a.score === null ? 0 : a.score) - (b.score === null ? 0 : b.score);
+    })[0];
+    if (weakest.evidence_level === 'strong') return null;
+    return { cat: weakest.category, label: weakest.label, pct: weakest.score === null ? 0 : weakest.score / 100 };
+  }
+
   function truncate(text, max) {
     return text.length > max ? text.slice(0, max - 1).trim() + '…' : text;
   }
@@ -7810,7 +8111,14 @@
     var checkrideDays = checkrideDate ? Math.ceil((new Date(checkrideDate + 'T00:00:00') - new Date()) / 86400000) : null;
     var unlocked = !!(member && member.checkridePrepUnlocked);
     var readinessPct = unlocked ? computeReadiness() : 0;
-    var weakest = unlocked ? weakestCategory() : null;
+    // Sprint 3 Part F -- prefer the unified evidence-based snapshot's
+    // weakest category when one is already cached; never trust a stale
+    // reference otherwise (same precedent as Sprint 1/2's other fallback
+    // chains) -- fall back to the coverage-only signal whenever no
+    // snapshot exists yet, the RPC failed, or nothing evidence-based is
+    // left to flag. computeTrainingPlan() itself stays fully synchronous;
+    // this never triggers a network call of its own.
+    var weakest = unlocked ? (snapshotWeakestCategory() || weakestCategory()) : null;
 
     var tasks = [];
     if (classImminent) {
@@ -8483,6 +8791,7 @@
       renderProgress();
       renderDashboardStats();
       renderReadiness();
+      refreshDashboardReadinessGauge();
       renderStreak();
       renderXpRank();
       renderWeakAreas();
