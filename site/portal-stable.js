@@ -3170,6 +3170,21 @@
     return done / items.length;
   }
 
+  // DEPRECATED as the authoritative readiness number (Sprint 3, Part H --
+  // web/mobile convergence): this is a client-side, coverage-only
+  // formula ("% marked studied," never correctness) with no counterpart
+  // in the real evidence-based engine (task_evidence/
+  // compute_readiness_snapshot()/readiness_snapshots) mobile has used
+  // since Sprint 0. It is kept, unmodified, ONLY as the offline/no-
+  // snapshot-yet fallback: refreshDashboardReadinessGauge() overwrites
+  // the dashboard gauge with the real v2 snapshot score whenever one is
+  // available, and snapshotWeakestCategory() (near weakestCategory(),
+  // below) does the same for computeTrainingPlan()'s weakest-category
+  // pick. Every OTHER caller of computeReadiness() -- Achievements,
+  // Training Report, the Readiness Plan routing card -- is untouched
+  // this sprint (Part G defers Training Report's own migration; the
+  // others are out of scope) and still reads this exact formula. Do not
+  // add new callers here -- point new work at the snapshot instead.
   function computeReadiness() {
     var qPct = DPE_DATA.filter(function (d) { return studied[d.id]; }).length / DPE_DATA.length;
     var sPct = SCENARIOS.filter(function (s) { return studied[s.id]; }).length / SCENARIOS.length;

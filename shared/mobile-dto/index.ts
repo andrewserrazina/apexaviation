@@ -92,6 +92,29 @@ export type ReadinessReasonCode =
   | 'insufficient_content_coverage'
   | (string & {})
 
+// Sprint 3 (algorithm_version 'v2'): a more accurate, two-dimensional
+// evidence_level (none/limited/developing/strong, from a volume x
+// breadth rule) than the top-level MobileReadinessSummary.evidence_level
+// still uses -- see EvidenceLevel's own comment for why the top-level
+// field deliberately keeps its original 3-value vocabulary. `category`
+// is one of Apex's existing dpe_categories ids (the student-facing
+// taxonomy), not an FAA Area of Operation code -- acs_tasks.dpe_category
+// is a display-rollup layer on top of the real ACS task structure, not
+// a claim that a dpe_category *is* an Area of Operation. `score` is
+// null whenever evidence_level is 'none' -- never a fabricated 0%.
+export type ReadinessEvidenceLevel = 'none' | 'limited' | 'developing' | 'strong'
+export interface ReadinessCategoryBreakdown {
+  category: string
+  label: string
+  score: number | null
+  evidence_level: ReadinessEvidenceLevel
+  attempt_volume: number
+  task_breadth_pct: number
+  weak_task_count: number
+  last_demonstrated_at: string | null
+  ai_dpe_reason_code: 'recent_ai_dpe_weak' | null
+}
+
 // A training-readiness INDICATOR, never a pass-probability estimate.
 // Every consumer of this type must render evidence_level and
 // reason_codes alongside overall_score -- never overall_score alone --
@@ -105,6 +128,13 @@ export interface MobileReadinessSummary {
   evidence_level: EvidenceLevel
   weak_tasks: Array<MobileAcsTaskRef & { evidence_score: number }>
   reason_codes: ReadinessReasonCode[]
+  // Sprint 3, additive -- present on every 'v2' snapshot, empty on
+  // historical 'v1' rows. Not yet consumed by ReadinessCard.tsx (the
+  // only mobile screen that renders this type today); the web Readiness
+  // Detail view is the current sole consumer. A future mobile sprint can
+  // wire a per-category breakdown screen against this same field without
+  // any further backend change.
+  category_breakdown?: ReadinessCategoryBreakdown[]
   algorithm_version: string
   computed_at: string
 }
