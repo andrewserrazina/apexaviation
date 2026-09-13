@@ -2233,6 +2233,66 @@
   var myAiDpeSessions = []; // most-recent-first, from get_my_recent_ai_dpe_sessions (v64) -- feeds Training Plan + future AI DPE History view
   var myGroundSchoolRecordings = []; // get_my_ground_school_recordings (v96) -- full-course members get every past class here, $25 buyers only the ones they paid for; server-side entitlement, not filtered client-side
 
+  // Sprint 2 -- My Review Queue. Active, currently-due (next_review_at <=
+  // now), entitlement-filtered rows from portal_review_items. Source data
+  // (portal_practice_attempt_responses/module_quiz_attempts.results/
+  // guided_notes ratings) stays authoritative -- sync_review_queue() just
+  // re-derives this table's scheduling state from it. Entitlement is
+  // re-checked here (render time) even though sync_review_queue() itself
+  // can only read entitled activity, per the "never trust a stale
+  // reference" principle: a module row can outlive the access that
+  // created it (see renderRecentTraining()'s identical fix, Sprint 1).
+  var myReviewQueue = [];
+  function loadReviewQueue() {
+    return apexSupabase.rpc('sync_review_queue', { p_profile_id: member.id }).then(function () {
+      return apexSupabase.from('portal_review_items').select('*')
+        .eq('profile_id', member.id).eq('status', 'active')
+        .lte('next_review_at', new Date().toISOString())
+        .order('priority', { ascending: false });
+    }).then(function (res) {
+      var rows = (res && res.data) || [];
+      myReviewQueue = rows.filter(function (r) {
+        return r.source_type === 'dpe_question'
+          ? !!(member && member.checkridePrepUnlocked)
+          : hasModuleAccess(r.module_id);
+      });
+    }).catch(function (e) { console.error('Failed to sync review queue', e); myReviewQueue = []; });
+  }
+
+  // myReviewQueue is already filtered to active/due/entitled rows at load
+  // time (see loadReviewQueue() above) -- this accessor exists so callers
+  // (computeTrainingPlan(), the dashboard widget) read through one named
+  // function rather than the raw module-scope array.
+  function dueReviewItems() { return myReviewQueue; }
+
+  var reviewQueueViewedFiredThisSession = false;
+  function renderReviewQueueWidget() {
+    var widget = document.getElementById('reviewQueueWidget');
+    if (!widget) return;
+    var due = dueReviewItems();
+    if (!due.length) { widget.hidden = true; return; }
+    widget.hidden = false;
+    var categories = {};
+    due.forEach(function (it) {
+      var key = it.source_type === 'dpe_question' && it.acs_category && CATEGORY_META[it.acs_category]
+        ? CATEGORY_META[it.acs_category].label
+        : (moduleDefFor(it.module_id) ? moduleDefFor(it.module_id).moduleLabel.split(' · ')[1] : 'Ground School');
+      categories[key] = (categories[key] || 0) + 1;
+    });
+    var summary = Object.keys(categories).map(function (k) { return k + ' · ' + categories[k]; }).join('  ·  ');
+    document.getElementById('reviewQueueSummary').textContent = due.length + ' item' + (due.length === 1 ? '' : 's') + ' ready — ' + summary;
+
+    // review_queue_viewed is a product-engagement signal, not a render
+    // counter -- fires at most once per page session, the first time this
+    // (non-empty) widget is actually shown, not on every re-render.
+    if (!reviewQueueViewedFiredThisSession && window.apexTrack) {
+      reviewQueueViewedFiredThisSession = true;
+      apexTrack('review_queue_viewed', { item_count: due.length });
+    }
+  }
+  var reviewQueueStartBtn = document.getElementById('reviewQueueStartBtn');
+  if (reviewQueueStartBtn) reviewQueueStartBtn.addEventListener('click', function () { openReviewSession(dueReviewItems()); });
+
   function loadProgress() {
     return Promise.all([
       apexSupabase.from('portal_question_progress').select('*').eq('profile_id', member.id),
@@ -3519,6 +3579,12 @@
       score: 0,
       answered: 0,
       seenIds: [],
+      // Keyed by question_id, last self-rating wins -- a Rapid Fire session
+      // can wrap around DPE_DATA and re-show a question, and
+      // complete_mobile_practice_session() requires exactly one response
+      // per distinct question_id, so this collapses re-shown questions to a
+      // single response the same way question_ids below is deduped.
+      responses: {},
       endTime: mode === 'rapidfire' ? Date.now() + 5 * 60 * 1000 : null,
       timerInterval: null
     };
@@ -3579,42 +3645,73 @@
   }
 
   function advancePractice(correct) {
+    var q = currentPracticeQuestion();
     practiceState.answered++;
     if (correct) practiceState.score++;
+    practiceState.responses[q.id] = correct ? 'correct' : 'incorrect';
     practiceState.index++;
     if (practiceState.mode === 'checkride' && practiceState.index >= practiceState.queue.length) { endPractice(); return; }
     renderPractice();
   }
 
+  // Rewired onto complete_mobile_practice_session() (Sprint 2) -- the same
+  // RPC mobile-practice already uses, already granted to `authenticated`.
+  // Insert now omits completed_at (the RPC's own final UPDATE sets it,
+  // which is what fires the existing award_xp_on_practice_attempt trigger
+  // -- verified to fire exactly once either way, see Sprint 2 report) and
+  // collects per-question self_rating the RPC needs -- previously computed
+  // in advancePractice() and discarded. bumpStudyDay(0) is intentionally
+  // removed: it always added 0 seconds anyway, and the RPC's own
+  // portal_study_activity upsert (attempt_size*45s via member_local_date())
+  // is strictly more correct. checkrideModeDone/checkAchievements() stay
+  // entirely client-side, run after the RPC returns.
   function endPractice() {
     if (practiceState.timerInterval) clearInterval(practiceState.timerInterval);
     var overlay = document.getElementById('practiceOverlay');
-    var mode = practiceState.mode, score = practiceState.score, total = practiceState.answered;
+    var mode = practiceState.mode;
+    var questionIds = Object.keys(practiceState.responses);
+    var responsesArr = questionIds.map(function (qid) { return { question_id: qid, self_rating: practiceState.responses[qid] }; });
+    var total = questionIds.length;
+    var score = practiceState.score;
 
-    if (member) {
-      apexSupabase.from('portal_practice_attempts').insert({
-        profile_id: member.id, mode: mode, question_ids: practiceState.seenIds,
-        score: score, total: total, completed_at: new Date().toISOString()
-      }).then(function (res) {
-        if (mode === 'checkride') { checkrideModeDone = true; checkAchievements(); }
-        if (!res.error && window.apexTrack) {
-          apexTrack('practice_completed', { profile_id: member.id, practice_mode: mode, score: score, total: total });
-        }
-      });
+    function renderSummary(finalScore, finalTotal) {
+      overlay.innerHTML =
+        '<div class="portal-practice-panel"><div class="portal-practice-summary">' +
+          '<div class="portal-practice-summary__score">' + finalScore + ' / ' + finalTotal + '</div>' +
+          '<p>' + (mode === 'checkride' ? 'Checkride Mode complete.' : 'Rapid Fire session complete.') + ' Nice work.</p>' +
+          '<div class="portal-practice-summary__actions">' +
+            '<button class="btn btn--primary" id="practiceAgainBtn">Play Again</button>' +
+            '<button class="btn btn--ghost" id="practiceExitBtn">Close</button>' +
+          '</div>' +
+        '</div></div>';
+      document.getElementById('practiceAgainBtn').addEventListener('click', function () { startPractice(mode); });
+      document.getElementById('practiceExitBtn').addEventListener('click', closePractice);
     }
-    bumpStudyDay(0);
 
-    overlay.innerHTML =
-      '<div class="portal-practice-panel"><div class="portal-practice-summary">' +
-        '<div class="portal-practice-summary__score">' + score + ' / ' + total + '</div>' +
-        '<p>' + (mode === 'checkride' ? 'Checkride Mode complete.' : 'Rapid Fire session complete.') + ' Nice work.</p>' +
-        '<div class="portal-practice-summary__actions">' +
-          '<button class="btn btn--primary" id="practiceAgainBtn">Play Again</button>' +
-          '<button class="btn btn--ghost" id="practiceExitBtn">Close</button>' +
-        '</div>' +
+    if (member && total > 0) {
+      overlay.innerHTML = '<div class="portal-practice-panel"><div class="portal-practice-summary">' +
+        '<p style="color:rgba(255,255,255,0.6);font-size:14px">Saving your results…</p>' +
       '</div></div>';
-    document.getElementById('practiceAgainBtn').addEventListener('click', function () { startPractice(mode); });
-    document.getElementById('practiceExitBtn').addEventListener('click', closePractice);
+      apexSupabase.from('portal_practice_attempts').insert({
+        profile_id: member.id, mode: mode, question_ids: questionIds, total: total
+      }).select('id').single().then(function (insertRes) {
+        if (insertRes.error || !insertRes.data) { renderSummary(score, total); return; }
+        apexSupabase.rpc('complete_mobile_practice_session', {
+          p_attempt_id: insertRes.data.id, p_responses: responsesArr
+        }).then(function (rpcRes) {
+          var row = rpcRes.data && rpcRes.data[0];
+          var finalScore = row ? row.score : score;
+          var finalTotal = row ? row.total : total;
+          if (mode === 'checkride') { checkrideModeDone = true; checkAchievements(); }
+          if (!rpcRes.error && window.apexTrack) {
+            apexTrack('practice_completed', { profile_id: member.id, practice_mode: mode, score: finalScore, total: finalTotal });
+          }
+          renderSummary(finalScore, finalTotal);
+        });
+      });
+    } else {
+      renderSummary(score, total);
+    }
   }
 
   function closePractice() {
@@ -3625,6 +3722,175 @@
 
   document.getElementById('launchCheckrideMode').addEventListener('click', function () { startPractice('checkride'); });
   document.getElementById('launchRapidFire').addEventListener('click', function () { startPractice('rapidfire'); });
+
+  /* ══════════════════════════════════════════════════════════════
+     MY REVIEW QUEUE — REVIEW SESSION (Sprint 2)
+
+     Retrieval-first, same overlay/self-rate shape as Practice above
+     (reuses #practiceOverlay -- the two are mutually exclusive full-
+     screen flows, never open at once). Reason/scheduling state lives in
+     portal_review_items; the actual question/prompt content is never
+     duplicated there -- it's re-read here from the same sources the rest
+     of the portal already trusts (DPE_DATA for dpe_question,
+     module_companion_content for the three Ground School source types).
+     ══════════════════════════════════════════════════════════════ */
+  var reviewSessionState = null;
+
+  function moduleDefFor(moduleId) {
+    return GUIDED_NOTES_MODULES.filter(function (m) { return m.moduleId === moduleId; })[0] || null;
+  }
+
+  // Never trust a stale reference (same principle as Recent Training,
+  // Sprint 1): re-checks entitlement against CURRENT member state right
+  // now, not whatever was true when the item was synced into
+  // myReviewQueue. Backfills from other eligible due items so a launch
+  // still gets a full session when some candidates fell out, and exits
+  // to a clean caught-up state (never substitutes unrelated content) if
+  // nothing eligible remains at all.
+  function openReviewSession(candidateItems) {
+    function isEntitled(it) {
+      return it.source_type === 'dpe_question'
+        ? !!(member && member.checkridePrepUnlocked)
+        : hasModuleAccess(it.module_id);
+    }
+
+    var eligible = candidateItems.filter(isEntitled);
+    if (eligible.length < 3) {
+      var usedIds = {};
+      eligible.forEach(function (it) { usedIds[it.id] = true; });
+      myReviewQueue.filter(isEntitled).forEach(function (it) {
+        if (!usedIds[it.id] && eligible.length < 7) { eligible.push(it); usedIds[it.id] = true; }
+      });
+    }
+    if (!eligible.length) {
+      toast("You're all caught up on reviews right now.");
+      return;
+    }
+    eligible = eligible.slice(0, 7);
+
+    var moduleIds = eligible.filter(function (it) { return it.source_type !== 'dpe_question'; })
+      .map(function (it) { return it.module_id; })
+      .filter(function (v, i, arr) { return v && arr.indexOf(v) === i; });
+
+    Promise.all(moduleIds.map(function (mid) {
+      var def = moduleDefFor(mid);
+      return def ? fetchModuleCompanionContent(def.courseId, mid) : Promise.resolve(null);
+    })).then(function (companions) {
+      var contentByModule = {};
+      moduleIds.forEach(function (mid, i) { contentByModule[mid] = companions[i]; });
+
+      var items = eligible.map(function (it) { return reviewItemDisplayContent(it, contentByModule); })
+        .filter(function (x) { return !!x; });
+
+      if (!items.length) {
+        toast("You're all caught up on reviews right now.");
+        return;
+      }
+
+      reviewSessionState = { items: items, index: 0, reinforced: 0, needsPass: 0 };
+      if (window.apexTrack) apexTrack('review_session_started', { item_count: items.length });
+      document.getElementById('practiceOverlay').hidden = false;
+      renderReviewSessionItem();
+    });
+  }
+
+  // Resolves one portal_review_items row into displayable retrieval-first
+  // content: {reviewItemId, sourceType, title, prompt, revealHtml}.
+  // Returns null (skipped, not substituted) if the underlying content is
+  // no longer reachable -- e.g. a module's authored content changed --
+  // rather than showing a broken/empty card.
+  function reviewItemDisplayContent(item, contentByModule) {
+    if (item.source_type === 'dpe_question') {
+      var q = DPE_DATA.filter(function (d) { return d.id === item.source_id; })[0];
+      if (!q) return null;
+      var catLabel = item.acs_category && CATEGORY_META[item.acs_category] ? CATEGORY_META[item.acs_category].label : 'DPE Question';
+      return { reviewItemId: item.id, sourceType: item.source_type, title: catLabel, prompt: q.q, revealHtml: '<p>' + q.model + '</p>' };
+    }
+
+    var companion = contentByModule[item.module_id];
+    var moduleDef = moduleDefFor(item.module_id);
+    var moduleLabel = moduleDef ? moduleDef.moduleLabel.split(' · ')[1] : item.module_id;
+    if (!companion || !companion.content) return null;
+
+    if (item.source_type === 'module_quiz_question') {
+      var quizQ = (companion.quiz || []).filter(function (qq) { return qq.id === item.source_id; })[0];
+      if (!quizQ) return null;
+      return { reviewItemId: item.id, sourceType: item.source_type, title: 'Module Quiz — ' + moduleLabel, prompt: quizQ.prompt, revealHtml: '<p>' + quizQ.model_answer + '</p>' };
+    }
+
+    if (item.source_type === 'checkride_corner') {
+      var cc = (companion.content.checkrideCorner || []).filter(function (c) { return c.id === item.source_id; })[0];
+      if (!cc) return null;
+      return { reviewItemId: item.id, sourceType: item.source_type, title: 'Checkride Corner — ' + moduleLabel, prompt: cc.question,
+        revealHtml: '<p>Talk through your answer out loud, then rate yourself below. Want to see your saved notes first? <a href="#ground-school" data-review-view-notes data-module-id="' + item.module_id + '" style="color:var(--gold)">Open ' + moduleLabel + '</a>.</p>' };
+    }
+
+    if (item.source_type === 'scenario' && companion.content.scenario) {
+      return { reviewItemId: item.id, sourceType: item.source_type, title: 'Scenario Workshop — ' + moduleLabel, prompt: companion.content.scenario.narrative,
+        revealHtml: '<p>Walk through how you\'d respond, then rate yourself below. Full worksheet: <a href="#ground-school" data-review-view-notes data-module-id="' + item.module_id + '" style="color:var(--gold)">Open ' + moduleLabel + '</a>.</p>' };
+    }
+
+    return null;
+  }
+
+  function renderReviewSessionItem() {
+    var overlay = document.getElementById('practiceOverlay');
+    var s = reviewSessionState;
+    var item = s.items[s.index];
+    overlay.innerHTML =
+      '<div class="portal-practice-panel">' +
+        '<button class="portal-practice-panel__close" id="reviewCloseBtn" type="button">' +
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
+        '</button>' +
+        '<div class="portal-practice-meta"><span>' + escapeHtmlSafe(item.title) + ' · Review ' + (s.index + 1) + ' / ' + s.items.length + '</span></div>' +
+        '<div class="portal-practice-question">' + item.prompt + '</div>' +
+        '<div class="portal-practice-answer" id="reviewAnswerBox">' + item.revealHtml + '</div>' +
+        '<div class="portal-practice-actions" id="reviewActions">' +
+          '<button class="btn btn--primary" id="reviewRevealBtn">Reveal</button>' +
+        '</div>' +
+      '</div>';
+    document.getElementById('reviewCloseBtn').addEventListener('click', closeReviewSession);
+    document.getElementById('reviewRevealBtn').addEventListener('click', function () {
+      document.getElementById('reviewAnswerBox').classList.add('show');
+      document.getElementById('reviewActions').innerHTML =
+        '<button class="btn btn--correct" id="reviewReinforcedBtn">✓ Reinforced</button>' +
+        '<button class="btn btn--missed" id="reviewNeedsPassBtn">Needs Another Pass</button>';
+      document.getElementById('reviewReinforcedBtn').addEventListener('click', function () { advanceReviewSession('reinforced'); });
+      document.getElementById('reviewNeedsPassBtn').addEventListener('click', function () { advanceReviewSession('needs_another_pass'); });
+    });
+  }
+
+  function advanceReviewSession(outcome) {
+    var s = reviewSessionState;
+    var item = s.items[s.index];
+    if (outcome === 'reinforced') s.reinforced++; else s.needsPass++;
+    apexSupabase.rpc('record_review_outcome', { p_review_item_id: item.reviewItemId, p_outcome: outcome });
+    if (window.apexTrack) apexTrack('review_item_completed', { source_type: item.sourceType, result: outcome });
+    s.index++;
+    if (s.index >= s.items.length) { endReviewSession(); return; }
+    renderReviewSessionItem();
+  }
+
+  function endReviewSession() {
+    var s = reviewSessionState;
+    var overlay = document.getElementById('practiceOverlay');
+    overlay.innerHTML =
+      '<div class="portal-practice-panel"><div class="portal-practice-summary">' +
+        '<div class="portal-practice-summary__score">' + s.reinforced + ' / ' + s.items.length + '</div>' +
+        '<p>Review session complete. ' + s.reinforced + ' reinforced' + (s.needsPass ? ', ' + s.needsPass + ' flagged for another pass soon' : '') + '.</p>' +
+        '<div class="portal-practice-summary__actions">' +
+          '<button class="btn btn--ghost" id="reviewExitBtn">Close</button>' +
+        '</div>' +
+      '</div></div>';
+    if (window.apexTrack) apexTrack('review_session_completed', { reviewed_count: s.items.length, reinforced_count: s.reinforced });
+    document.getElementById('reviewExitBtn').addEventListener('click', closeReviewSession);
+    loadReviewQueue().then(function () { renderMyTraining(); renderReviewQueueWidget(); });
+  }
+
+  function closeReviewSession() {
+    document.getElementById('practiceOverlay').hidden = true;
+    reviewSessionState = null;
+  }
 
   /* ══════════════════════════════════════════════════════════════
      ACHIEVEMENTS
@@ -5077,6 +5343,15 @@
   var guidedNotesSaveTimers = {};
   var moduleCompanionCache = {}; // 'courseId:moduleId' -> {content, quiz} from get-module-companion-content
 
+  // Session-scoped only (not persisted) -- decouples the workbook_response_saved
+  // analytics event from the DB autosave cadence. The DB keeps saving on every
+  // normal 1500ms-debounce-or-manual-save cycle inside wireGuidedNoteTextCards();
+  // this Set caps the analytics event at most once per response per page load,
+  // fired the first time that response becomes meaningfully populated. Keyed by
+  // moduleId:sectionId:promptId so re-editing an already-tracked response never
+  // fires a second event this session.
+  var workbookResponseAnalyticsFired = {};
+
   // Textarea content is round-tripped back into innerHTML on every render,
   // so a literal "</textarea>" in a saved response would otherwise truncate
   // the field early. This one only guards that path -- see loadGuidedNotes.
@@ -5172,8 +5447,17 @@
       '</div>';
 
     var content = companion && companion.content;
+    // Derived, not stored: module_quiz_attempts rows are only ever written
+    // on completed quiz submission (score/total computed client-side before
+    // the insert -- see wireModuleQuizSection()), so a row existing for this
+    // module is a semantically honest completion signal. No status column,
+    // no draft state, no new table.
+    var moduleComplete = !!latestAttempt;
     var headerHtml = '<div class="portal-card" style="margin-bottom:20px">' +
-      '<div class="portal-header__eyebrow" style="margin-bottom:6px">' + moduleDef.courseLabel + ' · ' + moduleDef.moduleLabel.split(' · ')[0] + '</div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">' +
+        '<div class="portal-header__eyebrow" style="margin-bottom:6px">' + moduleDef.courseLabel + ' · ' + moduleDef.moduleLabel.split(' · ')[0] + '</div>' +
+        (moduleComplete ? '<span style="background:rgba(126,231,135,0.14);color:#7ee787;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;white-space:nowrap">Module Complete</span>' : '') +
+      '</div>' +
       '<h3 style="color:#fff;font-size:18px;font-weight:700;margin:0 0 8px">' + moduleDef.moduleLabel.split(' · ')[1] + '</h3>' +
       (content && content.modulePurpose ? '<p style="color:rgba(255,255,255,0.55);font-size:14px;line-height:1.6;margin:0">' + content.modulePurpose + '</p>' : '') +
       '</div>';
@@ -5237,6 +5521,18 @@
     '</div>';
   }
 
+  // Shared 3-value confidence rating control -- Checkride Corner (per
+  // question) and Scenario Workshop (whole scenario) both render this same
+  // markup/value contract so wireModuleCompanionRich() only needs one click
+  // handler for every rating surface in the workbook.
+  function confidenceRatingGroupHtml(ratingId, sectionId, rating) {
+    return '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap" data-rating-group data-rating-id="' + ratingId + '" data-section-id="' + sectionId + '">' +
+      '<button type="button" class="btn ' + (rating === 'confident' ? 'btn--primary' : 'btn--ghost') + '" data-rating-value="confident" style="padding:7px 14px;font-size:12.5px">Confident</button>' +
+      '<button type="button" class="btn ' + (rating === 'needs_review' ? 'btn--primary' : 'btn--ghost') + '" data-rating-value="needs_review" style="padding:7px 14px;font-size:12.5px">Needs Review</button>' +
+      '<button type="button" class="btn ' + (rating === 'not_yet' ? 'btn--primary' : 'btn--ghost') + '" data-rating-value="not_yet" style="padding:7px 14px;font-size:12.5px">Not Yet</button>' +
+    '</div>';
+  }
+
   function renderModuleCompanionRich(content, existingByPrompt, moduleDef) {
     var html = '';
 
@@ -5283,9 +5579,14 @@
     }
 
     if (content.scenario) {
+      var scenarioRatingId = 'scenario-workshop-rating';
+      var scenarioRatingRow = existingByPrompt[scenarioRatingId];
+      var scenarioRating = scenarioRatingRow ? scenarioRatingRow.response_text : '';
       html += '<div class="portal-card" style="margin-bottom:20px">' +
         '<div class="portal-header__eyebrow" style="margin-bottom:10px">Scenario Workshop Worksheet</div>' +
         '<p style="color:rgba(255,255,255,0.6);font-size:14px;line-height:1.7;font-style:italic;margin:0 0 16px">' + content.scenario.narrative + '</p>' +
+        '<p style="color:rgba(255,255,255,0.5);font-size:13px;margin:0 0 10px">How confident are you handling this scenario overall?</p>' +
+        confidenceRatingGroupHtml(scenarioRatingId, 'scenario-workshop', scenarioRating) +
       '</div>';
       html += content.scenario.prompts.map(function (sp) {
         return textFieldCard(sp.id, 'scenario-workshop', null, sp.prompt, existingByPrompt, { rows: 3 });
@@ -5309,10 +5610,7 @@
             '<span data-guided-note-status style="font-size:12.5px;color:rgba(255,255,255,0.4)">' + (answerRow && answerRow.response_text ? 'Saved ' + timeAgo(new Date(answerRow.updated_at).getTime()) : 'Not started') + '</span>' +
             '<button class="btn btn--ghost" data-guided-note-save style="padding:8px 16px;font-size:13px">Save</button>' +
           '</div>' +
-          '<div style="display:flex;gap:8px;margin-top:12px" data-rating-group data-rating-id="' + ratingId + '">' +
-            '<button type="button" class="btn ' + (rating === 'confident' ? 'btn--primary' : 'btn--ghost') + '" data-rating-value="confident" style="padding:7px 14px;font-size:12.5px">Confident</button>' +
-            '<button type="button" class="btn ' + (rating === 'needs_review' ? 'btn--primary' : 'btn--ghost') + '" data-rating-value="needs_review" style="padding:7px 14px;font-size:12.5px">Needs Review</button>' +
-          '</div>' +
+          confidenceRatingGroupHtml(ratingId, 'checkride-corner', rating) +
         '</div>';
       }).join('');
     }
@@ -5368,6 +5666,7 @@
 
     root.querySelectorAll('[data-rating-group]').forEach(function (group) {
       var ratingId = group.dataset.ratingId;
+      var ratingSectionId = group.dataset.sectionId || 'checkride-corner';
       group.querySelectorAll('[data-rating-value]').forEach(function (btn) {
         btn.addEventListener('click', function () {
           var value = btn.dataset.ratingValue;
@@ -5379,11 +5678,14 @@
             profile_id: member.id,
             course_id: moduleDef.courseId,
             module_id: moduleDef.moduleId,
-            section_id: 'checkride-corner',
+            section_id: ratingSectionId,
             prompt_id: ratingId,
             response_text: value,
             updated_at: new Date().toISOString()
           }, { onConflict: 'profile_id,course_id,module_id,section_id,prompt_id' });
+          // One click is already one intentional action -- no debounce, no
+          // volume concern, unlike the free-text autosave events above.
+          if (window.apexTrack) apexTrack('confidence_rating_set', { module_id: moduleDef.moduleId, source_type: ratingSectionId, rating: value });
         });
       });
     });
@@ -5424,6 +5726,16 @@
           }
           status.style.color = 'rgba(255,255,255,0.4)';
           status.textContent = 'Saved just now';
+
+          // Analytics is decoupled from the DB's autosave cadence -- the DB
+          // above just saved (as it does on every debounce/manual-save
+          // cycle), but the event below fires at most once per response per
+          // page load, the first time it becomes meaningfully populated.
+          // No response text is ever included, only metadata.
+          if (window.apexTrack && input.value.trim() && !workbookResponseAnalyticsFired[timerKey]) {
+            workbookResponseAnalyticsFired[timerKey] = true;
+            apexTrack('workbook_response_saved', { module_id: moduleDef.moduleId, section_type: sectionId });
+          }
         });
       }
 
@@ -5490,6 +5802,7 @@
 
     submitBtn.addEventListener('click', function () {
       var answers = {};
+      var results = {};
       var score = 0;
 
       root.querySelectorAll('[data-quiz-question]').forEach(function (card) {
@@ -5504,6 +5817,7 @@
           var chosen = checked ? checked.value : null;
           answers[qid] = chosen;
           isCorrect = chosen === q.correct_choice;
+          results[qid] = isCorrect;
           if (isCorrect) score++;
         } else {
           var freetext = card.querySelector('[data-quiz-freetext]');
@@ -5524,6 +5838,7 @@
         course_id: moduleDef.courseId,
         module_id: moduleDef.moduleId,
         answers: answers,
+        results: results,
         score: score,
         total: total
       }).then(function (res) {
@@ -7553,12 +7868,34 @@
       };
     }
 
+    // Sprint 2 -- Review Queue evidence, when it names the SAME weakness
+    // computeTrainingPlan() would otherwise recommend generically,
+    // supersedes (replaces, never appends alongside) the generic
+    // weakest-category task: "3 items overdue in Aircraft Systems" is
+    // strictly more actionable than "review your weakest category," and
+    // showing both would just be two representations of one problem.
+    // dueReviewItems()/reviewQueueLabel() are defined near
+    // renderReviewQueueWidget() below. Only dpe_question items carry an
+    // acs_category (Ground School module items don't map onto the
+    // ACS_TRACKER taxonomy), so only those can supersede this block.
+    var due = dueReviewItems();
+    var matchingReview = weakest ? due.filter(function (it) { return it.source_type === 'dpe_question' && it.acs_category === weakest.cat; }) : [];
+
     if (weakest) {
-      tasks.push({
-        label: 'Review ' + weakest.label + ' (' + Math.round(weakest.pct * 100) + '% complete)',
-        done: false,
-        go: function () { goToCategory(weakest.cat); }
-      });
+      if (matchingReview.length) {
+        tasks.push({
+          type: 'review_queue',
+          label: 'Review ' + matchingReview.length + ' overdue ' + weakest.label + ' item' + (matchingReview.length === 1 ? '' : 's'),
+          done: false,
+          go: function () { openReviewSession(matchingReview); }
+        });
+      } else {
+        tasks.push({
+          label: 'Review ' + weakest.label + ' (' + Math.round(weakest.pct * 100) + '% complete)',
+          done: false,
+          go: function () { goToCategory(weakest.cat); }
+        });
+      }
       var weakScenario = SCENARIOS.filter(function (s) { return s.category === weakest.cat && !studied[s.id]; })[0];
       if (weakScenario) {
         tasks.push({ label: 'Complete the ' + truncate(weakScenario.title, 60) + ' scenario', done: false, go: function () { showSection('scenarios'); } });
@@ -7567,6 +7904,26 @@
       var allScenariosDone = SCENARIOS.length > 0 && SCENARIOS.every(function (s) { return studied[s.id]; });
       tasks.push({ label: 'All ACS areas complete', done: true, go: function () { showSection('dpe-library'); } });
       tasks.push({ label: allScenariosDone ? 'Scenario Training complete' : 'Complete Scenario Training', done: allScenariosDone, go: function () { showSection('scenarios'); } });
+    }
+
+    // Other due Review Queue work NOT already represented by the block
+    // above -- e.g. a Ground School module's overdue Checkride Corner/
+    // Scenario Workshop items when the member's weakest ACS category is
+    // an unrelated DPE-question area. Never fights QOTD (still ranked
+    // ahead, next); only surfaces when there's real, specific, non-
+    // duplicate work to name.
+    if (tasks.length < 4) {
+      var nonOverlapping = due.filter(function (it) {
+        return matchingReview.indexOf(it) === -1;
+      });
+      if (nonOverlapping.length) {
+        tasks.push({
+          type: 'review_queue',
+          label: 'Review ' + nonOverlapping.length + ' other item' + (nonOverlapping.length === 1 ? '' : 's') + ' due',
+          done: false,
+          go: function () { openReviewSession(nonOverlapping); }
+        });
+      }
     }
 
     // AI DPE Practice if not run in the last 7 days, else a lighter
@@ -8139,6 +8496,7 @@
       // render too. Reuses the same loader/data the Ground School section
       // itself renders from rather than a second parallel fetch.
       loadGroundSchool().then(renderMyTraining);
+      loadReviewQueue().then(function () { renderMyTraining(); renderReviewQueueWidget(); });
       renderWeeklyProgress();
       renderChallenge();
       renderAiDpeHistory();

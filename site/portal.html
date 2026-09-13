@@ -341,6 +341,17 @@
             <div id="recentTrainingList"></div>
           </div>
 
+          <!-- Sprint 2 -- My Review Queue: a compact, strictly secondary
+               surface (below Today at Apex's primary CTA and Recent
+               Training, never a competing banner above them). Hidden
+               entirely when nothing is due -- renderReviewQueueWidget(),
+               portal-stable.js. -->
+          <div id="reviewQueueWidget" hidden style="margin-top:20px;padding-top:18px;border-top:1px solid rgba(255,255,255,0.08)">
+            <p class="portal-header__eyebrow" style="margin-bottom:6px">My Review Queue</p>
+            <p id="reviewQueueSummary" style="color:rgba(255,255,255,0.6);font-size:13.5px;margin:0 0 12px"></p>
+            <button type="button" class="btn btn--ghost" id="reviewQueueStartBtn" style="padding:9px 18px;font-size:13px">Start Review</button>
+          </div>
+
           <div class="portal-my-training__grid" style="margin-top:22px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.08)">
             <div class="portal-my-training__panel portal-my-training__panel--primary" id="trainingPlanCheckride">
               <p class="portal-my-training__label">Checkride</p>

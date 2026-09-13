@@ -159,7 +159,18 @@
     // active on >=2 distinct days in a rolling 7-day window) --
     // documented in the Sprint 1 report, not a new admin dashboard.
     'qotd_completed', 'practice_started', 'practice_completed',
-    'resume_training_clicked', 'training_plan_action_clicked'
+    'resume_training_clicked', 'training_plan_action_clicked',
+
+    // Sprint 2 — Digital Workbook + My Review Queue. workbook_response_saved
+    // and confidence_rating_set fire from wireModuleCompanionRich()'s shared
+    // rating/autosave wiring; workbook_response_saved is session-deduped
+    // (see workbookResponseAnalyticsFired in portal-stable.js) so it fires
+    // at most once per response per page load regardless of autosave
+    // frequency. review_queue_viewed/review_session_started/
+    // review_item_completed/review_session_completed fire from the My
+    // Review Queue surface and review session flow.
+    'workbook_response_saved', 'confidence_rating_set',
+    'review_queue_viewed', 'review_session_started', 'review_item_completed', 'review_session_completed'
   ];
 
   // readiness-assessment.html/checkride-prep.html/apex-advantage.html etc.

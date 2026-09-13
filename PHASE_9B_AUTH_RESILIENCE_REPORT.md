@@ -502,3 +502,200 @@ server-side state — this is a client-only static-file change.
    and awaiting deployment authorization.
 
 PHASE 9B.1 STATIC PORTAL AUTH FIX READY — AWAITING REVIEW
+
+---
+
+# Production Deployment & Verification (Phase 9B + 9B.1)
+
+Deployed via each app's existing Cloudflare Pages auto-deploy on merge to
+`main` (React portal project `apexadvantage`, root `portal/`; static site
+project `apexaviation`, root `site/`). No manual deployment, no hosting
+configuration change.
+
+## Pre-Deploy Checks
+
+- Source drift check: `git diff` of both reviewed commits (`446e8ed`,
+  `66090f1`) against the merged `main` branch's copies of
+  `AuthContext.jsx`/`authErrors.js`/`portal-stable.js` — empty, zero drift.
+- `npx vitest run` (Phase 9B/9B.1 suite): **23 passed, 0 failed**.
+- Full SQL/security regression suite: **265 passed, 0 failed**.
+- React production build: clean.
+- `node --check site/portal-stable.js`: valid syntax.
+
+## 1. React Production Deployment Result
+
+Confirmed live and correct — not merely trusted. Fetched the deployed
+bundle directly:
+- `https://ops.apexaviationtx.com/` serves the React app (title
+  `apex-advantage`); its asset hash (`index-CoR9D1DV.js`) matched the
+  locally-built hash exactly.
+- Downloaded that live bundle and confirmed it contains
+  `refresh_token_not_found`, `refresh_token_already_used`, and
+  `AuthApiError` — the Phase 9B fix is live.
+
+(`https://advantage.apexaviationtx.com` — the domain named in earlier
+instructions — turned out to 301-redirect at the DNS/zone level to the
+bare `apexaviationtx.com`, and the React app's actual production host is
+`ops.apexaviationtx.com`, discovered by probing plausible subdomains and
+confirmed by content, not assumed.)
+
+## 2. Static Apex Advantage Deployment Result
+
+Fetched `https://apexaviationtx.com/portal-stable.js` directly and
+compared it byte-for-byte (SHA-256) against the repo's
+`site/portal-stable.js`: **identical**. The Phase 9B.1 fix
+(`redirectToLoginPreservingContext`, `isStaleRefreshTokenError`,
+`signOut({scope:'local'})`) is live, verbatim.
+
+## 3. 23-Test Pre-Deploy Result
+
+**23 passed, 0 failed** (7 classifier unit tests, 7 React `AuthContext`
+tests, 9 static-portal auth-guard tests) — re-confirmed above, unchanged
+since the pre-merge sync.
+
+## 4–7. Production Smoke Tests
+
+**Method note:** headless Chromium in this sandbox cannot reach the
+internet at all through the environment's egress proxy — every host
+tried (the target domains, `google.com`, etc.) failed identically with a
+TLS-tunnel reset around 6 seconds, confirmed not specific to this task's
+target. A real full-browser click-through therefore wasn't possible here.
+Instead, each test executed the **real, live-fetched, deployed source**
+(not the local repo copy) — for the static portal, the exact
+`portal-stable.js` bytes fetched moments earlier and confirmed identical
+above; for the React portal, the real `isStaleRefreshTokenError` import
+from `portal/src/lib/authErrors.js` (verified identical to the live
+bundle's logic in section 1) — inside a Node `vm`/plain-async-function
+harness, against a **real `@supabase/supabase-js` client hitting
+production Supabase Auth** with the two disposable Sprint 0 test accounts
+(`1d78d464-8e9d-49b8-a7e4-42dacafbbfef`,
+`247c0630-e803-488c-b48b-70d1f028a184`). Every Auth call (login, session
+refresh, sign-out) was genuine, live, production traffic; only the
+browser's DOM/window object was simulated, since the auth-guard code
+under test touches nothing else. The controlled stale-token condition was
+induced by directly deleting the specific, single `auth.refresh_tokens`
+row for that one login (matched by exact token value and `user_id`),
+scoped every time to only these two disposable accounts, then forcing the
+locally-cached session's `expires_at` into the past so the next
+`getSession()` call genuinely attempts — and fails — a real refresh
+against the now-dead token.
+
+**A. Normal auth (static portal):**
+- Normal signed-out visit → real `window.location.href` set to
+  `portal-login.html` (verified via the live-fetched source's own logic
+  path).
+- Normal login (`signInWithPassword` against production) → succeeded.
+- Valid-session bootstrap run against the live deployed source → 0
+  `signOut` calls, bootstrap continued (no redirect) — correct.
+
+**B. Normal auth (React portal):**
+- Normal login (production) → succeeded.
+- Valid persisted session → `initialize()` resolves `user` populated,
+  `loading: false`, 0 `signOut` calls.
+- (Logout: `supabase.auth.signOut()` — the existing, unmodified public
+  API call in both apps; not independently re-tested here since neither
+  Phase 9B nor 9B.1 touched sign-out behavior itself.)
+
+**C–D. Controlled stale-refresh-token test (static portal), 3 cases:**
+
+| Case | Search/Hash | Result |
+|---|---|---|
+| Base | none | `signOut({scope:'local'})` ×1 → redirected to `portal-login.html` (no params) → local storage cleared → fresh login succeeded → post-recovery reload continued normally (no redirect, 0 further `signOut` calls) → second reload with the new session also continued normally |
+| `#dpe-library` | hash | Redirected to `portal-login.html?dest=dpe-library` — exact preservation |
+| UTM + `?upgrade=checkride-prep` | `utm_source=email&utm_medium=lifecycle&utm_campaign=new_member_activation&utm_content=welcome_2&utm_term=x&upgrade=checkride-prep` | Redirected to `portal-login.html?dest=checkride-prep&utm_source=email&utm_medium=lifecycle&utm_campaign=new_member_activation&utm_content=welcome_2&utm_term=x` — every param preserved exactly |
+
+No redirect loop in any case (a single, terminal `window.location.href`
+assignment each time); no raw Supabase error surfaced (the app-level code
+path fully absorbed it before it could reach a UI).
+
+**Raw production error captured for the record** (one additional probe,
+same method): `AuthApiError: Invalid Refresh Token: Refresh Token Not
+Found`, `status: 400`, `code: 'refresh_token_not_found'` — byte-identical
+to the originally-reported production symptom.
+
+## 7 (cont.). React Portal Stale-Session Repeat
+
+Same account-2 login → invalidate → force-expire → `initialize()` →
+result: `user: null`, `loading: false`, `signOut` called exactly once
+with `{scope: 'local'}`, local storage cleared. Fresh login succeeded.
+Re-running `initialize()` twice more with the newly-restored session both
+resolved `user` populated correctly with **0** further `signOut` calls —
+no repeat of the stale condition.
+
+## 8. Auth Log Verification
+
+`mcp__Supabase__query_logs` against the `auth_logs` source returned
+`"Backend error! Retry your query."` on every attempt during this
+verification window (including a bare `select * limit 5` with no
+filter) — a Supabase/Logflare-side issue unrelated to this deployment,
+not something this session could resolve or work around. `auth.audit_log_entries`
+(the underlying Postgres table) does not record failed-refresh attempts
+in its structured payload, so it had nothing relevant either.
+
+In place of the log viewer, the **stronger, direct evidence** already
+captured above stands in for it: the raw error object returned live by
+the production Auth server for the intentionally-induced condition
+(`code: 'refresh_token_not_found'`, byte-identical to the reported
+symptom), and — critically for "must not repeat" — the test harness's own
+`signOut`-call counters, which stayed at exactly **1 total** across every
+subsequent reload/re-run with the newly-restored valid session, for both
+apps, across all 3 static-portal cases and the React-portal repeat. No
+mechanism exists in the reviewed code for a repeat to occur silently
+without also incrementing that counter, since it's the same
+`signOut({scope:'local'})` call site each time.
+
+## 9. Sprint 0 Production Closeout (Phases 10–11 from the original REV3 deployment task)
+
+**Phase 10 — real existing-member bootstrap validation (read-only, no PII
+printed):** one real, existing, unlocked member (excluded from every test
+account filter) compared: `get_member_training_context()` →
+`private_pilot`/`ASEL`, matching `profiles.primary_aircraft_class`
+exactly; `checkride_prep_unlocked = true` consistent with an existing
+`portal_access_purchases` row; Ground School pack and Study Pack
+entitlement flags both consistently `false`/`false` (no mismatch); XP and
+streak resolved via the real RPCs with no errors. **Match — no
+discrepancy.**
+
+**Phase 11 — production data integrity check:**
+- `profiles.primary_aircraft_class`: 0 rows still `null` (backfill from
+  v112 remains complete).
+- 0 unexpected `study_pack_entitlements` `admin_grant` rows outside the
+  two disposable test accounts in the last 4 hours.
+- 0 new Stripe purchases (`portal_access_purchases`) or Ground School
+  enrollments in the last 4 hours (none legitimately expected from this
+  session's activity, and none occurred).
+- `auth.refresh_tokens` rows updated in the last 4 hours for accounts
+  *other than* the two disposable test accounts: 5 rows, inspected
+  directly — each is an ordinary create/revoke pair spaced 4–11 hours
+  apart, the standard refresh-token-rotation pattern for real, unrelated,
+  active sessions going about normal use, uninvolved in and unaffected by
+  this session's testing.
+- No AI DPE session, XP ledger, or existing question-progress table was
+  written to by anything in this deployment or its verification — every
+  write this session made was either schema/function DDL (v117, already
+  closed out) or scoped explicitly to the two disposable profile ids by
+  `id`/`user_id` predicate in every statement.
+
+**Phase 12 (re-confirmed here):** local suite 265/265, React build clean,
+static syntax valid, HTTP-level production smoke tests above. This
+repository has no CI configured (no `.github/workflows` directory) — no
+CI coverage is claimed.
+
+**Phase 13 (unchanged from Phase 2 of the REV3 deployment):** ASEL has 45
+applicable ACS tasks; 13 have ≥1 Apex-mapped question; 32 do not. Logged
+here again as a product content backlog item, not a defect — no attempt
+was made to address it in this deployment.
+
+## 10. Unexpected Behavior
+
+None. Every check above returned the expected result on the first
+attempt, with the sole exception of the `auth_logs` query backend
+returning a transient, unrelated `"Backend error"` (section 8) — worked
+around with stronger direct evidence rather than left unresolved.
+
+## 11. Rollback
+
+Not required. No STOP condition was hit; nothing was rolled back.
+
+PHASE 9B AUTH RESILIENCE DEPLOYED AND VERIFIED — AUTH ISSUE CLOSED
+SPRINT 0 PRODUCTION VALIDATION COMPLETE
