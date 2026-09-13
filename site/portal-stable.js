@@ -1312,6 +1312,13 @@
       addBubble('dpe', data.message);
       if (data.phase === 'debrief' || data.status === 'completed') {
         renderDebrief(data.debrief || {});
+        // Sprint 4 Part 6 -- dpe-chat's own 'end'/'message' handler
+        // awaits the ai_dpe_sessions update (status/debrief/ended_at)
+        // and checks its error before ever returning this response, so
+        // the session row is already committed server-side by the time
+        // this callback runs -- safe to trigger here, not merely because
+        // renderDebrief() ran.
+        triggerReadinessRefresh();
       }
     }
 
@@ -3241,6 +3248,31 @@
     }).catch(function () { return null; });
   }
 
+  // Sprint 4 Part 6 -- factored out of the original refreshDashboardReadinessGauge()
+  // so both the dashboard's own initial-load fetch and every triggered
+  // mid-session refresh (Practice/module quiz/Review Session/AI DPE
+  // completion) share one cache+DOM-update code path rather than two
+  // slightly-different copies of it.
+  function applyReadinessSnapshot(snapshot) {
+    if (!snapshot) return;
+    latestReadinessSnapshot = snapshot;
+    var score = Math.round(snapshot.overall_score);
+    var pctEl = document.getElementById('readinessPct');
+    if (pctEl) pctEl.textContent = score;
+    var ringEl = document.getElementById('readinessRing');
+    if (ringEl) {
+      var circumference = 352;
+      ringEl.style.strokeDashoffset = circumference - (circumference * score / 100);
+    }
+    var caption = document.getElementById('readinessCaption');
+    if (caption) caption.textContent = 'Based on the training evidence Apex Advantage can currently evaluate -- oral-exam knowledge, Ground School, and review performance.';
+    var evidenceEl = document.getElementById('readinessEvidenceBadge');
+    if (evidenceEl) {
+      evidenceEl.hidden = false;
+      evidenceEl.textContent = GAUGE_EVIDENCE_LABELS[snapshot.evidence_level] || '';
+    }
+  }
+
   // Called once per dashboard load (initPortalData()) for unlocked
   // members only -- swaps the gauge's NUMBER onto the real evidence-
   // based v2 score without changing the gauge's visual design. If no
@@ -3253,21 +3285,53 @@
     if (!member || !member.checkridePrepUnlocked) return;
     fetchReadinessSnapshot('latest').then(function (snapshot) {
       return snapshot ? snapshot : fetchReadinessSnapshot('refresh');
-    }).then(function (snapshot) {
-      if (!snapshot) return;
-      latestReadinessSnapshot = snapshot;
-      var score = Math.round(snapshot.overall_score);
-      document.getElementById('readinessPct').textContent = score;
-      var circumference = 352;
-      document.getElementById('readinessRing').style.strokeDashoffset = circumference - (circumference * score / 100);
-      var caption = document.getElementById('readinessCaption');
-      if (caption) caption.textContent = 'Based on the training evidence Apex Advantage can currently evaluate -- oral-exam knowledge, Ground School, and review performance.';
-      var evidenceEl = document.getElementById('readinessEvidenceBadge');
-      if (evidenceEl) {
-        evidenceEl.hidden = false;
-        evidenceEl.textContent = GAUGE_EVIDENCE_LABELS[snapshot.evidence_level] || '';
+    }).then(applyReadinessSnapshot);
+  }
+
+  // Sprint 4 Part 6 -- a coalescing refresh coordinator, not a lossy
+  // throttle. Meaningful new evidence (Practice, module quiz, Review
+  // Session, AI DPE completion) should update the dashboard's readiness
+  // number without spamming compute_readiness_snapshot() on every rapid
+  // action. A naive throttle can silently DROP the final state change
+  // (e.g. a module quiz finishes, then a review session finishes 6s
+  // later, inside the cooldown window -- a plain throttle would suppress
+  // the second trigger and never refresh again). Instead: at most one
+  // request in flight at a time, plus a `dirty` flag that guarantees
+  // exactly one trailing refresh runs afterward whenever a trigger
+  // arrived while busy (in flight OR in the cooldown window) -- a burst
+  // of rapid completions always collapses to "initial refresh + at most
+  // one trailing refresh with the latest state," never one-per-action
+  // and never zero.
+  var readinessRefreshState = { inFlight: false, dirty: false, lastCompletedAt: 0, cooldownTimer: null };
+  var READINESS_REFRESH_COOLDOWN_MS = 10000;
+
+  function runReadinessRefresh() {
+    readinessRefreshState.inFlight = true;
+    fetchReadinessSnapshot('refresh').then(applyReadinessSnapshot).finally(function () {
+      readinessRefreshState.inFlight = false;
+      readinessRefreshState.lastCompletedAt = Date.now();
+      if (readinessRefreshState.dirty) {
+        readinessRefreshState.dirty = false;
+        triggerReadinessRefresh();
       }
     });
+  }
+
+  function triggerReadinessRefresh() {
+    if (!member || !member.checkridePrepUnlocked) return;
+    if (readinessRefreshState.inFlight) { readinessRefreshState.dirty = true; return; }
+    var sinceLast = Date.now() - readinessRefreshState.lastCompletedAt;
+    if (sinceLast < READINESS_REFRESH_COOLDOWN_MS) {
+      readinessRefreshState.dirty = true;
+      if (!readinessRefreshState.cooldownTimer) {
+        readinessRefreshState.cooldownTimer = setTimeout(function () {
+          readinessRefreshState.cooldownTimer = null;
+          if (readinessRefreshState.dirty) { readinessRefreshState.dirty = false; runReadinessRefresh(); }
+        }, READINESS_REFRESH_COOLDOWN_MS - sinceLast);
+      }
+      return;
+    }
+    runReadinessRefresh();
   }
 
   // ── Actionable Readiness detail view (Part D) ──────────────────
@@ -3943,6 +4007,10 @@
           if (!rpcRes.error && window.apexTrack) {
             apexTrack('practice_completed', { profile_id: member.id, practice_mode: mode, score: finalScore, total: finalTotal });
           }
+          // Sprint 4 Part 6 -- only after complete_mobile_practice_session()
+          // (the evidence writer) has actually succeeded, never while it's
+          // still in flight or on a failed attempt.
+          if (!rpcRes.error) triggerReadinessRefresh();
           renderSummary(finalScore, finalTotal);
         });
       });
@@ -4070,10 +4138,41 @@
     return null;
   }
 
+  // Sprint 4 Part 5 -- a proper canonical UUID v4, not the non-UUID-
+  // shaped fallback analytics-events.js uses for its own anon id (that
+  // fallback wouldn't cast to the RPC's `uuid` parameter type). Prefers
+  // crypto.randomUUID(); falls back to crypto.getRandomValues(), then
+  // Math.random() only as a last resort, but always emits valid
+  // RFC 4122 v4 formatting either way.
+  function generateUuidV4() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    var bytes = new Array(16);
+    if (window.crypto && crypto.getRandomValues) {
+      var arr = new Uint8Array(16);
+      crypto.getRandomValues(arr);
+      for (var i = 0; i < 16; i++) bytes[i] = arr[i];
+    } else {
+      for (var i = 0; i < 16; i++) bytes[i] = Math.floor(Math.random() * 256);
+    }
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    var hex = bytes.map(function (b) { return ('0' + b.toString(16)).slice(-2); });
+    return hex.slice(0, 4).join('') + '-' + hex.slice(4, 6).join('') + '-' + hex.slice(6, 8).join('') + '-' + hex.slice(8, 10).join('') + '-' + hex.slice(10, 16).join('');
+  }
+
   function renderReviewSessionItem() {
     var overlay = document.getElementById('practiceOverlay');
     var s = reviewSessionState;
     var item = s.items[s.index];
+    // The idempotency key belongs to this logical review attempt, not to
+    // the DOM -- generated once, the first time this index is rendered,
+    // and cached on the item object itself so any later re-render of the
+    // SAME index (e.g. a retry after an ambiguous network failure) reuses
+    // it rather than minting a new one. A genuinely new scheduled review
+    // of the same source question later gets a fresh item object from
+    // openReviewSession()'s own fresh query, so it naturally gets a fresh
+    // key with no special-casing needed here.
+    if (!item.submissionKey) item.submissionKey = generateUuidV4();
     overlay.innerHTML =
       '<div class="portal-practice-panel">' +
         '<button class="portal-practice-panel__close" id="reviewCloseBtn" type="button">' +
@@ -4089,23 +4188,65 @@
     document.getElementById('reviewCloseBtn').addEventListener('click', closeReviewSession);
     document.getElementById('reviewRevealBtn').addEventListener('click', function () {
       document.getElementById('reviewAnswerBox').classList.add('show');
-      document.getElementById('reviewActions').innerHTML =
-        '<button class="btn btn--correct" id="reviewReinforcedBtn">✓ Reinforced</button>' +
-        '<button class="btn btn--missed" id="reviewNeedsPassBtn">Needs Another Pass</button>';
-      document.getElementById('reviewReinforcedBtn').addEventListener('click', function () { advanceReviewSession('reinforced'); });
-      document.getElementById('reviewNeedsPassBtn').addEventListener('click', function () { advanceReviewSession('needs_another_pass'); });
+      renderReviewActions();
     });
+  }
+
+  function renderReviewActions() {
+    document.getElementById('reviewActions').innerHTML =
+      '<button class="btn btn--correct" id="reviewReinforcedBtn">✓ Reinforced</button>' +
+      '<button class="btn btn--missed" id="reviewNeedsPassBtn">Needs Another Pass</button>';
+    document.getElementById('reviewReinforcedBtn').addEventListener('click', function () { advanceReviewSession('reinforced'); });
+    document.getElementById('reviewNeedsPassBtn').addEventListener('click', function () { advanceReviewSession('needs_another_pass'); });
+  }
+
+  // Network-ambiguous failure: the request may or may not have actually
+  // committed server-side before the response was lost. Never advance,
+  // never regenerate item.submissionKey -- a Retry reuses the exact same
+  // logical submission, so if the first attempt DID commit, the server's
+  // idempotency ledger replays that stored result with zero side effects
+  // repeated; if it didn't commit, Retry performs the real write once.
+  function showReviewRetryState(outcome) {
+    var actionsEl = document.getElementById('reviewActions');
+    if (!actionsEl) return;
+    actionsEl.innerHTML =
+      '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin:0 0 10px;flex-basis:100%">Connection issue -- your answer wasn\'t confirmed. Tap to try again.</p>' +
+      '<button class="btn btn--primary" id="reviewRetryBtn">Retry</button>';
+    document.getElementById('reviewRetryBtn').addEventListener('click', function () { advanceReviewSession(outcome); });
   }
 
   function advanceReviewSession(outcome) {
     var s = reviewSessionState;
     var item = s.items[s.index];
-    if (outcome === 'reinforced') s.reinforced++; else s.needsPass++;
-    apexSupabase.rpc('record_review_outcome', { p_review_item_id: item.reviewItemId, p_outcome: outcome });
-    if (window.apexTrack) apexTrack('review_item_completed', { source_type: item.sourceType, result: outcome });
-    s.index++;
-    if (s.index >= s.items.length) { endReviewSession(); return; }
-    renderReviewSessionItem();
+    var reinforcedBtn = document.getElementById('reviewReinforcedBtn');
+    var needsPassBtn = document.getElementById('reviewNeedsPassBtn');
+    var retryBtn = document.getElementById('reviewRetryBtn');
+    if (reinforcedBtn) reinforcedBtn.disabled = true;
+    if (needsPassBtn) needsPassBtn.disabled = true;
+    if (retryBtn) retryBtn.disabled = true;
+
+    apexSupabase.rpc('record_review_outcome', {
+      p_review_item_id: item.reviewItemId, p_outcome: outcome, p_idempotency_key: item.submissionKey
+    }).then(function (res) {
+      if (res.error || !res.data) { showReviewRetryState(outcome); return; }
+      // A single flag gates every side effect so a late-arriving
+      // duplicate response (a genuinely concurrent retry, or the
+      // original request finally resolving after a Retry already
+      // succeeded) can never double-apply the session tally, analytics,
+      // or the readiness refresh trigger -- checked in addition to the
+      // server's own was_replay flag, which only tells us the SERVER
+      // side-effects were deduped, not whether THIS client has already
+      // reacted to them once.
+      if (!item.processed) {
+        item.processed = true;
+        if (outcome === 'reinforced') s.reinforced++; else s.needsPass++;
+        if (window.apexTrack) apexTrack('review_item_completed', { source_type: item.sourceType, result: outcome });
+        triggerReadinessRefresh();
+      }
+      s.index++;
+      if (s.index >= s.items.length) { endReviewSession(); return; }
+      renderReviewSessionItem();
+    }).catch(function () { showReviewRetryState(outcome); });
   }
 
   function endReviewSession() {
@@ -6112,10 +6253,18 @@
         // an actual ACS task, see v126) ever produce evidence; the RPC
         // itself is a no-op for any unmapped question_id, so this is
         // safe to call unconditionally for every scored question.
+        //
+        // Sprint 4 Part 6 -- these previously fired as bare unawaited
+        // .forEach() calls; readiness refresh needs to happen only after
+        // the whole evidence batch has actually settled, not while the
+        // per-question RPCs are still racing. Promise.allSettled() (not
+        // Promise.all()) so one failed evidence call never blocks the
+        // trigger or throws into quiz-completion UX, which is already
+        // shown above and must never wait on this.
         var attemptId = res.data && res.data.id;
         if (attemptId) {
-          Object.keys(results).forEach(function (qid) {
-            apexSupabase.rpc('record_ground_school_evidence', {
+          var evidencePromises = Object.keys(results).map(function (qid) {
+            return apexSupabase.rpc('record_ground_school_evidence', {
               p_profile_id: member.id,
               p_content_type: 'module_quiz_question',
               p_content_id: qid,
@@ -6124,6 +6273,7 @@
               p_self_confidence: null
             });
           });
+          Promise.allSettled(evidencePromises).then(function () { triggerReadinessRefresh(); });
         }
       });
     });
