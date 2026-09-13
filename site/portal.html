@@ -288,8 +288,26 @@
           </div>
 
           <div id="readinessPlanPaidStep" hidden style="margin-top:20px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.12)">
-            <p class="portal-my-training__label" style="margin-bottom:8px">Ready To Go Further?</p>
+            <!-- Checkride Prep outcome-focused variant (conversion pass,
+                 readiness_paid_recommendation_viewed -> _clicked). Only
+                 shown when the routed paid CTA's product is
+                 checkride_prep -- Ground School/Mock Oral keep the
+                 original generic "Ready To Go Further?" treatment below
+                 unchanged, since this specific copy/pricing is
+                 Checkride-Prep-only. -->
+            <div id="readinessPlanPaidCheckridePrep" hidden>
+              <h3 id="readinessPlanPaidHeadline" style="color:#fff;font-size:16.5px;font-weight:800;margin:0 0 8px;line-height:1.35">Turn Your Weak Areas Into a Checkride Plan</h3>
+              <p style="color:rgba(255,255,255,0.72);font-size:13.5px;line-height:1.6;margin:0 0 16px;max-width:520px">Your assessment shows where you&rsquo;re strongest &mdash; and where a DPE is most likely to expose gaps. Apex Checkride Prep gives you targeted practice built around those weak areas.</p>
+              <ul class="portal-readiness-paid-benefits">
+                <li>Targeted DPE-style oral questions</li>
+                <li>Weak-area practice and recommendations</li>
+                <li>Readiness tracking as you improve</li>
+              </ul>
+            </div>
+            <!-- Ground School / Mock Oral variant -- unchanged. -->
+            <p id="readinessPlanPaidGenericLabel" class="portal-my-training__label" style="margin-bottom:8px">Ready To Go Further?</p>
             <button type="button" class="btn btn--primary" id="readinessPlanPaidBtn">—</button>
+            <p id="readinessPlanPaidPrice" hidden style="color:rgba(255,255,255,0.5);font-size:12.5px;margin:10px 0 0">$29 one-time</p>
           </div>
         </div>
 
