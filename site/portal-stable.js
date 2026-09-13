@@ -5091,17 +5091,27 @@
     return GUIDED_NOTES_MODULES.filter(function (m) { return hasModuleAccess(m.moduleId); });
   }
 
-  // Sprint 1 -- jump straight to a specific module's workbook (used by
-  // Recent Training). Falls back to whichever module is first/already
-  // active if the requested one isn't found or isn't accessible anymore
-  // -- showSection('guided-notes') itself already bounces to the
-  // dashboard if the member has no module access at all.
+  // Sprint 1 (post-review fix) -- jump straight to a specific module's
+  // workbook (used by Recent Training). renderRecentTraining() already
+  // filters its list against accessibleGuidedNotesModules() before
+  // rendering, so this should always find the module -- but entitlement
+  // can change between that render and the click (e.g. a pack access
+  // change lands in another tab), so this still re-checks live rather
+  // than trusting the caller. On a miss, this NEVER substitutes a
+  // different module (index 0 or otherwise) -- it surfaces a toast and
+  // routes to the Ground School overview instead, where the member's
+  // real current access is shown.
   function openGuidedNotesModule(moduleId) {
     var modules = accessibleGuidedNotesModules();
     for (var i = 0; i < modules.length; i++) {
-      if (modules[i].moduleId === moduleId) { guidedNotesActiveModuleIndex = i; break; }
+      if (modules[i].moduleId === moduleId) {
+        guidedNotesActiveModuleIndex = i;
+        showSection('guided-notes');
+        return;
+      }
     }
-    showSection('guided-notes');
+    toast("That module isn't available anymore -- check your Ground School access.");
+    showSection('ground-school');
   }
 
   // The real, entitlement-gated companion content (objectives, key
@@ -7704,7 +7714,16 @@
       items.forEach(function (it) {
         if (!byModule[it.moduleId] || it.ts > byModule[it.moduleId].ts) byModule[it.moduleId] = it;
       });
+      // Post-review fix: guided_notes/module_quiz_attempts rows can
+      // outlive the entitlement that created them (a module purchased
+      // individually, later revoked; a pack that no longer covers it) --
+      // filter against the member's CURRENT accessible set before this
+      // ever reaches the DOM, so an inaccessible module is never even
+      // offered as a Recent Training item, let alone clicked into.
+      var accessibleIds = {};
+      accessibleGuidedNotesModules().forEach(function (m) { accessibleIds[m.moduleId] = true; });
       var recent = Object.keys(byModule).map(function (k) { return byModule[k]; })
+        .filter(function (it) { return accessibleIds[it.moduleId]; })
         .sort(function (a, b) { return b.ts - a.ts; })
         .slice(0, 3);
 

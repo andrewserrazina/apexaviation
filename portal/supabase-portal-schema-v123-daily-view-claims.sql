@@ -63,4 +63,12 @@ begin
 end;
 $$;
 
+-- Postgres grants EXECUTE on a newly created function to PUBLIC by
+-- default -- explicit revoke first so a fresh environment applying this
+-- file never leaves anon/PUBLIC able to call it, matching the grant
+-- actually live in production (applied there as a follow-up statement
+-- during Sprint 1; folded into this file now so the repo and production
+-- states match exactly for any future fresh apply).
+revoke execute on function public.claim_daily_view(uuid, text) from public;
+revoke execute on function public.claim_daily_view(uuid, text) from anon;
 grant execute on function public.claim_daily_view(uuid, text) to authenticated;
