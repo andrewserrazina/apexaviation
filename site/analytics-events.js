@@ -170,7 +170,16 @@
     // review_item_completed/review_session_completed fire from the My
     // Review Queue surface and review session flow.
     'workbook_response_saved', 'confidence_rating_set',
-    'review_queue_viewed', 'review_session_started', 'review_item_completed', 'review_session_completed'
+    'review_queue_viewed', 'review_session_started', 'review_item_completed', 'review_session_completed',
+
+    // Sprint 3 -- unified ACS evidence + actionable Readiness. These track
+    // interactions with the new Readiness Detail view, never renders of
+    // it -- readiness_detail_viewed fires once per open (not per re-render
+    // while data streams in), readiness_category_opened once per category
+    // a member expands, readiness_action_clicked once per routed action
+    // button. compute_readiness_snapshot() itself (the RPC) never emits
+    // analytics on every run -- only these UI interaction points do.
+    'readiness_detail_viewed', 'readiness_category_opened', 'readiness_action_clicked'
   ];
 
   // readiness-assessment.html/checkride-prep.html/apex-advantage.html etc.
