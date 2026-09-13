@@ -5686,6 +5686,25 @@
           // One click is already one intentional action -- no debounce, no
           // volume concern, unlike the free-text autosave events above.
           if (window.apexTrack) apexTrack('confidence_rating_set', { module_id: moduleDef.moduleId, source_type: ratingSectionId, rating: value });
+
+          // Sprint 3 -- unified ACS evidence. content_id matches exactly
+          // how v126's content_acs_mappings rows are keyed: checkride_corner
+          // is module-namespaced ("PPL-M01:cc-1", stripping the "-rating"
+          // suffix ratingId carries); scenario_workshop is the module id
+          // alone (one scenario per module). A no-op for any question/
+          // module with no mapping row (everything but PPL-M01 today).
+          var confidenceValue = value === 'confident' ? 1.0 : value === 'needs_review' ? 0.5 : 0.0;
+          var evidenceContentId = ratingSectionId === 'scenario-workshop'
+            ? moduleDef.moduleId
+            : moduleDef.moduleId + ':' + ratingId.replace(/-rating$/, '');
+          apexSupabase.rpc('record_ground_school_evidence', {
+            p_profile_id: member.id,
+            p_content_type: ratingSectionId === 'scenario-workshop' ? 'scenario_workshop' : 'checkride_corner',
+            p_content_id: evidenceContentId,
+            p_source_id: moduleDef.moduleId + ':' + ratingSectionId + ':' + ratingId,
+            p_is_correct: null,
+            p_self_confidence: confidenceValue
+          });
         });
       });
     });
@@ -5841,7 +5860,7 @@
         results: results,
         score: score,
         total: total
-      }).then(function (res) {
+      }).select('id').single().then(function (res) {
         submitBtn.disabled = false;
         var summary = document.getElementById('moduleQuizScoreSummary');
         if (res.error) {
@@ -5850,6 +5869,25 @@
         }
         summary.innerHTML = '<p style="color:#fff;font-size:15px;font-weight:700">Scored ' + score + ' / ' + total + ' on the multiple-choice questions.</p>';
         if (window.apexTrack) apexTrack('module_quiz_completed', { module_id: moduleDef.moduleId, score: score, total: total });
+
+        // Sprint 3 -- unified ACS evidence. Only questions with a real
+        // content_acs_mappings row (verified content-by-content against
+        // an actual ACS task, see v126) ever produce evidence; the RPC
+        // itself is a no-op for any unmapped question_id, so this is
+        // safe to call unconditionally for every scored question.
+        var attemptId = res.data && res.data.id;
+        if (attemptId) {
+          Object.keys(results).forEach(function (qid) {
+            apexSupabase.rpc('record_ground_school_evidence', {
+              p_profile_id: member.id,
+              p_content_type: 'module_quiz_question',
+              p_content_id: qid,
+              p_source_id: attemptId + ':' + qid,
+              p_is_correct: results[qid],
+              p_self_confidence: null
+            });
+          });
+        }
       });
     });
   }
