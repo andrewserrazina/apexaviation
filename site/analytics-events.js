@@ -179,7 +179,18 @@
     // a member expands, readiness_action_clicked once per routed action
     // button. compute_readiness_snapshot() itself (the RPC) never emits
     // analytics on every run -- only these UI interaction points do.
-    'readiness_detail_viewed', 'readiness_category_opened', 'readiness_action_clicked'
+    'readiness_detail_viewed', 'readiness_category_opened', 'readiness_action_clicked',
+
+    // Sprint 4 -- instructor-ready Training Report, migrated onto the
+    // unified v2 snapshot. training_report_viewed fires once per open
+    // (the overlay opening, not per re-render while the snapshot/
+    // aggregates load); training_report_printed on the toolbar's Print
+    // button; training_report_priority_clicked once per routed "Areas
+    // to Address" row action (reuses the same Sprint 3 routing
+    // primitives Readiness Detail already tracks readiness_action_
+    // clicked for, so no category/action-type payload is duplicated
+    // here).
+    'training_report_viewed', 'training_report_printed', 'training_report_priority_clicked'
   ];
 
   // readiness-assessment.html/checkride-prep.html/apex-advantage.html etc.
