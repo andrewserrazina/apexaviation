@@ -487,6 +487,14 @@
 .portal-my-training__plan-head { display: flex; align-items: center; gap: 8px; border-top: 1px solid rgba(255,255,255,0.07); padding-top: 16px; margin-bottom: 4px; }
 .portal-my-training__plan-head span { font-size: 15px; }
 .portal-my-training__plan-head h4 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.4); margin: 0; }
+
+/* Readiness Plan card -- Checkride Prep outcome-focused paid step
+   (conversion pass: readiness_paid_recommendation_viewed -> _clicked).
+   No gradients/animations beyond the card's own existing gradient
+   border; benefits use a simple checkmark, not a badge/icon set. */
+.portal-readiness-paid-benefits { list-style: none; margin: 0 0 18px; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.portal-readiness-paid-benefits li { color: rgba(255,255,255,0.78); font-size: 13px; line-height: 1.5; padding-left: 22px; position: relative; }
+.portal-readiness-paid-benefits li::before { content: '✓'; position: absolute; left: 0; top: 0; color: var(--gold); font-weight: 700; }
 .portal-my-training__plan { display: flex; flex-direction: column; gap: 2px; }
 /* Sprint 1 mobile QA sweep: same missing-override bug -- #studentStudyPlanList
    is hidden via JS (planEl.hidden = allPlanItemsDone) when the flight plan

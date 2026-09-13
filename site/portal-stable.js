@@ -8066,9 +8066,30 @@
     var showPaid = !!route.paidCta && route.freeAction.done;
     paidStep.hidden = !showPaid;
     if (showPaid) {
-      paidBtn.textContent = route.paidCta.label;
+      // Conversion pass (readiness_paid_recommendation_viewed -> _clicked):
+      // this specific outcome-focused copy/pricing is Checkride-Prep-only
+      // -- Ground School and Mock Oral keep the original generic "Ready
+      // To Go Further?" treatment (label text unchanged) since neither
+      // is the $29 Checkride Prep offer this copy describes.
+      var isCheckridePrepCta = route.paidCta.product === 'checkride_prep';
+      var ctaText = isCheckridePrepCta ? 'Start My Checkride Prep Plan →' : route.paidCta.label;
+      document.getElementById('readinessPlanPaidCheckridePrep').hidden = !isCheckridePrepCta;
+      document.getElementById('readinessPlanPaidGenericLabel').hidden = isCheckridePrepCta;
+      document.getElementById('readinessPlanPaidPrice').hidden = !isCheckridePrepCta;
+      paidBtn.textContent = ctaText;
       paidBtn.onclick = function () {
-        if (window.apexTrack) apexTrack('readiness_paid_recommendation_clicked', { profile_id: member.id, route: route.route, product: route.paidCta.product });
+        if (window.apexTrack) {
+          apexTrack('readiness_paid_recommendation_clicked', {
+            profile_id: member.id, route: route.route, product: route.paidCta.product,
+            // Additive only -- existing consumers of this event only ever
+            // read profile_id/route/product above, unaffected by new keys.
+            cta_variant: isCheckridePrepCta ? 'outcome_v1' : null,
+            cta_text: ctaText,
+            readiness_level: route.band || null,
+            weakest_category: route.weakestCats[0] || null,
+            surface: 'readiness_results'
+          });
+        }
         route.paidCta.go();
       };
       if (!readinessPaidStepViewedFired) {
