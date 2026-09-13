@@ -358,6 +358,10 @@
   font-weight: 800; font-size: 26px; flex-shrink: 0;
 }
 .portal-membership-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+/* Sprint 1 mobile QA sweep: same missing-override bug found on
+   .portal-my-training__preclass -- #membershipUnlockedRow has a static
+   hidden attribute that this explicit display:flex was overriding. */
+.portal-membership-row[hidden] { display: none; }
 .portal-membership-row:last-child { border-bottom: none; }
 .portal-membership-row strong { font-size: 14px; color: #fff; font-weight: 600; }
 .portal-membership-row span { font-size: 13px; color: rgba(255,255,255,0.5); }
@@ -484,12 +488,25 @@
 .portal-my-training__plan-head span { font-size: 15px; }
 .portal-my-training__plan-head h4 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.4); margin: 0; }
 .portal-my-training__plan { display: flex; flex-direction: column; gap: 2px; }
+/* Sprint 1 mobile QA sweep: same missing-override bug -- #studentStudyPlanList
+   is hidden via JS (planEl.hidden = allPlanItemsDone) when the flight plan
+   is complete, but this explicit display:flex was overriding [hidden], so
+   the checklist stayed visible at the same time as the completion banner. */
+.portal-my-training__plan[hidden] { display: none; }
 .portal-my-training__why { color: rgba(255,255,255,0.45); font-size: 12.5px; font-style: italic; margin: 10px 0 0; padding: 0 8px; }
 .portal-my-training__preclass {
   display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
   background: linear-gradient(120deg, rgba(244,180,0,0.16), rgba(11,31,58,0.4)); border: 1px solid rgba(244,180,0,0.3);
   border-radius: var(--radius); padding: 16px 20px; margin-bottom: 20px;
 }
+/* Sprint 1 mobile QA fix: an explicit display:flex on this class has equal
+   CSS specificity to the UA [hidden] rule, and author styles win that tie
+   -- so trainingPlanPreclassBanner/trainingPlanGsCrossSell rendered as
+   empty bordered boxes whenever JS set .hidden = true (no imminent class,
+   no GS cross-sell match), which is the common case for most members.
+   Same override pattern already used elsewhere in this file (e.g.
+   .portal-nav__item[hidden], .portal-qitem[hidden]) -- just missing here. */
+.portal-my-training__preclass[hidden] { display: none; }
 .portal-my-training__preclass h3 { color: #fff; font-size: 15px; font-weight: 800; margin: 0 0 3px; }
 .portal-my-training__preclass p { color: rgba(255,255,255,0.6); font-size: 13px; margin: 0; }
 .portal-my-training__preclass .portal-header__eyebrow { margin-bottom: 6px; }
@@ -497,6 +514,14 @@
 .portal-my-training__plan-complete {
   display: flex; align-items: center; gap: 14px; border-top: 1px solid rgba(255,255,255,0.07); margin-top: 4px; padding: 16px 8px 4px;
 }
+/* Sprint 1 mobile QA fix: same missing-override bug as
+   .portal-my-training__preclass above -- this card's own explicit
+   display:flex was winning over the [hidden] attribute at equal
+   specificity, so "Flight plan complete -- nice work today" rendered
+   permanently alongside the real (incomplete) checklist for every
+   member, regardless of actual completion state. Pre-existing, not
+   introduced this sprint -- caught during Sprint 1 mobile QA. */
+.portal-my-training__plan-complete[hidden] { display: none; }
 .portal-my-training__plan-complete span {
   width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%; background: var(--gold); color: #0B1F3A;
   display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px;
@@ -552,6 +577,10 @@
   background: rgba(244,180,0,0.07); border: 1px solid rgba(244,180,0,0.22); border-radius: var(--radius);
   padding: 14px 20px; margin-bottom: 20px; cursor: pointer; transition: background var(--transition);
 }
+/* Sprint 1 mobile QA sweep: same missing-override bug -- #dpeSuggestedStrip
+   has a static hidden attribute that this explicit display:flex was
+   overriding. */
+.portal-suggested-strip[hidden] { display: none; }
 .portal-suggested-strip:hover { background: rgba(244,180,0,0.11); }
 .portal-suggested-strip__text { font-size: 13.5px; color: rgba(255,255,255,0.8); }
 .portal-suggested-strip__text strong { color: var(--gold-light); }

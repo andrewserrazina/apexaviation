@@ -201,7 +201,6 @@
             <h2 id="welcomeHeading">Welcome back.</h2>
             <p>Here's where you left off in your Apex Advantage training.</p>
           </div>
-          <a href="#" class="btn btn--primary" id="continueTrainingBtn" data-goto="scenarios">Continue Training</a>
         </div>
 
         <!-- First-session onboarding -- shown once, dismissible, no
@@ -294,23 +293,55 @@
           </div>
         </div>
 
-        <!-- Your Training Plan -- single unified engine (computeTrainingPlan())
-             replacing what used to be three separate recommendation systems
-             (Next Best Action, Next Class, Resume Studying) that could
-             disagree with each other. See docs/training-plan-architecture.md. -->
+        <!-- Today at Apex -- Sprint 1 restructure of the former "Your
+             Training Plan" card. The engine (computeTrainingPlan()) is
+             completely unchanged -- see docs/training-plan-architecture.md
+             -- this is a presentation-only change: one dominant primary
+             CTA (continueTrainingBtn, moved here from the welcome header)
+             instead of three co-equal stat panels competing with it for
+             attention. firstIncomplete/plan.tasks[0] remains the single
+             source of truth for what that CTA says and does; Recent
+             Training below is a read-only continuity aid, never a second
+             recommendation engine (see renderRecentTraining() in
+             portal-stable.js). -->
         <div class="portal-card portal-my-training" style="margin-bottom:24px">
           <div class="portal-my-training__head">
             <div>
-              <div class="portal-header__eyebrow" style="margin-bottom:6px">Your Training Plan</div>
-              <h2>What to work on next.</h2>
+              <div class="portal-header__eyebrow" style="margin-bottom:6px">Today at Apex</div>
               <p>Your checkride timeline, readiness, and today's plan, in one place.</p>
             </div>
             <button class="btn btn--ghost" data-goto="progress">View Full Progress</button>
           </div>
 
-          <div class="portal-my-training__preclass" id="trainingPlanPreclassBanner" hidden></div>
+          <div class="portal-today-primary">
+            <p class="portal-my-training__label" style="margin-bottom:8px">Your Next Training Step</p>
+            <h2 id="todayAtApexPrimaryLabel" style="color:#fff;font-size:21px;font-weight:800;line-height:1.35;margin-bottom:8px">—</h2>
+            <p class="portal-my-training__why" id="trainingPlanWhy" style="margin:0 0 16px;padding:0" hidden></p>
+            <a href="#" class="btn btn--primary btn--full" id="continueTrainingBtn">Continue Training →</a>
+          </div>
 
-          <div class="portal-my-training__grid">
+          <div class="portal-my-training__preclass" id="trainingPlanPreclassBanner" hidden style="margin-top:20px"></div>
+
+          <!-- Growth Sprint section 12: weak-area -> upcoming live class
+               cross-sell. Real scheduled-class data only (loadGroundSchool()
+               in portal-stable.js, same source the Ground School section
+               itself renders from) -- never fabricated availability. -->
+          <div class="portal-my-training__preclass" id="trainingPlanGsCrossSell" style="margin-top:16px" hidden></div>
+
+          <!-- Recent Training -- Sprint 1: a read-only continuity aid, not
+               a recommendation. Sourced from real, already-existing
+               progress timestamps (guided_notes.updated_at,
+               module_quiz_attempts.completed_at) -- these prove the
+               student actually interacted with that content, not merely
+               that a page loaded, so this is deliberately NOT called
+               "Recently Viewed." Hidden entirely when neither table has a
+               row for this member (renderRecentTraining(), portal-stable.js). -->
+          <div id="recentTrainingBlock" hidden style="margin-top:20px;padding-top:18px;border-top:1px solid rgba(255,255,255,0.08)">
+            <p class="portal-header__eyebrow" style="margin-bottom:10px">Recent Training</p>
+            <div id="recentTrainingList"></div>
+          </div>
+
+          <div class="portal-my-training__grid" style="margin-top:22px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.08)">
             <div class="portal-my-training__panel portal-my-training__panel--primary" id="trainingPlanCheckride">
               <p class="portal-my-training__label">Checkride</p>
               <h3>—</h3>
@@ -325,11 +356,9 @@
             </div>
           </div>
           <div class="portal-my-training__plan-head">
-            <span>✈️</span>
             <h4>Today's Flight Plan</h4>
           </div>
           <div class="portal-my-training__plan" id="studentStudyPlanList"></div>
-          <p class="portal-my-training__why" id="trainingPlanWhy" hidden></p>
           <div class="portal-my-training__plan-complete" id="studentStudyPlanComplete" hidden>
             <span>✓</span>
             <div>
@@ -337,12 +366,6 @@
               <p>Come back tomorrow to keep your streak alive.</p>
             </div>
           </div>
-
-          <!-- Growth Sprint section 12: weak-area -> upcoming live class
-               cross-sell. Real scheduled-class data only (loadGroundSchool()
-               in portal-stable.js, same source the Ground School section
-               itself renders from) -- never fabricated availability. -->
-          <div class="portal-my-training__preclass" id="trainingPlanGsCrossSell" style="margin-top:16px" hidden></div>
         </div>
 
         <!-- Question of the Day -- free for every member (Retention Sprint
@@ -376,10 +399,93 @@
                  the streak card elsewhere on this dashboard), not a
                  separate/invented number. -->
             <div id="qotdStreakNote" style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08);font-size:13px;color:rgba(255,255,255,0.5)"></div>
+            <!-- Sprint 1: the actual completion state, shown once
+                 qotdStudiedBtn is clicked (the real DB write --
+                 portal_question_progress.completed -- not just reveal).
+                 Optional continuation only, no forced additional study;
+                 reuses the existing Rapid Fire launcher rather than
+                 building a second one. -->
+            <div id="qotdCompletionState" hidden style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08)">
+              <p style="color:#4ade80;font-size:13px;font-weight:700;margin-bottom:4px">Training Complete for Today</p>
+              <p id="qotdCompletionStreakLine" style="color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:12px"></p>
+              <button type="button" class="btn btn--ghost" id="qotdAnotherRoundBtn">Do Another 3-Minute Round</button>
+            </div>
           </div>
         </div>
 
-        <!-- Readiness + Streak + Weak Areas + Pilot Rank -->
+        <!-- 7-Day Checkride Challenge -- Growth Sprint Tier 2. Free-tier
+             feature: pulls a small per-category slice of the DPE bank via
+             get_challenge_day_questions() (supabase-portal-schema-v74.sql),
+             which -- like get_daily_question() before it -- is granted to
+             every authenticated member regardless of checkride_prep_
+             unlocked, since DPE_DATA/CATEGORY_META are empty client-side
+             for locked members. Progress is tracked via existing
+             portal_events rows (challenge_day_N_completed), reusing
+             loggedEventTypes rather than a new table. Sprint 1: moved
+             above the readiness/streak/rank metrics grid -- a daily,
+             completable training action outranks passive stats. -->
+        <div class="portal-card" id="challengeCard" style="margin-bottom:24px">
+          <div class="portal-header__eyebrow" style="margin-bottom:8px">7-Day Checkride Challenge</div>
+          <div id="challengeDots" style="display:flex;gap:8px;margin-bottom:16px"></div>
+          <div id="challengeBody"></div>
+        </div>
+
+        <!-- Practice For The Oral -- DPE Question Bank, AI DPE Practice,
+             Scenario Training, and Mock Oral grouped as one coherent
+             training suite instead of scattered across the old "Jump
+             back in" row (the first three) and a 2-up grid shared with
+             the countdown (Mock Oral). Markup/click-gating unchanged:
+             data-goto delegation + GATED_SECTIONS/openUnlockModal()
+             already handle free-vs-paid access for the first three;
+             Mock Oral's own booking handler is untouched. Sprint 1:
+             direct training entry points, so moved above the passive
+             metrics grid below. -->
+        <h3 style="font-size:16px;font-weight:700;color:#fff;margin-bottom:16px">Practice For The Oral</h3>
+        <div class="portal-grid portal-grid--2" style="margin-bottom:24px">
+          <button class="portal-card portal-quicklink" data-goto="dpe-library">
+            <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 6.253v13M12 6.253C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div><h3>DPE Questions Library</h3><p>Practice real oral exam questions</p></div>
+          </button>
+          <button class="portal-card portal-quicklink" data-goto="ai-dpe-practice">
+            <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8 10h8M8 14h5M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4-.83L3 20l1.05-3.16A7.86 7.86 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div><h3>AI DPE Practice</h3><p>A full simulated oral exam, on demand</p></div>
+          </button>
+          <button class="portal-card portal-quicklink" data-goto="scenarios">
+            <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div><h3>Scenario Training</h3><p>Work through real-world decision scenarios</p></div>
+          </button>
+          <div class="portal-card portal-mockoral" id="mockOralDashboardCard">
+            <div class="portal-header__eyebrow" style="margin-bottom:8px">Mock Oral Exam</div>
+            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Think you're ready for your checkride?</h3>
+            <p style="color:rgba(255,255,255,0.55);font-size:14px;line-height:1.6;margin-bottom:16px">Find out before your DPE does. Up to 2-hour Private Pilot Mock Oral — $129.</p>
+            <button class="btn btn--primary" data-goto="mock-oral">Book Now</button>
+          </div>
+        </div>
+
+        <!-- Checkride Countdown -- kept as a smaller, standalone,
+             lower-priority card. The countdown days are already surfaced
+             in the Today at Apex header above, so this isn't the first
+             or only place a member sees them. -->
+        <div class="portal-card portal-countdown" id="checkrideCountdownCard" style="margin-bottom:24px">
+            <div id="checkrideCountdownSet" style="display:none">
+              <div class="portal-header__eyebrow" style="margin-bottom:8px">Checkride Countdown</div>
+              <div class="portal-countdown__value" id="checkrideCountdownValue">—</div>
+              <button class="btn btn--ghost" id="checkrideDateEditBtn" style="margin-top:12px">Change date</button>
+            </div>
+            <div id="checkrideCountdownUnset">
+              <div class="portal-header__eyebrow" style="margin-bottom:8px">Checkride Countdown</div>
+              <p id="checkrideCountdownUnsetCopy" style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:14px">Add your expected checkride date to see a live countdown and get more urgency-aware reminders.</p>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                <input type="date" id="checkrideDateInput" style="padding:11px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none" />
+                <button class="btn btn--primary" id="checkrideDateSaveBtn">Save Date</button>
+              </div>
+            </div>
+        </div>
+
+        <!-- Readiness + Streak + Weak Areas + Pilot Rank -- Sprint 1:
+             moved below all direct training-action cards. These are
+             progress/motivation metrics, not "what do I do now" -- they
+             should support the training journey, not compete with it. -->
         <div class="portal-grid portal-grid--4" style="margin-bottom:24px">
           <div class="portal-card portal-readiness portal-locked-widget" data-locked-widget data-widget="readiness">
             <div class="portal-locked-widget__content">
@@ -405,12 +511,18 @@
 
           <div class="portal-card portal-locked-widget" data-locked-widget data-widget="streak">
             <div class="portal-locked-widget__content">
-              <div class="portal-header__eyebrow" style="margin-bottom:14px">Study Streak</div>
+              <!-- Sprint 1: "Training Consistency" replaces "Study Streak" /
+                   the flame emoji -- same computeStreaks()/renderStreak()
+                   data and math, presentation only (professional aviation-
+                   training tone, not a consumer habit-app flame). -->
+              <div class="portal-header__eyebrow" style="margin-bottom:14px">Training Consistency</div>
               <div class="portal-streak">
-                <div class="portal-streak__flame" id="streakFlame">🔥</div>
+                <div class="portal-streak__flame" id="streakFlame" aria-hidden="true">
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><rect x="4" y="14" width="4" height="7" rx="1" fill="#F4B400"/><rect x="10" y="9" width="4" height="12" rx="1" fill="#F4B400"/><rect x="16" y="4" width="4" height="17" rx="1" fill="#F4B400"/></svg>
+                </div>
                 <div>
-                  <div class="portal-streak__current"><span id="streakCurrent">0</span> Day Streak</div>
-                  <div class="portal-streak__meta">Longest: <span id="streakLongest">0</span> days · <span id="streakDaysStudied">0</span> days studied total</div>
+                  <div class="portal-streak__current"><span id="streakCurrent">0</span> DAYS</div>
+                  <div class="portal-streak__meta">Best: <span id="streakLongest">0</span> days · <span id="streakDaysStudied">0</span> total training days</div>
                   <div class="portal-streak__meta" id="streakFreezeMeta" hidden><span id="streakFreezeCount">0</span> freeze(s) banked — one covers a missed day automatically</div>
                 </div>
               </div>
@@ -421,7 +533,7 @@
             </div>
             <div class="portal-locked-widget__overlay" data-unlock-trigger style="display:none">
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="#F4B400" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round"/></svg>
-              <span>Unlock Study Streaks</span>
+              <span>Unlock Training Consistency</span>
               <small>$29 · Tap to unlock</small>
             </div>
           </div>
@@ -462,75 +574,10 @@
              (getMemberConversionState() in portal-stable.js), separate
              from "My Training"/"Next Best Action" below (that one is
              about what to study; this one is about what stage of the
-             program the member is at). Never a direct-to-checkout link. -->
+             program the member is at). Never a direct-to-checkout link.
+             Sprint 1: moved below the progress-metrics grid -- this is a
+             monetization surface, not a training action. -->
         <div class="portal-card" id="recommendedNextStepCard" hidden style="margin-bottom:24px;background:linear-gradient(120deg, rgba(244,180,0,0.10), rgba(11,31,58,0.4));border-color:rgba(244,180,0,0.2)"></div>
-
-        <!-- 7-Day Checkride Challenge -- Growth Sprint Tier 2. Free-tier
-             feature: pulls a small per-category slice of the DPE bank via
-             get_challenge_day_questions() (supabase-portal-schema-v74.sql),
-             which -- like get_daily_question() before it -- is granted to
-             every authenticated member regardless of checkride_prep_
-             unlocked, since DPE_DATA/CATEGORY_META are empty client-side
-             for locked members. Progress is tracked via existing
-             portal_events rows (challenge_day_N_completed), reusing
-             loggedEventTypes rather than a new table. -->
-        <div class="portal-card" id="challengeCard" style="margin-bottom:24px">
-          <div class="portal-header__eyebrow" style="margin-bottom:8px">7-Day Checkride Challenge</div>
-          <div id="challengeDots" style="display:flex;gap:8px;margin-bottom:16px"></div>
-          <div id="challengeBody"></div>
-        </div>
-
-        <!-- Checkride Countdown -- kept as a smaller, standalone,
-             lower-priority card. The countdown days are already surfaced
-             in the Training Plan header above, so this isn't the first
-             or only place a member sees them -- moved here (out of its
-             old 2-up grid with Mock Oral) so that number isn't shown
-             prominently twice near the top of the page. -->
-        <div class="portal-card portal-countdown" id="checkrideCountdownCard" style="margin-bottom:24px">
-            <div id="checkrideCountdownSet" style="display:none">
-              <div class="portal-header__eyebrow" style="margin-bottom:8px">Checkride Countdown</div>
-              <div class="portal-countdown__value" id="checkrideCountdownValue">—</div>
-              <button class="btn btn--ghost" id="checkrideDateEditBtn" style="margin-top:12px">Change date</button>
-            </div>
-            <div id="checkrideCountdownUnset">
-              <div class="portal-header__eyebrow" style="margin-bottom:8px">Checkride Countdown</div>
-              <p id="checkrideCountdownUnsetCopy" style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:14px">Add your expected checkride date to see a live countdown and get more urgency-aware reminders.</p>
-              <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-                <input type="date" id="checkrideDateInput" style="padding:11px 14px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:14px;color:#fff;background:rgba(11,31,58,0.6);outline:none" />
-                <button class="btn btn--primary" id="checkrideDateSaveBtn">Save Date</button>
-              </div>
-            </div>
-        </div>
-
-        <!-- Practice For The Oral -- DPE Question Bank, AI DPE Practice,
-             Scenario Training, and Mock Oral grouped as one coherent
-             training suite instead of scattered across the old "Jump
-             back in" row (the first three) and a 2-up grid shared with
-             the countdown (Mock Oral). Markup/click-gating unchanged:
-             data-goto delegation + GATED_SECTIONS/openUnlockModal()
-             already handle free-vs-paid access for the first three;
-             Mock Oral's own booking handler is untouched. -->
-        <h3 style="font-size:16px;font-weight:700;color:#fff;margin-bottom:16px">Practice For The Oral</h3>
-        <div class="portal-grid portal-grid--2" style="margin-bottom:24px">
-          <button class="portal-card portal-quicklink" data-goto="dpe-library">
-            <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 6.253v13M12 6.253C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <div><h3>DPE Questions Library</h3><p>Practice real oral exam questions</p></div>
-          </button>
-          <button class="portal-card portal-quicklink" data-goto="ai-dpe-practice">
-            <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8 10h8M8 14h5M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4-.83L3 20l1.05-3.16A7.86 7.86 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <div><h3>AI DPE Practice</h3><p>A full simulated oral exam, on demand</p></div>
-          </button>
-          <button class="portal-card portal-quicklink" data-goto="scenarios">
-            <div class="portal-quicklink__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <div><h3>Scenario Training</h3><p>Work through real-world decision scenarios</p></div>
-          </button>
-          <div class="portal-card portal-mockoral" id="mockOralDashboardCard">
-            <div class="portal-header__eyebrow" style="margin-bottom:8px">Mock Oral Exam</div>
-            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Think you're ready for your checkride?</h3>
-            <p style="color:rgba(255,255,255,0.55);font-size:14px;line-height:1.6;margin-bottom:16px">Find out before your DPE does. Up to 2-hour Private Pilot Mock Oral — $129.</p>
-            <button class="btn btn--primary" data-goto="mock-oral">Book Now</button>
-          </div>
-        </div>
 
         <!-- Checkride Readiness Assessment V1 -- baseline card, shown only
              if the member has a saved readiness_assessment_leads row
