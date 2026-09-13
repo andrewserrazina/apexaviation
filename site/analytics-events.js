@@ -147,7 +147,19 @@
     'study_pack_opened', 'study_pack_lesson_started', 'study_pack_lesson_completed',
     'study_pack_knowledge_check_completed', 'study_pack_scenario_submitted',
     'study_pack_checkride_corner_viewed', 'study_pack_mastery_attempted', 'study_pack_mastery_passed',
-    'study_pack_resource_downloaded'
+    'study_pack_resource_downloaded',
+    // Today at Apex / daily training loop (site/portal-stable.js, Sprint 1
+    // dashboard redesign). These are the genuinely missing canonical
+    // student-product events identified in that sprint's audit -- names
+    // that already had a real equivalent (module_completed ~=
+    // module_quiz_completed above, first_training_action_presented/
+    // started ~= first_action_presented/onboarding_first_training_started)
+    // were deliberately NOT duplicated under a second name. Meaningful
+    // training actions for the Weekly Active Learner metric (a student
+    // active on >=2 distinct days in a rolling 7-day window) --
+    // documented in the Sprint 1 report, not a new admin dashboard.
+    'qotd_completed', 'practice_started', 'practice_completed',
+    'resume_training_clicked', 'training_plan_action_clicked'
   ];
 
   // readiness-assessment.html/checkride-prep.html/apex-advantage.html etc.

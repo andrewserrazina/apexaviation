@@ -3381,10 +3381,27 @@
     if (!qotdQuestion) return;
     var studiedBtn = document.getElementById('qotdStudiedBtn');
     var favBtn = document.getElementById('qotdFavBtn');
-    studiedBtn.textContent = studied[qotdQuestion.id] ? '✓ Studied' : 'Mark as Studied';
-    studiedBtn.classList.toggle('active', !!studied[qotdQuestion.id]);
+    var isStudied = !!studied[qotdQuestion.id];
+    studiedBtn.textContent = isStudied ? '✓ Studied' : 'Mark as Studied';
+    studiedBtn.classList.toggle('active', isStudied);
     favBtn.textContent = favorites[qotdQuestion.id] ? '★ Starred' : '☆ Star for review';
     favBtn.classList.toggle('active', !!favorites[qotdQuestion.id]);
+    renderQotdCompletionState(isStudied);
+  }
+
+  // Sprint 1 -- the actual "done for today" state, driven by the same
+  // real completion signal (portal_question_progress.completed via
+  // toggleStudied()) as everything else on this card, not a separate
+  // invented flag. Shown/hidden on every updateQotdButtons() call so it
+  // stays correct across a toggle-back-off, not just the moment it's set.
+  function renderQotdCompletionState(isStudied) {
+    var el = document.getElementById('qotdCompletionState');
+    if (!el) return;
+    el.hidden = !isStudied;
+    if (!isStudied) return;
+    var s = computeStreaks();
+    var lineEl = document.getElementById('qotdCompletionStreakLine');
+    if (lineEl) lineEl.textContent = s.current >= 2 ? s.current + '-day training consistency.' : 'First step of your training consistency — keep it going tomorrow.';
   }
 
   // Hours until the next UTC calendar day -- matches get_daily_question()'s
@@ -3451,6 +3468,12 @@
     toggleStudied(qotdQuestion.id);
     updateQotdButtons();
     renderProgress(); renderDashboardStats(); renderReadiness(); renderAcsCoverage(); renderWeakAreas(); renderDpeLibrary();
+    // Sprint 1 canonical event -- fires only on the actual completion
+    // transition (not on every render/reload of an already-studied
+    // question, and not on the toggle-back-off), at the real DB write.
+    if (studied[qotdQuestion.id] && window.apexTrack) {
+      apexTrack('qotd_completed', { profile_id: member ? member.id : null, source: 'dashboard_qotd' });
+    }
   });
   document.getElementById('qotdFavBtn').addEventListener('click', function () {
     if (!qotdQuestion) return;
@@ -3458,6 +3481,13 @@
     updateQotdButtons();
     renderDpeLibrary();
   });
+  var qotdAnotherRoundBtn = document.getElementById('qotdAnotherRoundBtn');
+  if (qotdAnotherRoundBtn) {
+    // Optional continuation only -- reuses the existing Rapid Fire
+    // launcher (startPractice('rapidfire'), defined below) rather than
+    // building a second practice flow. Never forced, never auto-launched.
+    qotdAnotherRoundBtn.addEventListener('click', function () { startPractice('rapidfire'); });
+  }
 
   /* ══════════════════════════════════════════════════════════════
      CHECKRIDE MODE + DPE RAPID FIRE
@@ -3480,6 +3510,7 @@
   }
 
   function startPractice(mode) {
+    if (window.apexTrack) apexTrack('practice_started', { profile_id: member ? member.id : null, practice_mode: mode });
     var queue = shuffle(DPE_DATA);
     practiceState = {
       mode: mode,
@@ -3564,8 +3595,11 @@
       apexSupabase.from('portal_practice_attempts').insert({
         profile_id: member.id, mode: mode, question_ids: practiceState.seenIds,
         score: score, total: total, completed_at: new Date().toISOString()
-      }).then(function () {
+      }).then(function (res) {
         if (mode === 'checkride') { checkrideModeDone = true; checkAchievements(); }
+        if (!res.error && window.apexTrack) {
+          apexTrack('practice_completed', { profile_id: member.id, practice_mode: mode, score: score, total: total });
+        }
       });
     }
     bumpStudyDay(0);
@@ -5057,6 +5091,19 @@
     return GUIDED_NOTES_MODULES.filter(function (m) { return hasModuleAccess(m.moduleId); });
   }
 
+  // Sprint 1 -- jump straight to a specific module's workbook (used by
+  // Recent Training). Falls back to whichever module is first/already
+  // active if the requested one isn't found or isn't accessible anymore
+  // -- showSection('guided-notes') itself already bounces to the
+  // dashboard if the member has no module access at all.
+  function openGuidedNotesModule(moduleId) {
+    var modules = accessibleGuidedNotesModules();
+    for (var i = 0; i < modules.length; i++) {
+      if (modules[i].moduleId === moduleId) { guidedNotesActiveModuleIndex = i; break; }
+    }
+    showSection('guided-notes');
+  }
+
   // The real, entitlement-gated companion content (objectives, key
   // concepts, scenario worksheet, Checkride Corner questions, Apex
   // Challenge, quiz) only exists for modules authored so far (PPL-M01
@@ -5672,8 +5719,22 @@
   function maybeShowWelcomeOnboarding() {
     if (!member || onboardingShownThisLoad || member.trainingStage) return;
     onboardingShownThisLoad = true;
-    if (window.apexTrack) apexTrack('onboarding_viewed', { profile_id: member.id });
     showWelcomeOnboarding();
+    // Sprint 1 -- the UI re-prompt above is intentionally unchanged (still
+    // shows on every qualifying load/tab, exactly as the comment above
+    // this function explains). Only the analytics EVENT is capped, at
+    // most once per profile per calendar day, via claim_daily_view()
+    // (v123) -- a small dedicated primitive, not the email-specific
+    // claim_milestone_email(). This is what stops onboarding_viewed from
+    // looking "noisy" (many rows/day for a member who reloads or has
+    // several tabs open) without touching the deliberate cross-session
+    // re-prompt behavior at all.
+    if (window.apexTrack) {
+      apexSupabase.rpc('claim_daily_view', { p_profile_id: member.id, p_claim_key: 'onboarding_viewed' }).then(function (res) {
+        if (res && !res.error && res.data === true) apexTrack('onboarding_viewed', { profile_id: member.id });
+        else if (res && res.error) console.error('claim_daily_view(onboarding_viewed) failed', res.error);
+      }, function (err) { console.error('claim_daily_view(onboarding_viewed) threw', err); });
+    }
   }
 
   // Same atomic-claim pattern as claim_first_portal_login() (v83), for
@@ -7594,12 +7655,115 @@
     }).join('');
   }
 
+  // Sprint 1 -- "Recent Training": a read-only continuity aid, never a
+  // second recommendation engine (computeTrainingPlan()/renderMyTraining()
+  // above remains the sole source of truth for what to do next). Sourced
+  // from guided_notes.updated_at and module_quiz_attempts.completed_at --
+  // both rows only exist once a student actually typed/submitted
+  // something into that module, not merely opened a page, which is why
+  // this is "Recent Training" and not "Recently Viewed." Both tables
+  // already grant own-row RLS (supabase-portal-schema-v88.sql), so this
+  // is a direct client-side SELECT -- no new RPC or table.
+  var RECENT_TRAINING_SECTION_LABELS = { 'objectives': 'Objectives', 'checkride-corner': 'Checkride Corner', 'key-concepts': 'Key Concepts' };
+  function recentTrainingSectionLabel(sectionId) {
+    if (!sectionId) return null;
+    // The rich-content module companion (currently PPL-M01 only) writes
+    // a handful of known slugs -- translate those. Every other module's
+    // guided notes (GUIDED_NOTES_MODULES, the fallback prompt list) store
+    // the prompt's own real section label directly as section_id already
+    // (e.g. "Electrical System") -- never a slug -- so anything not in
+    // the known-slug map above is already a real label, not a guess.
+    return RECENT_TRAINING_SECTION_LABELS[sectionId] || sectionId;
+  }
+
+  function renderRecentTraining() {
+    var blockEl = document.getElementById('recentTrainingBlock');
+    var listEl = document.getElementById('recentTrainingList');
+    if (!blockEl || !listEl || !member) return;
+
+    Promise.all([
+      apexSupabase.from('guided_notes').select('module_id,section_id,updated_at').eq('profile_id', member.id).order('updated_at', { ascending: false }).limit(3),
+      apexSupabase.from('module_quiz_attempts').select('module_id,completed_at').eq('profile_id', member.id).order('completed_at', { ascending: false }).limit(3)
+    ]).then(function (results) {
+      var notesRows = (results[0] && results[0].data) || [];
+      var quizRows = (results[1] && results[1].data) || [];
+
+      var items = [];
+      notesRows.forEach(function (r) {
+        if (!r.updated_at) return;
+        items.push({ moduleId: r.module_id, sectionId: r.section_id, ts: new Date(r.updated_at).getTime() });
+      });
+      quizRows.forEach(function (r) {
+        if (!r.completed_at) return;
+        items.push({ moduleId: r.module_id, sectionId: null, ts: new Date(r.completed_at).getTime() });
+      });
+
+      // A module can appear from both sources -- keep only its single
+      // most recent touch, capped at the 3 most recently touched modules.
+      var byModule = {};
+      items.forEach(function (it) {
+        if (!byModule[it.moduleId] || it.ts > byModule[it.moduleId].ts) byModule[it.moduleId] = it;
+      });
+      var recent = Object.keys(byModule).map(function (k) { return byModule[k]; })
+        .sort(function (a, b) { return b.ts - a.ts; })
+        .slice(0, 3);
+
+      if (!recent.length) { blockEl.hidden = true; return; }
+
+      blockEl.hidden = false;
+      listEl.innerHTML = recent.map(function (it) {
+        var content = getModuleContent(it.moduleId);
+        var title = content ? content.title : it.moduleId;
+        var sectionLabel = recentTrainingSectionLabel(it.sectionId);
+        return '<div class="portal-plan-item" data-recent-module="' + escapeHtmlSafe(it.moduleId) + '" style="cursor:pointer;justify-content:space-between">' +
+          '<span class="portal-plan-item__label">' + escapeHtmlSafe(title) + (sectionLabel ? ' — ' + escapeHtmlSafe(sectionLabel) : '') + '</span>' +
+          '<span style="color:rgba(255,255,255,0.4);font-size:12px;flex-shrink:0;margin-left:12px">' + timeAgo(it.ts) + '</span>' +
+        '</div>';
+      }).join('');
+      listEl.querySelectorAll('[data-recent-module]').forEach(function (row) {
+        row.addEventListener('click', function () {
+          var moduleId = row.dataset.recentModule;
+          if (window.apexTrack) {
+            apexTrack('resume_training_clicked', { profile_id: member.id, task_type: 'recent_training', module_id: moduleId, is_primary_action: false });
+          }
+          openGuidedNotesModule(moduleId);
+        });
+      });
+    }, function (err) {
+      console.error('renderRecentTraining failed, hiding the block', err);
+      blockEl.hidden = true;
+    });
+  }
+
   function renderMyTraining() {
     var plan = computeTrainingPlan();
 
+    // Sprint 1 -- Today at Apex's single primary CTA. primaryTask is
+    // exactly the same computeTrainingPlan() output that already drove
+    // the old header's "Continue Training" button; this only adds a
+    // visible label (todayAtApexPrimaryLabel) reflecting what that task
+    // actually is, plus one analytics event. No second recommendation
+    // engine -- if the plan's top task is "resume the last thing," this
+    // IS the resume action; if it's something else (weak-area review, an
+    // imminent class), this button already reflects that instead.
     var continueBtn = document.getElementById('continueTrainingBtn');
     var firstIncomplete = plan.tasks.filter(function (t) { return !t.done; })[0];
-    if (continueBtn) continueBtn.onclick = function (e) { e.preventDefault(); (firstIncomplete || plan.tasks[0]).go(); };
+    var primaryTask = firstIncomplete || plan.tasks[0];
+    var primaryLabelEl = document.getElementById('todayAtApexPrimaryLabel');
+    if (primaryLabelEl) primaryLabelEl.textContent = primaryTask ? primaryTask.label : 'Explore your dashboard';
+    if (continueBtn) {
+      continueBtn.onclick = function (e) {
+        e.preventDefault();
+        if (window.apexTrack) {
+          apexTrack('resume_training_clicked', {
+            profile_id: member ? member.id : null,
+            task_type: primaryTask ? (primaryTask.type || 'training_plan_task') : null,
+            is_primary_action: true
+          });
+        }
+        (primaryTask || plan.tasks[0]).go();
+      };
+    }
 
     var preclassEl = document.getElementById('trainingPlanPreclassBanner');
     if (plan.classImminent && plan.nextClass) {
@@ -7681,8 +7845,19 @@
       '</div>';
     }).join('');
     planEl.querySelectorAll('[data-plan-idx]').forEach(function (row, i) {
-      row.addEventListener('click', function () { plan.tasks[i].go(); });
+      row.addEventListener('click', function () {
+        if (window.apexTrack) {
+          apexTrack('training_plan_action_clicked', {
+            profile_id: member ? member.id : null,
+            task_type: plan.tasks[i].type || 'training_plan_task',
+            is_primary_action: i === 0
+          });
+        }
+        plan.tasks[i].go();
+      });
     });
+
+    renderRecentTraining();
   }
 
   /* ══════════════════════════════════════════════════════════════
