@@ -1,0 +1,31 @@
+-- Apex Advantage — Sprint 4.1 Phase 10: security fix
+--
+-- record_task_evidence_internal() takes p_profile_id as a raw parameter
+-- with no auth.uid() ownership check of its own -- by design, since it's
+-- an internal helper meant to be called only from other SECURITY
+-- DEFINER functions (record_task_evidence(), record_ground_school_evidence(),
+-- record_review_outcome()) that already perform that check before
+-- calling it. v134 (Sprint 4.1) re-issued
+-- "grant execute ... to authenticated, service_role" when recreating
+-- this function for the self_confidence column, which meant ANY
+-- authenticated user could call it directly via
+-- /rest/v1/rpc/record_task_evidence_internal with an arbitrary
+-- p_profile_id, bypassing every wrapper's ownership check and writing
+-- fabricated evidence into another student's task_evidence /
+-- task_evidence_sources rows -- directly corrupting their readiness.
+--
+-- Found via get_advisors('security') during Phase 10: the lint flagged
+-- record_task_evidence_internal as directly REST-callable by
+-- `authenticated`; reading its body confirmed no ownership check exists
+-- inside it, unlike its three wrapper functions (which do check).
+--
+-- Fix: revoke authenticated's direct grant. All three legitimate
+-- callers are owned by the same role (postgres) that owns this
+-- function, so their internal `perform`/`select` calls are unaffected
+-- (object owners always retain execute rights on their own functions,
+-- independent of role grants) -- only the direct-REST-call path closes.
+-- Live-verified: record_ground_school_evidence() (a legitimate wrapper)
+-- still succeeds as an authenticated user; a direct call to
+-- record_task_evidence_internal as authenticated now fails with
+-- `permission denied for function record_task_evidence_internal`.
+revoke execute on function public.record_task_evidence_internal(uuid, uuid, boolean, boolean, text, text, boolean, numeric) from authenticated;

@@ -150,6 +150,14 @@ export interface MobileReadinessSummary {
   category_breakdown?: ReadinessCategoryBreakdown[]
   algorithm_version: string
   computed_at: string
+  // Sprint 4.1, additive -- present (non-null) on every 'v3' snapshot,
+  // null on historical 'v1'/'v2' rows. Same not-yet-consumed status as
+  // category_breakdown above: exposed for a future mobile screen, not
+  // read by ReadinessCard.tsx today.
+  assessable_task_count?: number | null
+  evidenced_task_count?: number | null
+  strong_task_count?: number | null
+  weak_task_count?: number | null
 }
 
 // ---------------------------------------------------------------------

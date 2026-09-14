@@ -56,6 +56,15 @@ function shape(row: Record<string, unknown> | null) {
     category_breakdown: row.category_breakdown ?? [],
     algorithm_version: row.algorithm_version,
     computed_at: row.created_at,
+    // Sprint 4.1, additive -- present on every 'v3' snapshot, null on
+    // historical 'v1'/'v2' rows. Same not-yet-consumed status as
+    // category_breakdown above: forwarded so a future mobile screen can
+    // read the exact top-level counts without another backend change,
+    // not because any mobile screen renders them today.
+    assessable_task_count: row.assessable_task_count ?? null,
+    evidenced_task_count: row.evidenced_task_count ?? null,
+    strong_task_count: row.strong_task_count ?? null,
+    weak_task_count: row.weak_task_count ?? null,
   }
 }
 
@@ -84,7 +93,7 @@ serve(async (req) => {
 
     const { data, error } = await serviceClient
       .from('readiness_snapshots')
-      .select('overall_score, coverage_score, knowledge_score, risk_management_score, confidence_score, evidence_level, weak_tasks, reason_codes, category_breakdown, algorithm_version, created_at')
+      .select('overall_score, coverage_score, knowledge_score, risk_management_score, confidence_score, evidence_level, weak_tasks, reason_codes, category_breakdown, algorithm_version, created_at, assessable_task_count, evidenced_task_count, strong_task_count, weak_task_count')
       .eq('profile_id', userId)
       .order('created_at', { ascending: false })
       .limit(1)
