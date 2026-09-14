@@ -886,6 +886,7 @@
   .portal-readiness { flex-direction: column; text-align: center; }
   .portal-practice-panel { padding: 24px; }
   .portal-report-panel { padding: 24px; }
+  .portal-modal { padding: 32px 24px; }
   .portal-report__stat-row { gap: 16px 24px; }
   .portal-report__stat { min-width: 100px; }
   .portal-report__category-line, .portal-report__action-row { flex-wrap: wrap; }
@@ -973,6 +974,14 @@
   text-align: center;
   position: relative;
   box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+  /* This modal now carries the readiness-context block, pricing, feature
+     checklist, and testimonial (previously just a short pitch + CTA) --
+     tall enough on small screens to exceed the viewport. Without a cap
+     the fixed, centered overlay clipped the top and bottom with no way
+     to scroll (same fix already applied to .portal-practice-panel /
+     .portal-report-panel for the same reason). */
+  max-height: 90vh;
+  overflow-y: auto;
 }
 .portal-modal__close {
   position: absolute;
