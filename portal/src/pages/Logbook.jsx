@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
+import { formatDateOnly } from '../lib/date'
 
 const BLANK = { student_id: '', instructor_id: '', date: '', aircraft_id: '', route: '', duration_hours: '', notes: '' }
 
@@ -220,7 +221,7 @@ export default function Logbook() {
                 <tr><td colSpan={canEdit ? 7 : 6} className="empty-state">No entries yet.</td></tr>
               ) : entries.map(e => (
                 <tr key={e.id}>
-                  <td>{new Date(e.date).toLocaleDateString()}</td>
+                  <td>{formatDateOnly(e.date)}</td>
                   <td>{aircraftLabel(e.aircraft_id)}</td>
                   <td>{e.route ?? '—'}</td>
                   <td>{e.duration_hours} hrs</td>
