@@ -3237,6 +3237,14 @@
   var EVIDENCE_SUFFICIENCY_LABELS = { none: 'Insufficient Evidence', limited: 'Limited Evidence', developing: 'Developing', strong: 'Strong Evidence' };
   var GAUGE_EVIDENCE_LABELS = { low: 'Building Evidence', moderate: 'Developing Evidence', high: 'Strong Evidence' };
 
+  // Sprint 4.1 -- the one authoritative readiness algorithm version.
+  // compute_readiness_snapshot() now always produces this version;
+  // historical v1/v2 rows stay in readiness_snapshots untouched, but
+  // are never treated as current. Bumping this string is the ONLY
+  // change needed when a future algorithm version ships -- every
+  // surface below reads it from here, never a local copy.
+  var CURRENT_READINESS_ALGORITHM_VERSION = 'v3';
+
   function fetchReadinessSnapshot(action) {
     if (!member || !member.checkridePrepUnlocked) return Promise.resolve(null);
     return apexSupabase.functions.invoke('mobile-readiness', {
@@ -3246,6 +3254,26 @@
       if (res.error || !res.data) return null;
       return res.data.snapshot || null;
     }).catch(function () { return null; });
+  }
+
+  // Sprint 4.1 -- the shared snapshot loader every readiness-consuming
+  // surface (dashboard gauge, Readiness Detail, Training Report;
+  // mobile resolves the same way through its own call to the
+  // mobile-readiness Edge Function) now goes through, so there is
+  // exactly one place that decides "is this snapshot current" and
+  // "what to do if it isn't" -- never a surface-specific formula.
+  // Prefers an already-cached current-version snapshot, else the
+  // stored 'latest' row IF it's already the current version, else
+  // forces a real 'refresh' recompute. Never returns a stale prior-
+  // version snapshot silently -- a surface either gets a genuine
+  // current-version snapshot or null.
+  function fetchCurrentReadinessSnapshot() {
+    if (latestReadinessSnapshot && latestReadinessSnapshot.algorithm_version === CURRENT_READINESS_ALGORITHM_VERSION) {
+      return Promise.resolve(latestReadinessSnapshot);
+    }
+    return fetchReadinessSnapshot('latest').then(function (s) {
+      return (s && s.algorithm_version === CURRENT_READINESS_ALGORITHM_VERSION) ? s : fetchReadinessSnapshot('refresh');
+    });
   }
 
   // Sprint 4 Part 6 -- factored out of the original refreshDashboardReadinessGauge()
@@ -3283,9 +3311,7 @@
   // value -- never a broken or blank gauge.
   function refreshDashboardReadinessGauge() {
     if (!member || !member.checkridePrepUnlocked) return;
-    fetchReadinessSnapshot('latest').then(function (snapshot) {
-      return snapshot ? snapshot : fetchReadinessSnapshot('refresh');
-    }).then(applyReadinessSnapshot);
+    fetchCurrentReadinessSnapshot().then(applyReadinessSnapshot);
   }
 
   // Sprint 4 Part 6 -- a coalescing refresh coordinator, not a lossy
@@ -3477,7 +3503,7 @@
       '<div class="portal-practice-panel portal-readiness-detail"><p style="color:rgba(255,255,255,0.5);font-size:14px;text-align:center;padding:30px 0">Loading readiness detail…</p></div>';
     if (window.apexTrack) apexTrack('readiness_detail_viewed', {});
 
-    (latestReadinessSnapshot ? Promise.resolve(latestReadinessSnapshot) : fetchReadinessSnapshot('latest').then(function (s) { return s || fetchReadinessSnapshot('refresh'); }))
+    fetchCurrentReadinessSnapshot()
       .then(function (snapshot) {
         if (!snapshot) {
           document.getElementById('practiceOverlay').innerHTML =
@@ -7337,22 +7363,24 @@
   // ── Training Report ─────────────────────────────────────────────
   // Sprint 3 left this generated entirely from client-side coverage
   // counters (computeReadiness()/categoryPct()) -- print/PDF-only, no
-  // RPC. Sprint 4 migrates it onto the SAME unified, evidence-based v2
-  // readiness snapshot the dashboard gauge and Readiness Detail view
-  // already use, and rewrites it around what a CFI/instructor actually
-  // needs: a concise record of demonstrated evidence, review history,
-  // and Ground School progress -- never a second readiness formula,
-  // never a full analytics dashboard.
+  // RPC. Sprint 4 migrated it onto the unified, evidence-based readiness
+  // snapshot the dashboard gauge and Readiness Detail view already use,
+  // and rewrote it around what a CFI/instructor actually needs: a
+  // concise record of demonstrated evidence, review history, and Ground
+  // School progress -- never a second readiness formula, never a full
+  // analytics dashboard.
   //
   // Version-gated: renderTrainingReport() always tries to obtain a
-  // current (algorithm_version === 'v2') snapshot first. If it can't --
-  // Checkride Prep isn't unlocked, or no v2 snapshot is obtainable even
-  // after a refresh attempt -- the report renders the ORIGINAL, pre-
-  // Sprint-4 presentation in full (computeLegacyTrainingReportData()/
-  // renderLegacyTrainingReport(), below, unchanged). The two are never
-  // mixed: a v1-style coverage number is never shown next to v2-style
-  // category/evidence sections.
-  var CURRENT_READINESS_ALGORITHM_VERSION = 'v2';
+  // current (algorithm_version === CURRENT_READINESS_ALGORITHM_VERSION,
+  // defined once near fetchReadinessSnapshot() -- there is exactly one
+  // authoritative version constant, never a surface-local copy) snapshot
+  // via the shared fetchCurrentReadinessSnapshot(). If it can't --
+  // Checkride Prep isn't unlocked, or no current-version snapshot is
+  // obtainable even after a refresh attempt -- the report renders the
+  // ORIGINAL, pre-Sprint-4 presentation in full
+  // (computeLegacyTrainingReportData()/renderLegacyTrainingReport(),
+  // below, unchanged). The two are never mixed: a legacy coverage number
+  // is never shown next to snapshot-based category/evidence sections.
 
   function trainingReportStatRow(stats) {
     return '<div class="portal-report__stat-row">' + stats.map(function (s) {
@@ -7773,13 +7801,7 @@
 
     if (!member || !member.checkridePrepUnlocked) { renderLegacyTrainingReport(); return; }
 
-    var snapshotPromise = (latestReadinessSnapshot && latestReadinessSnapshot.algorithm_version === CURRENT_READINESS_ALGORITHM_VERSION)
-      ? Promise.resolve(latestReadinessSnapshot)
-      : fetchReadinessSnapshot('latest').then(function (s) {
-          return (s && s.algorithm_version === CURRENT_READINESS_ALGORITHM_VERSION) ? s : fetchReadinessSnapshot('refresh');
-        });
-
-    Promise.all([snapshotPromise, computeTrainingReportAggregates()]).then(function (results) {
+    Promise.all([fetchCurrentReadinessSnapshot(), computeTrainingReportAggregates()]).then(function (results) {
       var snapshot = results[0];
       var aggregates = results[1];
       if (!snapshot || snapshot.algorithm_version !== CURRENT_READINESS_ALGORITHM_VERSION) {
