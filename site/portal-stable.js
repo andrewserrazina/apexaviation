@@ -3365,22 +3365,71 @@
   // Review Session/Checkride Mode already use -- rather than a new
   // section, matching this codebase's own established pattern for
   // focused, modal-style flows.
-  function readinessCategoryActionLabel(cat) {
-    var due = myReviewQueue.filter(function (it) { return it.source_type === 'dpe_question' && it.acs_category === cat.category; });
+  // Sprint 4.1 Issue 8 -- which Ground School modules actually carry
+  // content mapped (via content_acs_mappings) to each readiness
+  // category. This is content ROUTING, not a recommendation engine:
+  // picking among a category's candidates is still just "accessible,
+  // and not yet shown activity where that's known, else the earliest
+  // one" (readinessCategoryModuleId() below) -- never a scored ranking.
+  // Table order is earliest-module-first, the deterministic fallback
+  // when no activity signal is available. Kept in sync with the
+  // mapping-gap report; a category absent here has no mapped Ground
+  // School content and falls through to the DPE Library instead.
+  var READINESS_CATEGORY_MODULES = {
+    eligibility: ['PPL-M01', 'PPL-M04'],
+    'aircraft-systems': ['PPL-M03'],
+    airworthiness: ['PPL-M04'],
+    airspace: ['PPL-M04', 'PPL-M07'],
+    crosscountry: ['PPL-M04', 'PPL-M07', 'PPL-M08', 'PPL-M09', 'PPL-M15'],
+    weather: ['PPL-M10', 'PPL-M11', 'PPL-M12'],
+    performance: ['PPL-M13', 'PPL-M14'],
+    aeromedical: ['PPL-M04', 'PPL-M17']
+  };
+
+  // activeModuleIds is optional: callers that already have it loaded
+  // (Training Report's computeTrainingReportAggregates()) get an
+  // incomplete-module-aware pick; callers that don't (Readiness Detail,
+  // which renders synchronously) fall back to the earliest accessible
+  // candidate -- a real fallback, not a mistake, per "otherwise the
+  // earliest sensible module."
+  function readinessCategoryModuleId(category, activeModuleIds) {
+    var candidates = (READINESS_CATEGORY_MODULES[category] || []).filter(hasModuleAccess);
+    if (!candidates.length) return null;
+    if (activeModuleIds) {
+      var incomplete = candidates.filter(function (id) { return !activeModuleIds[id]; });
+      if (incomplete.length) return incomplete[0];
+    }
+    return candidates[0];
+  }
+
+  // Sprint 4.1 Issue 5 -- Ground School-sourced review items
+  // (module_quiz_question/checkride_corner/scenario) now resolve a real
+  // acs_category through content_acs_mappings (sync_review_queue(),
+  // v137), the same taxonomy dpe_question items already used. Due
+  // evidence from ANY source type counts toward "this category already
+  // has specific due evidence" -- Review Queue must stay higher
+  // priority than generic Ground School routing regardless of which
+  // source type produced the due item.
+  function dueReviewItemsForCategory(category) {
+    return myReviewQueue.filter(function (it) { return it.acs_category === category; });
+  }
+
+  function readinessCategoryActionLabel(cat, activeModuleIds) {
+    var due = dueReviewItemsForCategory(cat.category);
     if (due.length) return { type: 'review_queue', label: 'Continue Review (' + due.length + ')' };
-    if (cat.category === 'eligibility' && hasModuleAccess('PPL-M01')) return { type: 'ground_school', label: 'Open Ground School Module' };
+    var moduleId = readinessCategoryModuleId(cat.category, activeModuleIds);
+    if (moduleId) return { type: 'ground_school', label: 'Open Ground School Module', moduleId: moduleId };
     if (qotdQuestion && qotdQuestion.section === cat.category && !answeredCounts[qotdQuestion.id]) return { type: 'qotd', label: "Answer Today's Question" };
     return { type: 'dpe_library', label: 'Study ' + cat.label };
   }
 
-  function routeReadinessCategoryAction(cat, actionType) {
+  function routeReadinessCategoryAction(cat, actionType, moduleId) {
     closeReadinessDetail();
     if (window.apexTrack) apexTrack('readiness_action_clicked', { category: cat.category, action_type: actionType });
     if (actionType === 'review_queue') {
-      var due = myReviewQueue.filter(function (it) { return it.source_type === 'dpe_question' && it.acs_category === cat.category; });
-      openReviewSession(due);
+      openReviewSession(dueReviewItemsForCategory(cat.category));
     } else if (actionType === 'ground_school') {
-      openGuidedNotesModule('PPL-M01');
+      openGuidedNotesModule(moduleId || readinessCategoryModuleId(cat.category));
     } else if (actionType === 'qotd') {
       showSection('dashboard');
       var qotdEl = document.getElementById('qotdRevealBtn');
@@ -7491,7 +7540,7 @@
   // plus due Review Queue items for that category -- never a second
   // scoring formula competing with compute_readiness_snapshot().
   function dueReviewCountForCategory(catId) {
-    return myReviewQueue.filter(function (it) { return it.source_type === 'dpe_question' && it.acs_category === catId; }).length;
+    return dueReviewItemsForCategory(catId).length;
   }
 
   function trainingReportPerformanceLabel(cat) {
@@ -7758,8 +7807,8 @@
       addressRows.push({ text: totalDue + ' Review Queue item' + (totalDue === 1 ? '' : 's') + ' due', buttonLabel: 'Open Review Queue', run: function () { openReviewSession(myReviewQueue); } });
     }
     buckets.reinforcement.forEach(function (c) {
-      var action = readinessCategoryActionLabel(c);
-      addressRows.push({ text: c.label + ' needs reinforcement', buttonLabel: action.label, run: function () { routeReadinessCategoryAction(c, action.type); } });
+      var action = readinessCategoryActionLabel(c, aggregates.activeModuleIds);
+      addressRows.push({ text: c.label + ' needs reinforcement', buttonLabel: action.label, run: function () { routeReadinessCategoryAction(c, action.type, action.moduleId); } });
     });
     var incompleteModule = GUIDED_NOTES_MODULES.filter(function (m) {
       return hasModuleAccess(m.moduleId) && !aggregates.activeModuleIds[m.moduleId];
@@ -8731,11 +8780,14 @@
     // strictly more actionable than "review your weakest category," and
     // showing both would just be two representations of one problem.
     // dueReviewItems()/reviewQueueLabel() are defined near
-    // renderReviewQueueWidget() below. Only dpe_question items carry an
-    // acs_category (Ground School module items don't map onto the
-    // ACS_TRACKER taxonomy), so only those can supersede this block.
+    // renderReviewQueueWidget() below. Sprint 4.1 -- Ground School
+    // module_quiz_question/checkride_corner/scenario review items now
+    // resolve a real acs_category through content_acs_mappings
+    // (sync_review_queue(), the same taxonomy dpe_question items already
+    // used), so due evidence from any source type can supersede this
+    // block, not only dpe_question.
     var due = dueReviewItems();
-    var matchingReview = weakest ? due.filter(function (it) { return it.source_type === 'dpe_question' && it.acs_category === weakest.cat; }) : [];
+    var matchingReview = weakest ? due.filter(function (it) { return it.acs_category === weakest.cat; }) : [];
 
     if (weakest) {
       if (matchingReview.length) {
