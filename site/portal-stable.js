@@ -1312,6 +1312,13 @@
       addBubble('dpe', data.message);
       if (data.phase === 'debrief' || data.status === 'completed') {
         renderDebrief(data.debrief || {});
+        // Sprint 4 Part 6 -- dpe-chat's own 'end'/'message' handler
+        // awaits the ai_dpe_sessions update (status/debrief/ended_at)
+        // and checks its error before ever returning this response, so
+        // the session row is already committed server-side by the time
+        // this callback runs -- safe to trigger here, not merely because
+        // renderDebrief() ran.
+        triggerReadinessRefresh();
       }
     }
 
@@ -3241,6 +3248,31 @@
     }).catch(function () { return null; });
   }
 
+  // Sprint 4 Part 6 -- factored out of the original refreshDashboardReadinessGauge()
+  // so both the dashboard's own initial-load fetch and every triggered
+  // mid-session refresh (Practice/module quiz/Review Session/AI DPE
+  // completion) share one cache+DOM-update code path rather than two
+  // slightly-different copies of it.
+  function applyReadinessSnapshot(snapshot) {
+    if (!snapshot) return;
+    latestReadinessSnapshot = snapshot;
+    var score = Math.round(snapshot.overall_score);
+    var pctEl = document.getElementById('readinessPct');
+    if (pctEl) pctEl.textContent = score;
+    var ringEl = document.getElementById('readinessRing');
+    if (ringEl) {
+      var circumference = 352;
+      ringEl.style.strokeDashoffset = circumference - (circumference * score / 100);
+    }
+    var caption = document.getElementById('readinessCaption');
+    if (caption) caption.textContent = 'Based on the training evidence Apex Advantage can currently evaluate -- oral-exam knowledge, Ground School, and review performance.';
+    var evidenceEl = document.getElementById('readinessEvidenceBadge');
+    if (evidenceEl) {
+      evidenceEl.hidden = false;
+      evidenceEl.textContent = GAUGE_EVIDENCE_LABELS[snapshot.evidence_level] || '';
+    }
+  }
+
   // Called once per dashboard load (initPortalData()) for unlocked
   // members only -- swaps the gauge's NUMBER onto the real evidence-
   // based v2 score without changing the gauge's visual design. If no
@@ -3253,21 +3285,53 @@
     if (!member || !member.checkridePrepUnlocked) return;
     fetchReadinessSnapshot('latest').then(function (snapshot) {
       return snapshot ? snapshot : fetchReadinessSnapshot('refresh');
-    }).then(function (snapshot) {
-      if (!snapshot) return;
-      latestReadinessSnapshot = snapshot;
-      var score = Math.round(snapshot.overall_score);
-      document.getElementById('readinessPct').textContent = score;
-      var circumference = 352;
-      document.getElementById('readinessRing').style.strokeDashoffset = circumference - (circumference * score / 100);
-      var caption = document.getElementById('readinessCaption');
-      if (caption) caption.textContent = 'Based on the training evidence Apex Advantage can currently evaluate -- oral-exam knowledge, Ground School, and review performance.';
-      var evidenceEl = document.getElementById('readinessEvidenceBadge');
-      if (evidenceEl) {
-        evidenceEl.hidden = false;
-        evidenceEl.textContent = GAUGE_EVIDENCE_LABELS[snapshot.evidence_level] || '';
+    }).then(applyReadinessSnapshot);
+  }
+
+  // Sprint 4 Part 6 -- a coalescing refresh coordinator, not a lossy
+  // throttle. Meaningful new evidence (Practice, module quiz, Review
+  // Session, AI DPE completion) should update the dashboard's readiness
+  // number without spamming compute_readiness_snapshot() on every rapid
+  // action. A naive throttle can silently DROP the final state change
+  // (e.g. a module quiz finishes, then a review session finishes 6s
+  // later, inside the cooldown window -- a plain throttle would suppress
+  // the second trigger and never refresh again). Instead: at most one
+  // request in flight at a time, plus a `dirty` flag that guarantees
+  // exactly one trailing refresh runs afterward whenever a trigger
+  // arrived while busy (in flight OR in the cooldown window) -- a burst
+  // of rapid completions always collapses to "initial refresh + at most
+  // one trailing refresh with the latest state," never one-per-action
+  // and never zero.
+  var readinessRefreshState = { inFlight: false, dirty: false, lastCompletedAt: 0, cooldownTimer: null };
+  var READINESS_REFRESH_COOLDOWN_MS = 10000;
+
+  function runReadinessRefresh() {
+    readinessRefreshState.inFlight = true;
+    fetchReadinessSnapshot('refresh').then(applyReadinessSnapshot).finally(function () {
+      readinessRefreshState.inFlight = false;
+      readinessRefreshState.lastCompletedAt = Date.now();
+      if (readinessRefreshState.dirty) {
+        readinessRefreshState.dirty = false;
+        triggerReadinessRefresh();
       }
     });
+  }
+
+  function triggerReadinessRefresh() {
+    if (!member || !member.checkridePrepUnlocked) return;
+    if (readinessRefreshState.inFlight) { readinessRefreshState.dirty = true; return; }
+    var sinceLast = Date.now() - readinessRefreshState.lastCompletedAt;
+    if (sinceLast < READINESS_REFRESH_COOLDOWN_MS) {
+      readinessRefreshState.dirty = true;
+      if (!readinessRefreshState.cooldownTimer) {
+        readinessRefreshState.cooldownTimer = setTimeout(function () {
+          readinessRefreshState.cooldownTimer = null;
+          if (readinessRefreshState.dirty) { readinessRefreshState.dirty = false; runReadinessRefresh(); }
+        }, READINESS_REFRESH_COOLDOWN_MS - sinceLast);
+      }
+      return;
+    }
+    runReadinessRefresh();
   }
 
   // ── Actionable Readiness detail view (Part D) ──────────────────
@@ -3943,6 +4007,10 @@
           if (!rpcRes.error && window.apexTrack) {
             apexTrack('practice_completed', { profile_id: member.id, practice_mode: mode, score: finalScore, total: finalTotal });
           }
+          // Sprint 4 Part 6 -- only after complete_mobile_practice_session()
+          // (the evidence writer) has actually succeeded, never while it's
+          // still in flight or on a failed attempt.
+          if (!rpcRes.error) triggerReadinessRefresh();
           renderSummary(finalScore, finalTotal);
         });
       });
@@ -4070,10 +4138,41 @@
     return null;
   }
 
+  // Sprint 4 Part 5 -- a proper canonical UUID v4, not the non-UUID-
+  // shaped fallback analytics-events.js uses for its own anon id (that
+  // fallback wouldn't cast to the RPC's `uuid` parameter type). Prefers
+  // crypto.randomUUID(); falls back to crypto.getRandomValues(), then
+  // Math.random() only as a last resort, but always emits valid
+  // RFC 4122 v4 formatting either way.
+  function generateUuidV4() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    var bytes = new Array(16);
+    if (window.crypto && crypto.getRandomValues) {
+      var arr = new Uint8Array(16);
+      crypto.getRandomValues(arr);
+      for (var i = 0; i < 16; i++) bytes[i] = arr[i];
+    } else {
+      for (var i = 0; i < 16; i++) bytes[i] = Math.floor(Math.random() * 256);
+    }
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    var hex = bytes.map(function (b) { return ('0' + b.toString(16)).slice(-2); });
+    return hex.slice(0, 4).join('') + '-' + hex.slice(4, 6).join('') + '-' + hex.slice(6, 8).join('') + '-' + hex.slice(8, 10).join('') + '-' + hex.slice(10, 16).join('');
+  }
+
   function renderReviewSessionItem() {
     var overlay = document.getElementById('practiceOverlay');
     var s = reviewSessionState;
     var item = s.items[s.index];
+    // The idempotency key belongs to this logical review attempt, not to
+    // the DOM -- generated once, the first time this index is rendered,
+    // and cached on the item object itself so any later re-render of the
+    // SAME index (e.g. a retry after an ambiguous network failure) reuses
+    // it rather than minting a new one. A genuinely new scheduled review
+    // of the same source question later gets a fresh item object from
+    // openReviewSession()'s own fresh query, so it naturally gets a fresh
+    // key with no special-casing needed here.
+    if (!item.submissionKey) item.submissionKey = generateUuidV4();
     overlay.innerHTML =
       '<div class="portal-practice-panel">' +
         '<button class="portal-practice-panel__close" id="reviewCloseBtn" type="button">' +
@@ -4089,23 +4188,65 @@
     document.getElementById('reviewCloseBtn').addEventListener('click', closeReviewSession);
     document.getElementById('reviewRevealBtn').addEventListener('click', function () {
       document.getElementById('reviewAnswerBox').classList.add('show');
-      document.getElementById('reviewActions').innerHTML =
-        '<button class="btn btn--correct" id="reviewReinforcedBtn">✓ Reinforced</button>' +
-        '<button class="btn btn--missed" id="reviewNeedsPassBtn">Needs Another Pass</button>';
-      document.getElementById('reviewReinforcedBtn').addEventListener('click', function () { advanceReviewSession('reinforced'); });
-      document.getElementById('reviewNeedsPassBtn').addEventListener('click', function () { advanceReviewSession('needs_another_pass'); });
+      renderReviewActions();
     });
+  }
+
+  function renderReviewActions() {
+    document.getElementById('reviewActions').innerHTML =
+      '<button class="btn btn--correct" id="reviewReinforcedBtn">✓ Reinforced</button>' +
+      '<button class="btn btn--missed" id="reviewNeedsPassBtn">Needs Another Pass</button>';
+    document.getElementById('reviewReinforcedBtn').addEventListener('click', function () { advanceReviewSession('reinforced'); });
+    document.getElementById('reviewNeedsPassBtn').addEventListener('click', function () { advanceReviewSession('needs_another_pass'); });
+  }
+
+  // Network-ambiguous failure: the request may or may not have actually
+  // committed server-side before the response was lost. Never advance,
+  // never regenerate item.submissionKey -- a Retry reuses the exact same
+  // logical submission, so if the first attempt DID commit, the server's
+  // idempotency ledger replays that stored result with zero side effects
+  // repeated; if it didn't commit, Retry performs the real write once.
+  function showReviewRetryState(outcome) {
+    var actionsEl = document.getElementById('reviewActions');
+    if (!actionsEl) return;
+    actionsEl.innerHTML =
+      '<p style="color:rgba(255,255,255,0.55);font-size:13px;margin:0 0 10px;flex-basis:100%">Connection issue -- your answer wasn\'t confirmed. Tap to try again.</p>' +
+      '<button class="btn btn--primary" id="reviewRetryBtn">Retry</button>';
+    document.getElementById('reviewRetryBtn').addEventListener('click', function () { advanceReviewSession(outcome); });
   }
 
   function advanceReviewSession(outcome) {
     var s = reviewSessionState;
     var item = s.items[s.index];
-    if (outcome === 'reinforced') s.reinforced++; else s.needsPass++;
-    apexSupabase.rpc('record_review_outcome', { p_review_item_id: item.reviewItemId, p_outcome: outcome });
-    if (window.apexTrack) apexTrack('review_item_completed', { source_type: item.sourceType, result: outcome });
-    s.index++;
-    if (s.index >= s.items.length) { endReviewSession(); return; }
-    renderReviewSessionItem();
+    var reinforcedBtn = document.getElementById('reviewReinforcedBtn');
+    var needsPassBtn = document.getElementById('reviewNeedsPassBtn');
+    var retryBtn = document.getElementById('reviewRetryBtn');
+    if (reinforcedBtn) reinforcedBtn.disabled = true;
+    if (needsPassBtn) needsPassBtn.disabled = true;
+    if (retryBtn) retryBtn.disabled = true;
+
+    apexSupabase.rpc('record_review_outcome', {
+      p_review_item_id: item.reviewItemId, p_outcome: outcome, p_idempotency_key: item.submissionKey
+    }).then(function (res) {
+      if (res.error || !res.data) { showReviewRetryState(outcome); return; }
+      // A single flag gates every side effect so a late-arriving
+      // duplicate response (a genuinely concurrent retry, or the
+      // original request finally resolving after a Retry already
+      // succeeded) can never double-apply the session tally, analytics,
+      // or the readiness refresh trigger -- checked in addition to the
+      // server's own was_replay flag, which only tells us the SERVER
+      // side-effects were deduped, not whether THIS client has already
+      // reacted to them once.
+      if (!item.processed) {
+        item.processed = true;
+        if (outcome === 'reinforced') s.reinforced++; else s.needsPass++;
+        if (window.apexTrack) apexTrack('review_item_completed', { source_type: item.sourceType, result: outcome });
+        triggerReadinessRefresh();
+      }
+      s.index++;
+      if (s.index >= s.items.length) { endReviewSession(); return; }
+      renderReviewSessionItem();
+    }).catch(function () { showReviewRetryState(outcome); });
   }
 
   function endReviewSession() {
@@ -6112,10 +6253,18 @@
         // an actual ACS task, see v126) ever produce evidence; the RPC
         // itself is a no-op for any unmapped question_id, so this is
         // safe to call unconditionally for every scored question.
+        //
+        // Sprint 4 Part 6 -- these previously fired as bare unawaited
+        // .forEach() calls; readiness refresh needs to happen only after
+        // the whole evidence batch has actually settled, not while the
+        // per-question RPCs are still racing. Promise.allSettled() (not
+        // Promise.all()) so one failed evidence call never blocks the
+        // trigger or throws into quiz-completion UX, which is already
+        // shown above and must never wait on this.
         var attemptId = res.data && res.data.id;
         if (attemptId) {
-          Object.keys(results).forEach(function (qid) {
-            apexSupabase.rpc('record_ground_school_evidence', {
+          var evidencePromises = Object.keys(results).map(function (qid) {
+            return apexSupabase.rpc('record_ground_school_evidence', {
               p_profile_id: member.id,
               p_content_type: 'module_quiz_question',
               p_content_id: qid,
@@ -6124,6 +6273,7 @@
               p_self_confidence: null
             });
           });
+          Promise.allSettled(evidencePromises).then(function () { triggerReadinessRefresh(); });
         }
       });
     });
@@ -7185,12 +7335,33 @@
   }
 
   // ── Training Report ─────────────────────────────────────────────
-  // Print/PDF-only, generated entirely from data already loaded client-side
-  // for other widgets on this page (readiness, category coverage, Ground
-  // School enrollments, AI DPE sessions) -- no new RPC. Deliberately
-  // excludes billing/invoices and email; instructor-facing, not a full
-  // account export.
-  function computeTrainingReportData() {
+  // Sprint 3 left this generated entirely from client-side coverage
+  // counters (computeReadiness()/categoryPct()) -- print/PDF-only, no
+  // RPC. Sprint 4 migrates it onto the SAME unified, evidence-based v2
+  // readiness snapshot the dashboard gauge and Readiness Detail view
+  // already use, and rewrites it around what a CFI/instructor actually
+  // needs: a concise record of demonstrated evidence, review history,
+  // and Ground School progress -- never a second readiness formula,
+  // never a full analytics dashboard.
+  //
+  // Version-gated: renderTrainingReport() always tries to obtain a
+  // current (algorithm_version === 'v2') snapshot first. If it can't --
+  // Checkride Prep isn't unlocked, or no v2 snapshot is obtainable even
+  // after a refresh attempt -- the report renders the ORIGINAL, pre-
+  // Sprint-4 presentation in full (computeLegacyTrainingReportData()/
+  // renderLegacyTrainingReport(), below, unchanged). The two are never
+  // mixed: a v1-style coverage number is never shown next to v2-style
+  // category/evidence sections.
+  var CURRENT_READINESS_ALGORITHM_VERSION = 'v2';
+
+  function trainingReportStatRow(stats) {
+    return '<div class="portal-report__stat-row">' + stats.map(function (s) {
+      return '<div class="portal-report__stat"><div class="portal-report__stat-value">' + escapeHtmlSafe(s.value) + '</div><div class="portal-report__stat-label">' + escapeHtmlSafe(s.label) + '</div></div>';
+    }).join('') + '</div>';
+  }
+
+  // ---- Legacy fallback (pre-Sprint-4 presentation, unchanged) ------
+  function computeLegacyTrainingReportData() {
     var unlocked = !!(member && member.checkridePrepUnlocked);
     var catList = Object.keys(CATEGORY_META).map(function (cat) {
       return { cat: cat, label: CATEGORY_META[cat].label, pct: categoryPct(cat) };
@@ -7236,15 +7407,10 @@
     return dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   }
 
-  function renderTrainingReport() {
-    var data = computeTrainingReportData();
+  function renderLegacyTrainingReport() {
+    var data = computeLegacyTrainingReportData();
     var el = document.getElementById('trainingReportContent');
 
-    var statRow = function (stats) {
-      return '<div class="portal-report__stat-row">' + stats.map(function (s) {
-        return '<div class="portal-report__stat"><div class="portal-report__stat-value">' + escapeHtmlSafe(s.value) + '</div><div class="portal-report__stat-label">' + escapeHtmlSafe(s.label) + '</div></div>';
-      }).join('') + '</div>';
-    };
     var catListHtml = function (cats) {
       return cats.length
         ? '<ul class="portal-report__list">' + cats.map(function (c) { return '<li>' + escapeHtmlSafe(c.label) + ' — ' + Math.round(c.pct * 100) + '% complete</li>'; }).join('') + '</ul>'
@@ -7260,7 +7426,7 @@
 
       '<div class="portal-report__section"><h4>Readiness</h4>' +
       (data.unlocked
-        ? statRow([{ value: data.readinessPct + '%', label: 'Apex Checkride Readiness' }, { value: data.questionsStudied + '/' + data.questionsTotal, label: 'DPE questions studied' }, { value: data.scenariosCompleted + '/' + data.scenariosTotal, label: 'Scenarios completed' }])
+        ? trainingReportStatRow([{ value: data.readinessPct + '%', label: 'Apex Checkride Readiness' }, { value: data.questionsStudied + '/' + data.questionsTotal, label: 'DPE questions studied' }, { value: data.scenariosCompleted + '/' + data.scenariosTotal, label: 'Scenarios completed' }])
         : '<p class="portal-report__empty">Checkride Prep is not unlocked on this account, so readiness data isn\'t available yet.</p>') +
       '</div>' +
 
@@ -7268,34 +7434,373 @@
       (data.unlocked ? '<div class="portal-report__section"><h4>Areas Needing Work</h4>' + catListHtml(data.weakest3) + '</div>' : '') +
 
       '<div class="portal-report__section"><h4>Ground School</h4>' +
-      statRow([{ value: data.attendedClasses.length + '/' + (data.groundSchoolModuleCount || 20), label: 'Modules attended' }]) +
+      trainingReportStatRow([{ value: data.attendedClasses.length + '/' + (data.groundSchoolModuleCount || 20), label: 'Modules attended' }]) +
       (data.attendedClasses.length ? '<ul class="portal-report__list" style="margin-top:12px">' + data.attendedClasses.map(function (e) { return '<li>' + escapeHtmlSafe(e.class_title || e.lesson_title) + '</li>'; }).join('') + '</ul>' : '') +
       (data.registeredUpcoming ? '<p style="font-size:13px;color:#5a6b84;margin-top:10px">Next registered class: ' + escapeHtmlSafe(data.registeredUpcoming.title) + ' — ' + fmtReportDate(data.registeredUpcoming.when) + '</p>' : '') +
       '</div>' +
 
       '<div class="portal-report__section"><h4>AI DPE Practice</h4>' +
       (data.aiDpeCompletedCount
-        ? statRow([{ value: String(data.aiDpeCompletedCount), label: 'Sessions completed' }]) +
+        ? trainingReportStatRow([{ value: String(data.aiDpeCompletedCount), label: 'Sessions completed' }]) +
           (data.latestDebrief ? '<p style="font-size:13px;color:#33445e;margin-top:12px"><strong>Most recent verdict:</strong> ' + escapeHtmlSafe(data.latestDebrief.overallReadiness === 'ready' ? 'Ready for Checkride' : data.latestDebrief.overallReadiness === 'not_yet' ? 'Not Yet — Keep Practicing' : 'Almost There') + '</p>' : '') +
           (data.aiDpeTrend.length ? '<ul class="portal-report__list" style="margin-top:8px">' + data.aiDpeTrend.map(function (t) { return '<li>' + escapeHtmlSafe(t.text) + '</li>'; }).join('') + '</ul>' : '')
         : '<p class="portal-report__empty">No AI DPE Practice sessions completed yet.</p>') +
       '</div>' +
 
       '<div class="portal-report__section"><h4>Recent Activity</h4>' +
-      statRow([{ value: String(data.studyDaysTotal), label: 'Total days studied' }, { value: data.lastActiveDate ? fmtReportDate(data.lastActiveDate) : '—', label: 'Last active' }]) +
+      trainingReportStatRow([{ value: String(data.studyDaysTotal), label: 'Total days studied' }, { value: data.lastActiveDate ? fmtReportDate(data.lastActiveDate) : '—', label: 'Last active' }]) +
       '</div>' +
 
       '<p class="portal-report__footer">Generated from Apex Advantage member portal data. Does not include billing or account credential information.</p>';
   }
 
+  // ---- Sprint 4: performance vs. evidence-sufficiency bucketing ----
+  // (Core Architecture Decision 1) evidence_level answers "how much
+  // evidence exists" and NEVER by itself decides "Needs Reinforcement."
+  // trainingReportPerformanceLabel() answers "how did the student do,"
+  // driven only by real negative/positive signal already present on the
+  // snapshot's own category_breakdown entries (score, weak_task_count)
+  // plus due Review Queue items for that category -- never a second
+  // scoring formula competing with compute_readiness_snapshot().
+  function dueReviewCountForCategory(catId) {
+    return myReviewQueue.filter(function (it) { return it.source_type === 'dpe_question' && it.acs_category === catId; }).length;
+  }
+
+  function trainingReportPerformanceLabel(cat) {
+    if (cat.score === null) return null;
+    if (cat.score < 60 || cat.weak_task_count > 0 || dueReviewCountForCategory(cat.category) > 0) return 'needs_reinforcement';
+    if (cat.score >= 80) return 'strong';
+    return 'developing';
+  }
+
+  var TRAINING_REPORT_EVIDENCE_RANK = { none: 0, limited: 1, developing: 2, strong: 3 };
+
+  // Three-way split -- a category lands in at most one bucket.
+  // "Solid but unremarkable" (sufficient evidence, no negative signal,
+  // not top-2-3) intentionally lands in none of them, so every section
+  // stays short by design rather than force-listing every category.
+  function bucketTrainingReportCategories(categoryBreakdown) {
+    var strongest = [], reinforcement = [], insufficient = [];
+    (categoryBreakdown || []).forEach(function (cat) {
+      var perf = trainingReportPerformanceLabel(cat);
+      if (perf === 'needs_reinforcement') {
+        reinforcement.push(cat);
+      } else if (perf === 'strong' && (cat.evidence_level === 'developing' || cat.evidence_level === 'strong')) {
+        strongest.push(cat);
+      } else if (cat.evidence_level === 'none' || cat.evidence_level === 'limited') {
+        insufficient.push(cat);
+      }
+    });
+    strongest.sort(function (a, b) {
+      var rankDiff = (TRAINING_REPORT_EVIDENCE_RANK[b.evidence_level] || 0) - (TRAINING_REPORT_EVIDENCE_RANK[a.evidence_level] || 0);
+      return rankDiff !== 0 ? rankDiff : (b.score || 0) - (a.score || 0);
+    });
+    reinforcement.sort(function (a, b) { return (a.score === null ? -1 : a.score) - (b.score === null ? -1 : b.score); });
+    return { strongest: strongest.slice(0, 3), reinforcement: reinforcement, insufficient: insufficient };
+  }
+
+  // ---- Sprint 4: small aggregate queries for report-only metrics ----
+  // Every field here is either the cached v2 snapshot or one of these
+  // three lightweight queries against tables already RLS-scoped to the
+  // caller's own profile_id -- no new report-facing RPC. Only ever
+  // selects guided_notes.response_text for rows matching the exact
+  // structural "-rating" prompt convention (confident/needs_review/
+  // not_yet) -- free-text Guided Notes/Scenario Workshop/Checkride
+  // Corner written answers are never read here (privacy).
+  function computeTrainingReportAggregates() {
+    var empty = { confidenceCounts: { confident: 0, needs_review: 0, not_yet: 0 }, mostRecentModuleId: null, mostRecentModuleAt: null, reviewsCompletedCount: 0, activeModuleIds: {} };
+    if (!member) return Promise.resolve(empty);
+    return Promise.all([
+      apexSupabase.from('guided_notes').select('module_id, response_text, updated_at')
+        .eq('profile_id', member.id).like('prompt_id', '%-rating').in('response_text', ['confident', 'needs_review', 'not_yet']),
+      apexSupabase.from('module_quiz_attempts').select('module_id, completed_at')
+        .eq('profile_id', member.id).order('completed_at', { ascending: false }),
+      apexSupabase.from('review_outcome_submissions').select('idempotency_key', { count: 'exact', head: true })
+        .eq('profile_id', member.id)
+    ]).then(function (results) {
+      var ratingRows = (results[0] && results[0].data) || [];
+      var quizRows = (results[1] && results[1].data) || [];
+      var reviewCount = (results[2] && results[2].count) || 0;
+
+      var confidenceCounts = { confident: 0, needs_review: 0, not_yet: 0 };
+      var activeModuleIds = {};
+      var mostRecentModuleId = null, mostRecentModuleAt = null;
+      ratingRows.forEach(function (r) {
+        if (confidenceCounts.hasOwnProperty(r.response_text)) confidenceCounts[r.response_text]++;
+        activeModuleIds[r.module_id] = true;
+        if (!mostRecentModuleAt || new Date(r.updated_at) > new Date(mostRecentModuleAt)) {
+          mostRecentModuleAt = r.updated_at;
+          mostRecentModuleId = r.module_id;
+        }
+      });
+      quizRows.forEach(function (r) {
+        activeModuleIds[r.module_id] = true;
+        if (!mostRecentModuleAt || new Date(r.completed_at) > new Date(mostRecentModuleAt)) {
+          mostRecentModuleAt = r.completed_at;
+          mostRecentModuleId = r.module_id;
+        }
+      });
+
+      return { confidenceCounts: confidenceCounts, mostRecentModuleId: mostRecentModuleId, mostRecentModuleAt: mostRecentModuleAt, reviewsCompletedCount: reviewCount, activeModuleIds: activeModuleIds };
+    }).catch(function () { return empty; });
+  }
+
+  // ---- Sprint 4: instructor-ready unified report -------------------
+  // Section order is fixed and deliberate (never re-ordered by score):
+  // Header, Knowledge & Oral Readiness, Recommended Next Training
+  // Action, Strongest Demonstrated Areas, Areas Needing Reinforcement,
+  // Insufficient or Limited Evidence, Flight Proficiency Not Yet
+  // Tracked, Evidence Summary, Ground School Progress, ACS Knowledge
+  // Evidence, My Review Queue, AI Oral Practice, Areas to Address.
+  // Empty sections are omitted entirely, never rendered blank.
+  function renderUnifiedTrainingReport(snapshot, aggregates) {
+    var el = document.getElementById('trainingReportContent');
+    var categories = snapshot.category_breakdown || [];
+    var buckets = bucketTrainingReportCategories(categories);
+    var plan = computeTrainingPlan();
+
+    var totalAssessable = 0, totalEvidenced = 0;
+    categories.forEach(function (c) {
+      totalAssessable += (c.assessable_task_count || 0);
+      totalEvidenced += (c.evidenced_task_count || 0);
+    });
+
+    var sections = [];
+
+    // Header
+    sections.push(
+      '<p class="portal-report__eyebrow">Apex Advantage — Training Record</p>' +
+      '<h1 class="portal-report__title">' + escapeHtmlSafe(member.name) + '</h1>' +
+      '<p class="portal-report__meta">Certificate goal: ' + escapeHtmlSafe(member.certificateStatus || 'Not set') +
+        (checkrideDate ? ' &nbsp;·&nbsp; Checkride: ' + fmtReportDate(checkrideDate) : '') +
+        ' &nbsp;·&nbsp; Generated ' + fmtReportDate(new Date()) + '</p>'
+    );
+
+    // Knowledge & Oral Readiness
+    var evidenceLabel = GAUGE_EVIDENCE_LABELS[snapshot.evidence_level] || snapshot.evidence_level;
+    sections.push(
+      '<div class="portal-report__section"><h4>Knowledge &amp; Oral Readiness</h4>' +
+      trainingReportStatRow([
+        { value: Math.round(snapshot.overall_score) + '%', label: 'Apex Checkride Readiness' },
+        { value: evidenceLabel, label: 'Overall Evidence Level' }
+      ]) +
+      '<p class="portal-report__caption">Based on the training evidence Apex Advantage can currently evaluate — oral-exam knowledge, Ground School, and review performance. Apex does not yet digitally assess hands-on flight maneuvers (takeoffs, landings, stalls, and similar Areas of Operation).</p>' +
+      '</div>'
+    );
+
+    // Recommended Next Training Action -- computeTrainingPlan()'s own
+    // first not-done task, reworded plainly. This is the report's ONLY
+    // recommendation surface (Core Architecture Decision 3); "Areas to
+    // Address" below is a structural restatement, never a second ranking.
+    var nextTask = plan.tasks.filter(function (t) { return !t.done; })[0];
+    sections.push(
+      '<div class="portal-report__section"><h4>Recommended Next Training Action</h4>' +
+      (nextTask
+        ? '<p style="font-size:14.5px;color:#16233b;font-weight:600;margin:0 0 6px">' + escapeHtmlSafe(nextTask.label) + '</p>' +
+          (plan.whyText ? '<p class="portal-report__caption" style="margin-top:0">' + escapeHtmlSafe(plan.whyText) + '</p>' : '')
+        : '<p class="portal-report__empty">No specific next action identified right now.</p>') +
+      '</div>'
+    );
+
+    // Strongest Demonstrated Areas
+    if (buckets.strongest.length) {
+      sections.push(
+        '<div class="portal-report__section"><h4>Strongest Demonstrated Areas</h4>' +
+        '<div class="portal-report__category-list">' + buckets.strongest.map(function (c) {
+          return '<div class="portal-report__category-line"><span>' + escapeHtmlSafe(c.label) + ' — ' + Math.round(c.score) + '%</span><span class="portal-report__category-status">Strong Evidence</span></div>';
+        }).join('') + '</div></div>'
+      );
+    }
+
+    // Areas Needing Reinforcement
+    if (buckets.reinforcement.length) {
+      sections.push(
+        '<div class="portal-report__section"><h4>Areas Needing Reinforcement</h4>' +
+        '<div class="portal-report__category-list">' + buckets.reinforcement.map(function (c) {
+          var scoreText = c.score === null ? '—' : Math.round(c.score) + '%';
+          return '<div class="portal-report__category-line"><span>' + escapeHtmlSafe(c.label) + ' — ' + scoreText + '</span><span class="portal-report__category-status">Needs Reinforcement</span></div>';
+        }).join('') + '</div></div>'
+      );
+    }
+
+    // Insufficient or Limited Evidence -- framed as uncertainty, never
+    // as a weakness: "Apex has no digital way to assess this yet" must
+    // never read as "student performed poorly."
+    if (buckets.insufficient.length) {
+      sections.push(
+        '<div class="portal-report__section"><h4>Insufficient or Limited Evidence</h4>' +
+        '<p class="portal-report__caption" style="margin:0 0 10px">Not enough training evidence yet to confidently assess these areas — this reflects available data, not performance.</p>' +
+        '<div class="portal-report__category-list">' + buckets.insufficient.map(function (c) {
+          var label = EVIDENCE_SUFFICIENCY_LABELS[c.evidence_level] || c.evidence_level;
+          return '<div class="portal-report__category-line"><span>' + escapeHtmlSafe(c.label) + '</span><span class="portal-report__category-status">' + escapeHtmlSafe(label) + '</span></div>';
+        }).join('') + '</div></div>'
+      );
+    }
+
+    // Flight Proficiency Not Yet Tracked -- static, always present
+    sections.push(
+      '<div class="portal-report__section"><h4>Flight Proficiency Not Yet Tracked</h4>' +
+      '<p class="portal-report__caption" style="margin:0">Apex Advantage currently evaluates oral-exam knowledge, Ground School progress, and review performance. Hands-on flight maneuvers (takeoffs, landings, stalls, and other flight-only Areas of Operation) are outside Apex’s current digital assessment scope and are not reflected in this report — they remain your CFI’s direct evaluation.</p>' +
+      '</div>'
+    );
+
+    // Evidence Summary -- only reliably-supported metrics, no vanity numbers
+    sections.push(
+      '<div class="portal-report__section"><h4>Evidence Summary</h4>' +
+      trainingReportStatRow([
+        { value: totalEvidenced + ' of ' + totalAssessable, label: 'Assessable ACS tasks with evidence' },
+        { value: String(snapshot.evidence_volume || 0), label: 'Total training attempts recorded' },
+        { value: String(aggregates.reviewsCompletedCount), label: 'Review Queue items completed' }
+      ]) +
+      '</div>'
+    );
+
+    // Ground School Progress -- summarizes state, never dumps private
+    // free text (ratings only)
+    var confidence = aggregates.confidenceCounts;
+    var mostRecentModuleDef = aggregates.mostRecentModuleId ? moduleDefFor(aggregates.mostRecentModuleId) : null;
+    sections.push(
+      '<div class="portal-report__section"><h4>Ground School Progress</h4>' +
+      trainingReportStatRow([
+        { value: Object.keys(aggregates.activeModuleIds).length + ' of ' + (groundSchoolModuleCount || '—'), label: 'Modules with recorded activity' },
+        { value: String(confidence.confident), label: 'Self-rated Confident' },
+        { value: String(confidence.needs_review + confidence.not_yet), label: 'Self-rated Needs Review' }
+      ]) +
+      (mostRecentModuleDef
+        ? '<p class="portal-report__caption">Most recent module activity: ' + escapeHtmlSafe(mostRecentModuleDef.moduleLabel) + (aggregates.mostRecentModuleAt ? ' — ' + fmtReportDate(aggregates.mostRecentModuleAt) : '') + '</p>'
+        : '') +
+      '</div>'
+    );
+
+    // ACS Knowledge Evidence -- exact counts, "outside current Apex
+    // digital readiness scope" wording, never "missing"
+    sections.push(
+      '<div class="portal-report__section"><h4>ACS Knowledge Evidence</h4>' +
+      '<p class="portal-report__caption" style="margin:0">' + totalEvidenced + ' of ' + totalAssessable + ' ACS tasks Apex Advantage currently assesses digitally have recorded evidence. Flight-only ACS tasks are outside Apex’s current digital readiness scope, not missing evidence.</p>' +
+      '</div>'
+    );
+
+    // My Review Queue -- due counts by category, never question text
+    var dueByCategory = {};
+    myReviewQueue.forEach(function (it) {
+      if (it.source_type !== 'dpe_question' || !it.acs_category) return;
+      dueByCategory[it.acs_category] = (dueByCategory[it.acs_category] || 0) + 1;
+    });
+    var dueCatKeys = Object.keys(dueByCategory);
+    var totalDue = myReviewQueue.length;
+    sections.push(
+      '<div class="portal-report__section"><h4>My Review Queue</h4>' +
+      (totalDue
+        ? trainingReportStatRow([{ value: String(totalDue), label: 'Items currently due' }]) +
+          (dueCatKeys.length ? '<ul class="portal-report__list" style="margin-top:12px">' + dueCatKeys.map(function (catId) {
+            var catRow = categories.filter(function (c) { return c.category === catId; })[0];
+            var label = catRow ? catRow.label : catId;
+            return '<li>' + escapeHtmlSafe(label) + ' — ' + dueByCategory[catId] + ' due</li>';
+          }).join('') + '</ul>' : '')
+        : '<p class="portal-report__empty">No review items currently due.</p>') +
+      '</div>'
+    );
+
+    // AI Oral Practice -- only if a completed session exists within 30
+    // days; last-session recency + recent_ai_dpe_weak-flagged categories
+    // only (the same 30-day gate the snapshot itself already applies) --
+    // no fabricated "Strong domains" list, no transcript.
+    var aiDpeCompleted = myAiDpeSessions.filter(function (s) { return s.status === 'completed'; });
+    var latestAiDpe = aiDpeCompleted[0];
+    var latestAiDpeRecent = latestAiDpe && latestAiDpe.ended_at && ((Date.now() - new Date(latestAiDpe.ended_at).getTime()) <= 30 * 86400000);
+    if (latestAiDpeRecent) {
+      var aiWeakCats = categories.filter(function (c) { return c.ai_dpe_reason_code === 'recent_ai_dpe_weak'; });
+      sections.push(
+        '<div class="portal-report__section"><h4>AI Oral Practice</h4>' +
+        trainingReportStatRow([{ value: fmtReportDate(latestAiDpe.ended_at), label: 'Most recent session' }]) +
+        (aiWeakCats.length
+          ? '<ul class="portal-report__list" style="margin-top:12px">' + aiWeakCats.map(function (c) { return '<li>' + escapeHtmlSafe(c.label) + ' flagged for reinforcement</li>'; }).join('') + '</ul>'
+          : '') +
+        '</div>'
+      );
+    }
+
+    // Areas to Address -- fixed-order RESTATEMENT of what earlier
+    // sections already identified (due Review Queue, then Reinforcement
+    // categories, then one relevant incomplete Ground School module).
+    // Never independently ranked; action buttons route through the
+    // existing Sprint 3 routing primitives, never a new priority formula.
+    var addressRows = [];
+    if (totalDue) {
+      addressRows.push({ text: totalDue + ' Review Queue item' + (totalDue === 1 ? '' : 's') + ' due', buttonLabel: 'Open Review Queue', run: function () { openReviewSession(myReviewQueue); } });
+    }
+    buckets.reinforcement.forEach(function (c) {
+      var action = readinessCategoryActionLabel(c);
+      addressRows.push({ text: c.label + ' needs reinforcement', buttonLabel: action.label, run: function () { routeReadinessCategoryAction(c, action.type); } });
+    });
+    var incompleteModule = GUIDED_NOTES_MODULES.filter(function (m) {
+      return hasModuleAccess(m.moduleId) && !aggregates.activeModuleIds[m.moduleId];
+    })[0];
+    if (incompleteModule) {
+      addressRows.push({ text: 'Continue ' + incompleteModule.moduleLabel, buttonLabel: 'Open Module', run: function () { openGuidedNotesModule(incompleteModule.moduleId); } });
+    }
+
+    sections.push(
+      '<div class="portal-report__section"><h4>Areas to Address</h4>' +
+      (addressRows.length
+        ? '<div class="portal-report__action-list">' + addressRows.map(function (row, i) {
+            return '<div class="portal-report__action-row"><span>' + escapeHtmlSafe(row.text) + '</span>' +
+              '<button type="button" class="btn btn--ghost portal-report__action-btn" data-address-idx="' + i + '">' + escapeHtmlSafe(row.buttonLabel) + '</button></div>';
+          }).join('') + '</div>'
+        : '<p class="portal-report__empty">Nothing currently needs attention — keep up the consistent training.</p>') +
+      '</div>'
+    );
+
+    sections.push('<p class="portal-report__footer">Generated from Apex Advantage member portal data. Does not include billing or account credential information.</p>');
+
+    el.innerHTML = sections.join('');
+
+    el.querySelectorAll('[data-address-idx]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var row = addressRows[Number(btn.dataset.addressIdx)];
+        if (!row) return;
+        if (window.apexTrack) apexTrack('training_report_priority_clicked', {});
+        document.getElementById('trainingReportOverlay').hidden = true;
+        row.run();
+      });
+    });
+  }
+
+  // ---- Orchestrator: version-gate, fetch, fallback branch ----------
+  function renderTrainingReport() {
+    var el = document.getElementById('trainingReportContent');
+    el.innerHTML = '<p class="portal-report__empty">Loading training report…</p>';
+
+    if (!member || !member.checkridePrepUnlocked) { renderLegacyTrainingReport(); return; }
+
+    var snapshotPromise = (latestReadinessSnapshot && latestReadinessSnapshot.algorithm_version === CURRENT_READINESS_ALGORITHM_VERSION)
+      ? Promise.resolve(latestReadinessSnapshot)
+      : fetchReadinessSnapshot('latest').then(function (s) {
+          return (s && s.algorithm_version === CURRENT_READINESS_ALGORITHM_VERSION) ? s : fetchReadinessSnapshot('refresh');
+        });
+
+    Promise.all([snapshotPromise, computeTrainingReportAggregates()]).then(function (results) {
+      var snapshot = results[0];
+      var aggregates = results[1];
+      if (!snapshot || snapshot.algorithm_version !== CURRENT_READINESS_ALGORITHM_VERSION) {
+        renderLegacyTrainingReport();
+        return;
+      }
+      if (snapshot !== latestReadinessSnapshot) applyReadinessSnapshot(snapshot);
+      renderUnifiedTrainingReport(snapshot, aggregates);
+    });
+  }
+
   document.getElementById('openTrainingReportBtn').addEventListener('click', function () {
-    renderTrainingReport();
     document.getElementById('trainingReportOverlay').hidden = false;
+    if (window.apexTrack) apexTrack('training_report_viewed', {});
+    renderTrainingReport();
   });
   document.getElementById('trainingReportCloseBtn').addEventListener('click', function () {
     document.getElementById('trainingReportOverlay').hidden = true;
   });
   document.getElementById('trainingReportPrintBtn').addEventListener('click', function () {
+    if (window.apexTrack) apexTrack('training_report_printed', {});
     window.print();
   });
 

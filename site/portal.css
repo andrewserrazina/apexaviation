@@ -659,6 +659,28 @@
 .portal-report__empty { font-size: 13px; color: #8a97ab; font-style: italic; }
 .portal-report__footer { margin-top: 30px; padding-top: 16px; border-top: 1px solid #e4e8ef; font-size: 11px; color: #9aa6b8; }
 
+/* Sprint 4 -- instructor-ready Training Report additions. Status is
+   always paired with text (never color-only): __category-status and
+   __action-row read as plain labels even in grayscale print. */
+.portal-report__caption { font-size: 12.5px; color: #5a6b84; line-height: 1.6; margin: 10px 0 0; }
+.portal-report__category-list { display: flex; flex-direction: column; }
+.portal-report__category-line {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  font-size: 13.5px; color: #33445e; padding: 7px 0; border-bottom: 1px solid #eef1f5;
+}
+.portal-report__category-line:last-child { border-bottom: none; }
+.portal-report__category-status {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  color: #5a6b84; flex-shrink: 0; white-space: nowrap;
+}
+.portal-report__action-list { display: flex; flex-direction: column; }
+.portal-report__action-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+  font-size: 13.5px; color: #33445e; padding: 9px 0; border-bottom: 1px solid #eef1f5;
+}
+.portal-report__action-row:last-child { border-bottom: none; }
+.portal-report__action-btn { padding: 6px 14px; font-size: 12px; white-space: normal; text-align: center; max-width: 100%; }
+
 @media print {
   body * { visibility: hidden; }
   .portal-report-panel, .portal-report-panel * { visibility: visible; }
@@ -668,6 +690,10 @@
   }
   .portal-report-overlay { position: static; background: none; padding: 0; overflow: visible; }
   .portal-report-toolbar { display: none; }
+  /* Interactive "Areas to Address" action buttons aren't actionable on
+     paper; the row's own text already states what needs attention. */
+  .portal-report__action-btn { display: none; }
+  .portal-report__section { break-inside: avoid; page-break-inside: avoid; }
 }
 .portal-practice-meta__timer { color: var(--gold-light); font-variant-numeric: tabular-nums; }
 .portal-practice-question { font-size: 20px; font-weight: 700; color: #fff; line-height: 1.5; margin-bottom: 24px; min-height: 90px; }
@@ -859,6 +885,11 @@
   .portal-admin-metrics { grid-template-columns: 1fr; }
   .portal-readiness { flex-direction: column; text-align: center; }
   .portal-practice-panel { padding: 24px; }
+  .portal-report-panel { padding: 24px; }
+  .portal-modal { padding: 32px 24px; }
+  .portal-report__stat-row { gap: 16px 24px; }
+  .portal-report__stat { min-width: 100px; }
+  .portal-report__category-line, .portal-report__action-row { flex-wrap: wrap; }
 }
 
 /* ─── Lock badge on gated nav items ─────────────────────────────── */
@@ -943,6 +974,14 @@
   text-align: center;
   position: relative;
   box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+  /* This modal now carries the readiness-context block, pricing, feature
+     checklist, and testimonial (previously just a short pitch + CTA) --
+     tall enough on small screens to exceed the viewport. Without a cap
+     the fixed, centered overlay clipped the top and bottom with no way
+     to scroll (same fix already applied to .portal-practice-panel /
+     .portal-report-panel for the same reason). */
+  max-height: 90vh;
+  overflow-y: auto;
 }
 .portal-modal__close {
   position: absolute;
