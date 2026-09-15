@@ -3237,6 +3237,14 @@
   var EVIDENCE_SUFFICIENCY_LABELS = { none: 'Insufficient Evidence', limited: 'Limited Evidence', developing: 'Developing', strong: 'Strong Evidence' };
   var GAUGE_EVIDENCE_LABELS = { low: 'Building Evidence', moderate: 'Developing Evidence', high: 'Strong Evidence' };
 
+  // Sprint 4.1 -- the one authoritative readiness algorithm version.
+  // compute_readiness_snapshot() now always produces this version;
+  // historical v1/v2 rows stay in readiness_snapshots untouched, but
+  // are never treated as current. Bumping this string is the ONLY
+  // change needed when a future algorithm version ships -- every
+  // surface below reads it from here, never a local copy.
+  var CURRENT_READINESS_ALGORITHM_VERSION = 'v3';
+
   function fetchReadinessSnapshot(action) {
     if (!member || !member.checkridePrepUnlocked) return Promise.resolve(null);
     return apexSupabase.functions.invoke('mobile-readiness', {
@@ -3246,6 +3254,26 @@
       if (res.error || !res.data) return null;
       return res.data.snapshot || null;
     }).catch(function () { return null; });
+  }
+
+  // Sprint 4.1 -- the shared snapshot loader every readiness-consuming
+  // surface (dashboard gauge, Readiness Detail, Training Report;
+  // mobile resolves the same way through its own call to the
+  // mobile-readiness Edge Function) now goes through, so there is
+  // exactly one place that decides "is this snapshot current" and
+  // "what to do if it isn't" -- never a surface-specific formula.
+  // Prefers an already-cached current-version snapshot, else the
+  // stored 'latest' row IF it's already the current version, else
+  // forces a real 'refresh' recompute. Never returns a stale prior-
+  // version snapshot silently -- a surface either gets a genuine
+  // current-version snapshot or null.
+  function fetchCurrentReadinessSnapshot() {
+    if (latestReadinessSnapshot && latestReadinessSnapshot.algorithm_version === CURRENT_READINESS_ALGORITHM_VERSION) {
+      return Promise.resolve(latestReadinessSnapshot);
+    }
+    return fetchReadinessSnapshot('latest').then(function (s) {
+      return (s && s.algorithm_version === CURRENT_READINESS_ALGORITHM_VERSION) ? s : fetchReadinessSnapshot('refresh');
+    });
   }
 
   // Sprint 4 Part 6 -- factored out of the original refreshDashboardReadinessGauge()
@@ -3283,9 +3311,7 @@
   // value -- never a broken or blank gauge.
   function refreshDashboardReadinessGauge() {
     if (!member || !member.checkridePrepUnlocked) return;
-    fetchReadinessSnapshot('latest').then(function (snapshot) {
-      return snapshot ? snapshot : fetchReadinessSnapshot('refresh');
-    }).then(applyReadinessSnapshot);
+    fetchCurrentReadinessSnapshot().then(applyReadinessSnapshot);
   }
 
   // Sprint 4 Part 6 -- a coalescing refresh coordinator, not a lossy
@@ -3339,22 +3365,71 @@
   // Review Session/Checkride Mode already use -- rather than a new
   // section, matching this codebase's own established pattern for
   // focused, modal-style flows.
-  function readinessCategoryActionLabel(cat) {
-    var due = myReviewQueue.filter(function (it) { return it.source_type === 'dpe_question' && it.acs_category === cat.category; });
+  // Sprint 4.1 Issue 8 -- which Ground School modules actually carry
+  // content mapped (via content_acs_mappings) to each readiness
+  // category. This is content ROUTING, not a recommendation engine:
+  // picking among a category's candidates is still just "accessible,
+  // and not yet shown activity where that's known, else the earliest
+  // one" (readinessCategoryModuleId() below) -- never a scored ranking.
+  // Table order is earliest-module-first, the deterministic fallback
+  // when no activity signal is available. Kept in sync with the
+  // mapping-gap report; a category absent here has no mapped Ground
+  // School content and falls through to the DPE Library instead.
+  var READINESS_CATEGORY_MODULES = {
+    eligibility: ['PPL-M01', 'PPL-M04'],
+    'aircraft-systems': ['PPL-M03'],
+    airworthiness: ['PPL-M04'],
+    airspace: ['PPL-M04', 'PPL-M07'],
+    crosscountry: ['PPL-M04', 'PPL-M07', 'PPL-M08', 'PPL-M09', 'PPL-M15'],
+    weather: ['PPL-M10', 'PPL-M11', 'PPL-M12'],
+    performance: ['PPL-M13', 'PPL-M14'],
+    aeromedical: ['PPL-M04', 'PPL-M17']
+  };
+
+  // activeModuleIds is optional: callers that already have it loaded
+  // (Training Report's computeTrainingReportAggregates()) get an
+  // incomplete-module-aware pick; callers that don't (Readiness Detail,
+  // which renders synchronously) fall back to the earliest accessible
+  // candidate -- a real fallback, not a mistake, per "otherwise the
+  // earliest sensible module."
+  function readinessCategoryModuleId(category, activeModuleIds) {
+    var candidates = (READINESS_CATEGORY_MODULES[category] || []).filter(hasModuleAccess);
+    if (!candidates.length) return null;
+    if (activeModuleIds) {
+      var incomplete = candidates.filter(function (id) { return !activeModuleIds[id]; });
+      if (incomplete.length) return incomplete[0];
+    }
+    return candidates[0];
+  }
+
+  // Sprint 4.1 Issue 5 -- Ground School-sourced review items
+  // (module_quiz_question/checkride_corner/scenario) now resolve a real
+  // acs_category through content_acs_mappings (sync_review_queue(),
+  // v137), the same taxonomy dpe_question items already used. Due
+  // evidence from ANY source type counts toward "this category already
+  // has specific due evidence" -- Review Queue must stay higher
+  // priority than generic Ground School routing regardless of which
+  // source type produced the due item.
+  function dueReviewItemsForCategory(category) {
+    return myReviewQueue.filter(function (it) { return it.acs_category === category; });
+  }
+
+  function readinessCategoryActionLabel(cat, activeModuleIds) {
+    var due = dueReviewItemsForCategory(cat.category);
     if (due.length) return { type: 'review_queue', label: 'Continue Review (' + due.length + ')' };
-    if (cat.category === 'eligibility' && hasModuleAccess('PPL-M01')) return { type: 'ground_school', label: 'Open Ground School Module' };
+    var moduleId = readinessCategoryModuleId(cat.category, activeModuleIds);
+    if (moduleId) return { type: 'ground_school', label: 'Open Ground School Module', moduleId: moduleId };
     if (qotdQuestion && qotdQuestion.section === cat.category && !answeredCounts[qotdQuestion.id]) return { type: 'qotd', label: "Answer Today's Question" };
     return { type: 'dpe_library', label: 'Study ' + cat.label };
   }
 
-  function routeReadinessCategoryAction(cat, actionType) {
+  function routeReadinessCategoryAction(cat, actionType, moduleId) {
     closeReadinessDetail();
     if (window.apexTrack) apexTrack('readiness_action_clicked', { category: cat.category, action_type: actionType });
     if (actionType === 'review_queue') {
-      var due = myReviewQueue.filter(function (it) { return it.source_type === 'dpe_question' && it.acs_category === cat.category; });
-      openReviewSession(due);
+      openReviewSession(dueReviewItemsForCategory(cat.category));
     } else if (actionType === 'ground_school') {
-      openGuidedNotesModule('PPL-M01');
+      openGuidedNotesModule(moduleId || readinessCategoryModuleId(cat.category));
     } else if (actionType === 'qotd') {
       showSection('dashboard');
       var qotdEl = document.getElementById('qotdRevealBtn');
@@ -3477,7 +3552,7 @@
       '<div class="portal-practice-panel portal-readiness-detail"><p style="color:rgba(255,255,255,0.5);font-size:14px;text-align:center;padding:30px 0">Loading readiness detail…</p></div>';
     if (window.apexTrack) apexTrack('readiness_detail_viewed', {});
 
-    (latestReadinessSnapshot ? Promise.resolve(latestReadinessSnapshot) : fetchReadinessSnapshot('latest').then(function (s) { return s || fetchReadinessSnapshot('refresh'); }))
+    fetchCurrentReadinessSnapshot()
       .then(function (snapshot) {
         if (!snapshot) {
           document.getElementById('practiceOverlay').innerHTML =
@@ -7337,22 +7412,24 @@
   // ── Training Report ─────────────────────────────────────────────
   // Sprint 3 left this generated entirely from client-side coverage
   // counters (computeReadiness()/categoryPct()) -- print/PDF-only, no
-  // RPC. Sprint 4 migrates it onto the SAME unified, evidence-based v2
-  // readiness snapshot the dashboard gauge and Readiness Detail view
-  // already use, and rewrites it around what a CFI/instructor actually
-  // needs: a concise record of demonstrated evidence, review history,
-  // and Ground School progress -- never a second readiness formula,
-  // never a full analytics dashboard.
+  // RPC. Sprint 4 migrated it onto the unified, evidence-based readiness
+  // snapshot the dashboard gauge and Readiness Detail view already use,
+  // and rewrote it around what a CFI/instructor actually needs: a
+  // concise record of demonstrated evidence, review history, and Ground
+  // School progress -- never a second readiness formula, never a full
+  // analytics dashboard.
   //
   // Version-gated: renderTrainingReport() always tries to obtain a
-  // current (algorithm_version === 'v2') snapshot first. If it can't --
-  // Checkride Prep isn't unlocked, or no v2 snapshot is obtainable even
-  // after a refresh attempt -- the report renders the ORIGINAL, pre-
-  // Sprint-4 presentation in full (computeLegacyTrainingReportData()/
-  // renderLegacyTrainingReport(), below, unchanged). The two are never
-  // mixed: a v1-style coverage number is never shown next to v2-style
-  // category/evidence sections.
-  var CURRENT_READINESS_ALGORITHM_VERSION = 'v2';
+  // current (algorithm_version === CURRENT_READINESS_ALGORITHM_VERSION,
+  // defined once near fetchReadinessSnapshot() -- there is exactly one
+  // authoritative version constant, never a surface-local copy) snapshot
+  // via the shared fetchCurrentReadinessSnapshot(). If it can't --
+  // Checkride Prep isn't unlocked, or no current-version snapshot is
+  // obtainable even after a refresh attempt -- the report renders the
+  // ORIGINAL, pre-Sprint-4 presentation in full
+  // (computeLegacyTrainingReportData()/renderLegacyTrainingReport(),
+  // below, unchanged). The two are never mixed: a legacy coverage number
+  // is never shown next to snapshot-based category/evidence sections.
 
   function trainingReportStatRow(stats) {
     return '<div class="portal-report__stat-row">' + stats.map(function (s) {
@@ -7463,7 +7540,7 @@
   // plus due Review Queue items for that category -- never a second
   // scoring formula competing with compute_readiness_snapshot().
   function dueReviewCountForCategory(catId) {
-    return myReviewQueue.filter(function (it) { return it.source_type === 'dpe_question' && it.acs_category === catId; }).length;
+    return dueReviewItemsForCategory(catId).length;
   }
 
   function trainingReportPerformanceLabel(cat) {
@@ -7730,8 +7807,8 @@
       addressRows.push({ text: totalDue + ' Review Queue item' + (totalDue === 1 ? '' : 's') + ' due', buttonLabel: 'Open Review Queue', run: function () { openReviewSession(myReviewQueue); } });
     }
     buckets.reinforcement.forEach(function (c) {
-      var action = readinessCategoryActionLabel(c);
-      addressRows.push({ text: c.label + ' needs reinforcement', buttonLabel: action.label, run: function () { routeReadinessCategoryAction(c, action.type); } });
+      var action = readinessCategoryActionLabel(c, aggregates.activeModuleIds);
+      addressRows.push({ text: c.label + ' needs reinforcement', buttonLabel: action.label, run: function () { routeReadinessCategoryAction(c, action.type, action.moduleId); } });
     });
     var incompleteModule = GUIDED_NOTES_MODULES.filter(function (m) {
       return hasModuleAccess(m.moduleId) && !aggregates.activeModuleIds[m.moduleId];
@@ -7773,13 +7850,7 @@
 
     if (!member || !member.checkridePrepUnlocked) { renderLegacyTrainingReport(); return; }
 
-    var snapshotPromise = (latestReadinessSnapshot && latestReadinessSnapshot.algorithm_version === CURRENT_READINESS_ALGORITHM_VERSION)
-      ? Promise.resolve(latestReadinessSnapshot)
-      : fetchReadinessSnapshot('latest').then(function (s) {
-          return (s && s.algorithm_version === CURRENT_READINESS_ALGORITHM_VERSION) ? s : fetchReadinessSnapshot('refresh');
-        });
-
-    Promise.all([snapshotPromise, computeTrainingReportAggregates()]).then(function (results) {
+    Promise.all([fetchCurrentReadinessSnapshot(), computeTrainingReportAggregates()]).then(function (results) {
       var snapshot = results[0];
       var aggregates = results[1];
       if (!snapshot || snapshot.algorithm_version !== CURRENT_READINESS_ALGORITHM_VERSION) {
@@ -8709,11 +8780,14 @@
     // strictly more actionable than "review your weakest category," and
     // showing both would just be two representations of one problem.
     // dueReviewItems()/reviewQueueLabel() are defined near
-    // renderReviewQueueWidget() below. Only dpe_question items carry an
-    // acs_category (Ground School module items don't map onto the
-    // ACS_TRACKER taxonomy), so only those can supersede this block.
+    // renderReviewQueueWidget() below. Sprint 4.1 -- Ground School
+    // module_quiz_question/checkride_corner/scenario review items now
+    // resolve a real acs_category through content_acs_mappings
+    // (sync_review_queue(), the same taxonomy dpe_question items already
+    // used), so due evidence from any source type can supersede this
+    // block, not only dpe_question.
     var due = dueReviewItems();
-    var matchingReview = weakest ? due.filter(function (it) { return it.source_type === 'dpe_question' && it.acs_category === weakest.cat; }) : [];
+    var matchingReview = weakest ? due.filter(function (it) { return it.acs_category === weakest.cat; }) : [];
 
     if (weakest) {
       if (matchingReview.length) {

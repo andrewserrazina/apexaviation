@@ -654,3 +654,101 @@ task emerged — the unmapped modules above are unmapped either because they hav
 because their content is genuinely flight-maneuver/framework territory rather than a gap in
 which task is currently in scope. No scope-expansion candidate is being recommended for Sprint 5
 from this work.
+
+---
+
+# Addendum: Sprint 4.1 Phase 9 — Targeted Cross-Domain Mapping QA
+
+This addendum records the targeted cross-domain mapping QA pass performed in Sprint
+4.1 Phase 9 (migration `v138_mapping_qa_corrections`), on top of the Sprint 4 mapping
+expansion recorded above. This was a **targeted pass**, not a re-audit of all 449
+mappings — only the pairings the sprint specification flagged as likely to bleed
+across domains were checked: Aircraft Systems ↔ Aeromedical, Aircraft Systems ↔
+Airspace, Weather ↔ ADM/risk management, Weight & Balance ↔ Performance, Navigation
+↔ Airspace, Emergency ↔ Aircraft Systems.
+
+## Finding 1 (severity: high) — Area IX.A "Emergency Descent" had no genuine content
+
+Auditing IX.A's 16 `dpe_question` mappings by reading their actual question text
+found **zero** of them were about emergency descent. All 16 were cross-country
+flight planning, navigation, or weather-in-planning content (`xc-1` through
+`xc-33`, `wx-8`) that had been seeded onto the wrong `acs_task_id`. Separately,
+all 16 genuine Emergency Operations `dpe_question` rows (`emerg-1` through
+`emerg-16`) were seeded onto Area X.A ("Maneuvering with One Engine Inoperative
+(AMEL, AMES)") — a multiengine-only task that does not apply to Apex's
+single-engine Private Pilot curriculum.
+
+This was an active-impact bug: IX.A is the one Emergency Operations task Sprint
+4.1's `v134` migration kept `digital_assessment_supported = true` (on the belief,
+now proven incorrect, that its 16 mappings were real emergency-descent evidence).
+Every student who had ever studied cross-country planning would have been
+credited with "emergency" category evidence they never earned.
+
+**Fix** — each of the 16 misrouted questions was reattached to the task its
+content actually tests:
+
+| content_id | Reattached to |
+|---|---|
+| `wx-8` | I.C Weather Information |
+| `xc-1`, `xc-2`, `xc-27`, `xc-7`, `xc-8`, `xc-32`, `xc-33` | I.D Cross-Country Flight Planning |
+| `xc-5`, `xc-28`, `xc-29`, `xc-30` | VI.A Pilotage and Dead Reckoning |
+| `xc-6` | VI.B Navigation Systems and Radar Services |
+| `xc-3` | VI.C Diversion |
+| `xc-4` | VI.D Lost Procedures |
+| `xc-31` | I.E National Airspace System (TFRs are airspace-restriction knowledge) |
+| `emerg-6` ("procedure for an emergency descent") | IX.A Emergency Descent — IX.A now has its one genuine content item |
+| `emerg-1`, `emerg-2` | IX.B Emergency Approach and Landing (Simulated) |
+| `emerg-3`, `emerg-5`, `emerg-7`, `emerg-9`–`emerg-14` | IX.C Systems and Equipment Malfunctions |
+| `emerg-4`, `emerg-8`, `emerg-15`, `emerg-16` | Unmapped (no Area IX task's Knowledge/Risk-Management element covers general 91.3(b) authority, post-accident reporting, an inadvertent-IMC encounter, or NMAC reporting — left honestly unmapped rather than forced onto the wrong task) |
+
+IX.B and IX.C remain `digital_assessment_supported = false` (the `v134` decision
+is unchanged by this migration — reattaching real content to the correct task
+does not, by itself, reopen that scope decision). See Known Limitations below.
+
+## Finding 2 (severity: low) — genuine dual-topic content, Aircraft Systems ↔ Aeromedical / Airspace
+
+Three PPL-M03 (Aircraft Systems) items test a second task's knowledge directly,
+not just the systems pathway M03 already covers:
+
+- `PPL-M03-Q08` and `PPL-M03:cc-18` both ask specifically *why* carbon monoxide is
+  dangerous / what makes it dangerous — physiological knowledge (Human Factors),
+  not just how it enters the cabin. Added a second mapping to **I.H Human
+  Factors** alongside the existing I.G Operation of Systems mapping.
+- `PPL-M03:cc-20` explicitly asks how ADS-B Out "connects to airspace
+  requirements" — genuinely tests National Airspace System knowledge, not just
+  equipment function. Added a second mapping to **I.E National Airspace System**.
+
+Checked but left single-mapped (content genuinely doesn't cross domains):
+- `PPL-M03:cc-19` (cabin heat / carb heat system relationship) — about system
+  design, not physiological effect. Stays I.G only.
+- `PPL-M03-Q10` / `PPL-M09-Q17/18/19` (ADS-B function/navigation-use questions)
+  — none ask about airspace equipage requirements, only what the system does or
+  how to use it for situational awareness. Stay in their original category.
+- `PPL-M04-Q19` (ADS-B equipage altitude requirement) — already correctly
+  airspace-only; it's the equipage-requirement counterpart to M03's
+  system-function questions, not a duplicate.
+
+## Pairings checked with no correction needed
+
+- **Weather ↔ ADM/risk management**: moot after Sprint 4.1 Issue 3 — v3 no
+  longer computes an independent risk-management subscore (it mirrors
+  `knowledge_score` and always discloses this via `reason_codes`), so no
+  `mapping_type`-based risk-only aggregation exists to audit.
+- **Weight & Balance ↔ Performance**: not actually a cross-category case — both
+  are already the same `performance` category / single task (I.F), by design.
+- **Navigation ↔ Airspace**: M07 (Sectional Charts) content was already split
+  correctly at the Sprint 4 mapping-expansion stage (classification/depiction
+  items → airspace, chart-reading/nav items → crosscountry); no further items
+  needed correction beyond `xc-31`/`xc-32` above.
+
+## Known Limitations / Future Sprint Consideration
+
+Fixing the Area X→IX reattachment for `emerg-1/2/3/5/7/9–14` revealed that
+IX.B ("Emergency Approach and Landing") and IX.C ("Systems and Equipment
+Malfunctions") now have genuine oral-knowledge content mapped to them, which
+they did not have when `v134` set `digital_assessment_supported = false` for
+all of IX.B–G. Whether that content is *sufficient* to reopen those two tasks'
+assessability is a real question worth a future sprint's deliberate attention —
+it is explicitly **not** decided or acted on here, per Sprint 4.1's scope
+boundary ("Do NOT expand scope into Sprint 5"). IX.D–G remain unsupported with
+no content of any kind.
