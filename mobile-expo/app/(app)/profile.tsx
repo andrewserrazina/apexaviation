@@ -6,6 +6,8 @@ import { Screen } from '../../components/Screen'
 import { AppText } from '../../components/AppText'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
+import { NotificationsSection } from '../../components/notifications/NotificationsSection'
+import { DevNotificationTest } from '../../components/notifications/DevNotificationTest'
 import { colors, spacing } from '../../constants/theme'
 
 export default function ProfileScreen() {
@@ -25,7 +27,7 @@ export default function ProfileScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: true, title: 'Profile', presentation: 'modal' }} />
-      <Screen scroll={false}>
+      <Screen>
         <View style={styles.wrap}>
           <Card>
             <AppText variant="label" weight="semibold" color={colors.mutedText}>
@@ -35,6 +37,11 @@ export default function ProfileScreen() {
               {user?.email ?? 'Unknown'}
             </AppText>
           </Card>
+
+          <NotificationsSection />
+
+          <DevNotificationTest />
+
           <Button label="Sign Out" onPress={handleSignOut} loading={signingOut} variant="danger" />
         </View>
       </Screen>
