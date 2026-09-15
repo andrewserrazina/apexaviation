@@ -21,6 +21,19 @@ import { requirePremiumAccess, PremiumAccessError } from '../_shared/premiumAcce
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
+// Pre-merge integrity patch -- the one authoritative readiness algorithm
+// version, mirroring site/portal-stable.js's CURRENT_READINESS_ALGORITHM_VERSION.
+// `latest` below filters on this explicitly rather than trusting
+// `order by created_at desc limit 1` alone: a row's timestamp being the
+// newest never by itself means it's the CURRENT model -- a stale prior-
+// version row could in principle be newer than expected (clock skew, a
+// manual DB fix, a future version bump before every writer is updated).
+// `latest` must stay read-only (mobile's own completion-refresh logic
+// relies on that contract -- see usePostCompleteRefresh.ts), so the
+// fallback for "no current-version snapshot exists yet" is `null`, never
+// a silent recompute and never a wrong-version row labeled current.
+const CURRENT_READINESS_ALGORITHM_VERSION = 'v3'
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -95,6 +108,7 @@ serve(async (req) => {
       .from('readiness_snapshots')
       .select('overall_score, coverage_score, knowledge_score, risk_management_score, confidence_score, evidence_level, weak_tasks, reason_codes, category_breakdown, algorithm_version, created_at, assessable_task_count, evidenced_task_count, strong_task_count, weak_task_count')
       .eq('profile_id', userId)
+      .eq('algorithm_version', CURRENT_READINESS_ALGORITHM_VERSION)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()

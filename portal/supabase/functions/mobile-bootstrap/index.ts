@@ -36,6 +36,17 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 }
 
+// Pre-merge integrity patch -- mirrors mobile-readiness's constant of the
+// same name. progress.readiness_summary below must never surface a
+// prior-version snapshot as current just because it happens to be the
+// newest row for this profile; filtering on this explicitly (rather than
+// `order by created_at desc limit 1` alone) means a learner whose only
+// snapshot predates this version simply gets readiness_summary: null --
+// an already-handled state (the same one a brand-new learner sees) --
+// until their next natural evidence-writing action produces a
+// current-version snapshot.
+const CURRENT_READINESS_ALGORITHM_VERSION = 'v3'
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
@@ -87,6 +98,7 @@ serve(async (req) => {
         .from('readiness_snapshots')
         .select('overall_score, coverage_score, knowledge_score, risk_management_score, confidence_score, evidence_level, weak_tasks, reason_codes, algorithm_version, created_at')
         .eq('profile_id', userId)
+        .eq('algorithm_version', CURRENT_READINESS_ALGORITHM_VERSION)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle(),
