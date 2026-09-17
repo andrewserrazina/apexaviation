@@ -211,18 +211,32 @@ export default function MockOralAssessment() {
       // redundant email arriving moments after the first.
       var suggestRecheck = booking.product?.includes_recheck && ['needs_targeted_review', 'not_yet_ready'].includes(assessment.overall_readiness)
       var recheckBlock = suggestRecheck
-        ? `<p style="margin-top:16px">Your assessment identified a few areas worth rechecking before checkride day.</p>
-           <a href="https://advantage.apexaviationtx.com/portal.html#mock-oral" style="display:inline-block;margin-top:4px;background:transparent;border:1.5px solid #F4B400;color:#F4B400;border-radius:8px;padding:10px 20px;text-decoration:none;font-weight:700">Book My Recheck →</a>`
+        ? `<p style="margin-top:16px;color:#1F2937;font-size:15px;line-height:1.7;">Your assessment identified a few areas worth rechecking before checkride day.</p>
+           <a href="https://advantage.apexaviationtx.com/portal.html?utm_source=email&utm_medium=email&utm_campaign=mock_oral_results&utm_content=recheck_recommendation#mock-oral" style="display:inline-block;margin-top:4px;background:transparent;border:1.5px solid #0B1F3A;color:#0B1F3A;border-radius:0;padding:10px 20px;text-decoration:none;font-weight:700">Book My Recheck →</a>`
         : ''
+      // Same navy-header/white-body shell as every other Apex Advantage
+      // email (see _shared/emailTemplate.ts) -- this call site can't
+      // import that file (browser bundle, not a Supabase Edge Function),
+      // so its markup is kept in sync by hand. Audit note: this was
+      // previously its own third, independently-drifted dark shell with
+      // no logo and no footer at all.
       supabase.functions.invoke('send-email', {
         body: {
           to: booking.email,
           subject: 'Your Apex Mock Oral Results Are Ready',
-          html: `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:24px;background:#06080f;color:#e0e0e0">
-            <h2 style="color:#F4B400">Your results are ready, ${(booking.full_name || '').split(' ')[0]}!</h2>
-            <p>Your Apex Advantage Mock Oral Performance Report is ready to view in your portal.</p>
-            <a href="https://advantage.apexaviationtx.com/portal.html#mock-oral" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700">View My Readiness Report →</a>
-            ${recheckBlock}
+          html: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;background:#FFFFFF;border:1px solid #E5E7EB">
+            <div style="background:#0B1F3A;padding:20px;text-align:center;">
+              <div style="font-size:14px;font-weight:700;letter-spacing:2px;color:#FFFFFF;">APEX ADVANTAGE</div>
+            </div>
+            <div style="padding:24px;">
+              <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Your results are ready, ${(booking.full_name || '').split(' ')[0]}!</h2>
+              <p style="color:#1F2937;font-size:15px;line-height:1.7;margin:0 0 16px;">Your Apex Advantage Mock Oral Performance Report is ready to view in your portal.</p>
+              <a href="https://advantage.apexaviationtx.com/portal.html?utm_source=email&utm_medium=email&utm_campaign=mock_oral_results&utm_content=results_ready#mock-oral" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700">View My Readiness Report →</a>
+              ${recheckBlock}
+            </div>
+            <div style="padding:16px 24px;border-top:1px solid #E5E7EB;">
+              <p style="font-size:12px;color:#4B5563;margin:0;text-align:center;">Apex Aviation &middot; Austin, TX</p>
+            </div>
           </div>`,
         },
       }).catch(() => {})

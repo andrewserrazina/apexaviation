@@ -336,29 +336,29 @@ serve(async (req) => {
     // comment above) -- within_14_days is the closest real, known-at-
     // signup proxy for "clearly" close to the checkride, not a guess.
     const upsellClause = !requestedDest && safeCheckrideTiming === 'within_14_days'
-      ? '<p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">If your checkride is coming up, the full Checkride Prep System is there when you\'re ready.</p>'
+      ? '<p style="color:#4B5563;font-size:13px;line-height:1.6;">If your checkride is coming up, the full Checkride Prep System is there when you\'re ready.</p>'
       : ''
     const subject = requestedDest ? 'Welcome to Apex Advantage — set your password' : `A good place to start, ${firstName}`
     const bodyHtml = requestedDest
       // Lead-magnet signup: the CTA IS the resource they signed up for --
       // don't compete with it by also recommending QOTD.
       ? `
-          <h2 style="color:#F4B400;margin:0 0 4px;">Welcome to Apex Advantage, ${firstName}!</h2>
-          <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your free member portal account is ready. Set your password to get in:</p>
-          <a href="${actionLink}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Set Your Password →</a>
-          <p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">Once that's done, sign in any time at advantage.apexaviationtx.com/portal-login.html. From your dashboard you can register for live ground school sessions right away — and unlock the full Checkride Prep System (DPE question bank, scenario training, progress tracking) whenever you're ready.</p>
+          <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Welcome to Apex Advantage, ${firstName}!</h2>
+          <p style="color:#1F2937;font-size:15px;line-height:1.7;">Your free member portal account is ready. Set your password to get in:</p>
+          <a href="${actionLink}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Set Your Password →</a>
+          <p style="color:#4B5563;font-size:13px;line-height:1.6;">Once that's done, sign in any time at advantage.apexaviationtx.com/portal-login.html. From your dashboard you can register for live ground school sessions right away — and unlock the full Checkride Prep System (DPE question bank, scenario training, progress tracking) whenever you're ready.</p>
         `
       // New Member Activation, Email #1 -- personal note, one
       // recommended action, one CTA. See CHECKRIDE_TIMING_CLAUSE above
       // for why this can't yet be training_stage/focus_area-personalized.
       : `
-          <h2 style="color:#F4B400;margin:0 0 4px;">Andrew here.</h2>
-          <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">I saw you just joined Apex Advantage${timingClause}.</p>
-          <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">I'd start here: set your password, then answer today's oral exam question. It's free for every member and only takes a couple of minutes — the best way to start actually using the portal instead of just looking around.</p>
-          <a href="${actionLink}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Set Up My Account & Get Started →</a>
+          <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Andrew here.</h2>
+          <p style="color:#1F2937;font-size:15px;line-height:1.7;">I saw you just joined Apex Advantage${timingClause}.</p>
+          <p style="color:#1F2937;font-size:15px;line-height:1.7;">I'd start here: set your password, then answer today's oral exam question. It's free for every member and only takes a couple of minutes — the best way to start actually using the portal instead of just looking around.</p>
+          <a href="${actionLink}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Set Up My Account & Get Started →</a>
           ${upsellClause}
-          <p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">If you get stuck on anything, reply to this email.</p>
-          <p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">Blue skies,<br>Andrew</p>
+          <p style="color:#4B5563;font-size:13px;line-height:1.6;">If you get stuck on anything, reply to this email.</p>
+          <p style="color:#4B5563;font-size:13px;line-height:1.6;">Blue skies,<br>Andrew</p>
         `
 
     // ── Send the welcome email without letting it hold up (or fail) the

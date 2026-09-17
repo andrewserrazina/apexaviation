@@ -99,25 +99,45 @@ import Stripe from 'https://esm.sh/stripe@14?target=denonext'
 // Inlined (not imported from ../_shared/emailTemplate.ts) because the
 // Supabase deploy path used for this function cannot resolve a relative
 // import that reaches outside this function's own directory. Must be
-// kept byte-identical to _shared/emailTemplate.ts's own copy -- the
-// other functions that still import it normally (create-free-account,
-// send-lifecycle-emails) are unaffected.
+// kept byte-identical to _shared/emailTemplate.ts's own emailTemplate()
+// export -- the other functions that still import it normally
+// (create-free-account, send-lifecycle-emails) are unaffected. See that
+// file's own header comment for the design-system rationale (navy
+// header / white body / solid-hex text / square CTA corners) and the
+// note that no design-manual .docx exists anywhere in this repo.
+//
+// Audit note: this fifth copy of the shell (alongside _shared/
+// emailTemplate.ts itself and the forced-inline copies in
+// stripe-webhook/index.ts) was found during the email-system audit --
+// it predates that audit and was not previously listed in that "must be
+// kept byte-identical" comment anywhere else. Updated here in the same
+// pass as the other two so all three stay in sync.
 function emailTemplate(content: string): string {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#06080f;font-family:'Helvetica Neue',Arial,sans-serif;color:#e0e0e0;">
-  <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
-    <div style="text-align:center;padding-bottom:24px;margin-bottom:28px;border-bottom:2px solid rgba(244,180,0,0.25);">
-      <img src="https://apexaviationtx.com/apexwhite.png" alt="Apex Aviation" width="140" style="display:inline-block;margin-bottom:12px;height:auto;" />
-      <div style="font-size:15px;font-weight:700;letter-spacing:2px;color:#fff;">
-        APEX <span style="font-style:italic;font-weight:400;color:#F4B400;font-family:Georgia,serif;letter-spacing:normal;">Advantage</span>
-      </div>
-    </div>
-    ${content}
-    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:32px 0 16px;">
-    <p style="font-size:12px;color:rgba(255,255,255,0.35);margin:0 0 4px;text-align:center;">Apex Aviation · Austin, TX</p>
-    <p style="font-size:11px;margin:0;text-align:center;">
-      <a href="https://apexaviationtx.com" style="color:rgba(255,255,255,0.35);text-decoration:underline;">apexaviationtx.com</a>
-    </p>
+<body style="margin:0;padding:0;background:#E5E7EB;font-family:Arial,Helvetica,sans-serif;color:#1F2937;">
+  <div style="max-width:560px;margin:0 auto;background:#FFFFFF;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0B1F3A;">
+      <tr><td align="center" style="padding:28px 16px;">
+        <img src="https://apexaviationtx.com/apexwhite.png" alt="Apex Advantage" width="160" style="display:block;margin:0 auto 10px;height:auto;max-width:160px;">
+        <div style="font-size:14px;font-weight:700;letter-spacing:2px;color:#FFFFFF;font-family:Arial,Helvetica,sans-serif;">APEX ADVANTAGE</div>
+      </td></tr>
+    </table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr><td style="padding:32px 24px 8px;">
+        ${content}
+      </td></tr>
+    </table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr><td style="padding:20px 24px 28px;border-top:1px solid #E5E7EB;margin-top:12px;">
+        <p style="font-size:12px;color:#4B5563;margin:16px 0 4px;text-align:center;font-family:Arial,Helvetica,sans-serif;">Apex Aviation &middot; Austin, TX</p>
+        <p style="font-size:11px;margin:0 0 8px;text-align:center;font-family:Arial,Helvetica,sans-serif;">
+          <a href="https://apexaviationtx.com" style="color:#4B5563;text-decoration:underline;">apexaviationtx.com</a>
+        </p>
+        <p style="font-size:11px;margin:0;text-align:center;font-family:Arial,Helvetica,sans-serif;">
+          <a href="https://apexaviationtx.com/email-preferences.html" style="color:#4B5563;text-decoration:underline;">Manage email preferences</a>
+        </p>
+      </td></tr>
+    </table>
   </div>
 </body></html>`
 }
@@ -443,10 +463,10 @@ serve(async (req) => {
             to: email,
             subject: 'Welcome to Apex Advantage — set your password',
             html: emailTemplate(`
-              <h2 style="color:#F4B400;margin:0 0 4px;">Welcome to Apex Advantage, ${name.split(' ')[0]}!</h2>
-              <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your account is ready and your Checkride Prep purchase is being processed. Set your password to get in:</p>
-              <a href="${actionLink}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Set Your Password →</a>
-              <p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">Once that's done, sign in any time at advantage.apexaviationtx.com/portal-login.html — the full Checkride Prep System (DPE question bank, scenario training, progress tracking) will already be unlocked.</p>
+              <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Welcome to Apex Advantage, ${name.split(' ')[0]}!</h2>
+              <p style="color:#1F2937;font-size:15px;line-height:1.7;">Your account is ready and your Checkride Prep purchase is being processed. Set your password to get in:</p>
+              <a href="${actionLink}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Set Your Password →</a>
+              <p style="color:#4B5563;font-size:13px;line-height:1.6;">Once that's done, sign in any time at advantage.apexaviationtx.com/portal-login.html — the full Checkride Prep System (DPE question bank, scenario training, progress tracking) will already be unlocked.</p>
             `),
           },
         })
@@ -644,10 +664,10 @@ serve(async (req) => {
             to: email,
             subject: 'Welcome to Apex Advantage — set your password',
             html: emailTemplate(`
-              <h2 style="color:#F4B400;margin:0 0 4px;">Welcome to Apex Advantage, ${name.split(' ')[0]}!</h2>
-              <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your account is ready and your Private Pilot Ground School purchase is being processed. Set your password to get in:</p>
-              <a href="${actionLink}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Set Your Password →</a>
-              <p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">Once that's done, sign in any time at advantage.apexaviationtx.com/portal-login.html — every Private Pilot ground school class will already be unlocked, no per-session charge.</p>
+              <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Welcome to Apex Advantage, ${name.split(' ')[0]}!</h2>
+              <p style="color:#1F2937;font-size:15px;line-height:1.7;">Your account is ready and your Private Pilot Ground School purchase is being processed. Set your password to get in:</p>
+              <a href="${actionLink}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Set Your Password →</a>
+              <p style="color:#4B5563;font-size:13px;line-height:1.6;">Once that's done, sign in any time at advantage.apexaviationtx.com/portal-login.html — every Private Pilot ground school class will already be unlocked, no per-session charge.</p>
             `),
           },
         })
