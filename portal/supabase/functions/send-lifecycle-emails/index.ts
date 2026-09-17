@@ -88,7 +88,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { emailTemplate as template } from '../_shared/emailTemplate.ts'
+import { emailTemplate as template, emailHeadline, emailParagraph, emailButton } from '../_shared/emailTemplate.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -359,9 +359,9 @@ async function daysSinceLastMeaningfulActivity(supabase: any, profileId: string)
 }
 
 function emailTemplateReactivationInactive(firstName: string) {
-  return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Pick up where you left off, ${firstName}.</h2>` +
-    '<p style="color:#1F2937;font-size:15px;line-height:1.7;">Start with one DPE question — it only takes a minute, and today\'s question is free for every member.</p>' +
-    `<a href="${lifecycleCtaUrl('reactivation', 'reactivation_inactive')}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Answer Today's Question →</a>`
+  return emailHeadline(`Pick up where you left off, ${firstName}.`) +
+    emailParagraph('Start with one DPE question — it only takes a minute, and today\'s question is free for every member.') +
+    emailButton("Answer Today's Question →", lifecycleCtaUrl('reactivation', 'reactivation_inactive'))
 }
 
 async function processReactivationInactive(supabase: any, profile: any, results: any) {
@@ -456,9 +456,9 @@ function emailTemplateCheckrideModeDone() {
 }
 
 function emailTemplateInactivity(firstName: string) {
-  return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Still working toward your checkride, ${firstName}?</h2>` +
-    '<p style="color:#1F2937;font-size:15px;line-height:1.7;">It\'s been a week since your last visit to the portal. A few minutes of review keeps everything from going stale before checkride day.</p>' +
-    `<a href="${lifecycleCtaUrl('inactivity', 'inactivity_7day')}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Pick Up Where You Left Off →</a>`
+  return emailHeadline(`Still working toward your checkride, ${firstName}?`) +
+    emailParagraph('It\'s been a week since your last visit to the portal. A few minutes of review keeps everything from going stale before checkride day.') +
+    emailButton('Pick Up Where You Left Off →', lifecycleCtaUrl('inactivity', 'inactivity_7day'))
 }
 
 // Single source of truth for "day" vs "days" -- previously computed

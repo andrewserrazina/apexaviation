@@ -425,9 +425,13 @@
   function showSection(id) {
     if (!document.getElementById('section-' + id)) id = 'dashboard';
     if (member && !member.checkridePrepUnlocked && GATED_SECTIONS.indexOf(id) !== -1) {
+      // Deny access, but don't leave the (empty) gated section active behind
+      // the modal -- fall through to dashboard just like the guided-notes/
+      // ask-andrew guards below, instead of returning with the gate check's
+      // target section still marked .active from a stale earlier call.
       closeSidebar();
       openUnlockModal();
-      return;
+      id = 'dashboard';
     }
     // Module Workbook requires real access to at least one Ground School
     // module -- a member who hasn't bought anything (e.g. clicked a stale
