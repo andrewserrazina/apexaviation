@@ -98,6 +98,14 @@
         </div>
       </div>
 
+      <div id="errorState" style="display:none;">
+        <h1>Something went wrong.</h1>
+        <p class="sub signin-prompt">You're signed in, but we couldn't load your preferences just now. This is usually temporary.</p>
+        <div class="signin-prompt">
+          <button type="button" class="btn btn--primary btn--full" id="retryButton">Try Again</button>
+        </div>
+      </div>
+
       <div id="signedInState" style="display:none;">
         <h1>Email preferences.</h1>
         <p class="pref-email" id="prefEmail"></p>
@@ -125,6 +133,7 @@
   <script>
     var loadingState = document.getElementById('loadingState');
     var signedOutState = document.getElementById('signedOutState');
+    var errorState = document.getElementById('errorState');
     var signedInState = document.getElementById('signedInState');
     var prefForm = document.getElementById('prefForm');
     var prefEmail = document.getElementById('prefEmail');
@@ -134,7 +143,7 @@
     var marketingOptIn = document.getElementById('marketingOptIn');
 
     function showState(el) {
-      [loadingState, signedOutState, signedInState].forEach(function (s) { s.style.display = s === el ? '' : 'none'; });
+      [loadingState, signedOutState, errorState, signedInState].forEach(function (s) { s.style.display = s === el ? '' : 'none'; });
     }
 
     // Preserve any UTM params on the sign-in link so the redirect back
@@ -151,17 +160,31 @@
       }
     })();
 
-    apexSupabase.auth.getSession().then(function (res) {
-      var session = res.data.session;
-      if (!session) { showState(signedOutState); return; }
+    // Genuinely signed-out and signed-in-but-the-profile-fetch-failed are
+    // deliberately different states, not both folded into signedOutState.
+    // portal-login.html auto-redirects an already-signed-in visitor
+    // straight back here (portalDestUrl()'s dest=email-preferences case),
+    // so showing signedOutState (whose only action is a link to sign in)
+    // for a real session with a transient fetch failure would send the
+    // member into a sign-in -> auto-redirect-back -> same failure loop
+    // with no way out and no explanation. errorState's retry button
+    // re-runs this same load without leaving the page.
+    function loadPreferences() {
+      showState(loadingState);
+      apexSupabase.auth.getSession().then(function (res) {
+        var session = res.data.session;
+        if (!session) { showState(signedOutState); return; }
 
-      apexSupabase.from('profiles').select('email,email_marketing_opt_out').eq('id', session.user.id).maybeSingle().then(function (profileRes) {
-        if (profileRes.error || !profileRes.data) { showState(signedOutState); return; }
-        prefEmail.textContent = profileRes.data.email;
-        marketingOptIn.checked = !profileRes.data.email_marketing_opt_out;
-        showState(signedInState);
+        apexSupabase.from('profiles').select('email,email_marketing_opt_out').eq('id', session.user.id).maybeSingle().then(function (profileRes) {
+          if (profileRes.error || !profileRes.data) { showState(errorState); return; }
+          prefEmail.textContent = profileRes.data.email;
+          marketingOptIn.checked = !profileRes.data.email_marketing_opt_out;
+          showState(signedInState);
+        });
       });
-    });
+    }
+    document.getElementById('retryButton').addEventListener('click', loadPreferences);
+    loadPreferences();
 
     prefForm.addEventListener('submit', function (e) {
       e.preventDefault();
