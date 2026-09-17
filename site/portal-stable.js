@@ -257,7 +257,14 @@
         totalXp: (profile && profile.total_xp) || 0,
         currentRank: (profile && profile.current_rank) || 'student_pilot',
         streakFreezesBanked: (profile && profile.streak_freezes_banked) || 0,
-        hasMembership: false
+        hasMembership: false,
+        // Set from email-preferences.html (self-update RLS on profiles,
+        // no new policy needed). Gates checkWeakAreaEmail() below, the
+        // one client-triggered send that's marketing/engagement rather
+        // than a milestone tied to something the member actually did --
+        // same split send-lifecycle-emails/index.ts's server-side cron
+        // follows for its own weak-area sequence.
+        emailMarketingOptOut: !!(profile && profile.email_marketing_opt_out)
       };
       populateMember();
       applyUnlockState();
@@ -6371,19 +6378,22 @@
   // file's markup exactly whenever this one changes, and vice versa.
   function emailTemplate(contentHtml) {
     return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>' +
-      '<body style="margin:0;padding:0;background:#06080f;font-family:\'Helvetica Neue\',Arial,sans-serif;color:#e0e0e0;">' +
-      '<div style="max-width:560px;margin:0 auto;padding:32px 16px;">' +
-      '<div style="text-align:center;padding-bottom:24px;margin-bottom:28px;border-bottom:2px solid rgba(244,180,0,0.25);">' +
-      '<img src="https://apexaviationtx.com/apexwhite.png" alt="Apex Aviation" width="140" style="display:inline-block;margin-bottom:12px;height:auto;" />' +
-      '<div style="font-size:15px;font-weight:700;letter-spacing:2px;color:#fff;">' +
-      'APEX <span style="font-style:italic;font-weight:400;color:#F4B400;font-family:Georgia,serif;letter-spacing:normal;">Advantage</span>' +
-      '</div></div>' +
+      '<body style="margin:0;padding:0;background:#E5E7EB;font-family:Arial,Helvetica,sans-serif;color:#1F2937;">' +
+      '<div style="max-width:560px;margin:0 auto;background:#FFFFFF;">' +
+      '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0B1F3A;">' +
+      '<tr><td align="center" style="padding:28px 16px;">' +
+      '<img src="https://apexaviationtx.com/apexwhite.png" alt="Apex Advantage" width="160" style="display:block;margin:0 auto 10px;height:auto;max-width:160px;">' +
+      '<div style="font-size:14px;font-weight:700;letter-spacing:2px;color:#FFFFFF;font-family:Arial,Helvetica,sans-serif;">APEX ADVANTAGE</div>' +
+      '</td></tr></table>' +
+      '<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:32px 24px 8px;">' +
       contentHtml +
-      '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:32px 0 16px;">' +
-      '<p style="font-size:12px;color:rgba(255,255,255,0.35);margin:0 0 4px;text-align:center;">Apex Aviation · Austin, TX</p>' +
-      '<p style="font-size:11px;margin:0;text-align:center;">' +
-      '<a href="https://apexaviationtx.com" style="color:rgba(255,255,255,0.35);text-decoration:underline;">apexaviationtx.com</a>' +
+      '</td></tr></table>' +
+      '<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:20px 24px 28px;border-top:1px solid #E5E7EB;">' +
+      '<p style="font-size:12px;color:#4B5563;margin:16px 0 4px;text-align:center;font-family:Arial,Helvetica,sans-serif;">Apex Aviation &middot; Austin, TX</p>' +
+      '<p style="font-size:11px;margin:0;text-align:center;font-family:Arial,Helvetica,sans-serif;">' +
+      '<a href="https://apexaviationtx.com" style="color:#4B5563;text-decoration:underline;">apexaviationtx.com</a>' +
       '</p>' +
+      '</td></tr></table>' +
       '</div></body></html>';
   }
 
@@ -6392,6 +6402,15 @@
     return apexSupabase.functions.invoke('send-email', {
       body: { to: to, subject: subject, html: emailTemplate(contentHtml) }
     }).catch(function (e) { console.warn('Email send failed', e); });
+  }
+
+  // Same UTM convention as send-lifecycle-emails/index.ts's own
+  // lifecycleCtaUrl() -- kept in sync by hand like the shell above, since
+  // this client-triggered path fires the same emails as that server-side
+  // cron. Query string before the hash so the member still lands on the
+  // right section (email-system audit, "audit every link/CTA/UTM").
+  function lifecycleCtaUrl(campaign, content, hash) {
+    return 'https://advantage.apexaviationtx.com/portal.html?utm_source=email&utm_medium=email&utm_campaign=' + campaign + '&utm_content=' + content + (hash || '');
   }
 
   function logEventOnce(type, metadata) {
@@ -6727,7 +6746,7 @@
     try {
       if (hasMeaningfulActivity()) {
         claimMilestoneEmailOnce('first_question_completed', function () {
-          sendPortalEmail(member.email, 'You completed your first question 🎉', emailTemplate1FirstQuestion());
+          sendPortalEmail(member.email, 'You completed your first question', emailTemplate1FirstQuestion());
           if (window.apexTrack) apexTrack('first_lesson_completed', { profile_id: member.id });
         });
       }
@@ -6883,9 +6902,9 @@
   }
 
   function emailTemplate1FirstQuestion() {
-    return '<h2 style="color:#F4B400;margin:0 0 4px;">First question, done.</h2>' +
-      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">That\'s one down — and every one after this gets a little more familiar. Keep the momentum going.</p>' +
-      '<a href="https://advantage.apexaviationtx.com/portal.html#dpe-library" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Keep Studying →</a>';
+    return '<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">First question, done.</h2>' +
+      '<p style="color:#1F2937;font-size:15px;line-height:1.7;">That\'s one down — and every one after this gets a little more familiar. Keep the momentum going.</p>' +
+      '<a href="' + lifecycleCtaUrl('milestone', 'first_question', '#dpe-library') + '" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Keep Studying →</a>';
   }
   function emailTemplateMilestone(threshold) {
     var copy = {
@@ -6894,39 +6913,49 @@
       75: 'Three-quarters of the way to checkride-ready. Time to start tightening up your weakest areas.',
       90: 'You are checkride-ready in every way that matters. Book a mock oral and go show a DPE what you know.'
     }[threshold];
-    return '<h2 style="color:#F4B400;margin:0 0 4px;">' + threshold + '% Checkride Ready</h2>' +
-      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">' + copy + '</p>' +
-      '<a href="https://advantage.apexaviationtx.com/portal.html" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">View Your Dashboard →</a>';
+    return '<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">' + threshold + '% Checkride Ready</h2>' +
+      '<p style="color:#1F2937;font-size:15px;line-height:1.7;">' + copy + '</p>' +
+      '<a href="' + lifecycleCtaUrl('milestone', 'milestone_' + threshold, '') + '" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">View Your Dashboard →</a>';
   }
   function emailTemplateCheckrideModeDone() {
-    return '<h2 style="color:#F4B400;margin:0 0 4px;">Checkride Mode: complete</h2>' +
-      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">You just simulated a real oral exam — 20 questions, no labels, no hints. That\'s exactly the kind of pressure practice that makes checkride day feel routine.</p>';
+    return '<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Checkride Mode: complete</h2>' +
+      '<p style="color:#1F2937;font-size:15px;line-height:1.7;">You just simulated a real oral exam — 20 questions, no labels, no hints. That\'s exactly the kind of pressure practice that makes checkride day feel routine.</p>';
   }
 
   /* ── Weak-area recommendation emails ──────────────────────────── */
+  // Kept in sync manually with portal/supabase/functions/send-lifecycle-
+  // emails/index.ts's own WEAK_AREA_CONTENT -- see that file's comment
+  // for why 4 categories (adm, aerodynamics, aircraft-systems,
+  // airport-operations) were added (email-system audit, item 3) and why
+  // the "Always"/"Every DPE"/"single most" absolute claims were softened
+  // (item 7).
   var WEAK_AREA_CONTENT = {
-    eligibility: { subject: "Don't Let Paperwork Delay Your Checkride", body: 'Missing endorsements and expired medicals are the single most avoidable reason checkrides get delayed. A quick review of Eligibility &amp; Documents now saves you a bad surprise later.' },
-    airworthiness: { subject: 'The ARROW Documents DPEs Always Check First', body: 'Examiners routinely ask you to physically produce ARROW documents in the aircraft — not just recite the acronym. A few minutes reviewing Airworthiness pays off fast.' },
-    privileges: { subject: 'The Pro Rata Rule Most Students Get Wrong', body: 'Precision matters in Privileges &amp; Limitations — examiners probe the edges of what a private pilot can and can\'t do. Worth another pass.' },
-    airspace: { subject: 'Class Bravo Scenarios That Fail Applicants', body: 'Confusing Class B\'s clearance requirement with Class C/D\'s communication requirement is one of the most common real deviations — and a common oral exam trap.' },
-    weather: { subject: '5 Weather Questions Students Miss Most', body: 'METAR decoding, AIRMET vs. SIGMET, and icing conditions come up in almost every oral exam. A quick weather review goes a long way.' },
-    performance: { subject: 'Why DPEs Always Ask About Aft CG', body: 'Weight and balance questions test more than arithmetic — examiners want to see you connect CG location to stall speed and control authority.' },
-    aeromedical: { subject: 'The IMSAFE Check Most Pilots Skip', body: 'Aeromedical Factors is the most personal, judgment-based section of the exam. Worth revisiting before checkride day.' },
+    eligibility: { subject: "Don't Let Paperwork Delay Your Checkride", body: 'Missing documents or required endorsements can delay your checkride. A quick review of Eligibility &amp; Documents now can help you catch issues early.' },
+    airworthiness: { subject: 'The ARROW Documents DPEs Check First', body: 'Examiners commonly ask you to physically produce ARROW documents in the aircraft — not just recite the acronym. A few minutes reviewing Airworthiness pays off fast.' },
+    privileges: { subject: 'The Pro Rata Rule Worth a Second Look', body: 'Precision matters in Privileges &amp; Limitations — examiners probe the edges of what a private pilot can and can\'t do. Worth another pass.' },
+    airspace: { subject: 'Class Bravo Scenarios That Trip Up Applicants', body: 'Confusing Class B\'s clearance requirement with Class C/D\'s communication requirement is one of the most common real deviations — and a common oral exam trap.' },
+    weather: { subject: '5 Weather Questions Students Miss Most', body: 'METAR decoding, AIRMET vs. SIGMET, and icing conditions come up in most oral exams. A quick weather review goes a long way.' },
+    performance: { subject: 'Why DPEs Ask About Aft CG', body: 'Weight and balance questions test more than arithmetic — examiners want to see you connect CG location to stall speed and control authority.' },
+    aeromedical: { subject: 'The IMSAFE Check Worth Revisiting', body: 'Aeromedical Factors is one of the most personal, judgment-based sections of the exam. Worth revisiting before checkride day.' },
     crosscountry: { subject: "The Four C's That Save a Lost Pilot", body: 'Cross-Country Planning ties together everything else in the guide — and it\'s often where the oral exam\'s scenario-based structure becomes most obvious.' },
-    emergency: { subject: "The 'Impossible Turn' Question Every DPE Asks", body: 'Emergency Operations questions test whether calm, procedural thinking is already automatic for you. A quick review before checkride day is always worth it.' }
+    emergency: { subject: "The 'Impossible Turn' Question DPEs Ask", body: 'Emergency Operations questions test whether calm, procedural thinking is already automatic for you. A quick review before checkride day is worth the time.' },
+    adm: { subject: 'The ADM Framework Behind Every Go/No-Go Call', body: 'Aeronautical Decision-Making questions probe how you\'d actually apply a framework like PAVE or the 5 Hazardous Attitudes mid-flight, not just whether you can recite it. Worth reviewing before checkride day.' },
+    aerodynamics: { subject: 'The Aerodynamics Questions Behind the Maneuvers', body: 'Load factor in a turn, angle of attack vs. airspeed at the stall, adverse yaw — Aerodynamics questions test the theory behind maneuvers you already fly. A quick review connects the two.' },
+    'aircraft-systems': { subject: "Know Your Aircraft's Systems Cold", body: 'Aircraft Systems questions expect specifics about your training aircraft\'s electrical, fuel, and powerplant systems — not textbook generalities. Worth a targeted review.' },
+    'airport-operations': { subject: 'Traffic Pattern and Right-of-Way Questions', body: 'Airport Operations covers traffic pattern procedures, runway markings and lighting, and right-of-way at non-towered fields — the kind of practical knowledge DPEs probe with real scenarios.' }
   };
 
   function checkWeakAreaEmail() {
-    if (!member) return;
+    if (!member || member.emailMarketingOptOut) return;
     var weakest = Object.keys(CATEGORY_META).map(function (cat) {
       return { cat: cat, pct: categoryPct(cat) };
     }).sort(function (a, b) { return a.pct - b.pct; })[0];
     if (!weakest || weakest.pct >= 1) return;
     var content = WEAK_AREA_CONTENT[weakest.cat];
     if (!content) return;
-    var html = '<h2 style="color:#F4B400;margin:0 0 4px;">' + content.subject + '</h2>' +
-      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">' + content.body + '</p>' +
-      '<a href="https://advantage.apexaviationtx.com/portal.html#dpe-library" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Review ' + CATEGORY_META[weakest.cat].label + ' →</a>';
+    var html = '<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">' + content.subject + '</h2>' +
+      '<p style="color:#1F2937;font-size:15px;line-height:1.7;">' + content.body + '</p>' +
+      '<a href="' + lifecycleCtaUrl('weak_area', 'weak_area_' + weakest.cat, '#dpe-library') + '" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Review ' + CATEGORY_META[weakest.cat].label + ' →</a>';
     sendThrottledEmail('weak_area_' + weakest.cat, member.email, content.subject, html, 14);
   }
 
@@ -7969,8 +7998,8 @@
   });
 
   function emailTemplatePassed() {
-    return '<h2 style="color:#F4B400;margin:0 0 4px;">You did it. Congratulations!</h2>' +
-      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Every question, every scenario, every study streak led here. Welcome to the ranks of certificated pilots — fly safe out there.</p>';
+    return '<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">You did it. Congratulations!</h2>' +
+      '<p style="color:#1F2937;font-size:15px;line-height:1.7;">Every question, every scenario, every study streak led here. Welcome to the ranks of certificated pilots — fly safe out there.</p>';
   }
 
   var NEXT_RATING_OPTIONS = [

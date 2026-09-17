@@ -118,6 +118,23 @@ const INACTIVITY_TRIGGER_DAYS = 7
 // claim.
 const REACTIVATION_INACTIVE_TRIGGER_DAYS = 14
 const REACTIVATION_INACTIVE_THROTTLE_DAYS = 14
+// email-system audit, item 2: inactivity_7day (login-based, throttled
+// 30 days) and reactivation_inactive (activity-based, throttled 14
+// days) are two independent triggers on two different clocks that
+// nonetheless overlap almost every time a member goes quiet for more
+// than two weeks straight. Because "last meaningful activity" can never
+// be more recent than "last login" (portal_last_active_at), a member
+// who stops opening the portal entirely crosses the 7-day inactivity
+// threshold before -- not after -- the 14-day reactivation threshold, so
+// a fully-idle member previously got "We miss you at Apex Advantage" at
+// day 7 and "Pick up where you left off" at day 14: two structurally
+// different nudges seven days apart saying essentially the same thing,
+// exactly the "bombard the same student" case this constant closes.
+// Neither type may fire while the OTHER type was sent within this many
+// days, on top of (never instead of) that type's own throttle above --
+// whichever nudge reaches the student first "owns" that stretch of
+// inactivity for this long before the other is allowed to also land.
+const INACTIVITY_COORDINATION_GAP_DAYS = 10
 const WEEKLY_PROGRESS_THROTTLE_DAYS = 7
 const STUDY_SECONDS_TARGET = 5 * 3600
 // Checkride-timing-aware upsell cadence -- schedule (days since signup)
@@ -205,6 +222,16 @@ function activationCtaUrl(hash: string, emailNumber: number): string {
   return `${PORTAL_LOGIN_URL}?dest=${hash}&utm_source=email&utm_medium=email&utm_campaign=new_member_activation&utm_content=welcome_${emailNumber}`
 }
 
+// Same UTM convention as activationCtaUrl() above, for every lifecycle/
+// retention email that links to the already-logged-in member portal
+// directly (portal.html) rather than through the login redirect
+// (portal-login.html?dest=). Query string comes before the hash so the
+// member still lands on the right section (email-system audit, item
+// "audit every link/CTA/UTM").
+function lifecycleCtaUrl(campaign: string, content: string, hash: string = ''): string {
+  return `https://advantage.apexaviationtx.com/portal.html?utm_source=email&utm_medium=email&utm_campaign=${campaign}&utm_content=${content}${hash}`
+}
+
 // Shared cutover check -- was duplicated inline in processNewMemberActivation
 // and processCheckrideUpsell's defer guard; extracted once both needed the
 // exact same math, so it can't drift between the two.
@@ -226,25 +253,47 @@ const CHECKRIDE_TIMING_CLAUSE: Record<string, string> = {
   more_than_60_days: " and that you've got some runway before your checkride",
 }
 
-// Verbatim from site/portal.js's WEAK_AREA_CONTENT -- keep these two in
-// sync if the copy ever changes; duplicated rather than shared because
-// this function and the client bundle have no common module today.
+// Kept in sync manually with site/portal-stable.js's own WEAK_AREA_CONTENT
+// (no shared module between this Edge Function and the client bundle) --
+// update both whenever this copy changes, and vice versa.
+//
+// Email-system audit, item 3: this previously covered 9 of the private
+// pilot bank's 13 real dpe_categories rows (verified against production:
+// adm, aerodynamics, aeromedical, aircraft-systems, airport-operations,
+// airspace, airworthiness, crosscountry, eligibility, emergency,
+// performance, privileges, weather). Four had no entry at all -- a
+// member whose single weakest category was one of those four simply
+// never got a weak-area nudge, silently, forever (processWeakArea/
+// checkWeakAreaEmail both no-op when WEAK_AREA_CONTENT[cat] is
+// undefined). Added: adm, aerodynamics, aircraft-systems,
+// airport-operations, using the real category ids above.
+//
+// Also, item 7: removed unsupported absolute claims about DPE behavior
+// ("Always", "Every DPE", "the single most avoidable reason") that this
+// system can't actually substantiate -- softened to defensible framing
+// without losing the specific, useful detail underneath each one.
 const WEAK_AREA_CONTENT: Record<string, { subject: string; body: string }> = {
-  eligibility: { subject: "Don't Let Paperwork Delay Your Checkride", body: 'Missing endorsements and expired medicals are the single most avoidable reason checkrides get delayed. A quick review of Eligibility &amp; Documents now saves you a bad surprise later.' },
-  airworthiness: { subject: 'The ARROW Documents DPEs Always Check First', body: 'Examiners routinely ask you to physically produce ARROW documents in the aircraft — not just recite the acronym. A few minutes reviewing Airworthiness pays off fast.' },
-  privileges: { subject: 'The Pro Rata Rule Most Students Get Wrong', body: "Precision matters in Privileges &amp; Limitations — examiners probe the edges of what a private pilot can and can't do. Worth another pass." },
-  airspace: { subject: 'Class Bravo Scenarios That Fail Applicants', body: "Confusing Class B's clearance requirement with Class C/D's communication requirement is one of the most common real deviations — and a common oral exam trap." },
-  weather: { subject: '5 Weather Questions Students Miss Most', body: 'METAR decoding, AIRMET vs. SIGMET, and icing conditions come up in almost every oral exam. A quick weather review goes a long way.' },
-  performance: { subject: 'Why DPEs Always Ask About Aft CG', body: 'Weight and balance questions test more than arithmetic — examiners want to see you connect CG location to stall speed and control authority.' },
-  aeromedical: { subject: 'The IMSAFE Check Most Pilots Skip', body: 'Aeromedical Factors is the most personal, judgment-based section of the exam. Worth revisiting before checkride day.' },
+  eligibility: { subject: "Don't Let Paperwork Delay Your Checkride", body: 'Missing documents or required endorsements can delay your checkride. A quick review of Eligibility &amp; Documents now can help you catch issues early.' },
+  airworthiness: { subject: 'The ARROW Documents DPEs Check First', body: 'Examiners commonly ask you to physically produce ARROW documents in the aircraft — not just recite the acronym. A few minutes reviewing Airworthiness pays off fast.' },
+  privileges: { subject: 'The Pro Rata Rule Worth a Second Look', body: "Precision matters in Privileges &amp; Limitations — examiners probe the edges of what a private pilot can and can't do. Worth another pass." },
+  airspace: { subject: 'Class Bravo Scenarios That Trip Up Applicants', body: "Confusing Class B's clearance requirement with Class C/D's communication requirement is one of the most common real deviations — and a common oral exam trap." },
+  weather: { subject: '5 Weather Questions Students Miss Most', body: 'METAR decoding, AIRMET vs. SIGMET, and icing conditions come up in most oral exams. A quick weather review goes a long way.' },
+  performance: { subject: 'Why DPEs Ask About Aft CG', body: 'Weight and balance questions test more than arithmetic — examiners want to see you connect CG location to stall speed and control authority.' },
+  aeromedical: { subject: 'The IMSAFE Check Worth Revisiting', body: 'Aeromedical Factors is one of the most personal, judgment-based sections of the exam. Worth revisiting before checkride day.' },
   crosscountry: { subject: "The Four C's That Save a Lost Pilot", body: "Cross-Country Planning ties together everything else in the guide — and it's often where the oral exam's scenario-based structure becomes most obvious." },
-  emergency: { subject: "The 'Impossible Turn' Question Every DPE Asks", body: 'Emergency Operations questions test whether calm, procedural thinking is already automatic for you. A quick review before checkride day is always worth it.' },
+  emergency: { subject: "The 'Impossible Turn' Question DPEs Ask", body: 'Emergency Operations questions test whether calm, procedural thinking is already automatic for you. A quick review before checkride day is worth the time.' },
+  adm: { subject: 'The ADM Framework Behind Every Go/No-Go Call', body: "Aeronautical Decision-Making questions probe how you'd actually apply a framework like PAVE or the 5 Hazardous Attitudes mid-flight, not just whether you can recite it. Worth reviewing before checkride day." },
+  aerodynamics: { subject: 'The Aerodynamics Questions Behind the Maneuvers', body: 'Load factor in a turn, angle of attack vs. airspeed at the stall, adverse yaw — Aerodynamics questions test the theory behind maneuvers you already fly. A quick review connects the two.' },
+  'aircraft-systems': { subject: "Know Your Aircraft's Systems Cold", body: "Aircraft Systems questions expect specifics about your training aircraft's electrical, fuel, and powerplant systems — not textbook generalities. Worth a targeted review." },
+  'airport-operations': { subject: 'Traffic Pattern and Right-of-Way Questions', body: 'Airport Operations covers traffic pattern procedures, runway markings and lighting, and right-of-way at non-towered fields — the kind of practical knowledge DPEs probe with real scenarios.' },
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
   eligibility: 'Eligibility & Documents', airworthiness: 'Airworthiness', privileges: 'Privileges & Limitations',
   airspace: 'Airspace', weather: 'Weather', performance: 'Performance', aeromedical: 'Aeromedical Factors',
   crosscountry: 'Cross-Country Planning', emergency: 'Emergency Operations',
+  adm: 'Aeronautical Decision-Making', aerodynamics: 'Aerodynamics', 'aircraft-systems': 'Aircraft Systems',
+  'airport-operations': 'Airport Operations',
 }
 
 async function sendEmail(supabase: any, to: string, subject: string, contentHtml: string) {
@@ -310,15 +359,18 @@ async function daysSinceLastMeaningfulActivity(supabase: any, profileId: string)
 }
 
 function emailTemplateReactivationInactive(firstName: string) {
-  return `<h2 style="color:#F4B400;margin:0 0 4px;">Pick up where you left off, ${firstName}.</h2>` +
-    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Start with one DPE question — it only takes a minute, and today\'s question is free for every member.</p>' +
-    '<a href="https://advantage.apexaviationtx.com/portal.html" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Answer Today\'s Question →</a>'
+  return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Pick up where you left off, ${firstName}.</h2>` +
+    '<p style="color:#1F2937;font-size:15px;line-height:1.7;">Start with one DPE question — it only takes a minute, and today\'s question is free for every member.</p>' +
+    `<a href="${lifecycleCtaUrl('reactivation', 'reactivation_inactive')}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Answer Today's Question →</a>`
 }
 
 async function processReactivationInactive(supabase: any, profile: any, results: any) {
   const daysInactive = await daysSinceLastMeaningfulActivity(supabase, profile.id)
   if (daysInactive < REACTIVATION_INACTIVE_TRIGGER_DAYS) return
   if ((await daysSinceLastEmail(supabase, profile.id, 'reactivation_inactive')) < REACTIVATION_INACTIVE_THROTTLE_DAYS) return
+  // Don't also send this if the generic 7-day login nudge already
+  // reached this student recently -- see INACTIVITY_COORDINATION_GAP_DAYS.
+  if ((await daysSinceLastEmail(supabase, profile.id, 'inactivity_7day')) < INACTIVITY_COORDINATION_GAP_DAYS) return
 
   await sendEmail(supabase, profile.email, 'Pick up where you left off', emailTemplateReactivationInactive((profile.full_name || 'there').split(' ')[0]))
   await supabase.from('portal_email_log').insert({ profile_id: profile.id, email_type: 'reactivation_inactive' })
@@ -335,13 +387,13 @@ function emailTemplateWeeklyProgress(stats: {
   strongest: string | null; weakest: string | null;
 }) {
   const topicLine = stats.strongest
-    ? `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Strongest: <strong style="color:#fff">${stats.strongest}</strong>` +
-      (stats.weakest && stats.weakest !== stats.strongest ? ` &nbsp;·&nbsp; Focus next: <strong style="color:#fff">${stats.weakest}</strong>` : '') + '</p>'
+    ? `<p style="color:#1F2937;font-size:15px;line-height:1.7;">Strongest: <strong style="color:#0B1F3A">${stats.strongest}</strong>` +
+      (stats.weakest && stats.weakest !== stats.strongest ? ` &nbsp;·&nbsp; Focus next: <strong style="color:#0B1F3A">${stats.weakest}</strong>` : '') + '</p>'
     : ''
-  return '<h2 style="color:#F4B400;margin:0 0 4px;">Your Apex Weekly Training Report</h2>' +
-    `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">${stats.questions} question${stats.questions === 1 ? '' : 's'} answered · ${stats.days} training day${stats.days === 1 ? '' : 's'} · ${stats.scenarios} scenario${stats.scenarios === 1 ? '' : 's'} · ${stats.aiDpe} AI DPE session${stats.aiDpe === 1 ? '' : 's'}</p>` +
+  return '<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Your Apex Weekly Training Report</h2>' +
+    `<p style="color:#1F2937;font-size:15px;line-height:1.7;">${stats.questions} question${stats.questions === 1 ? '' : 's'} answered · ${stats.days} training day${stats.days === 1 ? '' : 's'} · ${stats.scenarios} scenario${stats.scenarios === 1 ? '' : 's'} · ${stats.aiDpe} AI DPE session${stats.aiDpe === 1 ? '' : 's'}</p>` +
     topicLine +
-    '<a href="https://advantage.apexaviationtx.com/portal.html" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Continue Training →</a>'
+    `<a href="${lifecycleCtaUrl('weekly_progress', 'weekly_progress')}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Continue Training →</a>`
 }
 
 async function processWeeklyProgress(supabase: any, profile: any, allQuestions: Question[], categoryIds: string[], results: any) {
@@ -381,9 +433,9 @@ async function processWeeklyProgress(supabase: any, profile: any, allQuestions: 
 }
 
 function emailTemplate1FirstQuestion() {
-  return '<h2 style="color:#F4B400;margin:0 0 4px;">First question, done.</h2>' +
-    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">That\'s one down — and every one after this gets a little more familiar. Keep the momentum going.</p>' +
-    '<a href="https://advantage.apexaviationtx.com/portal.html#dpe-library" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Keep Studying →</a>'
+  return '<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">First question, done.</h2>' +
+    '<p style="color:#1F2937;font-size:15px;line-height:1.7;">That\'s one down — and every one after this gets a little more familiar. Keep the momentum going.</p>' +
+    `<a href="${lifecycleCtaUrl('milestone', 'first_question', '#dpe-library')}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Keep Studying →</a>`
 }
 
 function emailTemplateMilestone(threshold: number) {
@@ -393,27 +445,38 @@ function emailTemplateMilestone(threshold: number) {
     75: "Three-quarters of the way to checkride-ready. Time to start tightening up your weakest areas.",
     90: "You are checkride-ready in every way that matters. Book a mock oral and go show a DPE what you know.",
   }
-  return `<h2 style="color:#F4B400;margin:0 0 4px;">${threshold}% Checkride Ready</h2>` +
-    `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">${copy[threshold]}</p>` +
-    '<a href="https://advantage.apexaviationtx.com/portal.html" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">View Your Dashboard →</a>'
+  return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">${threshold}% Checkride Ready</h2>` +
+    `<p style="color:#1F2937;font-size:15px;line-height:1.7;">${copy[threshold]}</p>` +
+    `<a href="${lifecycleCtaUrl('milestone', 'milestone_' + threshold)}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">View Your Dashboard →</a>`
 }
 
 function emailTemplateCheckrideModeDone() {
-  return '<h2 style="color:#F4B400;margin:0 0 4px;">Checkride Mode: complete</h2>' +
-    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">You just simulated a real oral exam — 20 questions, no labels, no hints. That\'s exactly the kind of pressure practice that makes checkride day feel routine.</p>'
+  return '<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Checkride Mode: complete</h2>' +
+    '<p style="color:#1F2937;font-size:15px;line-height:1.7;">You just simulated a real oral exam — 20 questions, no labels, no hints. That\'s exactly the kind of pressure practice that makes checkride day feel routine.</p>'
 }
 
 function emailTemplateInactivity(firstName: string) {
-  return `<h2 style="color:#F4B400;margin:0 0 4px;">Still working toward your checkride, ${firstName}?</h2>` +
-    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">It\'s been a week since your last visit to the portal. A few minutes of review keeps everything from going stale before checkride day.</p>' +
-    '<a href="https://advantage.apexaviationtx.com/portal.html" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Pick Up Where You Left Off →</a>'
+  return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Still working toward your checkride, ${firstName}?</h2>` +
+    '<p style="color:#1F2937;font-size:15px;line-height:1.7;">It\'s been a week since your last visit to the portal. A few minutes of review keeps everything from going stale before checkride day.</p>' +
+    `<a href="${lifecycleCtaUrl('inactivity', 'inactivity_7day')}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Pick Up Where You Left Off →</a>`
+}
+
+// Single source of truth for "day" vs "days" -- previously computed
+// separately (and correctly) inside emailTemplateCountdown's own body,
+// while the SUBJECT LINE at this email's one call site (processCountdown)
+// hardcoded the plural unconditionally, so a checkride exactly 1 day out
+// sent the subject "1 days until your checkride" with a correctly-
+// pluralized "1 day until your checkride" heading directly underneath it
+// in the body (email-system audit, item 1).
+function daysNoun(n: number): string {
+  return n === 1 ? 'day' : 'days'
 }
 
 function emailTemplateCountdown(daysUntil: number) {
-  const noun = daysUntil === 1 ? 'day' : 'days'
-  return `<h2 style="color:#F4B400;margin:0 0 4px;">${daysUntil} ${noun} until your checkride</h2>` +
-    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Use the Weak Areas widget to spend your remaining study time where it counts most, and make sure your logbook and endorsements are squared away.</p>' +
-    '<a href="https://advantage.apexaviationtx.com/portal.html#progress" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Review Your Progress →</a>'
+  const noun = daysNoun(daysUntil)
+  return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">${daysUntil} ${noun} until your checkride</h2>` +
+    '<p style="color:#1F2937;font-size:15px;line-height:1.7;">Use the Weak Areas widget to spend your remaining study time where it counts most, and make sure your logbook and endorsements are squared away.</p>' +
+    `<a href="${lifecycleCtaUrl('checkride_countdown', 'countdown_' + daysUntil, '#progress')}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Review Your Progress →</a>`
 }
 
 // Recovery Sortie offer -- run_streak_maintenance() (see
@@ -423,24 +486,29 @@ function emailTemplateCountdown(daysUntil: number) {
 // portal that same day -- this is the only notification path that
 // tells them it exists before it expires at midnight, member-local.
 function emailTemplateRecoverySortie(firstName: string) {
-  return `<h2 style="color:#F4B400;margin:0 0 4px;">${firstName}, your streak is on the line tonight</h2>` +
-    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">You missed a day and you\'re out of banked freezes — but your streak isn\'t broken yet. Answer 3 questions before midnight tonight and it carries forward like nothing happened.</p>' +
-    '<a href="https://advantage.apexaviationtx.com/portal.html#dpe-library" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Save My Streak →</a>'
+  return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">${firstName}, your streak is on the line tonight</h2>` +
+    '<p style="color:#1F2937;font-size:15px;line-height:1.7;">You missed a day and you\'re out of banked freezes — but your streak isn\'t broken yet. Answer 3 questions before midnight tonight and it carries forward like nothing happened.</p>' +
+    `<a href="${lifecycleCtaUrl('streak_recovery', 'recovery_sortie', '#dpe-library')}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Save My Streak →</a>`
 }
 
-// Ground school is live, instructor-led, in-person -- there is no
-// recording/replay system anywhere in this codebase, so this
-// deliberately does not promise a "replay link" the way the original
-// Phase 6 ask's wording suggested. "Resources" here is a real, working
-// link to browse upcoming sessions (repeat attendance); the portal CTA
-// is generic rather than personalized to unlock status, since that would
-// require an extra profiles lookup per registration for a soft nudge
-// that reads fine either way.
+// This follow-up fires off ground_registrations/ground_sessions -- the
+// drop-in live-class flow, where a session can be in-person (location),
+// virtual over Google Meet (meet_link), or both, per session. That flow
+// has no recording/replay field, so this deliberately does not promise
+// a "replay link" the way the original Phase 6 ask's wording suggested.
+// (A separate recording_url does exist, but only on scheduled_ground_
+// classes for complete-course package members -- see stripe-webhook's
+// own copy -- and doesn't apply to this registration/attendance path.)
+// "Resources" here is a real, working link to browse upcoming sessions
+// (repeat attendance); the portal CTA is generic rather than
+// personalized to unlock status, since that would require an extra
+// profiles lookup per registration for a soft nudge that reads fine
+// either way.
 function emailTemplateGroundSchoolFollowUp(sessionTitle: string) {
-  return `<h2 style="color:#F4B400;margin:0 0 4px;">Thanks for coming to ${sessionTitle}</h2>` +
-    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Hope it was a good session. Keep the momentum going with the Checkride Prep System in your member portal, or grab a spot at the next ground school session while it\'s fresh.</p>' +
-    '<a href="https://advantage.apexaviationtx.com/portal.html#ground-school" style="display:inline-block;margin-top:8px;margin-right:10px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">See Upcoming Sessions →</a>' +
-    '<a href="https://advantage.apexaviationtx.com/portal.html" style="display:inline-block;margin-top:8px;border:1.5px solid rgba(244,180,0,0.4);color:#F4B400;border-radius:8px;padding:11px 21px;text-decoration:none;font-weight:700;font-size:14px;">Go to My Portal →</a>'
+  return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Thanks for coming to ${sessionTitle}</h2>` +
+    '<p style="color:#1F2937;font-size:15px;line-height:1.7;">Hope it was a good session. Keep the momentum going with the Checkride Prep System in your member portal, or grab a spot at the next ground school session while it\'s fresh.</p>' +
+    `<a href="${lifecycleCtaUrl('ground_school', 'session_followup_sessions', '#ground-school')}" style="display:inline-block;margin-top:8px;margin-right:10px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">See Upcoming Sessions →</a>` +
+    `<a href="${lifecycleCtaUrl('ground_school', 'session_followup_portal')}" style="display:inline-block;margin-top:8px;border:1.5px solid #0B1F3A;color:#0B1F3A;border-radius:0;padding:11px 21px;text-decoration:none;font-weight:700;font-size:14px;">Go to My Portal →</a>`
 }
 
 type PricingPreview = { tier: 'founding' | 'launch' | 'standard'; amount_cents: number; founding_seats_remaining: number; launch_expires_at: string | null }
@@ -477,7 +545,7 @@ function checkrideUpsellSubject(day: number, pricing: PricingPreview): string {
   if (day === 12) return 'What actually happens in the oral'
   if (day === 14) return 'Last look: the Checkride Prep System'
   if (day === 21) return 'Start before you have to cram'
-  return 'One more look before we stop emailing about this' // day 30
+  return "It'll be here whenever you're ready" // day 30
 }
 
 // If the member is still inside their founding/launch discount window
@@ -489,30 +557,30 @@ function checkrideUpsellSubject(day: number, pricing: PricingPreview): string {
 function emailTemplateCheckrideUpsell(day: number, pricing: PricingPreview, timingBucket: string): string {
   const price = '$' + Math.round(pricing.amount_cents / 100)
   const urgencyLine = CHECKRIDE_TIMING_URGENCY[timingBucket] || ''
-  const urgencyParagraph = urgencyLine ? `<p style="color:rgba(255,255,255,0.55);font-size:14px;line-height:1.7;font-style:italic;">${urgencyLine}</p>` : ''
-  const cta = (label: string) => `<a href="https://advantage.apexaviationtx.com/portal.html#checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">${label}</a>`
+  const urgencyParagraph = urgencyLine ? `<p style="color:#4B5563;font-size:14px;line-height:1.7;font-style:italic;">${urgencyLine}</p>` : ''
+  const cta = (label: string) => `<a href="${lifecycleCtaUrl('checkride_upsell', 'upsell_day' + day, '#checkride-prep')}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">${label}</a>`
 
   if (day === 1) {
-    const intro = '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your free portal account already includes the "10 Questions DPEs Love to Ask" guide. The full Checkride Prep System adds a 300+ question DPE-style bank covering every ACS area of operation — each with a model answer, the common mistakes examiners watch for, and real-world context — plus scenario training and progress tracking.</p>'
+    const intro = '<p style="color:#1F2937;font-size:15px;line-height:1.7;">Your free portal account already includes the "10 Questions DPEs Love to Ask" guide. The full Checkride Prep System adds a 300+ question DPE-style bank covering every ACS area of operation — each with a model answer, the common mistakes examiners watch for, and real-world context — plus scenario training and progress tracking.</p>'
     if (pricing.tier === 'founding' || pricing.tier === 'launch') {
       const tierUrgency = pricing.tier === 'founding'
         ? `${pricing.founding_seats_remaining} founding spot${pricing.founding_seats_remaining === 1 ? '' : 's'} left at ${price}, then $49`
         : `${price} new-member pricing is still active on your account for a limited time, then $49`
-      return `<h2 style="color:#F4B400;margin:0 0 4px;">${tierUrgency}</h2>` + intro + urgencyParagraph + cta(`Unlock for ${price} →`)
+      return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">${tierUrgency}</h2>` + intro + urgencyParagraph + cta(`Unlock for ${price} →`)
     }
-    return '<h2 style="color:#F4B400;margin:0 0 4px;">Here\'s what\'s waiting for you</h2>' + intro + urgencyParagraph + cta('See What\'s Inside →')
+    return '<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Here\'s what\'s waiting for you</h2>' + intro + urgencyParagraph + cta('See What\'s Inside →')
   }
 
   if (day === 3) {
-    return '<h2 style="color:#F4B400;margin:0 0 4px;">A question DPEs love to ask</h2>' +
-      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">"You want to split the cost of a cross-country flight with a friend who isn\'t a pilot. Is that legal for a private pilot to do?"</p>' +
-      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Most applicants know the pro rata rule exists — fewer can explain it precisely enough to satisfy a DPE\'s follow-up questions. That\'s exactly the gap the full Checkride Prep System closes: 300+ questions like this one, each with a model answer and the specific mistake examiners watch for.</p>' +
+    return '<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">A question DPEs love to ask</h2>' +
+      '<p style="color:#1F2937;font-size:15px;line-height:1.7;">"You want to split the cost of a cross-country flight with a friend who isn\'t a pilot. Is that legal for a private pilot to do?"</p>' +
+      '<p style="color:#1F2937;font-size:15px;line-height:1.7;">Most applicants know the pro rata rule exists — fewer can explain it precisely enough to satisfy a DPE\'s follow-up questions. That\'s exactly the gap the full Checkride Prep System closes: 300+ questions like this one, each with a model answer and the specific mistake examiners watch for.</p>' +
       urgencyParagraph + cta('Unlock the Full System →')
   }
 
   if (day === 6) {
-    return '<h2 style="color:#F4B400;margin:0 0 4px;">Checkride oral prep, minus the guesswork</h2>' +
-      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Most applicants prep by re-reading the same materials until it feels familiar — but a DPE isn\'t testing familiarity, they\'re testing whether you can explain it under pressure. The full Checkride Prep System is built around that gap: 300+ DPE-style questions, model answers, and the exact mistakes examiners watch for.</p>' +
+    return '<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Checkride oral prep, minus the guesswork</h2>' +
+      '<p style="color:#1F2937;font-size:15px;line-height:1.7;">Most applicants prep by re-reading the same materials until it feels familiar — but a DPE isn\'t testing familiarity, they\'re testing whether you can explain it under pressure. The full Checkride Prep System is built around that gap: 300+ DPE-style questions, model answers, and the exact mistakes examiners watch for.</p>' +
       urgencyParagraph + cta(`Unlock for ${price} →`)
   }
 
@@ -529,33 +597,33 @@ function emailTemplateCheckrideUpsell(day: number, pricing: PricingPreview, timi
       heading = 'Still thinking about the Checkride Prep System?'
       body = `300+ DPE-style questions, model answers, scenario training, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation. Unlock it whenever you're ready.`
     }
-    return `<h2 style="color:#F4B400;margin:0 0 4px;">${heading}</h2>` +
-      `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">${body}</p>` +
+    return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">${heading}</h2>` +
+      `<p style="color:#1F2937;font-size:15px;line-height:1.7;">${body}</p>` +
       urgencyParagraph + cta(`Unlock for ${price} →`)
   }
 
   if (day === 12) {
-    return '<h2 style="color:#F4B400;margin:0 0 4px;">What actually happens in the oral</h2>' +
-      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">A DPE rarely asks a question exactly the way a textbook phrases it — they adapt it to a scenario and follow up on whatever you say. The full Checkride Prep System trains for that directly: real DPE-style questions, model answers, and the follow-ups examiners actually ask.</p>' +
+    return '<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">What actually happens in the oral</h2>' +
+      '<p style="color:#1F2937;font-size:15px;line-height:1.7;">A DPE rarely asks a question exactly the way a textbook phrases it — they adapt it to a scenario and follow up on whatever you say. The full Checkride Prep System trains for that directly: real DPE-style questions, model answers, and the follow-ups examiners actually ask.</p>' +
       urgencyParagraph + cta(`Unlock for ${price} →`)
   }
 
   if (day === 14) {
-    return '<h2 style="color:#F4B400;margin:0 0 4px;">Last look: the Checkride Prep System</h2>' +
-      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">No pressure — the free guide is yours either way. But if your checkride is getting closer, the full 300+ question Checkride Prep System (DPE insight, scenario training, progress tracking) is one click away whenever you want it.</p>' +
+    return '<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Last look: the Checkride Prep System</h2>' +
+      '<p style="color:#1F2937;font-size:15px;line-height:1.7;">No pressure — the free guide is yours either way. But if your checkride is getting closer, the full 300+ question Checkride Prep System (DPE insight, scenario training, progress tracking) is one click away whenever you want it.</p>' +
       urgencyParagraph + cta(`Unlock for ${price} →`)
   }
 
   if (day === 21) {
-    return '<h2 style="color:#F4B400;margin:0 0 4px;">Start before you have to cram</h2>' +
-      '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">The students who feel calmest on checkride day usually started their oral prep well before it felt urgent. The full Checkride Prep System is there whenever you\'re ready — 300+ questions, model answers, and scenario training, at your own pace.</p>' +
+    return '<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Start before you have to cram</h2>' +
+      '<p style="color:#1F2937;font-size:15px;line-height:1.7;">The students who feel calmest on checkride day usually started their oral prep well before it felt urgent. The full Checkride Prep System is there whenever you\'re ready — 300+ questions, model answers, and scenario training, at your own pace.</p>' +
       urgencyParagraph + cta(`Unlock for ${price} →`)
   }
 
   // day === 30 -- longest-running touchpoint, reached only by the
   // not_scheduled bucket.
-  return '<h2 style="color:#F4B400;margin:0 0 4px;">One more look before we stop emailing about this</h2>' +
-    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">No pressure — the free guide is yours either way. Whenever you do lock in a checkride date, the full Checkride Prep System (300+ DPE-style questions, model answers, scenario training, progress tracking) will be right where you left it.</p>' +
+  return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">It'll be here whenever you're ready</h2>` +
+    '<p style="color:#1F2937;font-size:15px;line-height:1.7;">The free guide is yours either way. Whenever you do lock in a checkride date, the full Checkride Prep System (300+ DPE-style questions, model answers, scenario training, progress tracking) will be right where you left it.</p>' +
     urgencyParagraph + cta(`Unlock for ${price} →`)
 }
 
@@ -637,6 +705,10 @@ async function processInactivity(supabase: any, profile: any, results: any) {
   const daysInactive = (Date.now() - new Date(lastActive).getTime()) / 86400000
   if (daysInactive < INACTIVITY_TRIGGER_DAYS) return
   if ((await daysSinceLastEmail(supabase, profile.id, 'inactivity_7day')) < INACTIVITY_THROTTLE_DAYS) return
+  // Don't also send this if the stronger, activity-based reactivation
+  // nudge already reached this student recently -- see
+  // INACTIVITY_COORDINATION_GAP_DAYS.
+  if ((await daysSinceLastEmail(supabase, profile.id, 'reactivation_inactive')) < INACTIVITY_COORDINATION_GAP_DAYS) return
 
   await sendEmail(supabase, profile.email, "We miss you at Apex Advantage", emailTemplateInactivity((profile.full_name || 'there').split(' ')[0]))
   await supabase.from('portal_email_log').insert({ profile_id: profile.id, email_type: 'inactivity_7day' })
@@ -664,16 +736,31 @@ async function processSevenDayActive(supabase: any, profile: any, results: any) 
   results.seven_day_active++
 }
 
-async function processMilestones(supabase: any, profile: any, questions: Question[], categoryIds: string[], results: any) {
+// Email-system audit, item 5: the Daily DPE Question is deliberately
+// free for every member (see computeQotdQuestion's own comment in
+// site/portal-stable.js -- "Question of the Day is deliberately free
+// for every member"), and answering it writes the exact same
+// portal_question_progress row a paid member's practice does. This
+// milestone must therefore be checked for every profile regardless of
+// checkride_prep_unlocked -- it was previously folded into
+// processMilestones below, which only ever runs for unlocked members,
+// so a free member's first completed question silently never earned
+// this celebration email at all. Split out on its own so it runs
+// unconditionally; readiness-score and Checkride-Mode milestones stay
+// gated to unlocked members below, since those two are both genuinely
+// scoped to paid-only content (the full ACS-mapped question bank and
+// Checkride Mode itself).
+async function processFirstQuestionMilestone(supabase: any, profile: any, results: any) {
   const { data: qProgress } = await supabase.from('portal_question_progress').select('id').eq('profile_id', profile.id).eq('completed', true).limit(1)
-  if (qProgress && qProgress.length) {
-    if (await claimMilestoneEmail(supabase, profile.id, 'first_question_completed')) {
-      await sendEmail(supabase, profile.email, 'You completed your first question 🎉', emailTemplate1FirstQuestion())
-      await markMilestoneSent(supabase, profile.id, 'first_question_completed')
-      results.first_question++
-    }
-  }
+  if (!qProgress || !qProgress.length) return
+  if (!(await claimMilestoneEmail(supabase, profile.id, 'first_question_completed'))) return
 
+  await sendEmail(supabase, profile.email, 'You completed your first question', emailTemplate1FirstQuestion())
+  await markMilestoneSent(supabase, profile.id, 'first_question_completed')
+  results.first_question++
+}
+
+async function processMilestones(supabase: any, profile: any, questions: Question[], categoryIds: string[], results: any) {
   // Sends at most one readiness milestone per run -- the highest
   // threshold the score has reached that hasn't already been sent --
   // same reasoning and shape as processCheckrideUpsell below: a score
@@ -710,9 +797,9 @@ async function processWeakArea(supabase: any, profile: any, questions: Question[
   const emailType = 'weak_area_' + weakest.cat
   if ((await daysSinceLastEmail(supabase, profile.id, emailType)) < WEAK_AREA_THROTTLE_DAYS) return
 
-  const html = `<h2 style="color:#F4B400;margin:0 0 4px;">${content.subject}</h2>` +
-    `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">${content.body}</p>` +
-    `<a href="https://advantage.apexaviationtx.com/portal.html#dpe-library" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Review ${CATEGORY_LABELS[weakest.cat] || weakest.cat} →</a>`
+  const html = `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">${content.subject}</h2>` +
+    `<p style="color:#1F2937;font-size:15px;line-height:1.7;">${content.body}</p>` +
+    `<a href="${lifecycleCtaUrl('weak_area', 'weak_area_' + weakest.cat, '#dpe-library')}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Review ${CATEGORY_LABELS[weakest.cat] || weakest.cat} →</a>`
   const { error: logError } = await supabase.from('portal_email_log').insert({ profile_id: profile.id, email_type: emailType })
   if (logError) {
     if (logError.code !== '23505') results.errors.push(`weak_area_log:${profile.id}:${logError.message}`)
@@ -729,11 +816,35 @@ async function processWeakArea(supabase: any, profile: any, questions: Question[
 // missed cron run: if the job didn't run on the exact day a checkride
 // was 7 days out, that email was gone for good, since daysUntil moves
 // past 7 by the next run and never matches again.
+// en-CA formats as YYYY-MM-DD directly -- the exact shape
+// portal_checkride_date.checkride_date is already stored in, so the two
+// can be compared as plain UTC-midnight Date objects without a manual
+// pad/parse step once each is resolved to its own calendar day.
+function localDateString(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date)
+}
+
 async function processCountdown(supabase: any, profile: any, results: any) {
   const { data } = await supabase.from('portal_checkride_date').select('checkride_date').eq('profile_id', profile.id).maybeSingle()
   if (!data) return
-  const today = new Date()
-  today.setUTCHours(0, 0, 0, 0)
+
+  // Anchored to the member's own local calendar day (profiles.timezone),
+  // not UTC -- checkride_date is a bare date with no time component, so
+  // "how many days until X" must be measured from the member's own
+  // local "today," not this cron run's UTC "today," or the threshold a
+  // member near a day boundary sees can be off by one depending purely
+  // on how far they are from UTC (email-system audit, item 1). Falls
+  // back to UTC for the (common, today) case of a profile with no
+  // timezone set, and again if the stored value isn't a real IANA zone
+  // name -- either way this must never throw and abort the whole cron
+  // run over one profile's bad data.
+  let todayStr: string
+  try {
+    todayStr = localDateString(new Date(), profile.timezone || 'UTC')
+  } catch {
+    todayStr = localDateString(new Date(), 'UTC')
+  }
+  const today = new Date(todayStr + 'T00:00:00Z')
   const checkride = new Date(data.checkride_date + 'T00:00:00Z')
   const daysUntil = Math.round((checkride.getTime() - today.getTime()) / 86400000)
   if (daysUntil < 0) return
@@ -743,7 +854,7 @@ async function processCountdown(supabase: any, profile: any, results: any) {
     const emailType = 'checkride_countdown_' + threshold
     if (await hasMilestoneFired(supabase, profile.id, emailType)) continue
 
-    await sendEmail(supabase, profile.email, `${threshold} days until your checkride`, emailTemplateCountdown(threshold))
+    await sendEmail(supabase, profile.email, `${threshold} ${daysNoun(threshold)} until your checkride`, emailTemplateCountdown(threshold))
     await markMilestoneSent(supabase, profile.id, emailType)
     results.countdown++
     return
@@ -857,12 +968,17 @@ async function processGroundSchoolFollowUps(supabase: any, results: any) {
   const cutoff = new Date(Date.now() - 45 * 86400000).toISOString()
   const { data: regs } = await supabase
     .from('ground_registrations')
-    .select('id, email, profile_id, checked_out_at, session:ground_sessions(title)')
+    .select('id, email, profile_id, checked_out_at, session:ground_sessions(title), profile:profiles(email_marketing_opt_out)')
     .eq('attendance_status', 'completed')
     .gte('checked_out_at', cutoff)
 
   for (const reg of regs ?? []) {
     if (!reg.email) continue
+    // A walk-in with no portal account (profile_id null, see the
+    // comment below) has no email_marketing_opt_out to check --
+    // reg.profile is null for those, so this only ever suppresses
+    // registrants who actually have an account and used it to opt out.
+    if (reg.profile?.email_marketing_opt_out) continue
     const emailType = 'ground_followup_' + reg.id
     try {
       const { data: already } = await supabase.from('portal_email_log').select('id').eq('email_type', emailType).limit(1)
@@ -881,21 +997,21 @@ async function processGroundSchoolFollowUps(supabase: any, results: any) {
 const PORTAL_LOGIN_URL = 'https://advantage.apexaviationtx.com/portal-login.html'
 
 function emailTemplateAbandonedCheckridePrep(firstName: string) {
-  return `<h2 style="color:#F4B400;margin:0 0 4px;">Still want in, ${firstName}?</h2>` +
-    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Looks like you started unlocking the Checkride Prep System but didn\'t finish checkout. Nothing was charged — pick up right where you left off whenever you\'re ready.</p>' +
-    `<a href="${PORTAL_LOGIN_URL}?dest=checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Finish Unlocking →</a>`
+  return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Still want in, ${firstName}?</h2>` +
+    '<p style="color:#1F2937;font-size:15px;line-height:1.7;">Looks like you started unlocking the Checkride Prep System but didn\'t finish checkout. Nothing was charged — pick up right where you left off whenever you\'re ready.</p>' +
+    `<a href="${PORTAL_LOGIN_URL}?dest=checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Finish Unlocking →</a>`
 }
 
 function emailTemplateAbandonedGroundSchool(firstName: string) {
-  return `<h2 style="color:#F4B400;margin:0 0 4px;">Still want a seat, ${firstName}?</h2>` +
-    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Looks like you started registering for a live ground school session but didn\'t finish checkout. Nothing was charged — spots are first-come, first-served, so it\'s worth finishing up if you still want in.</p>' +
-    `<a href="${PORTAL_LOGIN_URL}?dest=ground-school" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Finish Registering →</a>`
+  return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Still want a seat, ${firstName}?</h2>` +
+    '<p style="color:#1F2937;font-size:15px;line-height:1.7;">Looks like you started registering for a live ground school session but didn\'t finish checkout. Nothing was charged — spots are first-come, first-served, so it\'s worth finishing up if you still want in.</p>' +
+    `<a href="${PORTAL_LOGIN_URL}?dest=ground-school" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Finish Registering →</a>`
 }
 
 function emailTemplateAbandonedMockOral(firstName: string) {
-  return `<h2 style="color:#F4B400;margin:0 0 4px;">Still want to book, ${firstName}?</h2>` +
-    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Looks like you started booking a Mock Oral but didn\'t finish checkout. Nothing was charged — pick up right where you left off whenever you\'re ready.</p>' +
-    `<a href="${PORTAL_LOGIN_URL}?dest=mock-oral" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Finish Booking →</a>`
+  return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Still want to book, ${firstName}?</h2>` +
+    '<p style="color:#1F2937;font-size:15px;line-height:1.7;">Looks like you started booking a Mock Oral but didn\'t finish checkout. Nothing was charged — pick up right where you left off whenever you\'re ready.</p>' +
+    `<a href="${PORTAL_LOGIN_URL}?dest=mock-oral" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Finish Booking →</a>`
 }
 
 // ── Readiness Assessment lead follow-up (site/readiness-assessment.html) ──
@@ -921,22 +1037,22 @@ function emailTemplateAssessmentDay1(firstName: string, score: number, level: st
   const weakLine = weakCats.length
     ? `Your weakest area${weakCats.length > 1 ? 's were' : ' was'} ${weakCats.join(', ')}.`
     : 'You answered every question correctly — nice work.'
-  return `<h2 style="color:#F4B400;margin:0 0 4px;">Your Readiness Assessment result: ${score}%</h2>` +
-    `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Hi ${firstName}, here's a recap of your free Checkride Readiness Assessment: <strong style="color:#fff;">${level}</strong>. ${weakLine}</p>` +
-    `<a href="${PORTAL_LOGIN_URL}?view=signup&dest=checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Build My Complete Study Plan →</a>`
+  return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Your Readiness Assessment result: ${score}%</h2>` +
+    `<p style="color:#1F2937;font-size:15px;line-height:1.7;">Hi ${firstName}, here's a recap of your free Checkride Readiness Assessment: <strong style="color:#0B1F3A;">${level}</strong>. ${weakLine}</p>` +
+    `<a href="${PORTAL_LOGIN_URL}?view=signup&dest=checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Build My Complete Study Plan →</a>`
 }
 
 function emailTemplateAssessmentDay3(firstName: string, weakCats: string[]) {
   const focus = weakCats.length ? weakCats[0] : 'the areas you missed'
-  return `<h2 style="color:#F4B400;margin:0 0 4px;">Quick gut check, ${firstName}</h2>` +
-    `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">If you had to sit your oral exam tomorrow, could you confidently explain ${focus} to a DPE — not just recall the fact, but explain why it matters and apply it to a real scenario? That gap between "I know it" and "I can explain it under pressure" is exactly what the full Checkride Prep System closes.</p>` +
-    `<a href="${PORTAL_LOGIN_URL}?view=signup&dest=checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">See What's Included →</a>`
+  return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Quick gut check, ${firstName}</h2>` +
+    `<p style="color:#1F2937;font-size:15px;line-height:1.7;">If you had to sit your oral exam tomorrow, could you confidently explain ${focus} to a DPE — not just recall the fact, but explain why it matters and apply it to a real scenario? That gap between "I know it" and "I can explain it under pressure" is exactly what the full Checkride Prep System closes.</p>` +
+    `<a href="${PORTAL_LOGIN_URL}?view=signup&dest=checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">See What's Included →</a>`
 }
 
 function emailTemplateAssessmentDay6(firstName: string, timingLabel: string) {
-  return `<h2 style="color:#F4B400;margin:0 0 4px;">Last look, ${firstName}</h2>` +
-    `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">You told us your checkride is ${timingLabel}. Whenever that is, the difference between scattered studying and a real plan is what actually shows up in the oral exam room. The Checkride Prep System gives you 300+ ACS-mapped questions, DPE-style scenarios, and an AI mock oral — built to close exactly the gaps your assessment turned up.</p>` +
-    `<a href="${PORTAL_LOGIN_URL}?view=signup&dest=checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Build My Complete Study Plan →</a>`
+  return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Last look, ${firstName}</h2>` +
+    `<p style="color:#1F2937;font-size:15px;line-height:1.7;">You told us your checkride is ${timingLabel}. Whenever that is, the difference between scattered studying and a real plan is what actually shows up in the oral exam room. The Checkride Prep System gives you 300+ ACS-mapped questions, DPE-style scenarios, and an AI mock oral — built to close exactly the gaps your assessment turned up.</p>` +
+    `<a href="${PORTAL_LOGIN_URL}?view=signup&dest=checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Build My Complete Study Plan →</a>`
 }
 
 // One row per lead (not a log), so each of the three stages is checked
@@ -946,6 +1062,14 @@ function emailTemplateAssessmentDay6(firstName: string, timingLabel: string) {
 // unlocked): at that point processCheckrideUpsell/processMilestones
 // above already nurture them, and sending both would double-email the
 // same person from two different sequences.
+//
+// Not gated by email_marketing_opt_out: that flag lives on profiles,
+// and by definition every lead this function emails has no profile row
+// yet (the existingProfile check below already excludes anyone who
+// does). There is currently no pre-signup opt-out mechanism for this
+// specific lead-capture flow -- a real, honest gap, not an oversight to
+// paper over. If this needs one, it belongs on readiness_assessment_
+// leads itself, not on a table these people were never added to.
 async function processReadinessAssessmentFollowup(supabase: any, results: any) {
   const { data: leads } = await supabase
     .from('readiness_assessment_leads')
@@ -999,6 +1123,9 @@ function moTzAbbr(tz: string): string {
   return ({ 'America/Chicago': 'CT', 'America/New_York': 'ET', 'America/Denver': 'MT', 'America/Los_Angeles': 'PT', 'UTC': 'UTC' } as Record<string, string>)[tz] || tz
 }
 
+// Not gated by email_marketing_opt_out -- a class-start reminder for a
+// paid, confirmed booking is a service notice, not a marketing send;
+// see the profiles SELECT comment in serve() for the split this follows.
 async function processMockOralReminders(supabase: any, results: any) {
   const windowEnd = new Date(Date.now() + MOCK_ORAL_REMINDER_WINDOW_HOURS * 3600000)
   const { data: bookings } = await supabase
@@ -1016,8 +1143,8 @@ async function processMockOralReminders(supabase: any, results: any) {
       const when = startAt.toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })
       const tz = moTzAbbr(b.availability.timezone)
       const joinLine = b.meeting_url
-        ? `<a href="${b.meeting_url}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Join Instructions →</a>`
-        : `<p style="color:rgba(255,255,255,0.5);font-size:13px;">Your join link will be available in your portal shortly before the session.</p>`
+        ? `<a href="${b.meeting_url}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Join Instructions →</a>`
+        : `<p style="color:#4B5563;font-size:13px;">Your join link will be available in your portal shortly before the session.</p>`
 
       const { error: markError } = await supabase
         .from('mock_oral_bookings')
@@ -1028,10 +1155,10 @@ async function processMockOralReminders(supabase: any, results: any) {
 
       await sendEmail(supabase, b.email, 'Your Apex Mock Oral is tomorrow',
         template(`
-          <h2 style="color:#F4B400;margin:0 0 4px;">See you soon, ${b.full_name.split(' ')[0]}!</h2>
-          <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your Mock Oral is coming up: <strong style="color:#fff">${when} ${tz}</strong>.</p>
+          <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">See you soon, ${b.full_name.split(' ')[0]}!</h2>
+          <p style="color:#1F2937;font-size:15px;line-height:1.7;">Your Mock Oral is coming up: <strong style="color:#0B1F3A">${when} ${tz}</strong>.</p>
           ${joinLine}
-          <p style="color:rgba(255,255,255,0.5);font-size:13px;line-height:1.7;margin-top:16px;">Have ready if applicable: your student pilot certificate and medical, your aircraft's POH/AFM, a current sectional or EFB, and your Knowledge Test Report.</p>
+          <p style="color:#4B5563;font-size:13px;line-height:1.7;margin-top:16px;">Have ready if applicable: your student pilot certificate and medical, your aircraft's POH/AFM, a current sectional or EFB, and your Knowledge Test Report.</p>
         `))
       results.mock_oral_reminder++
     } catch (err) {
@@ -1057,8 +1184,14 @@ async function processAbandonedCheckouts(supabase: any, results: any) {
     try {
       let firstName = 'there'
       if (attempt.profile_id) {
-        const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', attempt.profile_id).maybeSingle()
+        const { data: profile } = await supabase.from('profiles').select('full_name,email_marketing_opt_out').eq('id', attempt.profile_id).maybeSingle()
         if (profile?.full_name) firstName = profile.full_name.split(' ')[0]
+        // Cart-recovery is a conversion nudge, not a receipt -- the same
+        // opt-out that suppresses processCheckrideUpsell/processWeakArea
+        // applies here. A guest checkout with no profile_id has no
+        // account to hold that preference on, so it's unaffected (same
+        // reasoning as processGroundSchoolFollowUps' walk-in case).
+        if (profile?.email_marketing_opt_out) continue
       }
 
       let subject: string
@@ -1117,6 +1250,11 @@ async function processAbandonedCheckouts(supabase: any, results: any) {
 // portal_email_log keyed on the sortie's own id (not just profile_id),
 // same pattern as ground_followup_<registration_id> above -- each sortie
 // is a distinct, one-time, expiring offer, not a recurring milestone.
+// Not gated by email_marketing_opt_out -- like processMockOralReminders,
+// this reports the status of something the member's own actions already
+// put in motion (a streak they built, a reward that expires tonight),
+// not a promotional pitch. See the profiles SELECT comment in serve()
+// for the transactional/marketing split this follows.
 async function processRecoverySortieNotifications(supabase: any, results: any) {
   const { data: sorties } = await supabase
     .from('recovery_sorties')
@@ -1156,12 +1294,12 @@ async function processRecoverySortieNotifications(supabase: any, results: any) {
 // even be set yet this early -- the member's first portal login, where
 // showWelcomeOnboarding() asks, might not have happened yet either).
 function emailTemplateActivationDay1(firstName: string): string {
-  return `<h2 style="color:#F4B400;margin:0 0 4px;">Quick one, ${firstName}</h2>` +
-    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Have you tried today\'s DPE question yet?</p>' +
-    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">It takes about two minutes, and it\'s probably the easiest way to get value from Apex Advantage right away.</p>' +
-    `<a href="${activationCtaUrl('dashboard', 2)}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Answer Today's Question →</a>` +
-    '<p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">That\'s it.</p>' +
-    '<p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">— Andrew</p>'
+  return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Quick one, ${firstName}</h2>` +
+    '<p style="color:#1F2937;font-size:15px;line-height:1.7;">Have you tried today\'s DPE question yet?</p>' +
+    '<p style="color:#1F2937;font-size:15px;line-height:1.7;">It takes about two minutes, and it\'s probably the easiest way to get value from Apex Advantage right away.</p>' +
+    `<a href="${activationCtaUrl('dashboard', 2)}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Answer Today's Question →</a>` +
+    '<p style="color:#4B5563;font-size:13px;line-height:1.6;">That\'s it.</p>' +
+    '<p style="color:#4B5563;font-size:13px;line-height:1.6;">— Andrew</p>'
 }
 
 // Email #3 (~72h) -- stage/focus-aware, per brief section 12's examples.
@@ -1174,17 +1312,17 @@ function emailTemplateActivationDay1(firstName: string): string {
 // both training_stage and checkride_prep_unlocked together.
 function emailTemplateActivationDay3(firstName: string, action: { hash: string; label: string; contextPhrase: string }, focusLabel: string | null, upsellSentence: string): string {
   const stageLine = action.contextPhrase
-    ? `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">You mentioned you're ${action.contextPhrase}.</p>`
+    ? `<p style="color:#1F2937;font-size:15px;line-height:1.7;">You mentioned you're ${action.contextPhrase}.</p>`
     : ''
   const focusLine = focusLabel
-    ? `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">You also told us ${focusLabel} is one of the areas you want to work on — that's worth starting with.</p>`
+    ? `<p style="color:#1F2937;font-size:15px;line-height:1.7;">You also told us ${focusLabel} is one of the areas you want to work on — that's worth starting with.</p>`
     : ''
-  const upsellLine = upsellSentence ? `<p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">${upsellSentence}</p>` : ''
-  return `<h2 style="color:#F4B400;margin:0 0 4px;">This might be useful for where you are in training</h2>` +
-    `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Hi ${firstName}, Andrew here again.</p>` +
+  const upsellLine = upsellSentence ? `<p style="color:#4B5563;font-size:13px;line-height:1.6;">${upsellSentence}</p>` : ''
+  return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">This might be useful for where you are in training</h2>` +
+    `<p style="color:#1F2937;font-size:15px;line-height:1.7;">Hi ${firstName}, Andrew here again.</p>` +
     stageLine + focusLine +
-    `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">I'd start here:</p>` +
-    `<a href="${activationCtaUrl(action.hash, 3)}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">${action.label} →</a>` +
+    `<p style="color:#1F2937;font-size:15px;line-height:1.7;">I'd start here:</p>` +
+    `<a href="${activationCtaUrl(action.hash, 3)}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">${action.label} →</a>` +
     upsellLine
 }
 
@@ -1194,14 +1332,14 @@ function emailTemplateActivationDay3(firstName: string, action: { hash: string; 
 // hearing from this sequence afterward (falls to the normal reactivation_
 // inactive / checkride_upsell cadence like any other member from then on).
 function emailTemplateActivationDay7(firstName: string, action: { hash: string; label: string; contextPhrase: string }, upsellSentence: string): string {
-  const upsellLine = upsellSentence ? `<p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">${upsellSentence}</p>` : ''
-  return `<h2 style="color:#F4B400;margin:0 0 4px;">Hi ${firstName}</h2>` +
-    '<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">You\'ve got an Apex Advantage account, but it looks like you haven\'t had a chance to use it yet.</p>' +
-    `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">If you want the easiest place to start, I'd do this:</p>` +
-    `<a href="${activationCtaUrl(action.hash, 4)}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">${action.label} →</a>` +
+  const upsellLine = upsellSentence ? `<p style="color:#4B5563;font-size:13px;line-height:1.6;">${upsellSentence}</p>` : ''
+  return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Hi ${firstName}</h2>` +
+    '<p style="color:#1F2937;font-size:15px;line-height:1.7;">You\'ve got an Apex Advantage account, but it looks like you haven\'t had a chance to use it yet.</p>' +
+    `<p style="color:#1F2937;font-size:15px;line-height:1.7;">If you want the easiest place to start, I'd do this:</p>` +
+    `<a href="${activationCtaUrl(action.hash, 4)}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">${action.label} →</a>` +
     upsellLine +
-    '<p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">It\'ll take about 5 minutes.</p>' +
-    '<p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">— Andrew</p>'
+    '<p style="color:#4B5563;font-size:13px;line-height:1.6;">It\'ll take about 5 minutes.</p>' +
+    '<p style="color:#4B5563;font-size:13px;line-height:1.6;">— Andrew</p>'
 }
 
 // ── Email #1 catch-up ──
@@ -1250,7 +1388,7 @@ async function processActivationEmail1CatchUp(supabase: any, profile: any, resul
   const firstName = (profile.full_name || 'there').split(' ')[0]
   const timingClause = profile.checkride_timing ? (CHECKRIDE_TIMING_CLAUSE[profile.checkride_timing] || '') : ''
   const upsellClause = profile.checkride_timing === 'within_14_days'
-    ? '<p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">If your checkride is coming up, the full Checkride Prep System is there when you\'re ready.</p>'
+    ? '<p style="color:#4B5563;font-size:13px;line-height:1.6;">If your checkride is coming up, the full Checkride Prep System is there when you\'re ready.</p>'
     : ''
 
   const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
@@ -1264,13 +1402,13 @@ async function processActivationEmail1CatchUp(supabase: any, profile: any, resul
     return false
   }
 
-  const html = `<h2 style="color:#F4B400;margin:0 0 4px;">Andrew here.</h2>` +
-    `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">I saw you just joined Apex Advantage${timingClause}.</p>` +
-    `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">I'd start here: set your password, then answer today's oral exam question. It's free for every member and only takes a couple of minutes — the best way to start actually using the portal instead of just looking around.</p>` +
-    `<a href="${actionLink}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Set Up My Account & Get Started →</a>` +
+  const html = `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Andrew here.</h2>` +
+    `<p style="color:#1F2937;font-size:15px;line-height:1.7;">I saw you just joined Apex Advantage${timingClause}.</p>` +
+    `<p style="color:#1F2937;font-size:15px;line-height:1.7;">I'd start here: set your password, then answer today's oral exam question. It's free for every member and only takes a couple of minutes — the best way to start actually using the portal instead of just looking around.</p>` +
+    `<a href="${actionLink}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Set Up My Account & Get Started →</a>` +
     upsellClause +
-    '<p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">If you get stuck on anything, reply to this email.</p>' +
-    '<p style="color:rgba(255,255,255,0.4);font-size:13px;line-height:1.6;">Blue skies,<br>Andrew</p>'
+    '<p style="color:#4B5563;font-size:13px;line-height:1.6;">If you get stuck on anything, reply to this email.</p>' +
+    '<p style="color:#4B5563;font-size:13px;line-height:1.6;">Blue skies,<br>Andrew</p>'
 
   const emailResult = await supabase.functions.invoke('send-email', {
     body: { to: profile.email, subject: `A good place to start, ${firstName}`, html: template(html), replyTo: ACTIVATION_REPLY_TO },
@@ -1385,7 +1523,14 @@ serve(async (req) => {
   const [{ data: categories }, { data: questions }, { data: profiles }] = await Promise.all([
     supabase.from('dpe_categories').select('id').eq('exam_type', 'private_pilot'),
     supabase.from('dpe_questions').select('id,category,is_scenario').eq('exam_type', 'private_pilot'),
-    supabase.from('profiles').select('id,email,full_name,checkride_prep_unlocked,created_at,portal_last_active_at,checkride_timing,training_stage,primary_focus_area'),
+    // timezone added (email-system audit, item 1): processCountdown
+    // previously computed "days until checkride" entirely in UTC, which
+    // put the calendar-day boundary up to several hours off local
+    // midnight for any member not near UTC -- close enough to genuinely
+    // flip which threshold "today" matches for a member near a day
+    // boundary. Nullable; processCountdown falls back to UTC when unset,
+    // same as every other profile in this query today.
+    supabase.from('profiles').select('id,email,full_name,checkride_prep_unlocked,created_at,portal_last_active_at,checkride_timing,training_stage,primary_focus_area,timezone,email_marketing_opt_out'),
   ])
 
   const categoryIds: string[] = (categories ?? []).map((c: any) => c.id)
@@ -1393,24 +1538,46 @@ serve(async (req) => {
 
   for (const profile of profiles ?? []) {
     if (!profile.email) continue
+    // Email-system audit follow-up: email_marketing_opt_out (see
+    // email-preferences.html, self-updated by the member) gates every
+    // engagement/promotional nudge below -- inactivity/reactivation
+    // reminders, the weekly digest, weak-area and checkride-upsell
+    // drips, and the new-member activation series. It never gates
+    // processFirstQuestionMilestone/processMilestones/processCountdown:
+    // those are relationship messages tied to something the member
+    // actually did (answered a question, hit a real percentage, entered
+    // a real checkride date), the same transactional/marketing split
+    // stripe-webhook's purchase confirmations already sit on the
+    // "never suppressed" side of.
+    const marketingSuppressed = !!profile.email_marketing_opt_out
     try {
-      await processInactivity(supabase, profile, results)
+      if (!marketingSuppressed) {
+        await processInactivity(supabase, profile, results)
+        await processReactivationInactive(supabase, profile, results)
+        await processWeeklyProgress(supabase, profile, allQuestions, categoryIds, results)
+      }
       await processSevenDayActive(supabase, profile, results)
-      await processReactivationInactive(supabase, profile, results)
-      await processWeeklyProgress(supabase, profile, allQuestions, categoryIds, results)
-      // Runs regardless of checkride_prep_unlocked -- a member who paid
-      // for instant access still needs to actually USE it (brief section
-      // 32, Case 9: "Already premium user -> activation recommendation
-      // still useful, no inappropriate purchase pitch"). The function's
-      // own stop condition (daysSinceLastMeaningfulActivity) already
-      // applies identically either way.
-      const justCaughtUpEmail1 = await processActivationEmail1CatchUp(supabase, profile, results)
-      if (!justCaughtUpEmail1) await processNewMemberActivation(supabase, profile, results)
+      if (!marketingSuppressed) {
+        // Runs regardless of checkride_prep_unlocked -- a member who paid
+        // for instant access still needs to actually USE it (brief section
+        // 32, Case 9: "Already premium user -> activation recommendation
+        // still useful, no inappropriate purchase pitch"). The function's
+        // own stop condition (daysSinceLastMeaningfulActivity) already
+        // applies identically either way.
+        const justCaughtUpEmail1 = await processActivationEmail1CatchUp(supabase, profile, results)
+        if (!justCaughtUpEmail1) await processNewMemberActivation(supabase, profile, results)
+      }
+      // Unconditional regardless of checkride_prep_unlocked -- see
+      // processFirstQuestionMilestone's own comment (email-system audit,
+      // item 5): the Daily DPE Question is free for every member, so a
+      // free member completing their first question is a real,
+      // verified event this must not silently skip.
+      await processFirstQuestionMilestone(supabase, profile, results)
       if (profile.checkride_prep_unlocked) {
         await processMilestones(supabase, profile, allQuestions, categoryIds, results)
-        await processWeakArea(supabase, profile, allQuestions, categoryIds, results)
+        if (!marketingSuppressed) await processWeakArea(supabase, profile, allQuestions, categoryIds, results)
         await processCountdown(supabase, profile, results)
-      } else {
+      } else if (!marketingSuppressed) {
         await processCheckrideUpsell(supabase, profile, results)
       }
     } catch (err) {

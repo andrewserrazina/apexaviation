@@ -499,6 +499,15 @@
       // before ever using it to look up a category.
       var topic = params.get('topic') || '';
       if (topic && topic.length <= 60 && /^[A-Za-z0-9 &-]+$/.test(topic)) utmPairs.push('topic=' + encodeURIComponent(topic));
+      // dest=email-preferences is the one destination that isn't a
+      // portal.html#section -- email-preferences.html is its own
+      // standalone page (see that file's own auth check), not part of
+      // the portal SPA, so it needs a real redirect target instead of a
+      // hash landing on showSection()'s dashboard fallback for an
+      // unrecognized id.
+      if (safeDest === 'email-preferences') {
+        return 'email-preferences.html' + (utmPairs.length ? '?' + utmPairs.join('&') : '');
+      }
       // Query string comes before the hash fragment in a URL.
       return 'portal.html' + (utmPairs.length ? '?' + utmPairs.join('&') : '') + (safeDest ? '#' + safeDest : '');
     }
