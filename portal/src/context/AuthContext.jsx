@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { isStaleRefreshTokenError } from '../lib/authErrors'
 
@@ -8,6 +8,11 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  // Guards against two fetchProfile() calls resolving out of order (e.g. a
+  // sign-out immediately followed by a sign-in on a shared device, or the
+  // admin signUp()/setSession() session swap in Students.jsx) -- only the
+  // response matching the most recently requested user id is ever applied.
+  const latestUserIdRef = useRef(null)
 
   useEffect(() => {
     let cancelled = false
@@ -54,8 +59,20 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (cancelled) return
       setUser(session?.user ?? null)
-      if (session?.user) fetchProfile(session.user.id)
-      else { setProfile(null); setLoading(false) }
+      if (session?.user) {
+        // Without this, `loading` stays false (from the initial mount
+        // already resolving) while fetchProfile() is still in flight, so a
+        // consumer reading `profile` right after sign-in sees stale/null
+        // data under a "not loading" flag -- e.g. PortalSelector defaulting
+        // an admin's role to 'student' and bouncing them out of the app
+        // before their real profile has loaded.
+        setLoading(true)
+        fetchProfile(session.user.id)
+      } else {
+        latestUserIdRef.current = null
+        setProfile(null)
+        setLoading(false)
+      }
     })
 
     return () => {
@@ -65,7 +82,12 @@ export function AuthProvider({ children }) {
   }, [])
 
   async function fetchProfile(userId) {
+    latestUserIdRef.current = userId
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
+    // A later fetchProfile() call for a different user may have already
+    // superseded this one by the time it resolves -- discard this result
+    // rather than let whichever request happens to finish last win.
+    if (latestUserIdRef.current !== userId) return
     setProfile(data)
     setLoading(false)
   }

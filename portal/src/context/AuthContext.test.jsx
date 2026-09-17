@@ -167,4 +167,69 @@ describe('AuthContext initialization', () => {
     unmount()
     expect(unsubscribeMock).toHaveBeenCalledTimes(1)
   })
+
+  // Bug sweep: onAuthStateChange's SIGNED_IN branch used to leave `loading`
+  // at whatever it already was (false, once the initial mount resolves)
+  // while fetchProfile() was still in flight -- a consumer reading `profile`
+  // in that window saw stale/null data under a "not loading" flag. E.g.
+  // PortalSelector.jsx defaults an admin's role to 'student' and bounces
+  // them out of the app when `profile` is still null right after sign-in.
+  it('H: loading stays true for the whole SIGNED_IN -> profile-fetch window, not just the initial mount', async () => {
+    getSessionMock.mockResolvedValue({ data: { session: null }, error: null })
+    let resolveSingle
+    singleMock.mockImplementation(() => new Promise((resolve) => { resolveSingle = resolve }))
+
+    render(<AuthProvider><TestConsumer /></AuthProvider>)
+    await waitFor(() => expect(readState().loading).toBe(false))
+
+    await act(async () => {
+      authStateCallback('SIGNED_IN', { user: { id: 'user-4' } })
+    })
+    // The profile fetch is still pending -- loading must already be back to
+    // true, and the old (wrong) profile/role state must not be readable yet.
+    expect(readState().loading).toBe(true)
+    expect(readState().profileId).toBe(null)
+
+    await act(async () => {
+      resolveSingle({ data: { id: 'user-4', role: 'admin' } })
+    })
+    await waitFor(() => expect(readState().loading).toBe(false))
+    expect(readState().profileId).toBe('user-4')
+  })
+
+  // Bug sweep: fetchProfile() had no ordering guard, so whichever of two
+  // in-flight requests resolved last won, regardless of which corresponds
+  // to the current user -- e.g. a sign-out/sign-in on a shared device, or
+  // Students.jsx's admin signUp()/setSession() session-swap flow.
+  it('I: an out-of-order (slower) profile response for a superseded user is discarded', async () => {
+    getSessionMock.mockResolvedValue({ data: { session: null }, error: null })
+    let resolveFirst
+    let resolveSecond
+    singleMock
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve }))
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve }))
+
+    render(<AuthProvider><TestConsumer /></AuthProvider>)
+    await waitFor(() => expect(readState().loading).toBe(false))
+
+    await act(async () => {
+      authStateCallback('SIGNED_IN', { user: { id: 'user-old' } })
+    })
+    await act(async () => {
+      authStateCallback('SIGNED_IN', { user: { id: 'user-new' } })
+    })
+
+    // The newer request's response arrives first; the older, now-stale
+    // request resolves after it and must not be allowed to overwrite it.
+    await act(async () => {
+      resolveSecond({ data: { id: 'user-new', role: 'student' } })
+    })
+    await waitFor(() => expect(readState().profileId).toBe('user-new'))
+
+    await act(async () => {
+      resolveFirst({ data: { id: 'user-old', role: 'admin' } })
+    })
+    expect(readState().profileId).toBe('user-new')
+    expect(readState().loading).toBe(false)
+  })
 })
