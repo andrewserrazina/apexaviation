@@ -968,12 +968,17 @@ async function processGroundSchoolFollowUps(supabase: any, results: any) {
   const cutoff = new Date(Date.now() - 45 * 86400000).toISOString()
   const { data: regs } = await supabase
     .from('ground_registrations')
-    .select('id, email, profile_id, checked_out_at, session:ground_sessions(title)')
+    .select('id, email, profile_id, checked_out_at, session:ground_sessions(title), profile:profiles(email_marketing_opt_out)')
     .eq('attendance_status', 'completed')
     .gte('checked_out_at', cutoff)
 
   for (const reg of regs ?? []) {
     if (!reg.email) continue
+    // A walk-in with no portal account (profile_id null, see the
+    // comment below) has no email_marketing_opt_out to check --
+    // reg.profile is null for those, so this only ever suppresses
+    // registrants who actually have an account and used it to opt out.
+    if (reg.profile?.email_marketing_opt_out) continue
     const emailType = 'ground_followup_' + reg.id
     try {
       const { data: already } = await supabase.from('portal_email_log').select('id').eq('email_type', emailType).limit(1)
@@ -1057,6 +1062,14 @@ function emailTemplateAssessmentDay6(firstName: string, timingLabel: string) {
 // unlocked): at that point processCheckrideUpsell/processMilestones
 // above already nurture them, and sending both would double-email the
 // same person from two different sequences.
+//
+// Not gated by email_marketing_opt_out: that flag lives on profiles,
+// and by definition every lead this function emails has no profile row
+// yet (the existingProfile check below already excludes anyone who
+// does). There is currently no pre-signup opt-out mechanism for this
+// specific lead-capture flow -- a real, honest gap, not an oversight to
+// paper over. If this needs one, it belongs on readiness_assessment_
+// leads itself, not on a table these people were never added to.
 async function processReadinessAssessmentFollowup(supabase: any, results: any) {
   const { data: leads } = await supabase
     .from('readiness_assessment_leads')
@@ -1110,6 +1123,9 @@ function moTzAbbr(tz: string): string {
   return ({ 'America/Chicago': 'CT', 'America/New_York': 'ET', 'America/Denver': 'MT', 'America/Los_Angeles': 'PT', 'UTC': 'UTC' } as Record<string, string>)[tz] || tz
 }
 
+// Not gated by email_marketing_opt_out -- a class-start reminder for a
+// paid, confirmed booking is a service notice, not a marketing send;
+// see the profiles SELECT comment in serve() for the split this follows.
 async function processMockOralReminders(supabase: any, results: any) {
   const windowEnd = new Date(Date.now() + MOCK_ORAL_REMINDER_WINDOW_HOURS * 3600000)
   const { data: bookings } = await supabase
@@ -1168,8 +1184,14 @@ async function processAbandonedCheckouts(supabase: any, results: any) {
     try {
       let firstName = 'there'
       if (attempt.profile_id) {
-        const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', attempt.profile_id).maybeSingle()
+        const { data: profile } = await supabase.from('profiles').select('full_name,email_marketing_opt_out').eq('id', attempt.profile_id).maybeSingle()
         if (profile?.full_name) firstName = profile.full_name.split(' ')[0]
+        // Cart-recovery is a conversion nudge, not a receipt -- the same
+        // opt-out that suppresses processCheckrideUpsell/processWeakArea
+        // applies here. A guest checkout with no profile_id has no
+        // account to hold that preference on, so it's unaffected (same
+        // reasoning as processGroundSchoolFollowUps' walk-in case).
+        if (profile?.email_marketing_opt_out) continue
       }
 
       let subject: string
@@ -1228,6 +1250,11 @@ async function processAbandonedCheckouts(supabase: any, results: any) {
 // portal_email_log keyed on the sortie's own id (not just profile_id),
 // same pattern as ground_followup_<registration_id> above -- each sortie
 // is a distinct, one-time, expiring offer, not a recurring milestone.
+// Not gated by email_marketing_opt_out -- like processMockOralReminders,
+// this reports the status of something the member's own actions already
+// put in motion (a streak they built, a reward that expires tonight),
+// not a promotional pitch. See the profiles SELECT comment in serve()
+// for the transactional/marketing split this follows.
 async function processRecoverySortieNotifications(supabase: any, results: any) {
   const { data: sorties } = await supabase
     .from('recovery_sorties')
@@ -1503,7 +1530,7 @@ serve(async (req) => {
     // flip which threshold "today" matches for a member near a day
     // boundary. Nullable; processCountdown falls back to UTC when unset,
     // same as every other profile in this query today.
-    supabase.from('profiles').select('id,email,full_name,checkride_prep_unlocked,created_at,portal_last_active_at,checkride_timing,training_stage,primary_focus_area,timezone'),
+    supabase.from('profiles').select('id,email,full_name,checkride_prep_unlocked,created_at,portal_last_active_at,checkride_timing,training_stage,primary_focus_area,timezone,email_marketing_opt_out'),
   ])
 
   const categoryIds: string[] = (categories ?? []).map((c: any) => c.id)
@@ -1511,19 +1538,35 @@ serve(async (req) => {
 
   for (const profile of profiles ?? []) {
     if (!profile.email) continue
+    // Email-system audit follow-up: email_marketing_opt_out (see
+    // email-preferences.html, self-updated by the member) gates every
+    // engagement/promotional nudge below -- inactivity/reactivation
+    // reminders, the weekly digest, weak-area and checkride-upsell
+    // drips, and the new-member activation series. It never gates
+    // processFirstQuestionMilestone/processMilestones/processCountdown:
+    // those are relationship messages tied to something the member
+    // actually did (answered a question, hit a real percentage, entered
+    // a real checkride date), the same transactional/marketing split
+    // stripe-webhook's purchase confirmations already sit on the
+    // "never suppressed" side of.
+    const marketingSuppressed = !!profile.email_marketing_opt_out
     try {
-      await processInactivity(supabase, profile, results)
+      if (!marketingSuppressed) {
+        await processInactivity(supabase, profile, results)
+        await processReactivationInactive(supabase, profile, results)
+        await processWeeklyProgress(supabase, profile, allQuestions, categoryIds, results)
+      }
       await processSevenDayActive(supabase, profile, results)
-      await processReactivationInactive(supabase, profile, results)
-      await processWeeklyProgress(supabase, profile, allQuestions, categoryIds, results)
-      // Runs regardless of checkride_prep_unlocked -- a member who paid
-      // for instant access still needs to actually USE it (brief section
-      // 32, Case 9: "Already premium user -> activation recommendation
-      // still useful, no inappropriate purchase pitch"). The function's
-      // own stop condition (daysSinceLastMeaningfulActivity) already
-      // applies identically either way.
-      const justCaughtUpEmail1 = await processActivationEmail1CatchUp(supabase, profile, results)
-      if (!justCaughtUpEmail1) await processNewMemberActivation(supabase, profile, results)
+      if (!marketingSuppressed) {
+        // Runs regardless of checkride_prep_unlocked -- a member who paid
+        // for instant access still needs to actually USE it (brief section
+        // 32, Case 9: "Already premium user -> activation recommendation
+        // still useful, no inappropriate purchase pitch"). The function's
+        // own stop condition (daysSinceLastMeaningfulActivity) already
+        // applies identically either way.
+        const justCaughtUpEmail1 = await processActivationEmail1CatchUp(supabase, profile, results)
+        if (!justCaughtUpEmail1) await processNewMemberActivation(supabase, profile, results)
+      }
       // Unconditional regardless of checkride_prep_unlocked -- see
       // processFirstQuestionMilestone's own comment (email-system audit,
       // item 5): the Daily DPE Question is free for every member, so a
@@ -1532,9 +1575,9 @@ serve(async (req) => {
       await processFirstQuestionMilestone(supabase, profile, results)
       if (profile.checkride_prep_unlocked) {
         await processMilestones(supabase, profile, allQuestions, categoryIds, results)
-        await processWeakArea(supabase, profile, allQuestions, categoryIds, results)
+        if (!marketingSuppressed) await processWeakArea(supabase, profile, allQuestions, categoryIds, results)
         await processCountdown(supabase, profile, results)
-      } else {
+      } else if (!marketingSuppressed) {
         await processCheckrideUpsell(supabase, profile, results)
       }
     } catch (err) {

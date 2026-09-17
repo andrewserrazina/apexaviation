@@ -257,7 +257,14 @@
         totalXp: (profile && profile.total_xp) || 0,
         currentRank: (profile && profile.current_rank) || 'student_pilot',
         streakFreezesBanked: (profile && profile.streak_freezes_banked) || 0,
-        hasMembership: false
+        hasMembership: false,
+        // Set from email-preferences.html (self-update RLS on profiles,
+        // no new policy needed). Gates checkWeakAreaEmail() below, the
+        // one client-triggered send that's marketing/engagement rather
+        // than a milestone tied to something the member actually did --
+        // same split send-lifecycle-emails/index.ts's server-side cron
+        // follows for its own weak-area sequence.
+        emailMarketingOptOut: !!(profile && profile.email_marketing_opt_out)
       };
       populateMember();
       applyUnlockState();
@@ -6939,7 +6946,7 @@
   };
 
   function checkWeakAreaEmail() {
-    if (!member) return;
+    if (!member || member.emailMarketingOptOut) return;
     var weakest = Object.keys(CATEGORY_META).map(function (cat) {
       return { cat: cat, pct: categoryPct(cat) };
     }).sort(function (a, b) { return a.pct - b.pct; })[0];

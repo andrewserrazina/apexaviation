@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Email Preferences | Apex Advantage Portal</title>
+  <meta name="description" content="Manage which Apex Advantage training emails you receive." />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="canonical" href="https://apexaviationtx.com/email-preferences.html" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Google Analytics 4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-JFPBCF2GXE"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-JFPBCF2GXE');
+  </script>
+  <!-- Meta Pixel Code -->
+  <script>
+  !function(f,b,e,v,n,t,s)
+  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+  n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];
+  s.parentNode.insertBefore(t,s)}(window, document,'script',
+  'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '1049117198055794');
+  fbq('track', 'PageView');
+  </script>
+  <noscript><img height="1" width="1" style="display:none"
+  src="https://www.facebook.com/tr?id=1049117198055794&ev=PageView&noscript=1"
+  /></noscript>
+  <!-- End Meta Pixel Code -->
+  <!-- Microsoft Clarity -->
+  <script>
+    (function(c,l,a,r,i,t,y){
+      c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+      t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+      y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window,document,'clarity','script','x95g0qe0g6');
+  </script>
+  <style>
+    body { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at top, #0f2340 0%, #080f1e 60%); padding: 24px; }
+    .login-wrap { width: 100%; max-width: 460px; }
+    .login-logo { display: flex; justify-content: center; margin-bottom: 28px; }
+    .login-logo img { height: 42px; width: auto; }
+    .login-card {
+      background: #101f38; border: 1px solid rgba(255,255,255,0.09);
+      border-radius: var(--radius-lg); padding: 40px 36px; box-shadow: var(--shadow-lg);
+    }
+    .login-eyebrow {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 14px;
+    }
+    .login-card h1 { font-size: 24px; font-weight: 800; color: #fff; text-align: center; margin-bottom: 8px; }
+    .login-card > p.sub { text-align: center; color: rgba(255,255,255,0.55); font-size: 14px; margin-bottom: 28px; line-height: 1.6; }
+    .pref-email { text-align: center; font-size: 13px; color: rgba(255,255,255,0.45); margin-bottom: 24px; word-break: break-all; }
+    .pref-row {
+      display: flex; align-items: flex-start; gap: 12px; padding: 16px;
+      background: rgba(11,31,58,0.6); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 8px; margin-bottom: 16px;
+    }
+    .pref-row input[type="checkbox"] { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--gold); flex: none; }
+    .pref-row label { font-size: 14px; color: #fff; line-height: 1.5; cursor: pointer; }
+    .pref-row label span { display: block; font-size: 12.5px; color: rgba(255,255,255,0.5); margin-top: 3px; }
+    .pref-note { font-size: 12.5px; color: rgba(255,255,255,0.4); line-height: 1.6; margin: 0 0 24px; }
+    .login-error, .login-success {
+      display: none; font-size: 13px; font-weight: 600; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px;
+    }
+    .login-error { background: rgba(220,60,60,0.12); border: 1px solid rgba(220,60,60,0.35); color: #ff8b8b; }
+    .login-success { background: rgba(31,122,77,0.15); border: 1px solid rgba(31,122,77,0.4); color: #6fd6a2; }
+    .login-error.show, .login-success.show { display: block; }
+    .signin-prompt { text-align: center; }
+    .signin-prompt a.btn { display: inline-block; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="login-wrap">
+    <a href="home.html" class="login-logo"><img src="apexwhite.png" alt="Apex Aviation" /></a>
+    <div class="login-card">
+      <div class="login-eyebrow"><span>◆</span> Apex Advantage Member Portal</div>
+
+      <div id="loadingState">
+        <h1>Loading…</h1>
+      </div>
+
+      <div id="signedOutState" style="display:none;">
+        <h1>Sign in to manage your email preferences.</h1>
+        <p class="sub signin-prompt">Email preferences are tied to your Apex Advantage account, so we sign you in first to confirm it's really you.</p>
+        <div class="signin-prompt">
+          <a class="btn btn--primary btn--full" id="signInLink" href="portal-login.html?dest=email-preferences">Sign In</a>
+        </div>
+      </div>
+
+      <div id="signedInState" style="display:none;">
+        <h1>Email preferences.</h1>
+        <p class="pref-email" id="prefEmail"></p>
+
+        <div class="login-error" id="prefError"></div>
+        <div class="login-success" id="prefSuccess">Saved.</div>
+
+        <form id="prefForm" novalidate>
+          <div class="pref-row">
+            <input type="checkbox" id="marketingOptIn" />
+            <label for="marketingOptIn">
+              Training tips and progress nudges
+              <span>Weak-area reminders, checkride countdown, streak recovery, and occasional Checkride Prep or Ground School offers.</span>
+            </label>
+          </div>
+          <p class="pref-note">This only affects training emails. You'll still receive receipts, booking confirmations, and password resets for your account — those aren't marketing and can't be turned off here.</p>
+          <button type="submit" class="btn btn--primary btn--full" id="prefSubmit">Save Preferences</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="portal-supabase.js"></script>
+  <script>
+    var loadingState = document.getElementById('loadingState');
+    var signedOutState = document.getElementById('signedOutState');
+    var signedInState = document.getElementById('signedInState');
+    var prefForm = document.getElementById('prefForm');
+    var prefEmail = document.getElementById('prefEmail');
+    var prefError = document.getElementById('prefError');
+    var prefSuccess = document.getElementById('prefSuccess');
+    var prefSubmit = document.getElementById('prefSubmit');
+    var marketingOptIn = document.getElementById('marketingOptIn');
+
+    function showState(el) {
+      [loadingState, signedOutState, signedInState].forEach(function (s) { s.style.display = s === el ? '' : 'none'; });
+    }
+
+    // Preserve any UTM params on the sign-in link so the redirect back
+    // here after login (portalDestUrl() in portal-login.html special-
+    // cases dest=email-preferences) doesn't lose attribution for the
+    // email click that brought the member here.
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var pairs = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']
+        .filter(function (k) { return params.has(k); })
+        .map(function (k) { return k + '=' + encodeURIComponent(params.get(k)); });
+      if (pairs.length) {
+        document.getElementById('signInLink').href = 'portal-login.html?dest=email-preferences&' + pairs.join('&');
+      }
+    })();
+
+    apexSupabase.auth.getSession().then(function (res) {
+      var session = res.data.session;
+      if (!session) { showState(signedOutState); return; }
+
+      apexSupabase.from('profiles').select('email,email_marketing_opt_out').eq('id', session.user.id).maybeSingle().then(function (profileRes) {
+        if (profileRes.error || !profileRes.data) { showState(signedOutState); return; }
+        prefEmail.textContent = profileRes.data.email;
+        marketingOptIn.checked = !profileRes.data.email_marketing_opt_out;
+        showState(signedInState);
+      });
+    });
+
+    prefForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      prefError.classList.remove('show');
+      prefSuccess.classList.remove('show');
+      prefSubmit.disabled = true;
+      prefSubmit.textContent = 'Saving…';
+
+      apexSupabase.auth.getSession().then(function (res) {
+        var session = res.data.session;
+        if (!session) { window.location.reload(); return; }
+
+        apexSupabase.from('profiles')
+          .update({ email_marketing_opt_out: !marketingOptIn.checked })
+          .eq('id', session.user.id)
+          .then(function (updateRes) {
+            prefSubmit.disabled = false;
+            prefSubmit.textContent = 'Save Preferences';
+            if (updateRes.error) {
+              prefError.textContent = updateRes.error.message;
+              prefError.classList.add('show');
+              return;
+            }
+            prefSuccess.classList.add('show');
+          });
+      });
+    });
+  </script>
+</body>
+</html>
