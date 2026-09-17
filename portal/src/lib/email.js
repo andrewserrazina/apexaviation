@@ -2,17 +2,42 @@ import { supabase } from './supabase'
 
 const ORIGIN = window.location.origin
 
+// Corrected design system (email-system audit): this shell previously
+// diverged independently from the one in
+// portal/supabase/functions/_shared/emailTemplate.ts -- different
+// wordmark treatment (plain text, no logo image), different footer
+// address ("San Marcos, TX (KHYI)" vs. the site's own published
+// schema.org contact address, "Austin, TX" -- see site/contact.html),
+// near-black background with translucent white text, and heavy
+// decorative emoji throughout. Brought in line with that shared shell:
+// navy header with the real logo asset, white reading area, solid-hex
+// text colors (never rgba against a background that might change),
+// square corners, no decorative emoji. Kept as its own function (not an
+// import of _shared/emailTemplate.ts) because this file ships in the
+// portal's browser bundle, not a Supabase Edge Function -- there is no
+// cross-runtime module to share directly.
 function template(content) {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:32px 16px;background:#06080f;font-family:'Helvetica Neue',Arial,sans-serif;color:#e0e0e0;">
-  <div style="max-width:560px;margin:0 auto;">
-    <div style="margin-bottom:28px;">
-      <span style="font-size:22px;font-weight:900;letter-spacing:3px;color:#fff;">APEX</span>
-      <span style="font-size:22px;font-style:italic;color:#F4B400;font-family:Georgia,serif;"> Advantage</span>
-    </div>
-    ${content}
-    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:32px 0 16px;">
-    <p style="font-size:12px;color:rgba(255,255,255,0.3);margin:0;">Apex Aviation · San Marcos, TX (KHYI) · <a href="${ORIGIN}/ground-schedule" style="color:rgba(255,255,255,0.3);">View Schedule</a></p>
+<body style="margin:0;padding:0;background:#E5E7EB;font-family:Arial,Helvetica,sans-serif;color:#1F2937;">
+  <div style="max-width:560px;margin:0 auto;background:#FFFFFF;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0B1F3A;">
+      <tr><td align="center" style="padding:28px 16px;">
+        <img src="https://apexaviationtx.com/apexwhite.png" alt="Apex Advantage" width="160" style="display:block;margin:0 auto 10px;height:auto;max-width:160px;">
+        <div style="font-size:14px;font-weight:700;letter-spacing:2px;color:#FFFFFF;font-family:Arial,Helvetica,sans-serif;">APEX ADVANTAGE</div>
+      </td></tr>
+    </table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr><td style="padding:32px 24px 8px;">
+        ${content}
+      </td></tr>
+    </table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr><td style="padding:20px 24px 28px;border-top:1px solid #E5E7EB;">
+        <p style="font-size:12px;color:#4B5563;margin:16px 0 0;text-align:center;font-family:Arial,Helvetica,sans-serif;">
+          Apex Aviation &middot; Austin, TX &middot; <a href="${ORIGIN}/ground-schedule" style="color:#4B5563;text-decoration:underline;">View Schedule</a>
+        </p>
+      </td></tr>
+    </table>
   </div>
 </body></html>`
 }
@@ -29,28 +54,28 @@ export async function sendRegistrationConfirmation(registration, session) {
   const checkOutUrl = `${ORIGIN}/attend/out/${registration.check_out_token}`
 
   const html = template(`
-    <h2 style="color:#F4B400;margin:0 0 4px;">You're registered!</h2>
-    <p style="color:rgba(255,255,255,0.5);font-size:14px;margin:0 0 24px;">Here's everything you need for your session.</p>
+    <h2 style="color:#0B1F3A;margin:0 0 4px;font-size:22px;line-height:1.3;">You're registered!</h2>
+    <p style="color:#4B5563;font-size:14px;margin:0 0 24px;">Here's everything you need for your session.</p>
 
-    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px;margin-bottom:20px;">
-      <h3 style="margin:0 0 8px;font-size:18px;color:#fff;">${session.title}</h3>
-      ${session.category ? `<span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#F4B400;border:1px solid rgba(244,180,0,0.3);border-radius:4px;padding:2px 8px;">${session.category}</span><br><br>` : ''}
-      <p style="color:rgba(255,255,255,0.6);font-size:14px;margin:4px 0;">🗓 ${fmtDate(session.scheduled_at)}</p>
-      <p style="color:rgba(255,255,255,0.6);font-size:14px;margin:4px 0;">⏱ ${session.duration_minutes} minutes</p>
-      ${session.location ? `<p style="color:rgba(255,255,255,0.6);font-size:14px;margin:4px 0;">📍 ${session.location}</p>` : ''}
-      ${session.meet_link ? `<a href="${session.meet_link}" style="display:inline-block;margin-top:14px;background:rgba(66,133,244,0.15);border:1px solid rgba(66,133,244,0.35);color:#60a5fa;border-radius:8px;padding:9px 18px;text-decoration:none;font-size:14px;font-weight:700;">📹 Join Google Meet →</a>` : ''}
+    <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:0;padding:20px;margin-bottom:20px;">
+      <h3 style="margin:0 0 8px;font-size:18px;color:#0B1F3A;">${session.title}</h3>
+      ${session.category ? `<span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#8A6B0E;background:#FEF3C7;border-radius:0;padding:2px 8px;">${session.category}</span><br><br>` : ''}
+      <p style="color:#1F2937;font-size:14px;margin:4px 0;"><strong>Date:</strong> ${fmtDate(session.scheduled_at)}</p>
+      <p style="color:#1F2937;font-size:14px;margin:4px 0;"><strong>Duration:</strong> ${session.duration_minutes} minutes</p>
+      ${session.location ? `<p style="color:#1F2937;font-size:14px;margin:4px 0;"><strong>Location:</strong> ${session.location}</p>` : ''}
+      ${session.meet_link ? `<a href="${session.meet_link}" style="display:inline-block;margin-top:14px;background:#FFFFFF;border:1.5px solid #0B1F3A;color:#0B1F3A;border-radius:0;padding:9px 18px;text-decoration:none;font-size:14px;font-weight:700;">Join Google Meet &rarr;</a>` : ''}
     </div>
 
-    <div style="background:rgba(244,180,0,0.07);border:1px solid rgba(244,180,0,0.2);border-radius:10px;padding:16px;margin-bottom:20px;">
-      <p style="color:#F4B400;font-weight:700;margin:0 0 4px;font-size:15px;">💵 $25 due at the door</p>
-      <p style="color:rgba(255,255,255,0.5);font-size:13px;margin:0;">Cash or card accepted in-person.</p>
+    <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:0;padding:16px;margin-bottom:20px;">
+      <p style="color:#8A6B0E;font-weight:700;margin:0 0 4px;font-size:15px;">$25 due at the door</p>
+      <p style="color:#4B5563;font-size:13px;margin:0;">Cash or card accepted in-person.</p>
     </div>
 
-    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:18px;">
-      <p style="font-weight:700;margin:0 0 6px;font-size:15px;color:#fff;">Your Attendance Links</p>
-      <p style="font-size:13px;color:rgba(255,255,255,0.45);margin:0 0 16px;line-height:1.5;">Click these links at the start and end of class to receive course credit. Keep this email!</p>
-      <a href="${checkInUrl}" style="display:block;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);color:#4ade80;border-radius:8px;padding:13px 16px;text-decoration:none;font-weight:700;text-align:center;margin-bottom:10px;font-size:14px;">✓ Check In — click when class starts</a>
-      <a href="${checkOutUrl}" style="display:block;background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:8px;padding:13px 16px;text-decoration:none;font-weight:700;text-align:center;font-size:14px;">↑ Check Out — click when class ends</a>
+    <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:0;padding:18px;">
+      <p style="font-weight:700;margin:0 0 6px;font-size:15px;color:#0B1F3A;">Your Attendance Links</p>
+      <p style="font-size:13px;color:#4B5563;margin:0 0 16px;line-height:1.5;">Click these links at the start and end of class to receive course credit. Keep this email!</p>
+      <a href="${checkInUrl}" style="display:block;background:#0B1F3A;color:#FFFFFF;border-radius:0;padding:13px 16px;text-decoration:none;font-weight:700;text-align:center;margin-bottom:10px;font-size:14px;">Check In &mdash; click when class starts</a>
+      <a href="${checkOutUrl}" style="display:block;background:#FFFFFF;border:1.5px solid #0B1F3A;color:#0B1F3A;border-radius:0;padding:12px 16px;text-decoration:none;font-weight:700;text-align:center;font-size:14px;">Check Out &mdash; click when class ends</a>
     </div>
   `)
 
@@ -59,11 +84,11 @@ export async function sendRegistrationConfirmation(registration, session) {
 
 export async function sendBulkMessage(registrants, session, subject, message) {
   const html = template(`
-    <h2 style="color:#F4B400;margin:0 0 4px;">${subject}</h2>
-    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:20px;margin:20px 0;">
-      <p style="font-size:15px;line-height:1.75;margin:0;white-space:pre-wrap;color:#e0e0e0;">${message}</p>
+    <h2 style="color:#0B1F3A;margin:0 0 4px;font-size:22px;line-height:1.3;">${subject}</h2>
+    <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:0;padding:20px;margin:20px 0;">
+      <p style="font-size:15px;line-height:1.75;margin:0;white-space:pre-wrap;color:#1F2937;">${message}</p>
     </div>
-    <p style="font-size:13px;color:rgba(255,255,255,0.35);margin-top:16px;">Session: ${session.title} · ${fmtDate(session.scheduled_at)}</p>
+    <p style="font-size:13px;color:#4B5563;margin-top:16px;">Session: ${session.title} &middot; ${fmtDate(session.scheduled_at)}</p>
   `)
 
   return sendPaced(registrants, (r) => invoke({ to: r.email, subject: `[Apex Advantage] ${subject}`, html }))
@@ -71,14 +96,14 @@ export async function sendBulkMessage(registrants, session, subject, message) {
 
 export async function sendWaitlistConfirmation(registration, session) {
   const html = template(`
-    <h2 style="color:#fbbf24;margin:0 0 4px;">You're on the waitlist</h2>
-    <p style="color:rgba(255,255,255,0.5);font-size:14px;margin:0 0 24px;">This session is full, but you're on the list if a spot opens.</p>
-    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px;">
-      <h3 style="margin:0 0 8px;color:#fff;">${session.title}</h3>
-      <p style="color:rgba(255,255,255,0.6);font-size:14px;margin:4px 0;">🗓 ${fmtDate(session.scheduled_at)}</p>
-      ${session.location ? `<p style="color:rgba(255,255,255,0.6);font-size:14px;margin:4px 0;">📍 ${session.location}</p>` : ''}
+    <h2 style="color:#0B1F3A;margin:0 0 4px;font-size:22px;line-height:1.3;">You're on the waitlist</h2>
+    <p style="color:#4B5563;font-size:14px;margin:0 0 24px;">This session is full, but you're on the list if a spot opens.</p>
+    <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:0;padding:20px;">
+      <h3 style="margin:0 0 8px;color:#0B1F3A;">${session.title}</h3>
+      <p style="color:#1F2937;font-size:14px;margin:4px 0;"><strong>Date:</strong> ${fmtDate(session.scheduled_at)}</p>
+      ${session.location ? `<p style="color:#1F2937;font-size:14px;margin:4px 0;"><strong>Location:</strong> ${session.location}</p>` : ''}
     </div>
-    <p style="font-size:13px;color:rgba(255,255,255,0.4);margin-top:16px;">We'll email you if a spot opens up. No payment is due until you're confirmed.</p>
+    <p style="font-size:13px;color:#4B5563;margin-top:16px;">We'll email you if a spot opens up. No payment is due until you're confirmed.</p>
   `)
 
   return invoke({ to: registration.email, subject: `Waitlist: ${session.title}`, html })
@@ -89,18 +114,18 @@ export async function sendWaitlistPromotion(registration, session) {
   const checkOutUrl = `${ORIGIN}/attend/out/${registration.check_out_token}`
 
   const html = template(`
-    <h2 style="color:#4ade80;margin:0 0 4px;">Good news — you're in!</h2>
-    <p style="color:rgba(255,255,255,0.5);font-size:14px;margin:0 0 24px;">A spot opened up and you've been moved from the waitlist.</p>
-    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px;margin-bottom:20px;">
-      <h3 style="margin:0 0 8px;color:#fff;">${session.title}</h3>
-      <p style="color:rgba(255,255,255,0.6);font-size:14px;margin:4px 0;">🗓 ${fmtDate(session.scheduled_at)}</p>
-      ${session.location ? `<p style="color:rgba(255,255,255,0.6);font-size:14px;margin:4px 0;">📍 ${session.location}</p>` : ''}
-      ${session.meet_link ? `<a href="${session.meet_link}" style="display:inline-block;margin-top:14px;background:rgba(66,133,244,0.15);border:1px solid rgba(66,133,244,0.35);color:#60a5fa;border-radius:8px;padding:9px 18px;text-decoration:none;font-size:14px;font-weight:700;">📹 Join Google Meet →</a>` : ''}
+    <h2 style="color:#15803D;margin:0 0 4px;font-size:22px;line-height:1.3;">Good news &mdash; you're in!</h2>
+    <p style="color:#4B5563;font-size:14px;margin:0 0 24px;">A spot opened up and you've been moved from the waitlist.</p>
+    <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:0;padding:20px;margin-bottom:20px;">
+      <h3 style="margin:0 0 8px;color:#0B1F3A;">${session.title}</h3>
+      <p style="color:#1F2937;font-size:14px;margin:4px 0;"><strong>Date:</strong> ${fmtDate(session.scheduled_at)}</p>
+      ${session.location ? `<p style="color:#1F2937;font-size:14px;margin:4px 0;"><strong>Location:</strong> ${session.location}</p>` : ''}
+      ${session.meet_link ? `<a href="${session.meet_link}" style="display:inline-block;margin-top:14px;background:#FFFFFF;border:1.5px solid #0B1F3A;color:#0B1F3A;border-radius:0;padding:9px 18px;text-decoration:none;font-size:14px;font-weight:700;">Join Google Meet &rarr;</a>` : ''}
     </div>
-    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:18px;">
-      <p style="font-weight:700;margin:0 0 12px;color:#fff;">Your Attendance Links</p>
-      <a href="${checkInUrl}" style="display:block;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);color:#4ade80;border-radius:8px;padding:13px 16px;text-decoration:none;font-weight:700;text-align:center;margin-bottom:10px;">✓ Check In</a>
-      <a href="${checkOutUrl}" style="display:block;background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:8px;padding:13px 16px;text-decoration:none;font-weight:700;text-align:center;">↑ Check Out</a>
+    <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:0;padding:18px;">
+      <p style="font-weight:700;margin:0 0 12px;color:#0B1F3A;">Your Attendance Links</p>
+      <a href="${checkInUrl}" style="display:block;background:#0B1F3A;color:#FFFFFF;border-radius:0;padding:13px 16px;text-decoration:none;font-weight:700;text-align:center;margin-bottom:10px;">Check In</a>
+      <a href="${checkOutUrl}" style="display:block;background:#FFFFFF;border:1.5px solid #0B1F3A;color:#0B1F3A;border-radius:0;padding:12px 16px;text-decoration:none;font-weight:700;text-align:center;">Check Out</a>
     </div>
   `)
 
@@ -187,10 +212,10 @@ async function sendPaced(items, fn) {
 export async function sendAdminEmail({ recipients, subject, message, senderId, isHtml = false }) {
   const body = isHtml
     ? message
-    : `<p style="font-size:15px;line-height:1.75;margin:0;white-space:pre-wrap;color:#e0e0e0;">${message}</p>`
+    : `<p style="font-size:15px;line-height:1.75;margin:0;white-space:pre-wrap;color:#1F2937;">${message}</p>`
   const html = template(`
-    <h2 style="color:#F4B400;margin:0 0 4px;">${subject}</h2>
-    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:20px;margin:20px 0;">
+    <h2 style="color:#0B1F3A;margin:0 0 4px;font-size:22px;line-height:1.3;">${subject}</h2>
+    <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:0;padding:20px;margin:20px 0;">
       ${body}
     </div>
   `)

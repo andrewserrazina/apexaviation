@@ -71,27 +71,49 @@ import Stripe from 'https://esm.sh/stripe@14?target=denonext'
 // Inlined (not imported from ../_shared/emailTemplate.ts) because the
 // Supabase deploy path used for this function cannot resolve a relative
 // import that reaches outside this function's own directory. Must be
-// kept byte-identical to _shared/emailTemplate.ts's own copy -- the
-// other functions that still import it normally (create-free-account,
-// send-lifecycle-emails) are unaffected.
+// kept byte-identical to _shared/emailTemplate.ts's own emailTemplate()
+// export -- the other functions that still import it normally
+// (create-free-account, send-lifecycle-emails) are unaffected. See that
+// file's own header comment for the design-system rationale (navy
+// header / white body / solid-hex text / square CTA corners) and the
+// note that no design-manual .docx exists anywhere in this repo.
 function template(content: string): string {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#06080f;font-family:'Helvetica Neue',Arial,sans-serif;color:#e0e0e0;">
-  <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
-    <div style="text-align:center;padding-bottom:24px;margin-bottom:28px;border-bottom:2px solid rgba(244,180,0,0.25);">
-      <img src="https://apexaviationtx.com/apexwhite.png" alt="Apex Aviation" width="140" style="display:inline-block;margin-bottom:12px;height:auto;" />
-      <div style="font-size:15px;font-weight:700;letter-spacing:2px;color:#fff;">
-        APEX <span style="font-style:italic;font-weight:400;color:#F4B400;font-family:Georgia,serif;letter-spacing:normal;">Advantage</span>
-      </div>
-    </div>
-    ${content}
-    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:32px 0 16px;">
-    <p style="font-size:12px;color:rgba(255,255,255,0.35);margin:0 0 4px;text-align:center;">Apex Aviation · Austin, TX</p>
-    <p style="font-size:11px;margin:0;text-align:center;">
-      <a href="https://apexaviationtx.com" style="color:rgba(255,255,255,0.35);text-decoration:underline;">apexaviationtx.com</a>
-    </p>
+<body style="margin:0;padding:0;background:#E5E7EB;font-family:Arial,Helvetica,sans-serif;color:#1F2937;">
+  <div style="max-width:560px;margin:0 auto;background:#FFFFFF;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0B1F3A;">
+      <tr><td align="center" style="padding:28px 16px;">
+        <img src="https://apexaviationtx.com/apexwhite.png" alt="Apex Advantage" width="160" style="display:block;margin:0 auto 10px;height:auto;max-width:160px;">
+        <div style="font-size:14px;font-weight:700;letter-spacing:2px;color:#FFFFFF;font-family:Arial,Helvetica,sans-serif;">APEX ADVANTAGE</div>
+      </td></tr>
+    </table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr><td style="padding:32px 24px 8px;">
+        ${content}
+      </td></tr>
+    </table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr><td style="padding:20px 24px 28px;border-top:1px solid #E5E7EB;margin-top:12px;">
+        <p style="font-size:12px;color:#4B5563;margin:16px 0 4px;text-align:center;font-family:Arial,Helvetica,sans-serif;">Apex Aviation &middot; Austin, TX</p>
+        <p style="font-size:11px;margin:0 0 8px;text-align:center;font-family:Arial,Helvetica,sans-serif;">
+          <a href="https://apexaviationtx.com" style="color:#4B5563;text-decoration:underline;">apexaviationtx.com</a>
+        </p>
+        <p style="font-size:11px;margin:0;text-align:center;font-family:Arial,Helvetica,sans-serif;">
+          <a href="https://apexaviationtx.com/email-preferences.html" style="color:#4B5563;text-decoration:underline;">Manage email preferences</a>
+        </p>
+      </td></tr>
+    </table>
   </div>
 </body></html>`
+}
+
+// Same UTM convention as send-lifecycle-emails/index.ts's lifecycleCtaUrl()
+// -- every purchase-confirmation CTA in this file links straight to
+// portal.html with no attribution at all today (email-system audit,
+// "audit every link/CTA/UTM"). Query string before the hash so the
+// member still lands on the right section.
+function purchaseCtaUrl(content: string, hash: string): string {
+  return `https://advantage.apexaviationtx.com/portal.html?utm_source=email&utm_medium=email&utm_campaign=purchase&utm_content=${content}${hash}`
 }
 
 const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY')!
@@ -148,8 +170,8 @@ async function handleUnlockCheckridePrep(supabase: any, session: Stripe.Checkout
     }
     await sendEmail(supabase, ADMIN_NOTIFICATION_EMAIL, 'ACTION NEEDED: Checkride Prep unlock failed after payment',
       template(`
-        <h2 style="color:#F4B400;margin:0 0 4px;">A paid unlock failed to apply</h2>
-        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">profile_id ${profileId} (${email ?? 'no email on session'}) paid for Checkride Prep, but the unlock could not be applied${unlockError ? ': ' + unlockError.message : ' (profile not found)'}. A refund has been attempted automatically. Check Stripe and the profiles table to confirm and follow up with the customer.</p>
+        <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">A paid unlock failed to apply</h2>
+        <p style="color:#1F2937;font-size:15px;line-height:1.7;">profile_id ${profileId} (${email ?? 'no email on session'}) paid for Checkride Prep, but the unlock could not be applied${unlockError ? ': ' + unlockError.message : ' (profile not found)'}. A refund has been attempted automatically. Check Stripe and the profiles table to confirm and follow up with the customer.</p>
       `))
     throw unlockError || new Error(`Checkride Prep unlock flag was not set for profile ${profileId}`)
   }
@@ -193,9 +215,9 @@ async function handleUnlockCheckridePrep(supabase: any, session: Stripe.Checkout
   if (email) {
     await sendEmail(supabase, email, "You're unlocked — Apex Advantage Checkride Prep",
       template(`
-        <h2 style="color:#F4B400;margin:0 0 4px;">You're in, ${fullName.split(' ')[0]}!</h2>
-        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your payment went through and the full Checkride Prep System is unlocked — DPE question library, scenario training, Checkride Mode, progress tracking, and everything else in the sidebar.</p>
-        <a href="https://advantage.apexaviationtx.com/portal.html#checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Start Studying →</a>
+        <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">You're in, ${fullName.split(' ')[0]}!</h2>
+        <p style="color:#1F2937;font-size:15px;line-height:1.7;">Your payment went through and the full Checkride Prep System is unlocked — DPE question library, scenario training, Checkride Mode, progress tracking, and everything else in the sidebar.</p>
+        <a href="${purchaseCtaUrl('checkride_prep_unlock', '#checkride-prep')}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Start Studying →</a>
       `))
   }
 }
@@ -254,8 +276,8 @@ async function handleUnlockStudyPack(supabase: any, session: Stripe.Checkout.Ses
       if (email) {
         await sendEmail(supabase, email, `You already own ${packName} — refunded`,
           template(`
-            <h2 style="color:#F4B400;margin:0 0 4px;">You're already covered</h2>
-            <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your account already had lifetime access to ${packName} before this payment came through, so you've been refunded in full. Head to My Study Packs in your portal to pick up where you left off.</p>
+            <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">You're already covered</h2>
+            <p style="color:#1F2937;font-size:15px;line-height:1.7;">Your account already had lifetime access to ${packName} before this payment came through, so you've been refunded in full. Head to My Study Packs in your portal to pick up where you left off.</p>
           `))
       }
       return
@@ -272,8 +294,8 @@ async function handleUnlockStudyPack(supabase: any, session: Stripe.Checkout.Ses
     }
     await sendEmail(supabase, ADMIN_NOTIFICATION_EMAIL, 'ACTION NEEDED: Study Pack unlock failed after payment',
       template(`
-        <h2 style="color:#F4B400;margin:0 0 4px;">A paid unlock failed to apply</h2>
-        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">profile_id ${profileId} (${email ?? 'no email on session'}) paid for ${packName}, but the entitlement could not be created: ${insertError.message}. A refund has been attempted automatically. Check Stripe and study_pack_entitlements to confirm and follow up with the customer.</p>
+        <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">A paid unlock failed to apply</h2>
+        <p style="color:#1F2937;font-size:15px;line-height:1.7;">profile_id ${profileId} (${email ?? 'no email on session'}) paid for ${packName}, but the entitlement could not be created: ${insertError.message}. A refund has been attempted automatically. Check Stripe and study_pack_entitlements to confirm and follow up with the customer.</p>
       `))
     throw insertError
   }
@@ -281,9 +303,9 @@ async function handleUnlockStudyPack(supabase: any, session: Stripe.Checkout.Ses
   if (email) {
     await sendEmail(supabase, email, `You're in — ${packName}`,
       template(`
-        <h2 style="color:#F4B400;margin:0 0 4px;">Your payment went through!</h2>
-        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">${packName} is unlocked for life on your Apex Advantage account -- lessons, Scenario Lab, Checkride Corner, and the Mastery Check are all ready whenever you are.</p>
-        <a href="https://advantage.apexaviationtx.com/portal.html#study-packs" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Start Studying →</a>
+        <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Your payment went through!</h2>
+        <p style="color:#1F2937;font-size:15px;line-height:1.7;">${packName} is unlocked for life on your Apex Advantage account -- lessons, Scenario Lab, Checkride Corner, and the Mastery Check are all ready whenever you are.</p>
+        <a href="${purchaseCtaUrl('study_pack_unlock', '#study-packs')}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Start Studying →</a>
       `))
   }
 }
@@ -328,8 +350,8 @@ async function handleUpgradeGroundSchoolPack(supabase: any, session: Stripe.Chec
   if (!pplPaidEnrollments.length) {
     await sendEmail(supabase, ADMIN_NOTIFICATION_EMAIL, 'ACTION NEEDED: Ground School upgrade paid with no prior enrollment on file',
       template(`
-        <h2 style="color:#F4B400;margin:0 0 4px;">Review this manually</h2>
-        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">profile_id ${profileId} (${email ?? 'no email on session'}) completed a Ground School upgrade payment, but has no paid class enrollment on file server-side. The pack was NOT granted automatically -- verify manually before unlocking, and consider a refund if this doesn't check out.</p>
+        <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Review this manually</h2>
+        <p style="color:#1F2937;font-size:15px;line-height:1.7;">profile_id ${profileId} (${email ?? 'no email on session'}) completed a Ground School upgrade payment, but has no paid class enrollment on file server-side. The pack was NOT granted automatically -- verify manually before unlocking, and consider a refund if this doesn't check out.</p>
       `))
     throw new Error(`Upgrade payment for profile ${profileId} has no verifiable prior paid enrollment`)
   }
@@ -362,8 +384,8 @@ async function handleUpgradeGroundSchoolPack(supabase: any, session: Stripe.Chec
     }
     await sendEmail(supabase, ADMIN_NOTIFICATION_EMAIL, 'ACTION NEEDED: Ground School upgrade failed after payment',
       template(`
-        <h2 style="color:#F4B400;margin:0 0 4px;">A paid upgrade failed to apply</h2>
-        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">profile_id ${profileId} (${email ?? 'no email on session'}) paid to upgrade to the Private Pilot Ground School pack, but the unlock could not be applied${unlockError ? ': ' + unlockError.message : ' (profile not found)'}. A refund has been attempted automatically. Check Stripe and the profiles table to confirm and follow up with the customer.</p>
+        <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">A paid upgrade failed to apply</h2>
+        <p style="color:#1F2937;font-size:15px;line-height:1.7;">profile_id ${profileId} (${email ?? 'no email on session'}) paid to upgrade to the Private Pilot Ground School pack, but the unlock could not be applied${unlockError ? ': ' + unlockError.message : ' (profile not found)'}. A refund has been attempted automatically. Check Stripe and the profiles table to confirm and follow up with the customer.</p>
       `))
     throw unlockError || new Error(`Ground School upgrade unlock flag was not set for profile ${profileId}`)
   }
@@ -392,14 +414,14 @@ async function handleUpgradeGroundSchoolPack(supabase: any, session: Stripe.Chec
   if (email) {
     const bonusLine = hadCheckridePrepAlready
       ? ''
-      : `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">As a complete-course member, your Apex Advantage Checkride Prep Pack (normally $29) is included free — it's already unlocked on your account.</p>`
+      : `<p style="color:#1F2937;font-size:15px;line-height:1.7;">As a complete-course member, your Apex Advantage Checkride Prep Pack (normally $29) is included free — it's already unlocked on your account.</p>`
     await sendEmail(supabase, email, "You're upgraded — Private Pilot Ground School",
       template(`
-        <h2 style="color:#F4B400;margin:0 0 4px;">You're all in, ${fullName.split(' ')[0]}!</h2>
-        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your upgrade payment went through — every Private Pilot ground school class is now unlocked on your account, no per-session charge. Register for any upcoming session from your portal.</p>
-        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">As a complete-course member, you'll also have access to recordings of every class in your portal — including ones you can't make live.</p>
+        <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">You're all in, ${fullName.split(' ')[0]}!</h2>
+        <p style="color:#1F2937;font-size:15px;line-height:1.7;">Your upgrade payment went through — every Private Pilot ground school class is now unlocked on your account, no per-session charge. Register for any upcoming session from your portal.</p>
+        <p style="color:#1F2937;font-size:15px;line-height:1.7;">As a complete-course member, you'll also have access to recordings of every class in your portal — including ones you can't make live.</p>
         ${bonusLine}
-        <a href="https://advantage.apexaviationtx.com/portal.html#ground-school" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">See Upcoming Classes →</a>
+        <a href="${purchaseCtaUrl('ground_school_upgrade', '#ground-school')}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">See Upcoming Classes →</a>
       `))
   }
 }
@@ -444,8 +466,8 @@ async function handleUnlockGroundSchoolPack(supabase: any, session: Stripe.Check
     }
     await sendEmail(supabase, ADMIN_NOTIFICATION_EMAIL, 'ACTION NEEDED: Ground School Pack unlock failed after payment',
       template(`
-        <h2 style="color:#F4B400;margin:0 0 4px;">A paid unlock failed to apply</h2>
-        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">profile_id ${profileId} (${email ?? 'no email on session'}) paid for the Private Pilot Ground School pack, but the unlock could not be applied${unlockError ? ': ' + unlockError.message : ' (profile not found)'}. A refund has been attempted automatically. Check Stripe and the profiles table to confirm and follow up with the customer.</p>
+        <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">A paid unlock failed to apply</h2>
+        <p style="color:#1F2937;font-size:15px;line-height:1.7;">profile_id ${profileId} (${email ?? 'no email on session'}) paid for the Private Pilot Ground School pack, but the unlock could not be applied${unlockError ? ': ' + unlockError.message : ' (profile not found)'}. A refund has been attempted automatically. Check Stripe and the profiles table to confirm and follow up with the customer.</p>
       `))
     throw unlockError || new Error(`Ground School Pack unlock flag was not set for profile ${profileId}`)
   }
@@ -479,14 +501,14 @@ async function handleUnlockGroundSchoolPack(supabase: any, session: Stripe.Check
   if (email) {
     const bonusLine = hadCheckridePrepAlready
       ? ''
-      : `<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">As a complete-course member, your Apex Advantage Checkride Prep Pack (normally $29) is included free — it's already unlocked on your account.</p>`
+      : `<p style="color:#1F2937;font-size:15px;line-height:1.7;">As a complete-course member, your Apex Advantage Checkride Prep Pack (normally $29) is included free — it's already unlocked on your account.</p>`
     await sendEmail(supabase, email, "You're unlocked — Private Pilot Ground School",
       template(`
-        <h2 style="color:#F4B400;margin:0 0 4px;">You're in, ${fullName.split(' ')[0]}!</h2>
-        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your payment went through — every Private Pilot ground school class is now unlocked on your account. Register for any upcoming session from your portal, no per-session charge.</p>
-        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">As a complete-course member, you'll also have access to recordings of every class in your portal — including ones you can't make live.</p>
+        <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">You're in, ${fullName.split(' ')[0]}!</h2>
+        <p style="color:#1F2937;font-size:15px;line-height:1.7;">Your payment went through — every Private Pilot ground school class is now unlocked on your account. Register for any upcoming session from your portal, no per-session charge.</p>
+        <p style="color:#1F2937;font-size:15px;line-height:1.7;">As a complete-course member, you'll also have access to recordings of every class in your portal — including ones you can't make live.</p>
         ${bonusLine}
-        <a href="https://advantage.apexaviationtx.com/portal.html#ground-school" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">See Upcoming Classes →</a>
+        <a href="${purchaseCtaUrl('ground_school_pack', '#ground-school')}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">See Upcoming Classes →</a>
       `))
   }
 }
@@ -561,22 +583,22 @@ async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Che
         if (isCapacityError) {
           await sendEmail(supabase, email, 'Class full — you have been refunded',
             template(`
-              <h2 style="color:#F4B400;margin:0 0 4px;">Sorry, ${fullName.split(' ')[0]} — that class just filled up</h2>
-              <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Someone grabbed the last seat right as your payment came through. You have not been enrolled, and your payment has been fully refunded. Head back to the Ground School page in your portal to pick another session.</p>
+              <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Sorry, ${fullName.split(' ')[0]} — that class just filled up</h2>
+              <p style="color:#1F2937;font-size:15px;line-height:1.7;">Someone grabbed the last seat right as your payment came through. You have not been enrolled, and your payment has been fully refunded. Head back to the Ground School page in your portal to pick another session.</p>
             `))
         } else {
           await sendEmail(supabase, email, "Couldn't complete your registration — you have been refunded",
             template(`
-              <h2 style="color:#F4B400;margin:0 0 4px;">Sorry, ${fullName.split(' ')[0]} — we couldn't complete that registration</h2>
-              <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">You have not been enrolled, and your payment has been fully refunded. Head back to the Ground School page in your portal to pick another session, or reach out to us if you'd like help finding one.</p>
+              <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Sorry, ${fullName.split(' ')[0]} — we couldn't complete that registration</h2>
+              <p style="color:#1F2937;font-size:15px;line-height:1.7;">You have not been enrolled, and your payment has been fully refunded. Head back to the Ground School page in your portal to pick another session, or reach out to us if you'd like help finding one.</p>
             `))
         }
       }
       if (!isCapacityError) {
         await sendEmail(supabase, ADMIN_NOTIFICATION_EMAIL, 'ACTION NEEDED: Ground school enrollment failed after payment (non-capacity)',
           template(`
-            <h2 style="color:#F4B400;margin:0 0 4px;">A paid ground school registration failed to apply</h2>
-            <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">${email ?? 'unknown email'} paid for scheduled_ground_class ${scheduledClassId}, but enrollment failed for a reason other than the class being full: "${enrollError.message}". A refund has been attempted automatically and the student was told their registration couldn't be completed (not that the class was full). Check whether the class was canceled/unpublished or its date passed while this payment was in flight, and follow up with the customer if needed.</p>
+            <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">A paid ground school registration failed to apply</h2>
+            <p style="color:#1F2937;font-size:15px;line-height:1.7;">${email ?? 'unknown email'} paid for scheduled_ground_class ${scheduledClassId}, but enrollment failed for a reason other than the class being full: "${enrollError.message}". A refund has been attempted automatically and the student was told their registration couldn't be completed (not that the class was full). Check whether the class was canceled/unpublished or its date passed while this payment was in flight, and follow up with the customer if needed.</p>
           `))
       }
       throw enrollError
@@ -599,7 +621,7 @@ async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Che
     // codebase ever emailed or displayed it to the student before this --
     // they'd have no way to know how to actually join the class they paid for.
     const joinLinkHtml = scheduledClass?.meeting_url
-      ? `<a href="${scheduledClass.meeting_url}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Join the Class →</a>`
+      ? `<a href="${scheduledClass.meeting_url}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Join the Class →</a>`
       : ''
 
     // GS -> Portal Growth Funnel, section 5 -- portal-activation section
@@ -616,7 +638,7 @@ async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Che
     // attribution source for that signup, distinct from whatever ad
     // originally brought them to the landing page.
     const activationUrl = matchingProfile
-      ? 'https://advantage.apexaviationtx.com/portal.html#ground-school'
+      ? 'https://advantage.apexaviationtx.com/portal.html?utm_source=email&utm_medium=confirmation&utm_campaign=ground_school_registration&utm_content=existing_member#ground-school'
       : 'https://advantage.apexaviationtx.com/portal-login.html?view=signup&dest=ground-school&registered=1' +
         `&class_title=${encodeURIComponent(title)}&class_when=${encodeURIComponent(when)}` +
         `&email=${encodeURIComponent(email)}&name=${encodeURIComponent(fullName)}` +
@@ -625,22 +647,22 @@ async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Che
 
     await sendEmail(supabase, email, `You're registered — ${title}`,
       template(`
-        <h2 style="color:#F4B400;margin:0 0 4px;">You're confirmed, ${fullName.split(' ')[0]}!</h2>
-        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">You're registered for <strong style="color:#fff">${title}</strong> on ${when}. See you there.</p>
-        <p style="color:rgba(255,255,255,0.45);font-size:13px;line-height:1.7;">Live classes may be recorded so registered students can review them later in the portal.</p>
+        <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">You're confirmed, ${fullName.split(' ')[0]}!</h2>
+        <p style="color:#1F2937;font-size:15px;line-height:1.7;">You're registered for <strong style="color:#0B1F3A">${title}</strong> on ${when}. See you there.</p>
+        <p style="color:#4B5563;font-size:13px;line-height:1.7;">Live classes may be recorded so registered students can review them later in the portal.</p>
         ${joinLinkHtml}
-        <hr style="border:none;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0;" />
-        <h3 style="color:#fff;margin:0 0 8px;font-size:17px;">Your Free Student Portal</h3>
-        <p style="color:rgba(255,255,255,0.6);font-size:14px;line-height:1.7;">Your class is reserved. Use Apex Advantage to keep track of your Ground School training and continue studying between classes.</p>
-        <p style="color:rgba(255,255,255,0.6);font-size:14px;line-height:1.7;margin:12px 0 4px;">Inside your free account:</p>
-        <ul style="color:rgba(255,255,255,0.6);font-size:14px;line-height:1.9;margin:0 0 16px;padding-left:20px;">
+        <hr style="border:none;border-top:1px solid #E5E7EB;margin:24px 0;" />
+        <h3 style="color:#0B1F3A;margin:0 0 8px;font-size:17px;">Your Free Student Portal</h3>
+        <p style="color:#1F2937;font-size:14px;line-height:1.7;">Your class is reserved. Use Apex Advantage to keep track of your Ground School training and continue studying between classes.</p>
+        <p style="color:#1F2937;font-size:14px;line-height:1.7;margin:12px 0 4px;">Inside your free account:</p>
+        <ul style="color:#1F2937;font-size:14px;line-height:1.9;margin:0 0 16px;padding-left:20px;">
           <li>Question of the Day</li>
           <li>Free DPE practice</li>
           <li>Your Ground School schedule</li>
           <li>Training recommendations</li>
           <li>Pilot resources</li>
         </ul>
-        <a href="${activationUrl}" style="display:inline-block;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">${activationCtaText}</a>
+        <a href="${activationUrl}" style="display:inline-block;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">${activationCtaText}</a>
       `))
     return
   }
@@ -688,14 +710,14 @@ async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Che
   if (isWaitlisted) {
     await sendEmail(supabase, email, `Waitlisted — ${title}`,
       template(`
-        <h2 style="color:#F4B400;margin:0 0 4px;">You're on the waitlist</h2>
-        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">${title} on ${when} filled up right as your payment came through. You're first on the waitlist — we'll email you the moment a spot opens, and refund you in full if one doesn't.</p>
+        <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">You're on the waitlist</h2>
+        <p style="color:#1F2937;font-size:15px;line-height:1.7;">${title} on ${when} filled up right as your payment came through. You're first on the waitlist — we'll email you the moment a spot opens, and refund you in full if one doesn't.</p>
       `))
   } else {
     await sendEmail(supabase, email, `You're registered — ${title}`,
       template(`
-        <h2 style="color:#F4B400;margin:0 0 4px;">You're confirmed, ${fullName.split(' ')[0]}!</h2>
-        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">You're registered for <strong style="color:#fff">${title}</strong> on ${when}. See you there.</p>
+        <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">You're confirmed, ${fullName.split(' ')[0]}!</h2>
+        <p style="color:#1F2937;font-size:15px;line-height:1.7;">You're registered for <strong style="color:#0B1F3A">${title}</strong> on ${when}. See you there.</p>
       `))
   }
 }
@@ -719,14 +741,14 @@ async function handleMockOralBooking(supabase: any, session: Stripe.Checkout.Ses
 
   await sendEmail(supabase, email, "You're booked — 60-Minute Mock Oral",
     template(`
-      <h2 style="color:#F4B400;margin:0 0 4px;">Thanks, ${fullName.split(' ')[0]}!</h2>
-      <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your Mock Oral is paid for. Andrew will reach out shortly by email to schedule your 1:1 session at a time that works for you.</p>
+      <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Thanks, ${fullName.split(' ')[0]}!</h2>
+      <p style="color:#1F2937;font-size:15px;line-height:1.7;">Your Mock Oral is paid for. Andrew will reach out shortly by email to schedule your 1:1 session at a time that works for you.</p>
     `))
 
   await sendEmail(supabase, ADMIN_NOTIFICATION_EMAIL, `New Mock Oral request — ${fullName}`,
     template(`
-      <h2 style="color:#F4B400;margin:0 0 4px;">New Mock Oral request</h2>
-      <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;"><strong style="color:#fff">${fullName}</strong> (${email}) just paid for a 60-Minute Mock Oral. Schedule a time with them and update the request in the CRM under Mock Oral Requests.</p>
+      <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">New Mock Oral request</h2>
+      <p style="color:#1F2937;font-size:15px;line-height:1.7;"><strong style="color:#0B1F3A">${fullName}</strong> (${email}) just paid for a 60-Minute Mock Oral. Schedule a time with them and update the request in the CRM under Mock Oral Requests.</p>
     `))
 }
 
@@ -761,8 +783,8 @@ async function handleMockOralBookingV2(supabase: any, session: Stripe.Checkout.S
     }
     await sendEmail(supabase, email, 'That time slot was just taken — you have been refunded',
       template(`
-        <h2 style="color:#F4B400;margin:0 0 4px;">Sorry, ${fullName.split(' ')[0]} — that time was just booked</h2>
-        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Someone booked that exact time right as your payment came through. You have not been booked, and your payment has been fully refunded. Head back to the Mock Oral page to pick another time.</p>
+        <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Sorry, ${fullName.split(' ')[0]} — that time was just booked</h2>
+        <p style="color:#1F2937;font-size:15px;line-height:1.7;">Someone booked that exact time right as your payment came through. You have not been booked, and your payment has been fully refunded. Head back to the Mock Oral page to pick another time.</p>
       `))
   }
 
@@ -783,7 +805,7 @@ async function handleMockOralBookingV2(supabase: any, session: Stripe.Checkout.S
       try { await stripe.refunds.create({ payment_intent: session.payment_intent as string }) } catch (e) { console.error('stripe-webhook: refund failed after mock oral claim error', e) }
     }
     await sendEmail(supabase, ADMIN_NOTIFICATION_EMAIL, 'ACTION NEEDED: Mock Oral slot claim failed after payment',
-      template(`<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">${email} paid for Mock Oral product ${productId}, slot ${availabilityId}, but claiming the slot errored: ${claimError.message}. Refund attempted automatically. Check mock_oral_availability manually.</p>`))
+      template(`<p style="color:#1F2937;font-size:15px;line-height:1.7;">${email} paid for Mock Oral product ${productId}, slot ${availabilityId}, but claiming the slot errored: ${claimError.message}. Refund attempted automatically. Check mock_oral_availability manually.</p>`))
     throw claimError
   }
 
@@ -815,7 +837,7 @@ async function handleMockOralBookingV2(supabase: any, session: Stripe.Checkout.S
       try { await stripe.refunds.create({ payment_intent: session.payment_intent as string }) } catch (e) { console.error('stripe-webhook: refund failed after mock oral booking insert error', e) }
     }
     await sendEmail(supabase, ADMIN_NOTIFICATION_EMAIL, 'ACTION NEEDED: Mock Oral booking failed after payment',
-      template(`<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">${email} paid for Mock Oral product ${productId}, but the booking record failed to save: ${bookingError.message}. The slot has been released and a refund attempted automatically. Check manually and follow up with the customer.</p>`))
+      template(`<p style="color:#1F2937;font-size:15px;line-height:1.7;">${email} paid for Mock Oral product ${productId}, but the booking record failed to save: ${bookingError.message}. The slot has been released and a refund attempted automatically. Check manually and follow up with the customer.</p>`))
     throw bookingError
   }
 
@@ -826,16 +848,16 @@ async function handleMockOralBookingV2(supabase: any, session: Stripe.Checkout.S
 
   await sendEmail(supabase, email, 'Your Apex Advantage Mock Oral Is Booked',
     template(`
-      <h2 style="color:#F4B400;margin:0 0 4px;">You're booked, ${fullName.split(' ')[0]}!</h2>
-      <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your Private Pilot Mock Oral is confirmed for <strong style="color:#fff">${when} ${tzAbbr}</strong> — up to 2 hours, live 1:1 with an Apex Advantage instructor.</p>
-      <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Next step: complete your intake questionnaire so your instructor can tailor the session to your aircraft and training.</p>
-      <a href="https://advantage.apexaviationtx.com/portal.html#mock-oral" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Complete Intake →</a>
-      <hr style="border:none;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0;" />
-      <p style="color:rgba(255,255,255,0.5);font-size:13px;line-height:1.7;">Have ready if applicable: your student pilot certificate and medical, your aircraft's POH/AFM, a current sectional or EFB, and your Knowledge Test Report if you have one (you can also upload it during intake).</p>
+      <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">You're booked, ${fullName.split(' ')[0]}!</h2>
+      <p style="color:#1F2937;font-size:15px;line-height:1.7;">Your Private Pilot Mock Oral is confirmed for <strong style="color:#0B1F3A">${when} ${tzAbbr}</strong> — up to 2 hours, live 1:1 with an Apex Advantage instructor.</p>
+      <p style="color:#1F2937;font-size:15px;line-height:1.7;">Next step: complete your intake questionnaire so your instructor can tailor the session to your aircraft and training.</p>
+      <a href="${purchaseCtaUrl('mock_oral_booking', '#mock-oral')}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Complete Intake →</a>
+      <hr style="border:none;border-top:1px solid #E5E7EB;margin:24px 0;" />
+      <p style="color:#4B5563;font-size:13px;line-height:1.7;">Have ready if applicable: your student pilot certificate and medical, your aircraft's POH/AFM, a current sectional or EFB, and your Knowledge Test Report if you have one (you can also upload it during intake).</p>
     `))
 
   await sendEmail(supabase, ADMIN_NOTIFICATION_EMAIL, `New Mock Oral booking — ${fullName}`,
-    template(`<p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;"><strong style="color:#fff">${fullName}</strong> (${email}) booked a Mock Oral for ${when} ${tzAbbr}. ${claimedSlot.instructor_id ? 'Instructor already assigned.' : 'No instructor assigned to this slot yet — assign one from the Mock Oral admin dashboard.'}</p>`))
+    template(`<p style="color:#1F2937;font-size:15px;line-height:1.7;"><strong style="color:#0B1F3A">${fullName}</strong> (${email}) booked a Mock Oral for ${when} ${tzAbbr}. ${claimedSlot.instructor_id ? 'Instructor already assigned.' : 'No instructor assigned to this slot yet — assign one from the Mock Oral admin dashboard.'}</p>`))
 }
 
 // Stripe's real subscription statuses don't map 1:1 onto
@@ -878,9 +900,9 @@ async function handleJoinMembership(supabase: any, session: Stripe.Checkout.Sess
   if (email) {
     await sendEmail(supabase, email, "You're in — Apex Advantage Membership",
       template(`
-        <h2 style="color:#F4B400;margin:0 0 4px;">Welcome to Apex Advantage Membership!</h2>
-        <p style="color:rgba(255,255,255,0.6);font-size:15px;line-height:1.7;">Your ${tier} membership is active. You can manage or cancel it anytime from Account Management in your portal.</p>
-        <a href="https://advantage.apexaviationtx.com/portal.html#account" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:8px;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">View Your Account →</a>
+        <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Welcome to Apex Advantage Membership!</h2>
+        <p style="color:#1F2937;font-size:15px;line-height:1.7;">Your ${tier} membership is active. You can manage or cancel it anytime from Account Management in your portal.</p>
+        <a href="${purchaseCtaUrl('membership_signup', '#account')}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">View Your Account →</a>
       `))
   }
 }
