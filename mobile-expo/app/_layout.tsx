@@ -5,6 +5,7 @@ import { useFonts, Montserrat_400Regular, Montserrat_500Medium, Montserrat_600Se
 import { PlayfairDisplay_700Bold, PlayfairDisplay_400Regular_Italic } from '@expo-google-fonts/playfair-display'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { AuthProvider } from '../contexts/AuthContext'
+import { useNotificationRouting } from '../hooks/useNotificationRouting'
 import { colors } from '../constants/theme'
 
 SplashScreen.preventAutoHideAsync().catch(() => {})
@@ -23,6 +24,10 @@ export default function RootLayout() {
   useEffect(() => {
     if (fontsLoaded || fontError) SplashScreen.hideAsync().catch(() => {})
   }, [fontsLoaded, fontError])
+
+  // Active regardless of auth state -- see this hook's own comment for
+  // why a cold-start/backgrounded tap while signed out is safe.
+  useNotificationRouting()
 
   if (!fontsLoaded && !fontError) return null
 

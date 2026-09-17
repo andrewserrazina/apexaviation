@@ -5,13 +5,19 @@
 // only ever see or touch their own device rows (Phase C10 requirement),
 // not an extra check duplicated in this function's own code.
 //
-// NOT YET DEPLOYED. Source-controlled only.
+// DEPLOYED (version 2, register/revoke/list only) as of Sprint 1C. The
+// get_preferences/update_preferences actions below are new, additive
+// Sprint 1C reconciliation work -- verified against the live deployed
+// function (get_edge_function) before this change: production's body
+// was byte-identical to this file's register/revoke/list code, so
+// nothing already-shipped is at risk of being rolled back here.
 //
 // Env vars required (Supabase Edge Function secrets):
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (both auto-provided)
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { validatePreferencesUpdate } from './validatePreferencesUpdate.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -83,6 +89,35 @@ serve(async (req) => {
       const { data, error } = await supabase.rpc('revoke_mobile_device', { p_device_id: deviceId })
       if (error) throw error
       return json({ device: data })
+    }
+
+    if (action === 'get_preferences') {
+      const { data, error } = await supabase
+        .from('notification_preferences')
+        .select('daily_drill_enabled, daily_drill_time, checkride_countdown_enabled, weak_area_enabled, streak_enabled')
+        .eq('profile_id', userId)
+        .maybeSingle()
+      if (error) throw error
+      const preferences = data ?? {
+        daily_drill_enabled: true,
+        daily_drill_time: '07:00:00',
+        checkride_countdown_enabled: true,
+        weak_area_enabled: true,
+        streak_enabled: true,
+      }
+      return json({ preferences })
+    }
+
+    if (action === 'update_preferences') {
+      const validation = validatePreferencesUpdate(body)
+      if (!validation.ok) return json({ error: validation.error }, 400)
+      const { data, error } = await supabase
+        .from('notification_preferences')
+        .upsert({ profile_id: userId, ...validation.update }, { onConflict: 'profile_id' })
+        .select('daily_drill_enabled, daily_drill_time, checkride_countdown_enabled, weak_area_enabled, streak_enabled')
+        .single()
+      if (error) throw error
+      return json({ preferences: data })
     }
 
     // Default action: list this learner's own non-revoked devices.

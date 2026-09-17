@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react'
-import { SafeAreaView, ScrollView, StyleSheet, View, type ViewStyle, RefreshControl } from 'react-native'
+import { ScrollView, StyleSheet, View, type ViewStyle, RefreshControl } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { colors, spacing } from '../constants/theme'
 
 interface ScreenProps {
