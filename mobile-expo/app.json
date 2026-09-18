@@ -9,7 +9,10 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.apexaviationtx.advantage"
+      "bundleIdentifier": "com.apexaviationtx.advantage",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.apexaviationtx.advantage",
@@ -51,9 +54,11 @@
       ]
     ],
     "extra": {
+      "router": {},
       "eas": {
         "projectId": "fb3ad0c5-9655-4d9d-9ecb-8a4e0ccfe7f2"
       }
-    }
+    },
+    "owner": "apex-aviation"
   }
 }
