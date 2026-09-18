@@ -60,17 +60,31 @@ export interface MobileTrainingContext {
   acs_version: string | null
 }
 
-// REV3.14: shape for a future ACS map/coverage screen. Not wired to any
-// Edge Function response yet -- agreed here ahead of that screen's
-// construction so the eventual endpoint has a settled contract to target.
-// Deliberately does not expose acs_task_applicability or
+// REV3.14: shape for a future ACS map/coverage screen. Wired to
+// mobile-readiness's 'tasks' action (V142, ACS Explorer's task-level
+// drill-down). Deliberately does not expose acs_task_applicability or
 // content_acs_mappings row shapes directly.
 export interface MobileAcsTaskInfo extends MobileAcsTaskRef {
   area_title: string
   task_title: string
+  // V142: which of the 9 real dpe_categories (category_breakdown's own
+  // `category` field) this task rolls up under -- lets a client group
+  // this flat task list under the category card the learner tapped,
+  // without a second lookup.
+  dpe_category: string
   applicable: boolean
   content_available: boolean
   evidence_summary: { attempt_count: number; evidence_score: number } | null
+}
+
+// V142: mobile-readiness's 'tasks' action response. Scoped to exactly
+// the same digital-assessment-supported task set
+// compute_readiness_snapshot() already uses to build category_breakdown
+// (get_readiness_scoped_acs_tasks()), so this list's per-category counts
+// always agree with category_breakdown's assessable_task_count/
+// evidenced_task_count for the same category.
+export interface MobileAcsTaskBreakdownResponse {
+  tasks: MobileAcsTaskInfo[]
 }
 
 // REV2: known reason_codes values, for consumers that want to render

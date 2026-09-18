@@ -126,6 +126,31 @@ export function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string')
 }
 
+// V142: the ACS Explorer's task-level drill-down (mobile-readiness's
+// 'tasks' action). Builds on isValidAcsTaskRef() the same way
+// isValidWeakArea() does. evidence_summary is either null (no
+// task_evidence row yet -- must render as an honest "no evidence yet,"
+// never a fabricated 0) or an object with the same finite, 0..1-ranged
+// evidence_score isValidWeakArea() already enforces.
+export function isValidAcsTaskInfo(value: unknown): boolean {
+  if (!isValidAcsTaskRef(value)) return false
+  const v = value as Record<string, unknown>
+  if (!isNonEmptyString(v.area_title) || !isNonEmptyString(v.task_title) || !isNonEmptyString(v.dpe_category)) return false
+  if (typeof v.applicable !== 'boolean' || typeof v.content_available !== 'boolean') return false
+  if (v.evidence_summary === null) return true
+  if (!isPlainObject(v.evidence_summary)) return false
+  const summary = v.evidence_summary
+  return (
+    typeof summary.attempt_count === 'number' &&
+    Number.isFinite(summary.attempt_count) &&
+    summary.attempt_count >= 0 &&
+    typeof summary.evidence_score === 'number' &&
+    Number.isFinite(summary.evidence_score) &&
+    summary.evidence_score >= 0 &&
+    summary.evidence_score <= 1
+  )
+}
+
 // Sprint 1C: a mobile-library `content` action response's Study Pack
 // summary card -- the exact fields the Library catalog screen renders,
 // plus `owned`, the one server-authoritative ownership signal (see

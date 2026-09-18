@@ -6,9 +6,9 @@
 // overall_score alone, and must never phrase any of it as "chance of
 // passing." See components/ReadinessCard.tsx for the one place this is
 // actually rendered.
-import type { MobileReadinessResponse } from '../../../shared/mobile-dto'
+import type { MobileAcsTaskBreakdownResponse, MobileReadinessResponse } from '../../../shared/mobile-dto'
 import { invokeMobileFunction } from './client'
-import { assertShape, isPlainObject, isValidReadinessSummaryOrNull } from './validate'
+import { assertShape, isPlainObject, isValidAcsTaskInfo, isValidReadinessSummaryOrNull } from './validate'
 
 function validateReadinessResponse(data: unknown, context: string): MobileReadinessResponse {
   assertShape(isPlainObject(data) && typeof data.refreshed === 'boolean', context, data)
@@ -30,4 +30,18 @@ export async function fetchLatestReadiness(): Promise<MobileReadinessResponse> {
 export async function refreshReadiness(): Promise<MobileReadinessResponse> {
   const data = await invokeMobileFunction<MobileReadinessResponse, { action: 'refresh' }>('mobile-readiness', { action: 'refresh' })
   return validateReadinessResponse(data, 'refreshReadiness')
+}
+
+function validateAcsTaskBreakdownResponse(data: unknown, context: string): MobileAcsTaskBreakdownResponse {
+  assertShape(isPlainObject(data) && Array.isArray(data.tasks) && data.tasks.every(isValidAcsTaskInfo), context, data)
+  return data as MobileAcsTaskBreakdownResponse
+}
+
+// V142: the ACS Explorer's task-level drill-down. Same "passive read,
+// never recomputes" contract as fetchLatestReadiness -- get_member_acs_
+// task_breakdown() reads task_evidence directly, it doesn't need (and
+// doesn't have) a separate refresh action.
+export async function fetchAcsTaskBreakdown(): Promise<MobileAcsTaskBreakdownResponse> {
+  const data = await invokeMobileFunction<MobileAcsTaskBreakdownResponse, { action: 'tasks' }>('mobile-readiness', { action: 'tasks' })
+  return validateAcsTaskBreakdownResponse(data, 'fetchAcsTaskBreakdown')
 }
