@@ -6,6 +6,14 @@
 // pass-probability-language ban get enforced identically to
 // mobile-bootstrap's readiness_summary shape.
 //
+// V142: 'tasks' wraps get_member_acs_task_breakdown() -- the ACS
+// Explorer's task-level drill-down (the individual tasks inside a
+// category the learner taps into), scoped to the exact same
+// digital-assessment-supported task set compute_readiness_snapshot()
+// already uses to build category_breakdown, so the two screens' numbers
+// never disagree. Read-only, no recompute, same requirePremiumAccess()
+// gate as every other action here.
+//
 // PRODUCT CONSTRAINT: readiness is a training-readiness INDICATOR, never
 // a pass-probability estimate. This function must never add "chance of
 // passing" language, and must always surface evidence_level and
@@ -81,6 +89,32 @@ function shape(row: Record<string, unknown> | null) {
   }
 }
 
+// V142: acs_task_id/area_code/task_code/area_title/task_title/dpe_category
+// pass through unchanged (already-public FAA ACS taxonomy text, not
+// anything gated); content_available is the RPC's own EXISTS boolean;
+// evidence_summary is null whenever the LEFT JOIN found no task_evidence
+// row (attempt_count is NOT NULL on that table, so null here can only
+// mean "never attempted," never "attempted zero times") -- never a
+// fabricated {attempt_count: 0, evidence_score: 0}. `applicable` is
+// always true: get_member_acs_task_breakdown() only ever returns tasks
+// already scoped to this learner's own certificate/aircraft class.
+function shapeTask(row: Record<string, unknown>) {
+  return {
+    acs_task_id: row.acs_task_id,
+    area_code: row.area_code,
+    area_title: row.area_title,
+    task_code: row.task_code,
+    task_title: row.task_title,
+    dpe_category: row.dpe_category,
+    applicable: true,
+    content_available: !!row.content_available,
+    evidence_summary:
+      row.attempt_count == null
+        ? null
+        : { attempt_count: row.attempt_count, evidence_score: row.evidence_score },
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
@@ -92,7 +126,16 @@ serve(async (req) => {
   try {
     const { userId } = await requirePremiumAccess(serviceClient, req.headers.get('Authorization'))
     const body = await req.json().catch(() => ({}))
-    const action = body?.action === 'refresh' ? 'refresh' : 'latest'
+    const action = body?.action === 'refresh' ? 'refresh' : body?.action === 'tasks' ? 'tasks' : 'latest'
+
+    if (action === 'tasks') {
+      // get_member_acs_task_breakdown() is auth.uid()-bound, same reason
+      // as compute_readiness_snapshot() above -- must run through the
+      // caller's own JWT, not the service-role client.
+      const { data, error } = await supabase.rpc('get_member_acs_task_breakdown')
+      if (error) throw error
+      return json({ tasks: (data || []).map((row: Record<string, unknown>) => shapeTask(row)) })
+    }
 
     if (action === 'refresh') {
       // compute_readiness_snapshot() is auth.uid()-bound -- it must run
