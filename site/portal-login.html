@@ -314,6 +314,7 @@
     // Deep link support: portal-login.html?view=signup or #signup
     var requestedView = (new URLSearchParams(window.location.search)).get('view') || window.location.hash.replace('#', '');
     if (requestedView === 'signup') showView('signup');
+    if (requestedView === 'forgot') showView('forgot');
 
     if ((new URLSearchParams(window.location.search)).get('deleted') === '1') {
       var loginSuccessEl = document.getElementById('loginSuccess');
