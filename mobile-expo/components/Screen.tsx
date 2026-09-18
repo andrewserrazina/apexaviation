@@ -33,7 +33,13 @@ export function Screen({ children, scroll = true, refreshing, onRefresh, content
   )
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    // top is deliberately excluded: every screen using Screen renders
+    // inside the (app) Tabs navigator, which now always shows the
+    // persistent navy AppHeader above it (app/(app)/_layout.tsx) -- that
+    // header already consumes the top safe-area inset via its own
+    // SafeAreaView, so applying it again here would double the gap
+    // between the header and the page content.
+    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
       {scroll ? (
         <ScrollView
           contentContainerStyle={styles.scrollContent}

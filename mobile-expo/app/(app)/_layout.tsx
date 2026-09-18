@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { BootstrapProvider } from '../../contexts/BootstrapContext'
 import { NotificationsProvider } from '../../contexts/NotificationsContext'
 import { LoadingState } from '../../components/StateViews'
+import { AppHeader } from '../../components/AppHeader'
 import { colors, fonts } from '../../constants/theme'
 
 // Protected-routing guard, app side: a signed-out learner (or one whose
@@ -31,7 +32,8 @@ function AppTabs() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: false,
+        headerShown: true,
+        header: () => <AppHeader />,
         tabBarActiveTintColor: colors.navy,
         tabBarInactiveTintColor: colors.mutedText,
         tabBarStyle: { backgroundColor: colors.white, borderTopColor: colors.border },
