@@ -498,6 +498,92 @@ describe('mobile-readiness malformed response', () => {
     })
     await expect(fetchLatestReadiness()).resolves.toBeTruthy()
   })
+
+  // V142/Sprint 4: category_breakdown is now directly rendered by the ACS
+  // Explorer (app/(app)/acs.tsx), which indexes EVIDENCE_COLOR/
+  // EVIDENCE_LABEL by evidence_level and Math.round()s score whenever it
+  // isn't null -- an unvalidated malformed entry here would crash that
+  // render rather than fail closed to a normal retryable error.
+  function categoryBreakdownFixture(overrides: Record<string, unknown> = {}) {
+    return {
+      category: 'weather',
+      label: 'Weather',
+      score: 80,
+      evidence_level: 'strong',
+      attempt_volume: 12,
+      task_breadth_pct: 100,
+      weak_task_count: 0,
+      strong_task_count: 3,
+      last_demonstrated_at: '2026-09-01T00:00:00Z',
+      ai_dpe_reason_code: null,
+      ...overrides,
+    }
+  }
+
+  function readinessSummaryFixture(overrides: Record<string, unknown> = {}) {
+    return {
+      overall_score: 50,
+      evidence_level: 'low',
+      reason_codes: [],
+      coverage_score: 0,
+      knowledge_score: 0,
+      risk_management_score: 0,
+      confidence_score: 0,
+      weak_tasks: [],
+      algorithm_version: 'v3',
+      computed_at: '2026-01-01T00:00:00Z',
+      ...overrides,
+    }
+  }
+
+  it('accepts a well-formed snapshot with category_breakdown', async () => {
+    ok({
+      snapshot: readinessSummaryFixture({ category_breakdown: [categoryBreakdownFixture()], assessable_task_count: 19, evidenced_task_count: 10 }),
+      refreshed: false,
+    })
+    await expect(fetchLatestReadiness()).resolves.toBeTruthy()
+  })
+
+  it('accepts a well-formed snapshot with no category_breakdown at all (legacy pre-v3 row)', async () => {
+    ok({ snapshot: readinessSummaryFixture(), refreshed: false })
+    await expect(fetchLatestReadiness()).resolves.toBeTruthy()
+  })
+
+  it('rejects a category_breakdown entry with an unrecognized evidence_level', async () => {
+    ok({ snapshot: readinessSummaryFixture({ category_breakdown: [categoryBreakdownFixture({ evidence_level: 'super-high' })] }), refreshed: false })
+    const err = await captureError(fetchLatestReadiness())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a category_breakdown entry with a non-numeric score', async () => {
+    ok({ snapshot: readinessSummaryFixture({ category_breakdown: [categoryBreakdownFixture({ score: '80' })] }), refreshed: false })
+    const err = await captureError(fetchLatestReadiness())
+    expect(err.kind).toBe('server')
+  })
+
+  it('accepts a category_breakdown entry with a null score (no evidence yet)', async () => {
+    ok({ snapshot: readinessSummaryFixture({ category_breakdown: [categoryBreakdownFixture({ score: null, evidence_level: 'none' })] }), refreshed: false })
+    await expect(fetchLatestReadiness()).resolves.toBeTruthy()
+  })
+
+  it('rejects a category_breakdown entry missing label', async () => {
+    const { label: _drop, ...rest } = categoryBreakdownFixture()
+    ok({ snapshot: readinessSummaryFixture({ category_breakdown: [rest] }), refreshed: false })
+    const err = await captureError(fetchLatestReadiness())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a category_breakdown that is not an array', async () => {
+    ok({ snapshot: readinessSummaryFixture({ category_breakdown: 'nope' }), refreshed: false })
+    const err = await captureError(fetchLatestReadiness())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a malformed top-level assessable_task_count', async () => {
+    ok({ snapshot: readinessSummaryFixture({ assessable_task_count: '19' }), refreshed: false })
+    const err = await captureError(fetchLatestReadiness())
+    expect(err.kind).toBe('server')
+  })
 })
 
 // Sprint 1C Phase 1: mobile-library's catalog is browsable without

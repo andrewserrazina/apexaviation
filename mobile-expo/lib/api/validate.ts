@@ -6,7 +6,7 @@
 // (Sprint 1A Rev2 section 9, hardened in Rev3 section 3). A failure here
 // becomes the same normalized, user-safe ApiError every other failure
 // mode produces -- the raw payload is only ever dev-logged.
-import type { DrillStatus, EvidenceLevel, MobilePlatform, MobileStudyPackContent } from '../../../shared/mobile-dto'
+import type { DrillStatus, EvidenceLevel, MobilePlatform, MobileStudyPackContent, ReadinessEvidenceLevel } from '../../../shared/mobile-dto'
 import { ApiError, logDevError } from './errors'
 
 const MALFORMED_RESPONSE_MESSAGE = 'Something went wrong loading that. Please try again.'
@@ -14,6 +14,7 @@ const MALFORMED_RESPONSE_MESSAGE = 'Something went wrong loading that. Please tr
 const DRILL_STATUSES: readonly DrillStatus[] = ['pending', 'in_progress', 'completed']
 const EVIDENCE_LEVELS: readonly EvidenceLevel[] = ['low', 'moderate', 'high']
 const MOBILE_PLATFORMS: readonly MobilePlatform[] = ['ios', 'android']
+const READINESS_EVIDENCE_LEVELS: readonly ReadinessEvidenceLevel[] = ['none', 'limited', 'developing', 'strong']
 
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -42,6 +43,48 @@ export function isEvidenceLevel(value: unknown): value is EvidenceLevel {
   return typeof value === 'string' && (EVIDENCE_LEVELS as readonly string[]).includes(value)
 }
 
+export function isReadinessEvidenceLevel(value: unknown): value is ReadinessEvidenceLevel {
+  return typeof value === 'string' && (READINESS_EVIDENCE_LEVELS as readonly string[]).includes(value)
+}
+
+function isOptionalFiniteNumber(value: unknown): boolean {
+  return value === undefined || (typeof value === 'number' && Number.isFinite(value))
+}
+
+function isOptionalNullableFiniteNumber(value: unknown): boolean {
+  return value === undefined || value === null || (typeof value === 'number' && Number.isFinite(value))
+}
+
+// V142/Sprint 4: mobile-readiness snapshot's category_breakdown -- now
+// directly rendered by the ACS Explorer (app/(app)/acs.tsx), which keys
+// EVIDENCE_COLOR/EVIDENCE_LABEL off evidence_level and calls
+// Math.round(score) whenever score isn't null. An unrecognized
+// evidence_level or a non-numeric score would crash that render (an
+// undefined lookup's `.bg`/`.text`), so this validates every field the
+// screen actually reads -- score stays null-or-finite-number (never
+// fabricated), matching this type's own "score is null whenever
+// evidence_level is 'none'" comment.
+export function isValidReadinessCategoryBreakdown(value: unknown): boolean {
+  if (!isPlainObject(value)) return false
+  return (
+    isNonEmptyString(value.category) &&
+    isNonEmptyString(value.label) &&
+    (value.score === null || (typeof value.score === 'number' && Number.isFinite(value.score))) &&
+    isReadinessEvidenceLevel(value.evidence_level) &&
+    typeof value.attempt_volume === 'number' &&
+    Number.isFinite(value.attempt_volume) &&
+    typeof value.task_breadth_pct === 'number' &&
+    Number.isFinite(value.task_breadth_pct) &&
+    isOptionalFiniteNumber(value.assessable_task_count) &&
+    isOptionalFiniteNumber(value.evidenced_task_count) &&
+    typeof value.weak_task_count === 'number' &&
+    Number.isFinite(value.weak_task_count) &&
+    isOptionalFiniteNumber(value.strong_task_count) &&
+    isNullableString(value.last_demonstrated_at) &&
+    (value.ai_dpe_reason_code === null || value.ai_dpe_reason_code === 'recent_ai_dpe_weak')
+  )
+}
+
 // Shared by mobile-bootstrap's progress.readiness_summary and
 // mobile-readiness's snapshot -- both are either null or must carry the
 // exact fields components/ReadinessCard.tsx renders: overall_score,
@@ -50,16 +93,41 @@ export function isEvidenceLevel(value: unknown): value is EvidenceLevel {
 // the DTO declares them -- neither is ever rendered, and Rev3 section 3
 // says to validate what's "directly rendered/used," not the full DTO
 // shape.
+//
+// category_breakdown is additive/optional on the DTO -- absent on
+// mobile-bootstrap's Pick<...> readiness_summary entirely, and absent on
+// legacy pre-Sprint-4 mobile-readiness snapshot rows -- so it's only
+// validated when present, never required. When it IS present (the ACS
+// Explorer's data source), every element must satisfy
+// isValidReadinessCategoryBreakdown -- see that function's own comment
+// for the render crash a malformed element would otherwise cause.
 export function isValidReadinessSummaryOrNull(value: unknown): boolean {
   if (value === null) return true
-  return (
-    isPlainObject(value) &&
-    typeof value.overall_score === 'number' &&
-    Number.isFinite(value.overall_score) &&
-    isEvidenceLevel(value.evidence_level) &&
-    Array.isArray(value.reason_codes) &&
-    value.reason_codes.every((code) => typeof code === 'string')
-  )
+  if (
+    !isPlainObject(value) ||
+    typeof value.overall_score !== 'number' ||
+    !Number.isFinite(value.overall_score) ||
+    !isEvidenceLevel(value.evidence_level) ||
+    !Array.isArray(value.reason_codes) ||
+    !value.reason_codes.every((code) => typeof code === 'string')
+  ) {
+    return false
+  }
+  if (value.category_breakdown !== undefined && (!Array.isArray(value.category_breakdown) || !value.category_breakdown.every(isValidReadinessCategoryBreakdown))) {
+    return false
+  }
+  // Sprint 4.1's top-level counts (the ACS Explorer's "N of M assessable
+  // ACS tasks have evidence" line) -- same optional-additive shape as
+  // category_breakdown, validated the same way when present.
+  if (
+    !isOptionalNullableFiniteNumber(value.assessable_task_count) ||
+    !isOptionalNullableFiniteNumber(value.evidenced_task_count) ||
+    !isOptionalNullableFiniteNumber(value.strong_task_count) ||
+    !isOptionalNullableFiniteNumber(value.weak_task_count)
+  ) {
+    return false
+  }
+  return true
 }
 
 // mobile-bootstrap's home.todays_drill -- either null or the render-safe

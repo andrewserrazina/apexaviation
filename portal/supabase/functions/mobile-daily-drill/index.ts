@@ -32,6 +32,30 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 }
 
+// get_or_create_daily_drill() and start_daily_drill_practice_session()
+// both raise plain-English exceptions rather than the machine-readable
+// `code: detail` prefixes mobile-practice's RPCs use. Without this map
+// every one of them fell through to the catch-all below and reached the
+// app as a generic 500 "Internal error" -- so a learner whose Checkride
+// Prep access has lapsed, and a client that sent a drill_id belonging to
+// someone else (or a stale one from a reinstall), both saw "something
+// went wrong on our end" instead of an actionable, correctly-classified
+// response. Matching is on the RPCs' exact message text; anything not
+// listed here is still treated as a real server error, so a genuinely
+// unexpected database failure can never be mislabeled as a 4xx.
+const RPC_ERROR_STATUS: Array<{ match: string; status: number; code: string }> = [
+  { match: 'Checkride Prep is not unlocked on this account.', status: 403, code: 'premium_access_required' },
+  { match: 'Drill not found.', status: 404, code: 'drill_not_found' },
+  { match: 'Not signed in.', status: 401, code: 'not_signed_in' },
+]
+
+function mapRpcError(error: { message?: string }) {
+  const msg = error?.message || ''
+  const hit = RPC_ERROR_STATUS.find((e) => msg.includes(e.match))
+  if (!hit) return null
+  return json({ error: hit.match, code: hit.code }, hit.status)
+}
+
 interface DrillRow {
   id: string
   drill_date: string
@@ -105,7 +129,11 @@ serve(async (req) => {
       const drillId = body?.drill_id
       if (!drillId) return json({ error: 'drill_id is required' }, 400)
       const { data: drill, error } = await authedClient.rpc('start_daily_drill_practice_session', { p_drill_id: drillId })
-      if (error) throw error
+      if (error) {
+        const mapped = mapRpcError(error)
+        if (mapped) return mapped
+        throw error
+      }
 
       const questionIds: string[] = Array.isArray(drill?.question_ids) ? drill.question_ids : []
       const questions = await resolveDrillQuestions(serviceClient, questionIds)
@@ -120,7 +148,11 @@ serve(async (req) => {
     // Default action: fetch-or-generate today's drill, then resolve its
     // question_ids into safe display content.
     const { data: drill, error: drillErr } = await authedClient.rpc('get_or_create_daily_drill')
-    if (drillErr) throw drillErr
+    if (drillErr) {
+      const mapped = mapRpcError(drillErr)
+      if (mapped) return mapped
+      throw drillErr
+    }
 
     const questionIds: string[] = Array.isArray(drill?.question_ids) ? drill.question_ids : []
     const questions = await resolveDrillQuestions(serviceClient, questionIds)

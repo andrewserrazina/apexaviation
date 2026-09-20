@@ -93,7 +93,14 @@ serve(async (req) => {
         .select('id, full_name, email, role, checkride_prep_unlocked, private_pilot_ground_school_pack_unlocked, current_rank, total_xp')
         .eq('id', userId)
         .maybeSingle(),
-      supabase.from('study_pack_entitlements').select('pack_id').eq('profile_id', userId),
+      // `.is('revoked_at', null)` is not optional here -- study_pack_entitlements
+      // is a soft-delete table, and both of the other two readers of it
+      // (mobile-library's catalog `owned` flag and has_study_pack_entitlement(),
+      // the RPC that actually gates content) already filter on it. Without
+      // this filter bootstrap would report a revoked pack as still owned,
+      // so the app would render "Owned" for a pack whose content the
+      // server then refuses to serve.
+      supabase.from('study_pack_entitlements').select('pack_id').eq('profile_id', userId).is('revoked_at', null),
       supabase
         .from('readiness_snapshots')
         .select('overall_score, coverage_score, knowledge_score, risk_management_score, confidence_score, evidence_level, weak_tasks, reason_codes, algorithm_version, created_at')

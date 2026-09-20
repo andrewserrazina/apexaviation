@@ -60,6 +60,32 @@ serve(async (req) => {
       if (platform !== 'ios' && platform !== 'android') return json({ error: 'platform must be ios or android' }, 400)
       if (!expoPushToken || typeof expoPushToken !== 'string') return json({ error: 'expo_push_token is required' }, 400)
 
+      // mobile_devices' uniqueness is (profile_id, expo_push_token), NOT
+      // expo_push_token alone -- so the same physical device's push token
+      // can legitimately exist under more than one profile_id at once.
+      // That happens on ordinary account handoff: learner A signs in on a
+      // phone and registers token T, signs out, learner B signs in on the
+      // same phone and registers the same token T. A's row stays
+      // un-revoked, so once a push sender exists, A's notifications
+      // (Daily Drill reminders, weak-area nudges, checkride countdown)
+      // would be delivered to a handset now in B's hands.
+      //
+      // Registration is therefore the point where a token's ownership is
+      // resolved: the caller's own JWT just proved it controls this
+      // device, so every OTHER profile's claim on the same token is
+      // revoked. Runs on the service-role client because RLS
+      // (auth.uid() = profile_id) deliberately forbids the caller from
+      // touching another learner's rows -- the caller never names the
+      // profile_id being revoked, only its own token, so this cannot be
+      // aimed at an arbitrary victim.
+      const { error: stealErr } = await serviceClient
+        .from('mobile_devices')
+        .update({ revoked_at: new Date().toISOString() })
+        .eq('expo_push_token', expoPushToken)
+        .neq('profile_id', userId)
+        .is('revoked_at', null)
+      if (stealErr) throw stealErr
+
       const { data, error } = await supabase
         .from('mobile_devices')
         .upsert(
@@ -111,9 +137,19 @@ serve(async (req) => {
     if (action === 'update_preferences') {
       const validation = validatePreferencesUpdate(body)
       if (!validation.ok) return json({ error: validation.error }, 400)
+      // updated_at is set explicitly: notification_preferences carries no
+      // BEFORE UPDATE trigger (verified against production), so its
+      // `default now()` only ever applies on INSERT -- without this every
+      // later preference change would leave updated_at frozen at the row's
+      // creation time, silently making the column a lie for any future
+      // consumer (a notification scheduler deciding whether it has fresh
+      // preferences, support debugging "when did this learner mute this").
       const { data, error } = await supabase
         .from('notification_preferences')
-        .upsert({ profile_id: userId, ...validation.update }, { onConflict: 'profile_id' })
+        .upsert(
+          { profile_id: userId, ...validation.update, updated_at: new Date().toISOString() },
+          { onConflict: 'profile_id' }
+        )
         .select('daily_drill_enabled, daily_drill_time, checkride_countdown_enabled, weak_area_enabled, streak_enabled')
         .single()
       if (error) throw error
