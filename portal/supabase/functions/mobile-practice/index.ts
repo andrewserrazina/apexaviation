@@ -322,10 +322,14 @@ serve(async (req) => {
         // never a 500 for input the RPC rejected as malformed (that's a
         // 4xx, the client's request was bad, not our server).
         const msg = error.message || ''
-        const codeMatch = msg.match(/^(session_not_found|not_your_session|invalid_question|invalid_self_rating|duplicate_question_id|incomplete_submission):\s*(.*)$/)
+        // V143: complete_mobile_practice_session() now re-checks entitlement
+        // in-RPC (mirroring resume's own Rev2 Blocker 1 fix), for the same
+        // direct-PostgREST-caller reason -- premium_access_required needs
+        // the same 403 mapping resume's codeMatch already gives it.
+        const codeMatch = msg.match(/^(session_not_found|not_your_session|invalid_question|invalid_self_rating|duplicate_question_id|incomplete_submission|premium_access_required):\s*(.*)$/)
         if (codeMatch) {
           const [, code, detail] = codeMatch
-          const status = code === 'session_not_found' ? 404 : code === 'not_your_session' ? 403 : 400
+          const status = code === 'session_not_found' ? 404 : code === 'not_your_session' ? 403 : code === 'premium_access_required' ? 403 : 400
           return json({ error: detail || code, code }, status)
         }
         throw error
