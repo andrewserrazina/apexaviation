@@ -17,6 +17,7 @@ import { revealQuestion, completePractice, startAdHocPractice, resumePractice } 
 import { fetchLatestReadiness } from '../lib/api/readiness'
 import { fetchLibraryCatalog, fetchLibraryContent } from '../lib/api/library'
 import { registerPushToken, revokePushToken, listPushTokens, getNotificationPreferences, updateNotificationPreferences } from '../lib/api/pushToken'
+import { startDpeSession, sendDpeMessage, endDpeSession, resumeDpeSession, fetchDpeHistory } from '../lib/api/dpe'
 
 async function captureError(promise: Promise<unknown>): Promise<ApiError> {
   try {
@@ -891,6 +892,164 @@ describe('mobile-push-token malformed response', () => {
   it('rejects a malformed update_preferences response', async () => {
     ok({ preferences: null })
     const err = await captureError(updateNotificationPreferences({ daily_drill_enabled: false }))
+    expect(err.kind).toBe('server')
+  })
+})
+
+function dpeDebriefFixture(overrides: Record<string, unknown> = {}) {
+  return {
+    overallReadiness: 'almost',
+    summary: 'Solid overall, work on weather.',
+    strengths: ['Airspace knowledge'],
+    weaknesses: ['Weather minimums'],
+    perDomain: [{ domain: 'Weather', verdict: 'weak', note: 'Missed VFR minimums for Class E.' }],
+    ...overrides,
+  }
+}
+
+function dpeTurnFixture(overrides: Record<string, unknown> = {}) {
+  return {
+    sessionId: 'session-1',
+    phase: 'question',
+    message: 'Tell me about your certificate privileges.',
+    debrief: null,
+    questionsAsked: 1,
+    status: 'in_progress',
+    ...overrides,
+  }
+}
+
+describe('mobile-dpe start/message/end malformed response', () => {
+  it('accepts a well-formed start response', async () => {
+    ok(dpeTurnFixture())
+    const result = await startDpeSession()
+    expect(result.sessionId).toBe('session-1')
+  })
+
+  it('rejects a response with an invalid phase', async () => {
+    ok(dpeTurnFixture({ phase: 'answer' }))
+    const err = await captureError(startDpeSession())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a response with an invalid status', async () => {
+    ok(dpeTurnFixture({ status: 'done' }))
+    const err = await captureError(startDpeSession())
+    expect(err.kind).toBe('server')
+  })
+
+  it('accepts a well-formed debrief-phase response', async () => {
+    ok(dpeTurnFixture({ phase: 'debrief', status: 'completed', debrief: dpeDebriefFixture() }))
+    const result = await sendDpeMessage('session-1', 'That concludes my answer.')
+    expect(result.debrief?.overallReadiness).toBe('almost')
+  })
+
+  it('rejects a debrief with an invalid overallReadiness', async () => {
+    ok(dpeTurnFixture({ phase: 'debrief', status: 'completed', debrief: dpeDebriefFixture({ overallReadiness: 'passed' }) }))
+    const err = await captureError(sendDpeMessage('session-1', 'x'))
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a debrief with a non-array strengths field', async () => {
+    ok(dpeTurnFixture({ phase: 'debrief', status: 'completed', debrief: dpeDebriefFixture({ strengths: 'good job' }) }))
+    const err = await captureError(sendDpeMessage('session-1', 'x'))
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a perDomain entry with an invalid verdict', async () => {
+    ok(dpeTurnFixture({ phase: 'debrief', status: 'completed', debrief: dpeDebriefFixture({ perDomain: [{ domain: 'Weather', verdict: 'excellent', note: 'x' }] }) }))
+    const err = await captureError(sendDpeMessage('session-1', 'x'))
+    expect(err.kind).toBe('server')
+  })
+
+  it('accepts a well-formed end response', async () => {
+    ok(dpeTurnFixture({ phase: 'debrief', status: 'completed', debrief: dpeDebriefFixture() }))
+    const result = await endDpeSession('session-1')
+    expect(result.status).toBe('completed')
+  })
+
+  it('rejects a response missing sessionId', async () => {
+    const { sessionId: _drop, ...rest } = dpeTurnFixture()
+    ok(rest)
+    const err = await captureError(startDpeSession())
+    expect(err.kind).toBe('server')
+  })
+})
+
+describe('mobile-dpe resume malformed response', () => {
+  function dpeResumeFixture(overrides: Record<string, unknown> = {}) {
+    return {
+      sessionId: 'session-1',
+      status: 'in_progress',
+      questionsAsked: 2,
+      debrief: null,
+      turns: [
+        { role: 'dpe', message: 'Opening question.', at: '2026-01-01T00:00:00Z' },
+        { role: 'student', message: 'My answer.', at: '2026-01-01T00:01:00Z' },
+      ],
+      ...overrides,
+    }
+  }
+
+  it('accepts a well-formed resume response', async () => {
+    ok(dpeResumeFixture())
+    const result = await resumeDpeSession('session-1')
+    expect(result.turns).toHaveLength(2)
+  })
+
+  it('rejects a resume response where turns is not an array', async () => {
+    ok(dpeResumeFixture({ turns: 'none' }))
+    const err = await captureError(resumeDpeSession('session-1'))
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a resume turn with an invalid role', async () => {
+    ok(dpeResumeFixture({ turns: [{ role: 'examiner', message: 'x', at: '2026-01-01T00:00:00Z' }] }))
+    const err = await captureError(resumeDpeSession('session-1'))
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a resume turn missing a message', async () => {
+    ok(dpeResumeFixture({ turns: [{ role: 'dpe', at: '2026-01-01T00:00:00Z' }] }))
+    const err = await captureError(resumeDpeSession('session-1'))
+    expect(err.kind).toBe('server')
+  })
+})
+
+describe('mobile-dpe history malformed response', () => {
+  function dpeSessionSummaryFixture(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'session-1',
+      status: 'completed',
+      questionsAsked: 9,
+      debrief: dpeDebriefFixture(),
+      startedAt: '2026-01-01T00:00:00Z',
+      endedAt: '2026-01-01T00:20:00Z',
+      ...overrides,
+    }
+  }
+
+  it('accepts a well-formed history response, including an empty list', async () => {
+    ok({ sessions: [] })
+    await expect(fetchDpeHistory()).resolves.toEqual({ sessions: [] })
+  })
+
+  it('accepts a session summary with a null debrief (in-progress session)', async () => {
+    ok({ sessions: [dpeSessionSummaryFixture({ debrief: null, status: 'in_progress' })] })
+    const result = await fetchDpeHistory()
+    expect(result.sessions[0].debrief).toBeNull()
+  })
+
+  it('rejects a response where sessions is not an array', async () => {
+    ok({ sessions: null })
+    const err = await captureError(fetchDpeHistory())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a session summary missing required fields', async () => {
+    const { questionsAsked: _drop, ...rest } = dpeSessionSummaryFixture()
+    ok({ sessions: [rest] })
+    const err = await captureError(fetchDpeHistory())
     expect(err.kind).toBe('server')
   })
 })

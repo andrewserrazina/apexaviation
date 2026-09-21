@@ -8,6 +8,7 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react-native'
 import HomeScreen from '../app/(app)/index'
 import PracticeTabScreen from '../app/(app)/practice/index'
+import OralTabScreen from '../app/(app)/oral/index'
 import { ApiError } from '../lib/api/errors'
 
 jest.mock('expo-router', () => ({
@@ -47,6 +48,27 @@ jest.mock('../lib/drillProgressStorage', () => ({
   clearDrillProgress: jest.fn(),
 }))
 
+// Phase 1 (AI DPE mobile): the Oral tab otherwise pulls in the real
+// supabase.ts -> largeSecureStore.ts -> AsyncStorage chain via
+// lib/api/dpe.ts, same reasoning as the practice/storage mocks above --
+// entitlement gating itself is what's under test here, not AI DPE
+// fetch behavior (already covered in useDpeSession.test.tsx/
+// DpeSession.test.tsx).
+const mockFetchDpeHistory = jest.fn()
+jest.mock('../lib/api/dpe', () => ({
+  startDpeSession: jest.fn(),
+  sendDpeMessage: jest.fn(),
+  endDpeSession: jest.fn(),
+  resumeDpeSession: jest.fn(),
+  fetchDpeHistory: (...args: unknown[]) => mockFetchDpeHistory(...args),
+}))
+jest.mock('../lib/activeOralSessionStorage', () => ({
+  loadActiveOralSession: jest.fn().mockResolvedValue(null),
+  saveActiveOralSession: jest.fn(),
+  clearActiveOralSession: jest.fn(),
+  clearActiveOralSessionIfMatches: jest.fn(),
+}))
+
 const mockUseBootstrapContext = jest.fn()
 jest.mock('../contexts/BootstrapContext', () => ({
   useBootstrapContext: () => mockUseBootstrapContext(),
@@ -75,6 +97,7 @@ const FORBIDDEN_STEERING = /https?:\/\/|apexaviationtx|browser|buy|purchase|chec
 describe('entitlement gating (Rev2 section 3)', () => {
   beforeEach(() => {
     mockFetchDailyDrill.mockReset()
+    mockFetchDpeHistory.mockReset()
     mockUseBootstrapContext.mockReset()
   })
 
@@ -97,6 +120,34 @@ describe('entitlement gating (Rev2 section 3)', () => {
     expect(screen.queryByText('Try again')).toBeNull()
     expect(mockFetchDailyDrill).not.toHaveBeenCalled()
     expect(screen.queryByText(FORBIDDEN_STEERING)).toBeNull()
+  })
+
+  it('an unentitled Oral tab never calls mobile-dpe history and shows a locked state, not a retryable error', async () => {
+    mockUseBootstrapContext.mockReturnValue(unentitledBootstrapContext())
+
+    await render(<OralTabScreen />)
+
+    expect(screen.getByText('Checkride Prep isn’t included on this account')).toBeTruthy()
+    expect(screen.queryByText('Try again')).toBeNull()
+    expect(mockFetchDpeHistory).not.toHaveBeenCalled()
+    expect(screen.queryByText(FORBIDDEN_STEERING)).toBeNull()
+  })
+
+  it('an entitled Oral tab DOES call mobile-dpe history once bootstrap resolves', async () => {
+    mockFetchDpeHistory.mockResolvedValue({ sessions: [] })
+    mockUseBootstrapContext.mockReturnValue({
+      ...unentitledBootstrapContext(),
+      entitled: true,
+      data: {
+        ...unentitledBootstrapContext().data,
+        access: { checkride_prep: true, ground_school_pack: false, study_pack_entitlements: [] },
+      },
+    })
+
+    await render(<OralTabScreen />)
+
+    await waitFor(() => expect(mockFetchDpeHistory).toHaveBeenCalledTimes(1))
+    expect(screen.getByText('Start Oral Practice')).toBeTruthy()
   })
 
   it('an entitled Home DOES call mobile-daily-drill once bootstrap resolves with no drill yet', async () => {

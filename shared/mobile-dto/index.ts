@@ -563,3 +563,90 @@ export interface MobileUpdatePreferencesRequest {
   weak_area_enabled?: boolean
   streak_enabled?: boolean
 }
+
+// ---------------------------------------------------------------------
+// mobile-dpe (POST action: 'start' | 'message' | 'end' | 'resume' | 'history')
+//
+// Text-first native port of dpe-chat (web)'s AI DPE oral-exam
+// simulator. start/message/end mirror dpe-chat's own wire shape exactly
+// (same fields, same semantics) -- see portal/supabase/functions/
+// _shared/dpeChatCore.ts for the shared conversation mechanics both
+// platforms drive. resume and history are mobile-only additions (a
+// phone gets backgrounded/killed far more than a browser tab stays
+// open) -- see mobile-dpe/index.ts's own header comment.
+// ---------------------------------------------------------------------
+
+export type DpeSessionStatus = 'in_progress' | 'completed' | 'abandoned'
+export type DpePhase = 'question' | 'followup' | 'debrief'
+
+export interface MobileDpeDebrief {
+  overallReadiness: 'ready' | 'almost' | 'not_yet'
+  summary: string
+  strengths: string[]
+  weaknesses: string[]
+  perDomain: Array<{ domain: string; verdict: 'strong' | 'ok' | 'weak'; note: string }>
+}
+
+export interface MobileDpeStartRequest {
+  action: 'start'
+}
+
+export interface MobileDpeMessageRequest {
+  action: 'message'
+  sessionId: string
+  message: string
+}
+
+export interface MobileDpeEndRequest {
+  action: 'end'
+  sessionId: string
+}
+
+// Identical response shape for start/message/end -- the client's
+// message-handling code is one function regardless of which action
+// produced the turn (mirrors web's own handleTurn()).
+export interface MobileDpeTurnResponse {
+  sessionId: string
+  phase: DpePhase
+  message: string
+  debrief: MobileDpeDebrief | null
+  questionsAsked: number
+  status: DpeSessionStatus
+}
+
+export interface MobileDpeResumeRequest {
+  action: 'resume'
+  sessionId: string
+}
+
+export interface MobileDpeResumeTurn {
+  role: 'dpe' | 'student'
+  message: string
+  at: string
+}
+
+export interface MobileDpeResumeResponse {
+  sessionId: string
+  status: DpeSessionStatus
+  questionsAsked: number
+  debrief: MobileDpeDebrief | null
+  turns: MobileDpeResumeTurn[]
+}
+
+export interface MobileDpeHistoryRequest {
+  action: 'history'
+  limit?: number // 1-50, default 10
+}
+
+export interface MobileDpeSessionSummary {
+  id: string
+  status: DpeSessionStatus
+  questionsAsked: number
+  debrief: MobileDpeDebrief | null
+  startedAt: string
+  endedAt: string | null
+}
+
+export interface MobileDpeHistoryResponse {
+  sessions: MobileDpeSessionSummary[]
+}

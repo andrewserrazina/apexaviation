@@ -6,7 +6,7 @@
 // (Sprint 1A Rev2 section 9, hardened in Rev3 section 3). A failure here
 // becomes the same normalized, user-safe ApiError every other failure
 // mode produces -- the raw payload is only ever dev-logged.
-import type { DrillStatus, EvidenceLevel, MobilePlatform, MobileStudyPackContent, ReadinessEvidenceLevel } from '../../../shared/mobile-dto'
+import type { DpePhase, DpeSessionStatus, DrillStatus, EvidenceLevel, MobilePlatform, MobileStudyPackContent, ReadinessEvidenceLevel } from '../../../shared/mobile-dto'
 import { ApiError, logDevError } from './errors'
 
 const MALFORMED_RESPONSE_MESSAGE = 'Something went wrong loading that. Please try again.'
@@ -15,6 +15,10 @@ const DRILL_STATUSES: readonly DrillStatus[] = ['pending', 'in_progress', 'compl
 const EVIDENCE_LEVELS: readonly EvidenceLevel[] = ['low', 'moderate', 'high']
 const MOBILE_PLATFORMS: readonly MobilePlatform[] = ['ios', 'android']
 const READINESS_EVIDENCE_LEVELS: readonly ReadinessEvidenceLevel[] = ['none', 'limited', 'developing', 'strong']
+const DPE_SESSION_STATUSES: readonly DpeSessionStatus[] = ['in_progress', 'completed', 'abandoned']
+const DPE_PHASES: readonly DpePhase[] = ['question', 'followup', 'debrief']
+const DPE_OVERALL_READINESS = ['ready', 'almost', 'not_yet'] as const
+const DPE_DOMAIN_VERDICTS = ['strong', 'ok', 'weak'] as const
 
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -406,4 +410,94 @@ export function isValidNotificationPreferences(value: unknown): boolean {
     typeof value.weak_area_enabled === 'boolean' &&
     typeof value.streak_enabled === 'boolean'
   )
+}
+
+// Phase 1 (AI DPE mobile): the exact fields DebriefView.tsx and the
+// history list render -- overallReadiness drives a verdict badge,
+// strengths/weaknesses render as two lists, perDomain as a per-ACS-area
+// verdict row. Fails closed on the whole debrief (never a partially
+// rendered assessment) rather than rendering an incomplete verdict.
+export function isValidDpeDebrief(value: unknown): boolean {
+  if (!isPlainObject(value)) return false
+  return (
+    (DPE_OVERALL_READINESS as readonly string[]).includes(value.overallReadiness as string) &&
+    typeof value.summary === 'string' &&
+    isStringArray(value.strengths) &&
+    isStringArray(value.weaknesses) &&
+    Array.isArray(value.perDomain) &&
+    value.perDomain.every(
+      (d) =>
+        isPlainObject(d) &&
+        typeof d.domain === 'string' &&
+        (DPE_DOMAIN_VERDICTS as readonly string[]).includes(d.verdict as string) &&
+        typeof d.note === 'string'
+    )
+  )
+}
+
+function isValidDpeDebriefOrNull(value: unknown): boolean {
+  return value === null || isValidDpeDebrief(value)
+}
+
+export function isDpeSessionStatus(value: unknown): value is DpeSessionStatus {
+  return typeof value === 'string' && (DPE_SESSION_STATUSES as readonly string[]).includes(value)
+}
+
+export function isDpePhase(value: unknown): value is DpePhase {
+  return typeof value === 'string' && (DPE_PHASES as readonly string[]).includes(value)
+}
+
+// The response shape for start/message/end -- one screen (the chat
+// controller) renders all three identically, so one validator covers
+// all three call sites.
+export function isValidDpeTurnResponse(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    isNonEmptyString(value.sessionId) &&
+    isDpePhase(value.phase) &&
+    typeof value.message === 'string' &&
+    isValidDpeDebriefOrNull(value.debrief) &&
+    typeof value.questionsAsked === 'number' &&
+    Number.isFinite(value.questionsAsked) &&
+    isDpeSessionStatus(value.status)
+  )
+}
+
+// mobile-dpe's `resume` action -- reconstructs the chat screen after an
+// app restart. Each turn must have a role/message/timestamp the chat
+// bubble list can render directly; a malformed turn anywhere in the
+// array fails the whole resume closed (never a chat with silent gaps).
+export function isValidDpeResumeResponse(value: unknown): boolean {
+  if (!isPlainObject(value)) return false
+  return (
+    isNonEmptyString(value.sessionId) &&
+    isDpeSessionStatus(value.status) &&
+    typeof value.questionsAsked === 'number' &&
+    Number.isFinite(value.questionsAsked) &&
+    isValidDpeDebriefOrNull(value.debrief) &&
+    Array.isArray(value.turns) &&
+    value.turns.every(
+      (t) => isPlainObject(t) && (t.role === 'dpe' || t.role === 'student') && typeof t.message === 'string' && typeof t.at === 'string'
+    )
+  )
+}
+
+// mobile-dpe's `history` action -- the session list + trend summary the
+// Oral hub renders. debrief is nullable (an abandoned/in-progress
+// session has none yet).
+export function isValidDpeSessionSummary(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    isNonEmptyString(value.id) &&
+    isDpeSessionStatus(value.status) &&
+    typeof value.questionsAsked === 'number' &&
+    Number.isFinite(value.questionsAsked) &&
+    isValidDpeDebriefOrNull(value.debrief) &&
+    isNonEmptyString(value.startedAt) &&
+    isNullableString(value.endedAt)
+  )
+}
+
+export function isValidDpeHistoryResponse(value: unknown): boolean {
+  return isPlainObject(value) && Array.isArray(value.sessions) && value.sessions.every(isValidDpeSessionSummary)
 }
