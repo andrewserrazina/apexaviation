@@ -19,6 +19,7 @@ import { fetchLibraryCatalog, fetchLibraryContent } from '../lib/api/library'
 import { registerPushToken, revokePushToken, listPushTokens, getNotificationPreferences, updateNotificationPreferences } from '../lib/api/pushToken'
 import { startDpeSession, sendDpeMessage, endDpeSession, resumeDpeSession, fetchDpeHistory } from '../lib/api/dpe'
 import { fetchReviewQueue, revealReviewItem, submitReviewOutcome } from '../lib/api/reviewQueue'
+import { fetchGroundSchoolCatalog, fetchGroundSchoolContent } from '../lib/api/groundSchool'
 
 async function captureError(promise: Promise<unknown>): Promise<ApiError> {
   try {
@@ -1131,6 +1132,111 @@ describe('mobile-review-queue reveal/outcome malformed response (Phase 2)', () =
   it('rejects an outcome response with a non-boolean was_replay', async () => {
     ok({ review_item_id: 'item-1', outcome: 'reinforced', next_review_at: '2026-01-02T00:00:00Z', was_replay: 'false' })
     const err = await captureError(submitReviewOutcome('item-1', 'reinforced', 'key-1'))
+    expect(err.kind).toBe('server')
+  })
+})
+
+describe('mobile-ground-school catalog malformed response (Phase 3)', () => {
+  it('accepts a well-formed catalog response', async () => {
+    ok({ modules: [{ module_id: 'PPL-M01', has_authored_content: true, unlocked: true }] })
+    const result = await fetchGroundSchoolCatalog()
+    expect(result.modules).toHaveLength(1)
+  })
+
+  it('rejects a response where modules is not an array', async () => {
+    ok({ modules: null })
+    const err = await captureError(fetchGroundSchoolCatalog())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a module summary missing required fields', async () => {
+    ok({ modules: [{ module_id: 'PPL-M01', has_authored_content: true }] })
+    const err = await captureError(fetchGroundSchoolCatalog())
+    expect(err.kind).toBe('server')
+  })
+})
+
+describe('mobile-ground-school content malformed response (Phase 3)', () => {
+  function contentFixture(overrides: Record<string, unknown> = {}) {
+    return {
+      modulePurpose: 'Orient the student to the certification path.',
+      objectives: [{ id: 'obj-1', label: 'Describe eligibility.' }],
+      guidedNotes: [{ id: 'gn-1', section: 'Eligibility', prompt: 'What are the requirements?' }],
+      keyConcepts: [{ id: 'acs', term: 'ACS', definition: 'Airman Certification Standards.' }],
+      scenario: { narrative: 'A career-changer...', prompts: [{ id: 'sp-1', prompt: "What's happening?" }] },
+      checkrideCorner: [{ id: 'cc-1', question: 'What are the requirements?' }],
+      apexChallenge: { instructions: 'Write a plan.', fields: [{ id: 'target-date', type: 'date', label: 'Target Date' }] },
+      reflectionQuestions: [{ id: 'reflect-1', prompt: 'What is your biggest obstacle?' }],
+      knowledgeCheckQuestions: [{ id: 'kcq-1', prompt: 'Name the requirements.' }],
+      ...overrides,
+    }
+  }
+
+  function quizFixture(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'PPL-M01-Q01',
+      question_type: 'multiple_choice',
+      prompt: 'Which stroke follows compression?',
+      choices: [{ key: 'A', label: 'Intake' }],
+      correct_choice: 'A',
+      model_answer: 'Intake follows compression.',
+      ...overrides,
+    }
+  }
+
+  it('accepts a well-formed content response with every section present', async () => {
+    ok({ content: contentFixture(), quiz: [quizFixture()], content_version: '2026-01-01T00:00:00Z' })
+    const result = await fetchGroundSchoolContent('PPL-M01')
+    expect(result.content?.objectives).toHaveLength(1)
+    expect(result.quiz).toHaveLength(1)
+  })
+
+  it('accepts a null content (module not yet authored) with an empty quiz', async () => {
+    ok({ content: null, quiz: [], content_version: null })
+    const result = await fetchGroundSchoolContent('PPL-M05')
+    expect(result.content).toBeNull()
+    expect(result.quiz).toEqual([])
+  })
+
+  it('accepts a content response missing every optional section', async () => {
+    ok({ content: {}, quiz: [], content_version: '2026-01-01T00:00:00Z' })
+    const result = await fetchGroundSchoolContent('PPL-M02')
+    expect(result.content).toEqual({})
+  })
+
+  it('rejects a malformed objectives entry', async () => {
+    ok({ content: contentFixture({ objectives: [{ id: 'obj-1' }] }), quiz: [], content_version: null })
+    const err = await captureError(fetchGroundSchoolContent('PPL-M01'))
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a malformed scenario (prompts not an array)', async () => {
+    ok({ content: contentFixture({ scenario: { narrative: 'x', prompts: 'none' } }), quiz: [], content_version: null })
+    const err = await captureError(fetchGroundSchoolContent('PPL-M01'))
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a malformed apexChallenge field type', async () => {
+    ok({ content: contentFixture({ apexChallenge: { instructions: 'x', fields: [{ id: 'f1', type: 'checkbox', label: 'x' }] } }), quiz: [], content_version: null })
+    const err = await captureError(fetchGroundSchoolContent('PPL-M01'))
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a quiz question with an invalid question_type', async () => {
+    ok({ content: null, quiz: [quizFixture({ question_type: 'essay' })], content_version: null })
+    const err = await captureError(fetchGroundSchoolContent('PPL-M03'))
+    expect(err.kind).toBe('server')
+  })
+
+  it('accepts a short_answer quiz question with null choices/correct_choice', async () => {
+    ok({ content: null, quiz: [quizFixture({ question_type: 'short_answer', choices: null, correct_choice: null })], content_version: null })
+    const result = await fetchGroundSchoolContent('PPL-M02')
+    expect(result.quiz[0].correct_choice).toBeNull()
+  })
+
+  it('rejects a response with a non-string/non-null content_version', async () => {
+    ok({ content: null, quiz: [], content_version: 12345 })
+    const err = await captureError(fetchGroundSchoolContent('PPL-M01'))
     expect(err.kind).toBe('server')
   })
 })

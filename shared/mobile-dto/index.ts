@@ -736,3 +736,150 @@ export interface MobileReviewOutcomeResponse {
   // `processed` gate.
   was_replay: boolean
 }
+
+// ---------------------------------------------------------------------
+// mobile-ground-school (POST action: 'catalog' (default) | 'content')
+// ---------------------------------------------------------------------
+//
+// Phase 3 (Ground School mobile): a thin sibling of
+// get-module-companion-content -- same two-table read, same
+// requireModuleAccess() gate. Module titles/order are NOT sent over the
+// wire (they're static curriculum metadata, hand-ported to mobile's own
+// constants/groundSchool.ts, same as web's client-side GUIDED_NOTES_MODULES) --
+// `catalog` only ever returns the per-module facts a server must be
+// asked for: whether authored content exists yet, and whether this
+// account has it unlocked.
+
+export interface MobileGroundSchoolModuleSummary {
+  module_id: string
+  has_authored_content: boolean
+  unlocked: boolean
+}
+
+export interface MobileGroundSchoolCatalogResponse {
+  modules: MobileGroundSchoolModuleSummary[]
+}
+
+export interface MobileGroundSchoolContentRequest {
+  action: 'content'
+  module_id: string
+}
+
+export interface MobileModuleObjective {
+  id: string
+  label: string
+}
+
+export interface MobileModuleGuidedNote {
+  id: string
+  section: string
+  prompt: string
+}
+
+export interface MobileModuleKeyConcept {
+  id: string
+  term: string
+  definition: string
+}
+
+export interface MobileModuleScenarioPrompt {
+  id: string
+  prompt: string
+}
+
+export interface MobileModuleScenario {
+  narrative: string
+  prompts: MobileModuleScenarioPrompt[]
+}
+
+export interface MobileModuleCheckrideCornerItem {
+  id: string
+  question: string
+}
+
+export interface MobileModuleApexChallengeField {
+  id: string
+  type: 'date' | 'text' | 'textarea'
+  label: string
+}
+
+export interface MobileModuleApexChallenge {
+  instructions: string
+  fields: MobileModuleApexChallengeField[]
+}
+
+export interface MobileModuleReflectionQuestion {
+  id: string
+  prompt: string
+}
+
+export interface MobileModuleKnowledgeCheckQuestion {
+  id: string
+  prompt: string
+}
+
+// Every key optional -- module_companion_content.content is hand-authored
+// per module and no module has every section (e.g. M02 has no
+// checkrideCorner today). The client renders whichever sections are
+// present, in this same fixed order, and fabricates none that are missing.
+export interface MobileModuleCompanionContent {
+  modulePurpose?: string
+  objectives?: MobileModuleObjective[]
+  guidedNotes?: MobileModuleGuidedNote[]
+  keyConcepts?: MobileModuleKeyConcept[]
+  scenario?: MobileModuleScenario
+  checkrideCorner?: MobileModuleCheckrideCornerItem[]
+  apexChallenge?: MobileModuleApexChallenge
+  reflectionQuestions?: MobileModuleReflectionQuestion[]
+  knowledgeCheckQuestions?: MobileModuleKnowledgeCheckQuestion[]
+}
+
+export interface MobileModuleQuizChoice {
+  key: string
+  label: string
+}
+
+export type MobileModuleQuestionType = 'multiple_choice' | 'short_answer' | 'scenario'
+
+export interface MobileModuleQuizQuestion {
+  id: string
+  question_type: MobileModuleQuestionType
+  prompt: string
+  choices: MobileModuleQuizChoice[] | null
+  correct_choice: string | null
+  model_answer: string
+}
+
+// content_version (module_companion_content.updated_at) is Phase 4's
+// offline-freshness key -- a client comparing this against a cached
+// copy's own stored content_version is what decides "redownload" vs.
+// "serve the cache."
+export interface MobileGroundSchoolContentResponse {
+  content: MobileModuleCompanionContent | null
+  quiz: MobileModuleQuizQuestion[]
+  content_version: string | null
+}
+
+// ---------------------------------------------------------------------
+// Direct-write reads (guided_notes / module_quiz_attempts) -- Phase 3's
+// one deliberate exception to the mobile-* Edge Function convention (see
+// lib/api/groundSchoolDirect.ts). These two rows are read back through
+// the same RLS-scoped client that wrote them, never through an Edge
+// Function -- RLS is the real security boundary for both tables.
+// ---------------------------------------------------------------------
+
+export interface MobileGuidedNoteRow {
+  module_id: string
+  section_id: string
+  prompt_id: string
+  response_text: string
+  updated_at: string
+}
+
+export interface MobileModuleQuizAttemptSummary {
+  id: string
+  module_id: string
+  score: number
+  total: number
+  completed_at: string
+}

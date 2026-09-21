@@ -59,6 +59,10 @@ function AppTabs() {
           href: null hidden-tab pattern rather than adding a 6th visible
           tab. */}
       <Tabs.Screen name="review" options={{ href: null }} />
+      {/* Ground School (Phase 3) is reached from the Library tab's own
+          card, not a dedicated bottom tab -- same href: null pattern as
+          review/profile above. */}
+      <Tabs.Screen name="ground-school" options={{ href: null }} />
     </Tabs>
   )
 }

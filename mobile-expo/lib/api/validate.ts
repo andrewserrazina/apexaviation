@@ -547,6 +547,173 @@ export function isValidReviewRevealResponse(value: unknown): boolean {
   )
 }
 
+// Phase 3 (Ground School mobile): the exact fields the catalog and
+// module detail screens render.
+export function isValidGroundSchoolModuleSummary(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    isNonEmptyString(value.module_id) &&
+    typeof value.has_authored_content === 'boolean' &&
+    typeof value.unlocked === 'boolean'
+  )
+}
+
+export function isValidGroundSchoolCatalogResponse(value: unknown): boolean {
+  return isPlainObject(value) && Array.isArray(value.modules) && value.modules.every(isValidGroundSchoolModuleSummary)
+}
+
+function isValidModuleObjective(value: unknown): boolean {
+  return isPlainObject(value) && isNonEmptyString(value.id) && typeof value.label === 'string'
+}
+
+function isValidModuleGuidedNote(value: unknown): boolean {
+  return isPlainObject(value) && isNonEmptyString(value.id) && typeof value.section === 'string' && typeof value.prompt === 'string'
+}
+
+function isValidModuleKeyConcept(value: unknown): boolean {
+  return isPlainObject(value) && isNonEmptyString(value.id) && typeof value.term === 'string' && typeof value.definition === 'string'
+}
+
+function isValidModuleScenarioPrompt(value: unknown): boolean {
+  return isPlainObject(value) && isNonEmptyString(value.id) && typeof value.prompt === 'string'
+}
+
+function isValidModuleScenario(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    typeof value.narrative === 'string' &&
+    Array.isArray(value.prompts) &&
+    value.prompts.every(isValidModuleScenarioPrompt)
+  )
+}
+
+function isValidModuleCheckrideCornerItem(value: unknown): boolean {
+  return isPlainObject(value) && isNonEmptyString(value.id) && typeof value.question === 'string'
+}
+
+const MODULE_APEX_CHALLENGE_FIELD_TYPES = ['date', 'text', 'textarea'] as const
+
+function isValidModuleApexChallengeField(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    isNonEmptyString(value.id) &&
+    (MODULE_APEX_CHALLENGE_FIELD_TYPES as readonly string[]).includes(value.type as string) &&
+    typeof value.label === 'string'
+  )
+}
+
+function isValidModuleApexChallenge(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    typeof value.instructions === 'string' &&
+    Array.isArray(value.fields) &&
+    value.fields.every(isValidModuleApexChallengeField)
+  )
+}
+
+function isValidModuleReflectionQuestion(value: unknown): boolean {
+  return isPlainObject(value) && isNonEmptyString(value.id) && typeof value.prompt === 'string'
+}
+
+function isValidModuleKnowledgeCheckQuestion(value: unknown): boolean {
+  return isPlainObject(value) && isNonEmptyString(value.id) && typeof value.prompt === 'string'
+}
+
+// Every section optional -- see MobileModuleCompanionContent's own
+// comment on why no module has every section populated. Each present
+// section's own array/object is still fully validated so a malformed
+// single entry fails the whole response closed, matching this file's
+// existing "fail the whole payload closed, never a partially-rendered
+// screen" convention.
+export function isValidModuleCompanionContentOrNull(value: unknown): boolean {
+  if (value === null) return true
+  if (!isPlainObject(value)) return false
+  if (value.modulePurpose !== undefined && typeof value.modulePurpose !== 'string') return false
+  if (value.objectives !== undefined && (!Array.isArray(value.objectives) || !value.objectives.every(isValidModuleObjective))) return false
+  if (value.guidedNotes !== undefined && (!Array.isArray(value.guidedNotes) || !value.guidedNotes.every(isValidModuleGuidedNote))) return false
+  if (value.keyConcepts !== undefined && (!Array.isArray(value.keyConcepts) || !value.keyConcepts.every(isValidModuleKeyConcept))) return false
+  if (value.scenario !== undefined && !isValidModuleScenario(value.scenario)) return false
+  if (
+    value.checkrideCorner !== undefined &&
+    (!Array.isArray(value.checkrideCorner) || !value.checkrideCorner.every(isValidModuleCheckrideCornerItem))
+  ) {
+    return false
+  }
+  if (value.apexChallenge !== undefined && !isValidModuleApexChallenge(value.apexChallenge)) return false
+  if (
+    value.reflectionQuestions !== undefined &&
+    (!Array.isArray(value.reflectionQuestions) || !value.reflectionQuestions.every(isValidModuleReflectionQuestion))
+  ) {
+    return false
+  }
+  if (
+    value.knowledgeCheckQuestions !== undefined &&
+    (!Array.isArray(value.knowledgeCheckQuestions) || !value.knowledgeCheckQuestions.every(isValidModuleKnowledgeCheckQuestion))
+  ) {
+    return false
+  }
+  return true
+}
+
+const MODULE_QUESTION_TYPES = ['multiple_choice', 'short_answer', 'scenario'] as const
+
+function isValidModuleQuizChoice(value: unknown): boolean {
+  return isPlainObject(value) && isNonEmptyString(value.key) && typeof value.label === 'string'
+}
+
+export function isValidModuleQuizQuestion(value: unknown): boolean {
+  if (!isPlainObject(value)) return false
+  if (!isNonEmptyString(value.id)) return false
+  if (!(MODULE_QUESTION_TYPES as readonly string[]).includes(value.question_type as string)) return false
+  if (typeof value.prompt !== 'string') return false
+  if (value.choices !== null && (!Array.isArray(value.choices) || !value.choices.every(isValidModuleQuizChoice))) return false
+  if (!isNullableString(value.correct_choice)) return false
+  if (typeof value.model_answer !== 'string') return false
+  return true
+}
+
+export function isValidGroundSchoolContentResponse(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    isValidModuleCompanionContentOrNull(value.content) &&
+    Array.isArray(value.quiz) &&
+    value.quiz.every(isValidModuleQuizQuestion) &&
+    isNullableString(value.content_version)
+  )
+}
+
+// Direct-read guards (guided_notes / module_quiz_attempts) -- see
+// lib/api/groundSchoolDirect.ts's own comment on why these reads bypass
+// the mobile-* Edge Function convention. Still fail-closed the same as
+// every other response this file validates.
+export function isValidGuidedNoteRow(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    isNonEmptyString(value.module_id) &&
+    isNonEmptyString(value.section_id) &&
+    isNonEmptyString(value.prompt_id) &&
+    typeof value.response_text === 'string' &&
+    isNonEmptyString(value.updated_at)
+  )
+}
+
+export function isValidGuidedNoteRows(value: unknown): boolean {
+  return Array.isArray(value) && value.every(isValidGuidedNoteRow)
+}
+
+export function isValidModuleQuizAttemptSummary(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    isNonEmptyString(value.id) &&
+    isNonEmptyString(value.module_id) &&
+    typeof value.score === 'number' &&
+    Number.isFinite(value.score) &&
+    typeof value.total === 'number' &&
+    Number.isFinite(value.total) &&
+    isNonEmptyString(value.completed_at)
+  )
+}
+
 export function isValidReviewOutcomeResponse(value: unknown): boolean {
   return (
     isPlainObject(value) &&

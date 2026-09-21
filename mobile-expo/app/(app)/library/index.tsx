@@ -117,6 +117,16 @@ export default function LibraryTabScreen() {
   return (
     <Screen refreshing={refreshing} onRefresh={refresh}>
       <SectionHeader title="Library" subtitle="Study Packs for focused, self-paced review" />
+
+      {/* Phase 3 (Ground School mobile): entry point card, mirroring
+          Review Queue's own card-on-a-related-tab pattern rather than a
+          dedicated bottom tab (see app/(app)/ground-school/_layout.tsx's
+          comment). */}
+      <Card>
+        <SectionHeader title="Ground School" subtitle="The full 20-module Private Pilot curriculum workbook" />
+        <Button label="Open Ground School" onPress={() => router.push('/(app)/ground-school')} />
+      </Card>
+
       {packs.length === 0 ? (
         <EmptyState title="Nothing here yet" message="Study Packs will appear here as they become available." />
       ) : (
