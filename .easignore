@@ -1,0 +1,65 @@
+# EAS Build archives from the ROOT of this git repository, not from
+# mobile-expo/ -- this is a monorepo (site/, portal/, mobile-expo/, etc
+# all live side by side), and without this file EAS uploads the entire
+# repo on every build (site/ ~24MB, the legacy mobile/ folder ~5MB,
+# portal/ ~3.6MB, dozens of report .md files at the root, ...) even
+# though none of it is needed to build the iOS/Android app. That's why
+# "Compressing project files" was reporting ~65MB instead of the ~20MB
+# mobile-expo/ actually needs.
+#
+# IMPORTANT: creating this file makes EAS ignore every .gitignore in the
+# repo entirely (root's and mobile-expo/'s) -- so their real exclusions
+# (secrets, caches, stale build output) are folded in below rather than
+# just the monorepo-trim exclusions. See root .gitignore and
+# mobile-expo/.gitignore for the source of truth these mirror.
+#
+# mobile-expo/ needs one thing outside itself: shared/mobile-dto/ (the
+# wire-contract types, see mobile-expo/metro.config.js's own comment on
+# why it lives at the repo root) -- shared/ is intentionally NOT ignored
+# here.
+
+# --- Unrelated top-level packages/content (monorepo trim) ---
+/site/
+/portal/
+/mobile/
+/design-system/
+/group/
+/test/
+/.claude/
+/.design-sync/
+/*.md
+/*.sql
+
+# --- mobile-expo/: secrets (mirrors mobile-expo/.gitignore) ---
+mobile-expo/.env
+mobile-expo/.env.local
+mobile-expo/.env.*.local
+mobile-expo/*.jks
+mobile-expo/*.p8
+mobile-expo/*.p12
+mobile-expo/*.key
+mobile-expo/*.mobileprovision
+mobile-expo/*.pem
+
+# --- mobile-expo/: caches/generated/stale build output ---
+mobile-expo/node_modules/
+mobile-expo/.expo/
+mobile-expo/dist/
+mobile-expo/web-build/
+mobile-expo/expo-env.d.ts
+mobile-expo/.kotlin/
+mobile-expo/*.orig.*
+mobile-expo/.metro-health-check*
+mobile-expo/npm-debug.*
+mobile-expo/yarn-debug.*
+mobile-expo/yarn-error.*
+mobile-expo/.DS_Store
+mobile-expo/*.tsbuildinfo
+mobile-expo/ios/
+mobile-expo/android/
+
+# --- root-level secrets/caches (mirrors root .gitignore) ---
+node_modules/
+.env
+.env.local
+.env.*.local
