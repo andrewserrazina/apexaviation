@@ -6,8 +6,22 @@ import { Button } from '../Button'
 import { Card } from '../Card'
 import { SectionHeader } from '../SectionHeader'
 
+interface DownloadStatus {
+  downloadedAt: string | null
+  downloading: boolean
+  error: string | null
+}
+
 interface PackHomeProps {
   content: MobileStudyPackContent
+  // Phase 4 (offline content download): non-null while this screen is
+  // rendering a cached (not freshly fetched) copy -- shown as a plain,
+  // disclosed fact, never hidden. downloadStatus/onDownloadForOffline are
+  // both omitted entirely while offline (there's nothing new to download
+  // until connectivity returns).
+  offlineBanner?: string | null
+  downloadStatus?: DownloadStatus | null
+  onDownloadForOffline?: () => void
   onOpenLessons: () => void
   onOpenScenarios: () => void
   onOpenCheckrideCorner: () => void
@@ -19,10 +33,53 @@ interface PackHomeProps {
 // renderStudyPackHome) -- same five sections, same order, none of them
 // gated on anything client-side (the server already re-checked
 // entitlement to return this content at all).
-export function PackHome({ content, onOpenLessons, onOpenScenarios, onOpenCheckrideCorner, onOpenMasteryCheck, onOpenQuickReference }: PackHomeProps) {
+export function PackHome({
+  content,
+  offlineBanner,
+  downloadStatus,
+  onDownloadForOffline,
+  onOpenLessons,
+  onOpenScenarios,
+  onOpenCheckrideCorner,
+  onOpenMasteryCheck,
+  onOpenQuickReference,
+}: PackHomeProps) {
   return (
     <View style={styles.wrap}>
       <SectionHeader title={content.product.name} />
+
+      {offlineBanner ? (
+        <Card>
+          <AppText variant="caption" color={colors.mutedText}>
+            {offlineBanner}
+          </AppText>
+        </Card>
+      ) : null}
+
+      {downloadStatus ? (
+        <Card>
+          <AppText variant="subtitle" weight="semibold">
+            Offline Access
+          </AppText>
+          <AppText variant="caption" color={colors.mutedText}>
+            {downloadStatus.downloadedAt
+              ? `Downloaded ${new Date(downloadStatus.downloadedAt).toLocaleString()}`
+              : 'Not downloaded for offline use yet.'}
+          </AppText>
+          {downloadStatus.error ? (
+            <AppText variant="caption" color={colors.danger}>
+              {downloadStatus.error}
+            </AppText>
+          ) : null}
+          <Button
+            label={downloadStatus.downloadedAt ? 'Re-download for Offline' : 'Download for Offline'}
+            variant="ghost"
+            onPress={onDownloadForOffline ?? (() => {})}
+            loading={downloadStatus.downloading}
+            disabled={!onDownloadForOffline}
+          />
+        </Card>
+      ) : null}
 
       <Card>
         <AppText variant="subtitle" weight="semibold">

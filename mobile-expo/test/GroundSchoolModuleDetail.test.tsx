@@ -34,6 +34,31 @@ jest.mock('../hooks/useModuleQuiz', () => ({
   useModuleQuiz: (...args: unknown[]) => mockUseModuleQuiz(...args),
 }))
 
+// Phase 4 (offline content download): this screen now also consults
+// connectivity + a local cache alongside the online content fetch.
+// Defaulted to "online, nothing cached" so every pre-existing test above
+// keeps exercising the exact same online-path behavior it always has.
+const mockUseIsOnline = jest.fn()
+jest.mock('../hooks/useIsOnline', () => ({
+  useIsOnline: () => mockUseIsOnline(),
+}))
+
+const mockUseOfflineContentCache = jest.fn()
+jest.mock('../hooks/useOfflineContentCache', () => ({
+  useOfflineContentCache: (...args: unknown[]) => mockUseOfflineContentCache(...args),
+}))
+
+// lib/offlineContent.ts itself pulls in AsyncStorage/expo-file-system --
+// this screen's own gating/rendering is what's under test here, not
+// offline caching mechanics (covered in test/offlineContent.test.ts).
+jest.mock('../lib/offlineContent', () => ({
+  isOfflineContentStale: jest.fn(() => false),
+}))
+
+function offlineCacheFixture(overrides: Record<string, unknown> = {}) {
+  return { cached: null, loaded: true, downloading: false, downloadError: null, download: jest.fn(), clear: jest.fn(), refreshCache: jest.fn(), ...overrides }
+}
+
 // ModuleCompanionContent imports lib/api/groundSchoolDirect.ts directly
 // (Phase 3's deliberate direct-write exception), which otherwise pulls in
 // the real supabase.ts -> largeSecureStore.ts -> AsyncStorage chain, same
@@ -96,6 +121,8 @@ describe('ModuleDetailScreen', () => {
     mockUseGroundSchoolContent.mockReset().mockReturnValue(contentResult())
     mockUseGuidedNotes.mockReset().mockReturnValue(guidedNotesResult())
     mockUseModuleQuiz.mockReset().mockReturnValue(moduleQuizResult())
+    mockUseIsOnline.mockReset().mockReturnValue(true)
+    mockUseOfflineContentCache.mockReset().mockReturnValue(offlineCacheFixture())
   })
 
   it('shows a loading state while the catalog resolves', async () => {

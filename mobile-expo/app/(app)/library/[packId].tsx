@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocalSearchParams } from 'expo-router'
 import { StyleSheet, View } from 'react-native'
 import { Screen } from '../../../components/Screen'
@@ -13,6 +13,10 @@ import { QuickReferenceView } from '../../../components/library/QuickReferenceVi
 import { useBootstrapContext } from '../../../contexts/BootstrapContext'
 import { useLibraryCatalog } from '../../../hooks/useLibraryCatalog'
 import { useLibraryContent } from '../../../hooks/useLibraryContent'
+import { useIsOnline } from '../../../hooks/useIsOnline'
+import { useOfflineContentCache } from '../../../hooks/useOfflineContentCache'
+import { isOfflineContentStale } from '../../../lib/offlineContent'
+import { isValidStudyPackContent } from '../../../lib/api/validate'
 import { colors, spacing } from '../../../constants/theme'
 
 type PackView =
@@ -45,7 +49,31 @@ export default function PackDetailScreen() {
   const pack = catalog.data?.packs.find((p) => p.id === packId) ?? null
   const owned = pack?.owned === true
 
-  const { content, loading: contentLoading, error: contentError, refetch: refetchContent } = useLibraryContent({ packId, enabled: owned })
+  // Phase 4 (offline content download): the network fetch is skipped
+  // entirely while offline (never attempted just to fail) -- the cached
+  // copy, if any, is what renders instead. While online, a version
+  // mismatch between the fresh fetch and the cache silently redownloads
+  // (see the effect below) -- useLibraryContent itself is untouched, this
+  // screen just additionally consults the cache alongside it.
+  const isOnline = useIsOnline()
+  const userId = bootstrap.data?.user.id ?? null
+  const offlineCache = useOfflineContentCache({ userId, contentType: 'library', contentId: packId, isValidPayload: isValidStudyPackContent, enabled: owned })
+
+  const { content: onlineContent, version: onlineVersion, loading: contentLoading, error: contentError, refetch: refetchContent } = useLibraryContent({
+    packId,
+    enabled: owned && isOnline,
+  })
+
+  useEffect(() => {
+    if (!isOnline || !onlineContent || !onlineVersion || !offlineCache.loaded) return
+    if (!offlineCache.cached || isOfflineContentStale(offlineCache.cached.contentVersion, onlineVersion)) {
+      offlineCache.download(onlineVersion, onlineContent)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOnline, onlineContent, onlineVersion, offlineCache.loaded, offlineCache.cached])
+
+  const usingOfflineCopy = !isOnline && !!offlineCache.cached
+  const content = usingOfflineCopy ? offlineCache.cached!.payload : onlineContent
   const [view, setView] = useState<PackView>({ type: 'home' })
 
   function retry() {
@@ -104,10 +132,29 @@ export default function PackDetailScreen() {
     )
   }
 
-  if (contentLoading) {
+  if (contentLoading || (!isOnline && !offlineCache.loaded)) {
     return (
       <Screen scroll={false}>
         <LoadingState label="Loading Study Pack…" />
+      </Screen>
+    )
+  }
+
+  // Offline with nothing downloaded yet -- an honest "not available
+  // offline" state, never a retryable-looking error (there's nothing to
+  // retry until connectivity returns, which re-enables the fetch
+  // automatically via the `enabled: owned && isOnline` gate above).
+  if (!isOnline && !offlineCache.cached) {
+    return (
+      <Screen scroll={false}>
+        <View style={styles.lockedWrap}>
+          <AppText variant="title" heading weight="bold" center>
+            {pack.name}
+          </AppText>
+          <AppText variant="body" color={colors.mutedText} center>
+            You’re offline and haven’t downloaded this Study Pack yet. Connect to the internet to open it.
+          </AppText>
+        </View>
       </Screen>
     )
   }
@@ -117,7 +164,7 @@ export default function PackDetailScreen() {
   // catalog, a revoked entitlement between the two calls, etc.) -- fail
   // closed to a normal retryable error, which also refreshes the catalog
   // itself rather than ever rendering privileged content.
-  if (contentError || !content) {
+  if (!usingOfflineCopy && (contentError || !content)) {
     return (
       <Screen scroll={false}>
         <ErrorState message={contentError?.userMessage ?? 'We couldn’t load this Study Pack.'} onRetry={retry} />
@@ -125,11 +172,20 @@ export default function PackDetailScreen() {
     )
   }
 
+  if (!content) return null
+
   return (
     <Screen>
       {view.type === 'home' ? (
         <PackHome
           content={content}
+          offlineBanner={usingOfflineCopy ? `Offline copy from ${new Date(offlineCache.cached!.downloadedAt).toLocaleString()}` : null}
+          downloadStatus={
+            !usingOfflineCopy && onlineContent && onlineVersion
+              ? { downloadedAt: offlineCache.cached?.downloadedAt ?? null, downloading: offlineCache.downloading, error: offlineCache.downloadError }
+              : null
+          }
+          onDownloadForOffline={onlineContent && onlineVersion ? () => offlineCache.download(onlineVersion, onlineContent) : undefined}
           onOpenLessons={() => setView({ type: 'lessons' })}
           onOpenScenarios={() => setView({ type: 'scenarios' })}
           onOpenCheckrideCorner={() => setView({ type: 'checkride' })}

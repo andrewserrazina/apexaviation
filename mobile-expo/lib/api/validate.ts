@@ -6,7 +6,17 @@
 // (Sprint 1A Rev2 section 9, hardened in Rev3 section 3). A failure here
 // becomes the same normalized, user-safe ApiError every other failure
 // mode produces -- the raw payload is only ever dev-logged.
-import type { DpePhase, DpeSessionStatus, DrillStatus, EvidenceLevel, MobilePlatform, MobileStudyPackContent, ReadinessEvidenceLevel } from '../../../shared/mobile-dto'
+import type {
+  DpePhase,
+  DpeSessionStatus,
+  DrillStatus,
+  EvidenceLevel,
+  MobileModuleCompanionContent,
+  MobileModuleQuizQuestion,
+  MobilePlatform,
+  MobileStudyPackContent,
+  ReadinessEvidenceLevel,
+} from '../../../shared/mobile-dto'
 import { ApiError, logDevError } from './errors'
 
 const MALFORMED_RESPONSE_MESSAGE = 'Something went wrong loading that. Please try again.'
@@ -679,6 +689,24 @@ export function isValidGroundSchoolContentResponse(value: unknown): boolean {
     Array.isArray(value.quiz) &&
     value.quiz.every(isValidModuleQuizQuestion) &&
     isNullableString(value.content_version)
+  )
+}
+
+export interface GroundSchoolOfflinePayload {
+  content: MobileModuleCompanionContent | null
+  quiz: MobileModuleQuizQuestion[]
+}
+
+// Phase 4 (offline content download): the {content, quiz} pair cached
+// for one Ground School module -- content_version is deliberately NOT
+// part of this shape (lib/offlineContent.ts's own manifest tracks that
+// separately from the payload blob).
+export function isValidGroundSchoolOfflinePayload(value: unknown): value is GroundSchoolOfflinePayload {
+  return (
+    isPlainObject(value) &&
+    isValidModuleCompanionContentOrNull(value.content) &&
+    Array.isArray(value.quiz) &&
+    value.quiz.every(isValidModuleQuizQuestion)
   )
 }
 
