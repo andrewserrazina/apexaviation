@@ -52,6 +52,13 @@ function AppTabs() {
         options={{ title: 'Library', tabBarIcon: ({ color, size }) => <Ionicons name="library" color={color} size={size} /> }}
       />
       <Tabs.Screen name="profile" options={{ href: null }} />
+      {/* Review Queue (Phase 2) is reached from the Practice tab's own
+          "Review Queue" card, not a dedicated bottom tab -- Expo Router's
+          Tabs navigator still requires every nested route to be
+          registered here to be reachable, so this mirrors profile's
+          href: null hidden-tab pattern rather than adding a 6th visible
+          tab. */}
+      <Tabs.Screen name="review" options={{ href: null }} />
     </Tabs>
   )
 }

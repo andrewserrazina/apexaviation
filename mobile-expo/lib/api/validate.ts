@@ -501,3 +501,58 @@ export function isValidDpeSessionSummary(value: unknown): boolean {
 export function isValidDpeHistoryResponse(value: unknown): boolean {
   return isPlainObject(value) && Array.isArray(value.sessions) && value.sessions.every(isValidDpeSessionSummary)
 }
+
+// Phase 2 (Review Queue mobile): the exact fields the Review hub/session
+// screens render. `question` is nullable (only populated server-side for
+// source_type === 'dpe_question', see shared/mobile-dto's comment) but
+// must still be null-or-string, never e.g. a number, so a malformed
+// non-dpe_question row can't crash a render the client never intended to
+// attempt in the first place.
+const REVIEW_SOURCE_TYPES = ['dpe_question', 'module_quiz_question', 'checkride_corner', 'scenario'] as const
+
+export function isReviewSourceType(value: unknown): boolean {
+  return typeof value === 'string' && (REVIEW_SOURCE_TYPES as readonly string[]).includes(value)
+}
+
+export function isValidReviewItem(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    isNonEmptyString(value.id) &&
+    isReviewSourceType(value.source_type) &&
+    isNonEmptyString(value.source_id) &&
+    isNullableString(value.module_id) &&
+    isNullableString(value.acs_category) &&
+    typeof value.reason === 'string' &&
+    typeof value.priority === 'number' &&
+    Number.isFinite(value.priority) &&
+    typeof value.review_count === 'number' &&
+    Number.isFinite(value.review_count) &&
+    isNonEmptyString(value.next_review_at) &&
+    isNullableString(value.question)
+  )
+}
+
+export function isValidReviewQueueListResponse(value: unknown): boolean {
+  return isPlainObject(value) && Array.isArray(value.items) && value.items.every(isValidReviewItem)
+}
+
+export function isValidReviewRevealResponse(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    isNonEmptyString(value.review_item_id) &&
+    typeof value.model_answer === 'string' &&
+    isNullableString(value.common_mistakes) &&
+    isNullableString(value.dpe_evaluating) &&
+    isNullableString(value.real_world_application)
+  )
+}
+
+export function isValidReviewOutcomeResponse(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    isNonEmptyString(value.review_item_id) &&
+    (value.outcome === 'reinforced' || value.outcome === 'needs_another_pass') &&
+    isNonEmptyString(value.next_review_at) &&
+    typeof value.was_replay === 'boolean'
+  )
+}

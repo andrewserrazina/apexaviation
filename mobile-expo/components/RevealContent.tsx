@@ -1,17 +1,28 @@
 import { type ReactNode } from 'react'
 import { View, StyleSheet } from 'react-native'
-import type { MobilePracticeRevealResponse } from '../../shared/mobile-dto'
 import { colors, spacing } from '../constants/theme'
 import { AppText } from './AppText'
 import { Card } from './Card'
 
-interface RevealContentProps {
-  content: MobilePracticeRevealResponse
+// Narrower than any one reveal response DTO on purpose -- both
+// mobile-practice's MobilePracticeRevealResponse (session_id/question_id
+// keyed) and mobile-review-queue's MobileReviewRevealResponse
+// (review_item_id keyed) satisfy this structurally, so Phase 2 reuses
+// this component completely unchanged rather than duplicating it.
+export interface RevealableAnswerContent {
+  model_answer: string
+  common_mistakes: string | null
+  dpe_evaluating: string | null
+  real_world_application: string | null
 }
 
-// Renders mobile-practice's reveal payload faithfully -- server content,
-// not rewritten -- in the fixed hierarchy Sprint 1A section 11 specifies:
-// model answer always shown, the other three sections only when non-null.
+interface RevealContentProps {
+  content: RevealableAnswerContent
+}
+
+// Renders a reveal payload faithfully -- server content, not rewritten --
+// in the fixed hierarchy Sprint 1A section 11 specifies: model answer
+// always shown, the other three sections only when non-null.
 export function RevealContent({ content }: RevealContentProps) {
   return (
     <Card style={styles.card}>

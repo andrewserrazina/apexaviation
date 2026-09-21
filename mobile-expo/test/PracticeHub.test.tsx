@@ -35,6 +35,16 @@ jest.mock('../hooks/useDailyDrill', () => ({
   useDailyDrill: (...args: unknown[]) => mockUseDailyDrill(...args),
 }))
 
+// Phase 2 (Review Queue mobile): the hub now also renders a "Review
+// Queue" card via this hook -- mocked the same way useDailyDrill is,
+// since these tests are about ad-hoc practice/Today's Drill, not Review
+// Queue itself (see ReviewQueueHub.test.tsx/ReviewSession.test.tsx for
+// that).
+const mockUseReviewQueue = jest.fn()
+jest.mock('../hooks/useReviewQueue', () => ({
+  useReviewQueue: (...args: unknown[]) => mockUseReviewQueue(...args),
+}))
+
 const mockStartAdHocPractice = jest.fn()
 jest.mock('../lib/api/practice', () => ({
   startAdHocPractice: (...args: unknown[]) => mockStartAdHocPractice(...args),
@@ -79,6 +89,7 @@ function bootstrapContext(overrides: Record<string, unknown> = {}) {
 }
 
 const NO_DRILL = { data: null, loading: false, error: null, refetch: jest.fn() }
+const NO_REVIEW_QUEUE = { data: null, loading: false, refreshing: false, error: null, refresh: jest.fn() }
 
 beforeEach(() => {
   mockFocusCallback = null
@@ -86,6 +97,8 @@ beforeEach(() => {
   mockUseBootstrapContext.mockReset()
   mockUseDailyDrill.mockReset()
   mockUseDailyDrill.mockReturnValue(NO_DRILL)
+  mockUseReviewQueue.mockReset()
+  mockUseReviewQueue.mockReturnValue(NO_REVIEW_QUEUE)
   mockStartAdHocPractice.mockReset()
   mockLoadActivePracticeSession.mockReset()
   mockLoadActivePracticeSession.mockResolvedValue(null)

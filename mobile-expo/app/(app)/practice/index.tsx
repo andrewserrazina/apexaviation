@@ -10,6 +10,7 @@ import { TodaysDrillCard } from '../../../components/TodaysDrillCard'
 import { ErrorState, LoadingState, LockedState } from '../../../components/StateViews'
 import { useBootstrapContext } from '../../../contexts/BootstrapContext'
 import { useDailyDrill } from '../../../hooks/useDailyDrill'
+import { useReviewQueue } from '../../../hooks/useReviewQueue'
 import { startAdHocPractice } from '../../../lib/api/practice'
 import { ApiError, logDevError } from '../../../lib/api/errors'
 import {
@@ -41,6 +42,11 @@ export default function PracticeTabScreen() {
   const { data: drillData, loading: drillLoading, error: drillError, refetch: drillRefetch } = useDailyDrill({
     enabled: bootstrap.ready && bootstrap.entitled,
   })
+  // Phase 2 (Review Queue mobile): entry point card, mirroring web's own
+  // dashboard widget rather than a dedicated bottom tab -- see
+  // app/(app)/review/index.tsx's comment. Only ever fetched once
+  // entitled, same gate as everything else on this hub.
+  const reviewQueue = useReviewQueue({ enabled: bootstrap.ready && bootstrap.entitled })
 
   const [activeSession, setActiveSession] = useState<ActivePracticeSession | null>(null)
   const [activeProgress, setActiveProgress] = useState<{ rated: number; total: number } | null>(null)
@@ -126,10 +132,10 @@ export default function PracticeTabScreen() {
   // matching Home's own Rev2 section 8 pattern exactly. Never starts
   // Daily Drill or any ad-hoc practice automatically.
   const hasFocusedOnce = useRef(false)
-  const refreshRef = useRef({ bootstrap: bootstrap.refresh, drillRefetch, loadActive })
+  const refreshRef = useRef({ bootstrap: bootstrap.refresh, drillRefetch, loadActive, reviewQueueRefresh: reviewQueue.refresh })
   useEffect(() => {
-    refreshRef.current = { bootstrap: bootstrap.refresh, drillRefetch, loadActive }
-  }, [bootstrap.refresh, drillRefetch, loadActive])
+    refreshRef.current = { bootstrap: bootstrap.refresh, drillRefetch, loadActive, reviewQueueRefresh: reviewQueue.refresh }
+  }, [bootstrap.refresh, drillRefetch, loadActive, reviewQueue.refresh])
   useFocusEffect(
     useCallback(() => {
       if (!hasFocusedOnce.current) {
@@ -139,6 +145,7 @@ export default function PracticeTabScreen() {
       refreshRef.current.bootstrap()
       refreshRef.current.drillRefetch()
       refreshRef.current.loadActive()
+      refreshRef.current.reviewQueueRefresh()
     }, [])
   )
 
@@ -286,6 +293,17 @@ export default function PracticeTabScreen() {
           />
         </Card>
       ) : null}
+
+      {(() => {
+        const dueCount = (reviewQueue.data?.items ?? []).filter((it) => it.source_type === 'dpe_question').length
+        if (!dueCount) return null
+        return (
+          <Card>
+            <SectionHeader title="Review Queue" subtitle={`${dueCount} item${dueCount === 1 ? '' : 's'} ready`} />
+            <Button label="Open Review Queue" onPress={() => router.push('/(app)/review')} />
+          </Card>
+        )
+      })()}
 
       <View style={styles.section}>
         <SectionHeader title="On-Demand Practice" />

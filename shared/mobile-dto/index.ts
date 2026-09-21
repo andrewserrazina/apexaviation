@@ -650,3 +650,89 @@ export interface MobileDpeSessionSummary {
 export interface MobileDpeHistoryResponse {
   sessions: MobileDpeSessionSummary[]
 }
+
+// ---------------------------------------------------------------------
+// mobile-review-queue (POST action: 'list' (default) | 'reveal' | 'outcome')
+// ---------------------------------------------------------------------
+//
+// Phase 2 (Review Queue mobile): mirrors sync_review_queue()/
+// record_review_outcome() (Sprint 4/4.1) exactly -- no new backend
+// scheduling logic, just a mobile-facing read/reveal/outcome surface over
+// the same portal_review_items table web already drives. `list` returns
+// EVERY active/due source_type unfiltered (dpe_question,
+// module_quiz_question, checkride_corner, scenario) so a later phase that
+// adds Ground School content rendering needs no v2 of this response --
+// the mobile client itself is the only thing that currently filters down
+// to dpe_question-sourced items (the only type it can resolve display
+// content for today).
+
+export type ReviewSourceType = 'dpe_question' | 'module_quiz_question' | 'checkride_corner' | 'scenario'
+export type ReviewOutcomeValue = 'reinforced' | 'needs_another_pass'
+
+export interface MobileReviewItem {
+  id: string
+  source_type: ReviewSourceType
+  source_id: string
+  module_id: string | null
+  acs_category: string | null
+  reason: string
+  priority: number
+  review_count: number
+  next_review_at: string
+  // Only populated for source_type === 'dpe_question' -- the question
+  // prompt text, resolved server-side from dpe_questions so the client
+  // never needs a second round trip before it can render the card. null
+  // for every other source_type in this phase (the client filters those
+  // out; a future phase can start populating this for them without any
+  // wire-shape change here).
+  question: string | null
+}
+
+export interface MobileReviewQueueListRequest {
+  action?: 'list'
+}
+
+export interface MobileReviewQueueListResponse {
+  items: MobileReviewItem[]
+}
+
+export interface MobileReviewRevealRequest {
+  action: 'reveal'
+  review_item_id: string
+}
+
+// Same content fields as MobilePracticeRevealResponse (RevealContent.tsx
+// renders both through one shared, narrower prop type) -- keyed by
+// review_item_id instead of session_id/question_id since a review item,
+// not a practice session, is the ownership unit here.
+export interface MobileReviewRevealResponse {
+  review_item_id: string
+  model_answer: string
+  common_mistakes: string | null
+  dpe_evaluating: string | null
+  real_world_application: string | null
+}
+
+export interface MobileReviewOutcomeRequest {
+  action: 'outcome'
+  review_item_id: string
+  outcome: ReviewOutcomeValue
+  // Client-generated UUID v4, minted once per logical review attempt and
+  // reused verbatim on any retry -- see reviewIdempotencyKey.ts. Never
+  // regenerated for the same submission; a genuinely new scheduled review
+  // of the same item later gets a fresh review item id from a fresh
+  // `list` call, which naturally gets a fresh key.
+  idempotency_key: string
+}
+
+export interface MobileReviewOutcomeResponse {
+  review_item_id: string
+  outcome: ReviewOutcomeValue
+  next_review_at: string
+  // True when this exact idempotency_key had already been submitted and
+  // the server replayed its stored result rather than applying the
+  // outcome a second time -- mirrors web's res.data.was_replay, an
+  // additional defensive signal alongside the client's own per-item
+  // `processed` gate.
+  was_replay: boolean
+}

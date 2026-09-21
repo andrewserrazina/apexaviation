@@ -18,6 +18,7 @@ import { fetchLatestReadiness } from '../lib/api/readiness'
 import { fetchLibraryCatalog, fetchLibraryContent } from '../lib/api/library'
 import { registerPushToken, revokePushToken, listPushTokens, getNotificationPreferences, updateNotificationPreferences } from '../lib/api/pushToken'
 import { startDpeSession, sendDpeMessage, endDpeSession, resumeDpeSession, fetchDpeHistory } from '../lib/api/dpe'
+import { fetchReviewQueue, revealReviewItem, submitReviewOutcome } from '../lib/api/reviewQueue'
 
 async function captureError(promise: Promise<unknown>): Promise<ApiError> {
   try {
@@ -1050,6 +1051,86 @@ describe('mobile-dpe history malformed response', () => {
     const { questionsAsked: _drop, ...rest } = dpeSessionSummaryFixture()
     ok({ sessions: [rest] })
     const err = await captureError(fetchDpeHistory())
+    expect(err.kind).toBe('server')
+  })
+})
+
+describe('mobile-review-queue list malformed response (Phase 2)', () => {
+  function reviewItemFixture(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'item-1',
+      source_type: 'dpe_question',
+      source_id: 'q1',
+      module_id: null,
+      acs_category: 'airspace',
+      reason: 'incorrect',
+      priority: 3,
+      review_count: 1,
+      next_review_at: '2026-01-01T00:00:00Z',
+      question: 'What class of airspace surrounds a Class B primary airport?',
+      ...overrides,
+    }
+  }
+
+  it('accepts a well-formed list response, including an empty list', async () => {
+    ok({ items: [] })
+    await expect(fetchReviewQueue()).resolves.toEqual({ items: [] })
+  })
+
+  it('accepts a non-dpe_question item with a null question', async () => {
+    ok({ items: [reviewItemFixture({ source_type: 'module_quiz_question', module_id: 'PPL-M01', question: null })] })
+    const result = await fetchReviewQueue()
+    expect(result.items[0].question).toBeNull()
+  })
+
+  it('rejects a response where items is not an array', async () => {
+    ok({ items: null })
+    const err = await captureError(fetchReviewQueue())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects an item with an invalid source_type', async () => {
+    ok({ items: [reviewItemFixture({ source_type: 'flashcard' })] })
+    const err = await captureError(fetchReviewQueue())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects an item missing required fields', async () => {
+    const { next_review_at: _drop, ...rest } = reviewItemFixture()
+    ok({ items: [rest] })
+    const err = await captureError(fetchReviewQueue())
+    expect(err.kind).toBe('server')
+  })
+})
+
+describe('mobile-review-queue reveal/outcome malformed response (Phase 2)', () => {
+  it('accepts a well-formed reveal response', async () => {
+    ok({ review_item_id: 'item-1', model_answer: 'Class B.', common_mistakes: null, dpe_evaluating: null, real_world_application: null })
+    const result = await revealReviewItem('item-1')
+    expect(result.model_answer).toBe('Class B.')
+  })
+
+  it('rejects a reveal response missing model_answer', async () => {
+    ok({ review_item_id: 'item-1', common_mistakes: null, dpe_evaluating: null, real_world_application: null })
+    const err = await captureError(revealReviewItem('item-1'))
+    expect(err.kind).toBe('server')
+  })
+
+  it('accepts a well-formed outcome response', async () => {
+    ok({ review_item_id: 'item-1', outcome: 'reinforced', next_review_at: '2026-01-02T00:00:00Z', was_replay: false })
+    const result = await submitReviewOutcome('item-1', 'reinforced', 'key-1')
+    expect(result.was_replay).toBe(false)
+  })
+
+  it('rejects an outcome response with an invalid outcome value', async () => {
+    ok({ review_item_id: 'item-1', outcome: 'skipped', next_review_at: '2026-01-02T00:00:00Z', was_replay: false })
+    const err = await captureError(submitReviewOutcome('item-1', 'reinforced', 'key-1'))
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects an outcome response with a non-boolean was_replay', async () => {
+    ok({ review_item_id: 'item-1', outcome: 'reinforced', next_review_at: '2026-01-02T00:00:00Z', was_replay: 'false' })
+    const err = await captureError(submitReviewOutcome('item-1', 'reinforced', 'key-1'))
     expect(err.kind).toBe('server')
   })
 })

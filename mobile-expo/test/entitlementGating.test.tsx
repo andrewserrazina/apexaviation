@@ -48,6 +48,17 @@ jest.mock('../lib/drillProgressStorage', () => ({
   clearDrillProgress: jest.fn(),
 }))
 
+// Phase 2 (Review Queue mobile): the Practice tab now also renders a
+// Review Queue card via useReviewQueue -> lib/api/reviewQueue.ts, same
+// AsyncStorage-avoidance reasoning as the mocks above. None of this
+// suite's assertions are about Review Queue, so this is an inert
+// always-empty mock.
+jest.mock('../lib/api/reviewQueue', () => ({
+  fetchReviewQueue: jest.fn().mockResolvedValue({ items: [] }),
+  revealReviewItem: jest.fn(),
+  submitReviewOutcome: jest.fn(),
+}))
+
 // Phase 1 (AI DPE mobile): the Oral tab otherwise pulls in the real
 // supabase.ts -> largeSecureStore.ts -> AsyncStorage chain via
 // lib/api/dpe.ts, same reasoning as the practice/storage mocks above --

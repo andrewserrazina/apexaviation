@@ -17,6 +17,7 @@ type EdgeFunctionName =
   | 'mobile-library'
   | 'mobile-push-token'
   | 'mobile-dpe'
+  | 'mobile-review-queue'
 
 interface InvokeErrorLike {
   message?: string
