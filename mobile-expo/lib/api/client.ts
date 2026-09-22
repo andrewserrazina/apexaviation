@@ -19,6 +19,7 @@ type EdgeFunctionName =
   | 'mobile-dpe'
   | 'mobile-review-queue'
   | 'mobile-ground-school'
+  | 'mobile-training-report'
 
 interface InvokeErrorLike {
   message?: string

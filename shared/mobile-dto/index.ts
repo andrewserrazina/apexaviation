@@ -883,3 +883,52 @@ export interface MobileModuleQuizAttemptSummary {
   total: number
   completed_at: string
 }
+
+// ---------------------------------------------------------------------
+// mobile-training-report (POST, no action -- single aggregate call)
+// ---------------------------------------------------------------------
+//
+// Phase 5 (final phase of the mobile feature-parity roadmap): the report
+// is composed CLIENT-SIDE (see mobile-expo/lib/buildTrainingReportView.ts)
+// from this aggregate plus two calls that already exist for other
+// screens -- fetchLatestReadiness() (category_breakdown, overall_score,
+// evidence_level) and fetchReviewQueue() (the due items themselves, for
+// the "Areas to Address" routing) -- so this DTO only carries the data
+// genuinely not available anywhere else on mobile: the Ground School
+// activity/confidence rollup and the review_outcome_submissions ledger
+// count. ai_dpe_recent_session is included anyway (rather than requiring
+// a fourth parallel fetchDpeHistory() call) since it's a single cheap RPC
+// this function already needs no other work to expose.
+//
+// Deliberately does NOT port computeTrainingPlan() (a separate, nontrivial
+// ranking engine reused elsewhere on web) -- the mobile report's
+// "Recommended Next Training Action" is instead derived purely
+// client-side from the weakest category_breakdown entry already on the
+// wire, a documented simplification versus web's exact report (see
+// buildTrainingReportView.ts's own header comment).
+export interface MobileTrainingReportGroundSchoolModule {
+  module_id: string
+  has_activity: boolean
+  last_activity_at: string | null
+  confidence_counts: { confident: number; needs_review: number; not_yet: number }
+}
+
+export interface MobileTrainingReportAggregates {
+  ground_school: MobileTrainingReportGroundSchoolModule[]
+  // Every currently-due portal_review_items row for this learner,
+  // regardless of source_type (matches mobile-review-queue's own `list`
+  // scope) -- the same count fetchReviewQueue().items.length would give,
+  // exposed here too so a report-only screen needn't also hold a full
+  // review queue fetch just to show one number.
+  review_queue_due_count: number
+  // Distinct acs_category values among due items, but ONLY for
+  // source_type='dpe_question' entries with a non-null acs_category --
+  // mirrors web's own due-by-category logic in
+  // computeTrainingReportAggregates()/renderUnifiedTrainingReport()
+  // exactly (Ground-School-sourced review items don't yet carry a
+  // reliable ACS category mapping on mobile, same scope boundary Phase 2
+  // already drew for its own review session UI).
+  review_queue_due_categories: string[]
+  review_queue_completed_count: number
+  ai_dpe_recent_session: MobileDpeSessionSummary | null
+}

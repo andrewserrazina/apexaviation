@@ -38,6 +38,16 @@ export default function ProfileScreen() {
             </AppText>
           </Card>
 
+          <Card>
+            <AppText variant="subtitle" weight="semibold">
+              Training Report
+            </AppText>
+            <AppText variant="caption" color={colors.mutedText}>
+              A record of your training evidence, ready to share with your instructor.
+            </AppText>
+            <Button label="Open Training Report" onPress={() => router.push('/(app)/training-report')} />
+          </Card>
+
           <NotificationsSection />
 
           <DevNotificationTest />

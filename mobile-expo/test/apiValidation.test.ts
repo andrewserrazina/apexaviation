@@ -20,6 +20,7 @@ import { registerPushToken, revokePushToken, listPushTokens, getNotificationPref
 import { startDpeSession, sendDpeMessage, endDpeSession, resumeDpeSession, fetchDpeHistory } from '../lib/api/dpe'
 import { fetchReviewQueue, revealReviewItem, submitReviewOutcome } from '../lib/api/reviewQueue'
 import { fetchGroundSchoolCatalog, fetchGroundSchoolContent } from '../lib/api/groundSchool'
+import { fetchTrainingReportAggregates } from '../lib/api/trainingReport'
 
 async function captureError(promise: Promise<unknown>): Promise<ApiError> {
   try {
@@ -1237,6 +1238,86 @@ describe('mobile-ground-school content malformed response (Phase 3)', () => {
   it('rejects a response with a non-string/non-null content_version', async () => {
     ok({ content: null, quiz: [], content_version: 12345 })
     const err = await captureError(fetchGroundSchoolContent('PPL-M01'))
+    expect(err.kind).toBe('server')
+  })
+})
+
+describe('mobile-training-report aggregates malformed response (Phase 5)', () => {
+  function groundSchoolModuleFixture(overrides: Record<string, unknown> = {}) {
+    return {
+      module_id: 'PPL-M01',
+      has_activity: true,
+      last_activity_at: '2026-01-01T00:00:00Z',
+      confidence_counts: { confident: 2, needs_review: 1, not_yet: 0 },
+      ...overrides,
+    }
+  }
+
+  function aggregatesFixture(overrides: Record<string, unknown> = {}) {
+    return {
+      ground_school: [groundSchoolModuleFixture()],
+      review_queue_due_count: 3,
+      review_queue_due_categories: ['weather'],
+      review_queue_completed_count: 12,
+      ai_dpe_recent_session: dpeSessionSummaryFixtureForReport(),
+      ...overrides,
+    }
+  }
+
+  function dpeSessionSummaryFixtureForReport(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'session-1',
+      status: 'completed',
+      questionsAsked: 9,
+      debrief: dpeDebriefFixture(),
+      startedAt: '2026-01-01T00:00:00Z',
+      endedAt: '2026-01-01T00:20:00Z',
+      ...overrides,
+    }
+  }
+
+  it('accepts a well-formed aggregates response', async () => {
+    ok(aggregatesFixture())
+    const result = await fetchTrainingReportAggregates()
+    expect(result.ground_school).toHaveLength(1)
+    expect(result.review_queue_due_count).toBe(3)
+  })
+
+  it('accepts a response with a null ai_dpe_recent_session and empty arrays', async () => {
+    ok(aggregatesFixture({ ground_school: [], review_queue_due_categories: [], ai_dpe_recent_session: null }))
+    const result = await fetchTrainingReportAggregates()
+    expect(result.ai_dpe_recent_session).toBeNull()
+    expect(result.ground_school).toEqual([])
+  })
+
+  it('rejects a response where ground_school is not an array', async () => {
+    ok(aggregatesFixture({ ground_school: null }))
+    const err = await captureError(fetchTrainingReportAggregates())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a ground_school entry with malformed confidence_counts', async () => {
+    ok(aggregatesFixture({ ground_school: [groundSchoolModuleFixture({ confidence_counts: { confident: 'two' } })] }))
+    const err = await captureError(fetchTrainingReportAggregates())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a response where review_queue_due_categories contains a non-string', async () => {
+    ok(aggregatesFixture({ review_queue_due_categories: ['weather', 42] }))
+    const err = await captureError(fetchTrainingReportAggregates())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a response with a malformed ai_dpe_recent_session', async () => {
+    ok(aggregatesFixture({ ai_dpe_recent_session: { id: 'session-1' } }))
+    const err = await captureError(fetchTrainingReportAggregates())
+    expect(err.kind).toBe('server')
+  })
+
+  it('rejects a response missing review_queue_completed_count', async () => {
+    const { review_queue_completed_count: _drop, ...rest } = aggregatesFixture()
+    ok(rest)
+    const err = await captureError(fetchTrainingReportAggregates())
     expect(err.kind).toBe('server')
   })
 })

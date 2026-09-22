@@ -63,6 +63,9 @@ function AppTabs() {
           card, not a dedicated bottom tab -- same href: null pattern as
           review/profile above. */}
       <Tabs.Screen name="ground-school" options={{ href: null }} />
+      {/* Training Report (Phase 5) is reached from Profile's own card,
+          not a dedicated bottom tab -- same href: null pattern above. */}
+      <Tabs.Screen name="training-report" options={{ href: null }} />
     </Tabs>
   )
 }

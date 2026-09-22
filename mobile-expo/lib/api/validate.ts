@@ -751,3 +751,48 @@ export function isValidReviewOutcomeResponse(value: unknown): boolean {
     typeof value.was_replay === 'boolean'
   )
 }
+
+// Phase 5 (Training Report mobile): the mobile-training-report
+// aggregate's own fields, plus reuse of isValidDpeSessionSummary for the
+// nullable recent-session field (same shape mobile-dpe's `history` action
+// already validates).
+function isValidTrainingReportConfidenceCounts(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    typeof value.confident === 'number' &&
+    Number.isFinite(value.confident) &&
+    typeof value.needs_review === 'number' &&
+    Number.isFinite(value.needs_review) &&
+    typeof value.not_yet === 'number' &&
+    Number.isFinite(value.not_yet)
+  )
+}
+
+export function isValidTrainingReportGroundSchoolModule(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    isNonEmptyString(value.module_id) &&
+    typeof value.has_activity === 'boolean' &&
+    isNullableString(value.last_activity_at) &&
+    isValidTrainingReportConfidenceCounts(value.confidence_counts)
+  )
+}
+
+function isValidDpeSessionSummaryOrNull(value: unknown): boolean {
+  return value === null || isValidDpeSessionSummary(value)
+}
+
+export function isValidTrainingReportAggregates(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    Array.isArray(value.ground_school) &&
+    value.ground_school.every(isValidTrainingReportGroundSchoolModule) &&
+    typeof value.review_queue_due_count === 'number' &&
+    Number.isFinite(value.review_queue_due_count) &&
+    Array.isArray(value.review_queue_due_categories) &&
+    value.review_queue_due_categories.every((c: unknown) => typeof c === 'string') &&
+    typeof value.review_queue_completed_count === 'number' &&
+    Number.isFinite(value.review_queue_completed_count) &&
+    isValidDpeSessionSummaryOrNull(value.ai_dpe_recent_session)
+  )
+}
