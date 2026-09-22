@@ -21,12 +21,18 @@ type EdgeFunctionName =
   | 'mobile-ground-school'
   | 'mobile-training-report'
 
-interface InvokeErrorLike {
+export interface InvokeErrorLike {
   message?: string
   context?: { status?: number; json?: () => Promise<unknown> }
 }
 
-async function extractErrorBody(error: InvokeErrorLike): Promise<{ message: string; status: number | null; code: string | null }> {
+// Exported for lib/api/account.ts's deleteAccount() -- the one other
+// place in the client that calls a Supabase Edge Function directly
+// (delete-account isn't a mobile-* function and doesn't return the
+// mobile DTO shape, so it can't go through invokeMobileFunction, but its
+// failure modes are identical and deserve the exact same error
+// extraction/normalization).
+export async function extractErrorBody(error: InvokeErrorLike): Promise<{ message: string; status: number | null; code: string | null }> {
   const status = typeof error.context?.status === 'number' ? error.context.status : null
   if (error.context && typeof error.context.json === 'function') {
     try {

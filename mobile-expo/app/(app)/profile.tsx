@@ -1,6 +1,6 @@
 import { Stack, router } from 'expo-router'
 import { useState } from 'react'
-import { View, StyleSheet } from 'react-native'
+import { Linking, View, StyleSheet } from 'react-native'
 import { useAuth } from '../../contexts/AuthContext'
 import { Screen } from '../../components/Screen'
 import { AppText } from '../../components/AppText'
@@ -9,6 +9,8 @@ import { Card } from '../../components/Card'
 import { NotificationsSection } from '../../components/notifications/NotificationsSection'
 import { DevNotificationTest } from '../../components/notifications/DevNotificationTest'
 import { colors, spacing } from '../../constants/theme'
+
+const PRIVACY_POLICY_URL = 'https://apexaviationtx.com/privacy.html'
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth()
@@ -53,6 +55,12 @@ export default function ProfileScreen() {
           <DevNotificationTest />
 
           <Button label="Sign Out" onPress={handleSignOut} loading={signingOut} variant="danger" />
+
+          <Button label="Privacy Policy" onPress={() => Linking.openURL(PRIVACY_POLICY_URL)} variant="ghost" />
+
+          {/* Required for App Store submission (Guideline 5.1.1(v)) --
+              see app/(app)/delete-account/index.tsx's own header comment. */}
+          <Button label="Delete Account" onPress={() => router.push('/(app)/delete-account')} variant="ghost" />
         </View>
       </Screen>
     </>

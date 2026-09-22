@@ -66,6 +66,9 @@ function AppTabs() {
       {/* Training Report (Phase 5) is reached from Profile's own card,
           not a dedicated bottom tab -- same href: null pattern above. */}
       <Tabs.Screen name="training-report" options={{ href: null }} />
+      {/* Delete Account is reached from Profile's own card, not a
+          dedicated bottom tab -- same href: null pattern above. */}
+      <Tabs.Screen name="delete-account" options={{ href: null }} />
     </Tabs>
   )
 }
