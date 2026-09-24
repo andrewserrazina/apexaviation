@@ -32,6 +32,7 @@ const Reports = lazy(() => import('./pages/Reports'))
 const Payroll = lazy(() => import('./pages/Payroll'))
 const MockOralRequests = lazy(() => import('./pages/MockOralRequests'))
 const MockOralDashboard = lazy(() => import('./pages/MockOralDashboard'))
+const MockOralAvailability = lazy(() => import('./pages/MockOralAvailability'))
 const MockOralAssessment = lazy(() => import('./pages/MockOralAssessment'))
 const InstructorHub = lazy(() => import('./pages/InstructorHub'))
 const OperationsDashboard = lazy(() => import('./pages/operations/OperationsDashboard'))
@@ -89,6 +90,7 @@ export default function App() {
               <Route path="/payroll"         element={<ProtectedRoute adminOnly><Payroll /></ProtectedRoute>} />
               <Route path="/mock-oral-requests" element={<ProtectedRoute roles={['admin', 'instructor']}><MockOralRequests /></ProtectedRoute>} />
               <Route path="/mock-orals" element={<ProtectedRoute roles={['admin', 'instructor']}><MockOralDashboard /></ProtectedRoute>} />
+              <Route path="/mock-oral-availability" element={<ProtectedRoute roles={['admin', 'instructor']}><MockOralAvailability /></ProtectedRoute>} />
               <Route path="/mock-orals/:bookingId" element={<ProtectedRoute roles={['admin', 'instructor']}><MockOralAssessment /></ProtectedRoute>} />
               <Route path="/instructor-hub"  element={<ProtectedRoute><InstructorHub /></ProtectedRoute>} />
               <Route path="/xp-ledger"       element={<ProtectedRoute adminOnly><XpLedger /></ProtectedRoute>} />

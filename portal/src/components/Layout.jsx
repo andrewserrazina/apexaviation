@@ -40,6 +40,7 @@ const navGroups = [
       { to: '/reports',  label: 'Reports',  roles: ['admin'] },
       { to: '/payroll',  label: 'Payroll',  roles: ['admin'] },
       { to: '/mock-orals', label: 'Mock Orals', roles: ['admin', 'instructor'] },
+      { to: '/mock-oral-availability', label: 'Mock Oral Availability', roles: ['admin', 'instructor'] },
       { to: '/mock-oral-requests', label: 'Mock Oral Requests (Legacy $99)', roles: ['admin', 'instructor'] },
     ],
   },
