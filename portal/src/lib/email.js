@@ -193,10 +193,10 @@ async function sendPaced(items, fn) {
 }
 
 // Admin-composed ad-hoc email to one or more students (per-student "Email"
-// action on the Students page, or the Broadcast page). Sends via the same
-// send-email function as everything else in this file, then logs the
-// broadcast + its recipients so admins can see who's already been
-// contacted and avoid duplicate outreach.
+// action on the Students page, or the Broadcast page's Simple mode).
+// Sends via the same send-email function as everything else in this
+// file, then logs the broadcast + its recipients so admins can see who's
+// already been contacted and avoid duplicate outreach.
 //
 // isHtml controls how `message` drops into the template: plain-text mode
 // (default) wraps it in a <p style="white-space:pre-wrap"> so literal
@@ -209,7 +209,39 @@ async function sendPaced(items, fn) {
 // mode -- this has always been true of this function (see send-email's
 // own handling), so HTML mode doesn't change the trust boundary, only
 // which wrapper is used.
+//
+// Marketing eligibility (v145 follow-up): this function used to send to
+// exactly the `recipients` array its caller built (Broadcast.jsx's
+// studentQuery() never filtered email_marketing_opt_out at all -- the
+// gap the Audience Builder report flagged). Callers still pass whatever
+// candidate list their own UI filter produced, but this is now only a
+// starting point, not the final send list: this function re-derives the
+// actual send-worthy set by re-querying `profiles` for exactly those ids
+// and applying `email_marketing_opt_out = false` + a real email address
+// as a real database predicate, then sends/records only what that query
+// returns. A caller (or a compromised/stale browser) supplying a
+// fabricated email string for a profile id, or omitting the opt-out
+// filter its own UI happened to skip, cannot change who actually gets
+// emailed -- only which ids are considered at all. This is the one
+// shared choke point every ad-hoc admin send (Students.jsx's one-off
+// "Email" action included, on purpose -- see the report) and Broadcast's
+// Simple mode now both pass through, so it can't drift from the
+// Audience Builder's own server-side eligibility rule again.
 export async function sendAdminEmail({ recipients, subject, message, senderId, isHtml = false }) {
+  const candidateIds = recipients.map(r => r.id).filter(Boolean)
+  const { data: eligible, error: eligibilityError } = await supabase
+    .from('profiles')
+    .select('id, email')
+    .in('id', candidateIds)
+    .eq('email_marketing_opt_out', false)
+    .not('email', 'is', null)
+    .neq('email', '')
+  if (eligibilityError) throw eligibilityError
+  const skippedCount = candidateIds.length - (eligible?.length ?? 0)
+  if (!eligible || eligible.length === 0) {
+    throw new Error('No eligible recipients -- every selected profile has opted out of marketing email or has no email on file.')
+  }
+
   const body = isHtml
     ? message
     : `<p style="font-size:15px;line-height:1.75;margin:0;white-space:pre-wrap;color:#1F2937;">${message}</p>`
@@ -220,13 +252,13 @@ export async function sendAdminEmail({ recipients, subject, message, senderId, i
     </div>
   `)
 
-  const outcomes = await sendPaced(recipients, (r) => invoke({ to: r.email, subject, html }))
+  const outcomes = await sendPaced(eligible, (r) => invoke({ to: r.email, subject, html }))
   const sentCount = outcomes.filter(Boolean).length
   const failedCount = outcomes.length - sentCount
 
   const { data: broadcast, error: broadcastError } = await supabase
     .from('admin_broadcasts')
-    .insert({ sent_by: senderId, subject, body: message, recipient_count: recipients.length })
+    .insert({ sent_by: senderId, subject, body: message, recipient_count: eligible.length })
     .select()
     .single()
   if (broadcastError) throw broadcastError
@@ -236,10 +268,10 @@ export async function sendAdminEmail({ recipients, subject, message, senderId, i
   // instead of exporting Resend's own send log and diffing it by hand.
   const { error: recipientsError } = await supabase
     .from('admin_broadcast_recipients')
-    .insert(recipients.map((r, i) => ({ broadcast_id: broadcast.id, profile_id: r.id, email: r.email, delivered: outcomes[i] })))
+    .insert(eligible.map((r, i) => ({ broadcast_id: broadcast.id, profile_id: r.id, email: r.email, delivered: outcomes[i] })))
   if (recipientsError) throw recipientsError
 
-  return { sent: sentCount, failed: failedCount, broadcastId: broadcast.id }
+  return { sent: sentCount, failed: failedCount, skipped: skippedCount, broadcastId: broadcast.id }
 }
 
 // Audience Builder send path (supabase-portal-schema-v145). Unlike

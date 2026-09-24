@@ -16,8 +16,15 @@ const FILTER_OPTIONS = [
   { value: 'apex_advantage', label: 'Apex Advantage Students' },
 ]
 
+// Both query builders below filter to marketing-eligible profiles
+// (not opted out, has a usable email) so the count/candidate list shown
+// here matches what actually gets sent. This is a preview convenience
+// only, not the real enforcement boundary -- sendAdminEmail() (lib/
+// email.js) independently re-derives and re-filters the send list
+// server-side from the ids it's given, so a stale or tampered client
+// can't widen who actually receives the email by skipping these filters.
 function studentQuery(filter) {
-  let query = supabase.from('profiles').select('id, email').eq('role', 'student')
+  let query = supabase.from('profiles').select('id, email').eq('role', 'student').eq('email_marketing_opt_out', false).not('email', 'is', null).neq('email', '')
   if (filter !== 'all') query = query.eq('student_type', filter)
   return query
 }
@@ -30,7 +37,7 @@ function studentQuery(filter) {
 // always came back undefined (read as 0) regardless of how many students
 // actually matched.
 function studentCountQuery(filter) {
-  let query = supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'student')
+  let query = supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'student').eq('email_marketing_opt_out', false).not('email', 'is', null).neq('email', '')
   if (filter !== 'all') query = query.eq('student_type', filter)
   return query
 }
@@ -299,11 +306,14 @@ export default function Broadcast() {
       if (fetchError) throw fetchError
       if (!recipients || recipients.length === 0) throw new Error('No matching students to email.')
 
-      const { sent, failed } = await sendAdminEmail({ recipients, subject, message, senderId: profile.id, isHtml })
+      const { sent, failed, skipped } = await sendAdminEmail({ recipients, subject, message, senderId: profile.id, isHtml })
       if (sent === 0 && failed > 0) {
         setError(`All ${failed} send(s) failed. Nothing was delivered.`)
       } else {
-        setResult(failed > 0 ? `Sent to ${sent} student(s) — ${failed} failed to send.` : `Sent to ${sent} student(s).`)
+        const parts = [`Sent to ${sent} student(s)`]
+        if (failed > 0) parts.push(`${failed} failed to send`)
+        if (skipped > 0) parts.push(`${skipped} skipped (opted out or no email)`)
+        setResult(parts.join(' — ') + '.')
       }
       setSubject('')
       setMessage('')
