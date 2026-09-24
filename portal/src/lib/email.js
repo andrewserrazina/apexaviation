@@ -241,3 +241,69 @@ export async function sendAdminEmail({ recipients, subject, message, senderId, i
 
   return { sent: sentCount, failed: failedCount, broadcastId: broadcast.id }
 }
+
+// Audience Builder send path (supabase-portal-schema-v145). Unlike
+// sendAdminEmail() above, this never fetches recipients itself --
+// admin_create_broadcast_snapshot() re-evaluates segmentDefinition
+// server-side (opt-out/missing-email always enforced, no way to bypass
+// from here) and returns the exact, already-persisted
+// admin_broadcast_recipients rows to send to. This function only sends
+// to what that RPC handed back and then records each row's real
+// outcome -- it has no path to add, remove, or substitute a recipient.
+//
+// Reuses the same template()/sendPaced()/invoke() as sendAdminEmail()
+// on purpose, so both paths share one Resend-calling, rate-limiting,
+// and retry implementation -- the only thing that differs between them
+// is how the recipient list and admin_broadcasts row were created.
+export async function sendSegmentedBroadcast({ segmentDefinition, subject, message, isHtml = false, audienceLabel }) {
+  const { data: rows, error: snapshotError } = await supabase.rpc('admin_create_broadcast_snapshot', {
+    p_segment: segmentDefinition,
+    p_subject: subject,
+    p_body: message,
+    p_audience_label: audienceLabel ?? null,
+  })
+  if (snapshotError) throw snapshotError
+  if (!rows || rows.length === 0) throw new Error('No eligible recipients matched this audience.')
+
+  const broadcastId = rows[0].broadcast_id
+  const body = isHtml
+    ? message
+    : `<p style="font-size:15px;line-height:1.75;margin:0;white-space:pre-wrap;color:#1F2937;">${message}</p>`
+  const html = template(`
+    <h2 style="color:#0B1F3A;margin:0 0 4px;font-size:22px;line-height:1.3;">${subject}</h2>
+    <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:0;padding:20px;margin:20px 0;">
+      ${body}
+    </div>
+  `)
+
+  const outcomes = await sendPaced(rows, (r) => invoke({ to: r.email, subject, html }))
+  const sentIds = rows.filter((_, i) => outcomes[i]).map(r => r.recipient_id)
+  const failedIds = rows.filter((_, i) => !outcomes[i]).map(r => r.recipient_id)
+
+  if (sentIds.length) await supabase.from('admin_broadcast_recipients').update({ delivered: true }).in('id', sentIds)
+  if (failedIds.length) await supabase.from('admin_broadcast_recipients').update({ delivered: false }).in('id', failedIds)
+
+  const sentCount = outcomes.filter(Boolean).length
+  return { sent: sentCount, failed: outcomes.length - sentCount, broadcastId, eligibleCount: rows.length }
+}
+
+// Test-send path: composes the exact same template as a real broadcast
+// but sends to one address only and never touches admin_broadcasts /
+// admin_broadcast_recipients -- a test send is not a campaign and
+// should not appear in broadcast history or count against any
+// recipient's suppression/recent-email state.
+export async function sendTestEmail({ toEmail, subject, message, isHtml = false }) {
+  const body = isHtml
+    ? message
+    : `<p style="font-size:15px;line-height:1.75;margin:0;white-space:pre-wrap;color:#1F2937;">${message}</p>`
+  const html = template(`
+    <div style="background:#FEF3C7;border:1px solid #FDE68A;padding:10px 16px;margin-bottom:16px;font-size:12px;font-weight:700;color:#8A6B0E;">TEST EMAIL -- not sent to any real audience</div>
+    <h2 style="color:#0B1F3A;margin:0 0 4px;font-size:22px;line-height:1.3;">${subject}</h2>
+    <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:0;padding:20px;margin:20px 0;">
+      ${body}
+    </div>
+  `)
+  const ok = await invoke({ to: toEmail, subject: `[TEST] ${subject}`, html })
+  if (!ok) throw new Error('Test email failed to send.')
+  return { sent: true }
+}
