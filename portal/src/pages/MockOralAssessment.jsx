@@ -212,7 +212,7 @@ export default function MockOralAssessment() {
       var suggestRecheck = booking.product?.includes_recheck && ['needs_targeted_review', 'not_yet_ready'].includes(assessment.overall_readiness)
       var recheckBlock = suggestRecheck
         ? `<p style="margin-top:16px;color:#1F2937;font-size:15px;line-height:1.7;">Your assessment identified a few areas worth rechecking before checkride day.</p>
-           <a href="https://advantage.apexaviationtx.com/portal.html?utm_source=email&utm_medium=email&utm_campaign=mock_oral_results&utm_content=recheck_recommendation#mock-oral" style="display:inline-block;margin-top:4px;background:transparent;border:1.5px solid #0B1F3A;color:#0B1F3A;border-radius:0;padding:10px 20px;text-decoration:none;font-weight:700">Book My Recheck →</a>`
+           <a href="https://apexaviationtx.com/portal.html?utm_source=email&utm_medium=email&utm_campaign=mock_oral_results&utm_content=recheck_recommendation#mock-oral" style="display:inline-block;margin-top:4px;background:transparent;border:1.5px solid #0B1F3A;color:#0B1F3A;border-radius:0;padding:10px 20px;text-decoration:none;font-weight:700">Book My Recheck →</a>`
         : ''
       // Same navy-header/white-body shell as every other Apex Advantage
       // email (see _shared/emailTemplate.ts) -- this call site can't
@@ -231,7 +231,7 @@ export default function MockOralAssessment() {
             <div style="padding:24px;">
               <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Your results are ready, ${(booking.full_name || '').split(' ')[0]}!</h2>
               <p style="color:#1F2937;font-size:15px;line-height:1.7;margin:0 0 16px;">Your Apex Advantage Mock Oral Performance Report is ready to view in your portal.</p>
-              <a href="https://advantage.apexaviationtx.com/portal.html?utm_source=email&utm_medium=email&utm_campaign=mock_oral_results&utm_content=results_ready#mock-oral" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700">View My Readiness Report →</a>
+              <a href="https://apexaviationtx.com/portal.html?utm_source=email&utm_medium=email&utm_campaign=mock_oral_results&utm_content=results_ready#mock-oral" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700">View My Readiness Report →</a>
               ${recheckBlock}
             </div>
             <div style="padding:16px 24px;border-top:1px solid #E5E7EB;">

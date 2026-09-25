@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase'
 // Same fixed destination PortalSelector.jsx uses for Apex Advantage --
 // a separate app entirely (vanilla-JS site/portal.html), not part of
 // this CRM.
-const APEX_ADVANTAGE_URL = 'https://advantage.apexaviationtx.com'
+const APEX_ADVANTAGE_URL = 'https://apexaviationtx.com'
 
 function formatLessonTime(iso) {
   return new Date(iso).toLocaleString([], {

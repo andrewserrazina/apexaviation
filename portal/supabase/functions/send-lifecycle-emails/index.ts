@@ -229,7 +229,7 @@ function activationCtaUrl(hash: string, emailNumber: number): string {
 // member still lands on the right section (email-system audit, item
 // "audit every link/CTA/UTM").
 function lifecycleCtaUrl(campaign: string, content: string, hash: string = ''): string {
-  return `https://advantage.apexaviationtx.com/portal.html?utm_source=email&utm_medium=email&utm_campaign=${campaign}&utm_content=${content}${hash}`
+  return `https://apexaviationtx.com/portal.html?utm_source=email&utm_medium=email&utm_campaign=${campaign}&utm_content=${content}${hash}`
 }
 
 // Shared cutover check -- was duplicated inline in processNewMemberActivation
@@ -994,7 +994,7 @@ async function processGroundSchoolFollowUps(supabase: any, results: any) {
   }
 }
 
-const PORTAL_LOGIN_URL = 'https://advantage.apexaviationtx.com/portal-login.html'
+const PORTAL_LOGIN_URL = 'https://apexaviationtx.com/portal-login.html'
 
 function emailTemplateAbandonedCheckridePrep(firstName: string) {
   return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Still want in, ${firstName}?</h2>` +

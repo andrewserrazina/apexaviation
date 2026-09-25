@@ -466,7 +466,7 @@ serve(async (req) => {
               <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Welcome to Apex Advantage, ${name.split(' ')[0]}!</h2>
               <p style="color:#1F2937;font-size:15px;line-height:1.7;">Your account is ready and your Checkride Prep purchase is being processed. Set your password to get in:</p>
               <a href="${actionLink}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Set Your Password →</a>
-              <p style="color:#4B5563;font-size:13px;line-height:1.6;">Once that's done, sign in any time at advantage.apexaviationtx.com/portal-login.html — the full Checkride Prep System (DPE question bank, scenario training, progress tracking) will already be unlocked.</p>
+              <p style="color:#4B5563;font-size:13px;line-height:1.6;">Once that's done, sign in any time at apexaviationtx.com/portal-login.html — the full Checkride Prep System (DPE question bank, scenario training, progress tracking) will already be unlocked.</p>
             `),
           },
         })
@@ -667,7 +667,7 @@ serve(async (req) => {
               <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Welcome to Apex Advantage, ${name.split(' ')[0]}!</h2>
               <p style="color:#1F2937;font-size:15px;line-height:1.7;">Your account is ready and your Private Pilot Ground School purchase is being processed. Set your password to get in:</p>
               <a href="${actionLink}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Set Your Password →</a>
-              <p style="color:#4B5563;font-size:13px;line-height:1.6;">Once that's done, sign in any time at advantage.apexaviationtx.com/portal-login.html — every Private Pilot ground school class will already be unlocked, no per-session charge.</p>
+              <p style="color:#4B5563;font-size:13px;line-height:1.6;">Once that's done, sign in any time at apexaviationtx.com/portal-login.html — every Private Pilot ground school class will already be unlocked, no per-session charge.</p>
             `),
           },
         })

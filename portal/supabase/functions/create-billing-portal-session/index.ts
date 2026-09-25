@@ -41,7 +41,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json()
-    const returnUrl = body.returnUrl || 'https://advantage.apexaviationtx.com/portal.html#account'
+    const returnUrl = body.returnUrl || 'https://apexaviationtx.com/portal.html#account'
 
     const authHeader = req.headers.get('Authorization') || ''
     const token = authHeader.replace('Bearer ', '').trim()

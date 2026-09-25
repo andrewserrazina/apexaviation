@@ -6414,7 +6414,7 @@
   // cron. Query string before the hash so the member still lands on the
   // right section (email-system audit, "audit every link/CTA/UTM").
   function lifecycleCtaUrl(campaign, content, hash) {
-    return 'https://advantage.apexaviationtx.com/portal.html?utm_source=email&utm_medium=email&utm_campaign=' + campaign + '&utm_content=' + content + (hash || '');
+    return 'https://apexaviationtx.com/portal.html?utm_source=email&utm_medium=email&utm_campaign=' + campaign + '&utm_content=' + content + (hash || '');
   }
 
   function logEventOnce(type, metadata) {

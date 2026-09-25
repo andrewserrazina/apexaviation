@@ -113,7 +113,7 @@ function template(content: string): string {
 // "audit every link/CTA/UTM"). Query string before the hash so the
 // member still lands on the right section.
 function purchaseCtaUrl(content: string, hash: string): string {
-  return `https://advantage.apexaviationtx.com/portal.html?utm_source=email&utm_medium=email&utm_campaign=purchase&utm_content=${content}${hash}`
+  return `https://apexaviationtx.com/portal.html?utm_source=email&utm_medium=email&utm_campaign=purchase&utm_content=${content}${hash}`
 }
 
 const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY')!
@@ -638,8 +638,8 @@ async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Che
     // attribution source for that signup, distinct from whatever ad
     // originally brought them to the landing page.
     const activationUrl = matchingProfile
-      ? 'https://advantage.apexaviationtx.com/portal.html?utm_source=email&utm_medium=confirmation&utm_campaign=ground_school_registration&utm_content=existing_member#ground-school'
-      : 'https://advantage.apexaviationtx.com/portal-login.html?view=signup&dest=ground-school&registered=1' +
+      ? 'https://apexaviationtx.com/portal.html?utm_source=email&utm_medium=confirmation&utm_campaign=ground_school_registration&utm_content=existing_member#ground-school'
+      : 'https://apexaviationtx.com/portal-login.html?view=signup&dest=ground-school&registered=1' +
         `&class_title=${encodeURIComponent(title)}&class_when=${encodeURIComponent(when)}` +
         `&email=${encodeURIComponent(email)}&name=${encodeURIComponent(fullName)}` +
         '&utm_source=email&utm_medium=confirmation&utm_campaign=ground_school_registration'

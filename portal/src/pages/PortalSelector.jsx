@@ -8,7 +8,7 @@ import ApexLogo from '../components/ApexLogo'
 // site/portal.html, not anything inside this CRM. Hardcoded here rather
 // than an env var since this is a fixed, known destination, same as the
 // hardcoded apexaviationtx.com links already in emailTemplate.ts.
-const APEX_ADVANTAGE_URL = 'https://advantage.apexaviationtx.com'
+const APEX_ADVANTAGE_URL = 'https://apexaviationtx.com'
 
 export default function PortalSelector() {
   const { profile } = useAuth()
