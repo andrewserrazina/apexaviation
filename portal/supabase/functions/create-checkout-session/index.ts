@@ -331,7 +331,15 @@ serve(async (req) => {
         }],
         metadata: { purpose: 'unlock-checkride-prep', profile_id: profileId, tier: pricing.tier },
         success_url: `${siteOrigin}/portal.html?unlocked=1&amount_cents=${pricing.amount_cents}&session_id={CHECKOUT_SESSION_ID}#checkride-prep`,
-        cancel_url: `${siteOrigin}/portal.html#dashboard`,
+        // checkout_cancelled=1&product=checkride_prep (Revenue Funnel +
+        // Attribution Integrity sprint, Section 4/7) -- previously this
+        // was the one bounce in the whole Checkride Prep flow with zero
+        // analytics signal: "started checkout" (checkout_started, wired
+        // up in site/portal-stable.js's unlockModalCta handler) and
+        // "completed" (?unlocked=1) both fire something; backing out of
+        // Stripe's hosted page fired nothing at all. Read by the IIFE
+        // near the top of site/portal-stable.js.
+        cancel_url: `${siteOrigin}/portal.html?checkout_cancelled=1&product=checkride_prep#dashboard`,
       })
       await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'unlock-checkride-prep', email, profileId, amountCents: pricing.amount_cents, utm: body.utm })
 
@@ -492,7 +500,12 @@ serve(async (req) => {
         }],
         metadata: { purpose: 'unlock-checkride-prep', profile_id: newProfileId, tier: pricing.tier },
         success_url: `${siteOrigin}/portal-login.html?view=signup-success&paid=1&amount_cents=${pricing.amount_cents}&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${siteOrigin}/portal-login.html?view=signup-success`,
+        // Same checkout_cancelled=1&product=checkride_prep marker as the
+        // unlock-checkride-prep branch above -- read by the matching IIFE
+        // in site/portal-login.html (this purpose's account already
+        // exists but the member never signed in client-side, so this
+        // lands here rather than portal.html).
+        cancel_url: `${siteOrigin}/portal-login.html?view=signup-success&checkout_cancelled=1&product=checkride_prep`,
       })
       await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'signup-and-unlock-checkride-prep', email, profileId: newProfileId, amountCents: pricing.amount_cents, utm: body.utm })
 

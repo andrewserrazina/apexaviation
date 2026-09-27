@@ -128,6 +128,18 @@ const stripe = new Stripe(STRIPE_SECRET_KEY, {
 })
 const cryptoProvider = Stripe.createSubtleCryptoProvider()
 
+// Revenue Funnel + Attribution Integrity sprint (Section 5) -- thrown
+// instead of a plain Error for a condition that will NEVER succeed on
+// retry (e.g. an unrecognized checkout `purpose`). The outer serve()
+// handler uses this to decide the HTTP status it hands back to Stripe:
+// a permanent error still gets recorded as status='failed' (visible for
+// admin review, exactly like every other fulfillment failure) but
+// returns 200 so Stripe stops retrying a request that cannot self-heal --
+// versus a genuinely transient failure (network blip, momentary DB
+// unavailability), which returns a real non-2xx so Stripe's own retry
+// schedule gets a real chance to succeed.
+class PermanentWebhookError extends Error {}
+
 async function sendEmail(supabase: any, to: string, subject: string, html: string) {
   await supabase.functions.invoke('send-email', { body: { to, subject, html } })
 }
@@ -185,11 +197,26 @@ async function handleUnlockCheckridePrep(supabase: any, session: Stripe.Checkout
     tier,
   })
   if (purchaseError) {
-    // Don't throw here -- the member is already unlocked and the
-    // confirmation email below still needs to send. But a failed insert
-    // (e.g. an unrecognized tier value hitting the tier CHECK constraint)
-    // must be loud, not silent, since this table is the source of truth
-    // for revenue and for the founding-seat counter.
+    // Revenue Funnel + Attribution Integrity sprint (Section 5) --
+    // stripe_session_id collision means this exact session was already
+    // fully fulfilled by a prior run of this handler (the outer webhook
+    // envelope now genuinely retries on a transient failure instead of
+    // silently marking every event "processed" regardless of outcome --
+    // see index.ts's serve() -- so this case is now reachable in
+    // production, not just theoretical). The profile flag update above
+    // is idempotent and already re-ran harmlessly; returning here (same
+    // pattern as handleUnlockStudyPack's own stripe_session_id check
+    // below) is what stops a retry from inserting a second invoices row,
+    // a second premium_unlocked event, and resending the confirmation
+    // email.
+    if (purchaseError.code === '23505' && purchaseError.message?.includes('stripe_session_id')) {
+      return
+    }
+    // Any other insert failure (e.g. an unrecognized tier value hitting
+    // the tier CHECK constraint) must be loud, not silent, since this
+    // table is the source of truth for revenue and for the founding-seat
+    // counter -- but don't throw: the member is already unlocked and the
+    // confirmation email below still needs to send.
     console.error(`stripe-webhook: portal_access_purchases insert failed for profile ${profileId}, tier ${tier}`, purchaseError)
   }
 
@@ -530,6 +557,20 @@ async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Che
     .maybeSingle()
 
   if (scheduledClassId) {
+    // Revenue Funnel + Attribution Integrity sprint (Section 5) -- without
+    // this, a retry of an already-successful run would hit
+    // confirm_scheduled_ground_class_enrollment's own stripe_session_id
+    // unique constraint (scheduled_ground_class_enrollments, v57.sql),
+    // which this handler currently treats as a genuine enrollment
+    // failure -- refunding an already-correctly-enrolled student and
+    // telling them the class filled up or their registration failed.
+    const { data: existingEnrollment } = await supabase
+      .from('scheduled_ground_class_enrollments')
+      .select('id')
+      .eq('stripe_session_id', session.id)
+      .maybeSingle()
+    if (existingEnrollment) return
+
     const { data: scheduledClass } = await supabase
       .from('scheduled_ground_classes')
       .select('id, title, lesson_title, class_date, start_time, timezone, meeting_url')
@@ -673,6 +714,21 @@ async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Che
     .eq('id', sessionId)
     .maybeSingle()
 
+  // Revenue Funnel + Attribution Integrity sprint (Section 5) -- same
+  // already-fulfilled replay guard as the scheduled-class branch above.
+  // ground_registrations.stripe_session_id exists (v46.sql) though it
+  // isn't itself declared unique; confirm_legacy_ground_registration
+  // still isn't safe to blindly re-run (it would insert a second
+  // registration row and could push someone else onto the waitlist a
+  // second time), so this checks explicitly rather than relying on a
+  // constraint violation.
+  const { data: existingLegacyRegistration } = await supabase
+    .from('ground_registrations')
+    .select('id')
+    .eq('stripe_session_id', session.id)
+    .maybeSingle()
+  if (existingLegacyRegistration) return
+
   // Row-locked RPC (see confirm_legacy_ground_registration, v46) so
   // concurrent payments near the last seat can't both read a stale
   // count and both get confirmed -- mirrors the newer scheduled-class
@@ -737,7 +793,17 @@ async function handleMockOralBooking(supabase: any, session: Stripe.Checkout.Ses
     stripe_session_id: session.id,
     amount_cents: amountCents,
   })
-  if (insertError) throw insertError
+  if (insertError) {
+    // Revenue Funnel + Attribution Integrity sprint (Section 5) -- same
+    // "already fulfilled this exact session" replay guard as
+    // handleUnlockCheckridePrep/handleUnlockStudyPack. mock_oral_requests.
+    // stripe_session_id is UNIQUE (v28.sql); without this check, a retry
+    // of an already-successful run would throw here every time (the
+    // booking and both confirmation emails already went out on the first
+    // run) and never actually resolve.
+    if (insertError.code === '23505' && insertError.message?.includes('stripe_session_id')) return
+    throw insertError
+  }
 
   await sendEmail(supabase, email, "You're booked — 60-Minute Mock Oral",
     template(`
@@ -772,6 +838,16 @@ async function handleMockOralBookingV2(supabase: any, session: Stripe.Checkout.S
 
   if (!email) throw new Error('No email on checkout session')
   if (!profileId || !productId || !availabilityId) throw new Error('Missing mock oral metadata on checkout session')
+
+  // Revenue Funnel + Attribution Integrity sprint (Section 5) -- without
+  // this, a retry of an already-successful run would find the slot no
+  // longer 'open' (this handler itself claimed it) and wrongly conclude
+  // "someone else took this slot," refunding a customer who is already
+  // correctly booked and telling them their payment was returned. Checked
+  // before touching the slot at all -- mock_oral_bookings.stripe_session_id
+  // is UNIQUE (supabase-portal-schema-v97.sql).
+  const { data: existingBooking } = await supabase.from('mock_oral_bookings').select('id').eq('stripe_session_id', session.id).maybeSingle()
+  if (existingBooking) return
 
   async function refundAndNotifyFull() {
     if (session.payment_intent) {
@@ -950,6 +1026,13 @@ async function handleInvoicePaymentFailed(supabase: any, invoice: Stripe.Invoice
   if (error) console.error('stripe-webhook: invoice payment failed update failed', error)
 }
 
+// Revenue Funnel + Attribution Integrity sprint (Section 5) -- safety
+// ceiling well past Stripe's own ~3-day automatic retry schedule. Exists
+// only to stop a wedged event from retrying forever if it's ever manually
+// resent (Stripe Dashboard "Resend") indefinitely; Stripe's own retries
+// give up long before this is reached in practice.
+const MAX_FULFILLMENT_ATTEMPTS = 10
+
 serve(async (req) => {
   const signature = req.headers.get('Stripe-Signature')
   const body = await req.text()
@@ -963,76 +1046,157 @@ serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
-  // Idempotency: never process the same Stripe event twice.
-  const { error: dupeError } = await supabase
+  // Idempotency + retry (Section 5). Previously: insert event_id once,
+  // unconditionally return 200 no matter what happened next -- so a
+  // genuine fulfillment failure (a transient DB/email-provider error
+  // AFTER Stripe had already captured payment) was recorded as
+  // "processed" forever, Stripe never retried, and the only trace was a
+  // Supabase function log nobody was watching: the customer paid, but
+  // nothing downstream (entitlement flip, portal_access_purchases row)
+  // ever happened, and there was no way left to make it happen short of
+  // manual intervention. Now: a row's status becomes 'processed' only
+  // once its handler actually returns without throwing. Anything else
+  // (received/processing/failed) stays eligible to run the handler again
+  // on the next delivery of the SAME event id -- which Stripe sends
+  // unchanged on both its own automatic retries and a manual "Resend"
+  // from the Dashboard.
+  let attemptCount = 1
+  const { error: insertErr } = await supabase
     .from('stripe_webhook_events')
-    .insert({ event_id: event.id, event_type: event.type })
-  if (dupeError) {
-    // Unique violation means we've already processed this event.
-    return new Response(JSON.stringify({ received: true, duplicate: true }), { status: 200 })
+    .insert({ event_id: event.id, event_type: event.type, status: 'processing', attempt_count: 1 })
+  if (insertErr) {
+    const { data: existing, error: lookupErr } = await supabase
+      .from('stripe_webhook_events')
+      .select('status, attempt_count')
+      .eq('event_id', event.id)
+      .maybeSingle()
+    if (lookupErr || !existing) {
+      console.error('stripe-webhook: could not resolve existing event row after insert conflict', insertErr, lookupErr)
+      return new Response(JSON.stringify({ received: true, error: 'event lookup failed' }), { status: 500 })
+    }
+    if (existing.status === 'processed') {
+      return new Response(JSON.stringify({ received: true, duplicate: true }), { status: 200 })
+    }
+    if (existing.status === 'processing') {
+      // A concurrent delivery of this exact event is already in flight
+      // (Stripe can send near-simultaneous retries) -- don't run the
+      // handler twice in parallel. Ask Stripe to try again shortly.
+      return new Response(JSON.stringify({ received: true, in_progress: true }), { status: 409 })
+    }
+    if (existing.attempt_count >= MAX_FULFILLMENT_ATTEMPTS) {
+      console.error(`stripe-webhook: event ${event.id} exceeded ${MAX_FULFILLMENT_ATTEMPTS} fulfillment attempts -- giving up, needs manual review`)
+      return new Response(JSON.stringify({ received: true, gave_up: true }), { status: 200 })
+    }
+    // Claim this retry -- only succeeds if the row is still in a
+    // not-yet-processed, not-currently-processing state (guards the same
+    // concurrent-delivery race as above, just arriving in the opposite
+    // order).
+    attemptCount = existing.attempt_count + 1
+    const { data: claimed, error: claimErr } = await supabase
+      .from('stripe_webhook_events')
+      .update({ status: 'processing', attempt_count: attemptCount })
+      .eq('event_id', event.id)
+      .in('status', ['received', 'failed'])
+      .select('event_id')
+      .maybeSingle()
+    if (claimErr || !claimed) {
+      return new Response(JSON.stringify({ received: true, in_progress: true }), { status: 409 })
+    }
   }
 
   const SUBSCRIPTION_EVENTS = ['customer.subscription.updated', 'customer.subscription.deleted', 'invoice.payment_failed']
   if (event.type !== 'checkout.session.completed' && !SUBSCRIPTION_EVENTS.includes(event.type)) {
+    await supabase.from('stripe_webhook_events').update({ status: 'processed', processed_at: new Date().toISOString() }).eq('event_id', event.id)
     return new Response(JSON.stringify({ received: true, ignored: event.type }), { status: 200 })
   }
+
+  const session = event.type === 'checkout.session.completed' ? (event.data.object as Stripe.Checkout.Session) : null
 
   try {
     if (event.type === 'customer.subscription.updated') {
       await handleSubscriptionUpdated(supabase, event.data.object as Stripe.Subscription, event.type)
-      return new Response(JSON.stringify({ received: true }), { status: 200 })
-    }
-    if (event.type === 'customer.subscription.deleted') {
+    } else if (event.type === 'customer.subscription.deleted') {
       await handleSubscriptionDeleted(supabase, event.data.object as Stripe.Subscription, event.type)
-      return new Response(JSON.stringify({ received: true }), { status: 200 })
-    }
-    if (event.type === 'invoice.payment_failed') {
+    } else if (event.type === 'invoice.payment_failed') {
       await handleInvoicePaymentFailed(supabase, event.data.object as Stripe.Invoice, event.type)
-      return new Response(JSON.stringify({ received: true }), { status: 200 })
+    } else if (session) {
+      const purpose = session.metadata?.purpose
+
+      // Marks this session as completed for the abandoned-checkout
+      // recovery job (send-lifecycle-emails' processAbandonedCheckouts) --
+      // done generically for every purpose, before the purpose-specific
+      // handling below, since it's the same bookkeeping regardless of what
+      // the session was for. Best-effort: a row that predates this
+      // feature (or a logging failure in create-checkout-session) simply
+      // won't exist here, which is fine -- there's nothing to mark. Safe
+      // to repeat on a retry (same value every time).
+      await supabase
+        .from('checkout_session_attempts')
+        .update({ completed_at: new Date().toISOString() })
+        .eq('stripe_session_id', session.id)
+
+      if (purpose === 'unlock-checkride-prep') {
+        await handleUnlockCheckridePrep(supabase, session)
+      } else if (purpose === 'ground-school-registration') {
+        await handleGroundSchoolRegistration(supabase, session)
+      } else if (purpose === 'book-mock-oral') {
+        await handleMockOralBooking(supabase, session)
+      } else if (purpose === 'book-mock-oral-v2') {
+        await handleMockOralBookingV2(supabase, session)
+      } else if (purpose === 'unlock-study-pack') {
+        await handleUnlockStudyPack(supabase, session)
+      } else if (purpose === 'join-membership') {
+        await handleJoinMembership(supabase, session)
+      } else if (purpose === 'unlock-ground-school-pack') {
+        await handleUnlockGroundSchoolPack(supabase, session)
+      } else if (purpose === 'upgrade-ground-school-pack') {
+        await handleUpgradeGroundSchoolPack(supabase, session)
+      } else {
+        // Not retryable -- no future delivery of this same event will
+        // ever carry a different, recognized purpose. See
+        // PermanentWebhookError.
+        throw new PermanentWebhookError(`Unknown checkout purpose: ${purpose}`)
+      }
+
+      // Successful fulfillment, explicitly distinguishable from merely
+      // having received the webhook (Section 7's checkout-session
+      // reconciliation needs this exact signal, separate from
+      // completed_at above which only ever meant "Stripe said this
+      // session completed").
+      await supabase
+        .from('checkout_session_attempts')
+        .update({ fulfillment_status: 'succeeded', fulfillment_error: null, fulfillment_at: new Date().toISOString() })
+        .eq('stripe_session_id', session.id)
     }
 
-    const session = event.data.object as Stripe.Checkout.Session
-    const purpose = session.metadata?.purpose
-
-    // Marks this session as completed for the abandoned-checkout
-    // recovery job (send-lifecycle-emails' processAbandonedCheckouts) --
-    // done generically for every purpose, before the purpose-specific
-    // handling below, since it's the same bookkeeping regardless of what
-    // the session was for. Best-effort: a row that predates this
-    // feature (or a logging failure in create-checkout-session) simply
-    // won't exist here, which is fine -- there's nothing to mark.
-    await supabase
-      .from('checkout_session_attempts')
-      .update({ completed_at: new Date().toISOString() })
-      .eq('stripe_session_id', session.id)
-
-    if (purpose === 'unlock-checkride-prep') {
-      await handleUnlockCheckridePrep(supabase, session)
-    } else if (purpose === 'ground-school-registration') {
-      await handleGroundSchoolRegistration(supabase, session)
-    } else if (purpose === 'book-mock-oral') {
-      await handleMockOralBooking(supabase, session)
-    } else if (purpose === 'book-mock-oral-v2') {
-      await handleMockOralBookingV2(supabase, session)
-    } else if (purpose === 'unlock-study-pack') {
-      await handleUnlockStudyPack(supabase, session)
-    } else if (purpose === 'join-membership') {
-      await handleJoinMembership(supabase, session)
-    } else if (purpose === 'unlock-ground-school-pack') {
-      await handleUnlockGroundSchoolPack(supabase, session)
-    } else if (purpose === 'upgrade-ground-school-pack') {
-      await handleUpgradeGroundSchoolPack(supabase, session)
-    } else {
-      throw new Error(`Unknown checkout purpose: ${purpose}`)
-    }
-
+    await supabase.from('stripe_webhook_events').update({ status: 'processed', processed_at: new Date().toISOString(), last_error: null }).eq('event_id', event.id)
     return new Response(JSON.stringify({ received: true }), { status: 200 })
   } catch (err) {
-    console.error('stripe-webhook processing error', err)
-    // Still return 200 so Stripe doesn't retry into an infinite loop for
-    // errors that won't self-heal (e.g. a bad email) — the event is logged
-    // above in stripe_webhook_events either way. Genuine outages will show
-    // up in Supabase function logs.
-    return new Response(JSON.stringify({ received: true, error: String(err) }), { status: 200 })
+    const isPermanent = err instanceof PermanentWebhookError
+    console.error('stripe-webhook processing error', { event_id: event.id, event_type: event.type, attempt: attemptCount, permanent: isPermanent, err })
+
+    await supabase.from('stripe_webhook_events').update({ status: 'failed', last_error: String(err) }).eq('event_id', event.id)
+    if (session) {
+      await supabase
+        .from('checkout_session_attempts')
+        .update({ fulfillment_status: 'failed', fulfillment_error: String(err), fulfillment_at: new Date().toISOString() })
+        .eq('stripe_session_id', session.id)
+    }
+
+    if (isPermanent) {
+      // Won't self-heal on retry -- every handler above already refunds
+      // and alerts an admin on its own genuine fulfillment failures, so
+      // this case is specifically "we don't even recognize what this
+      // checkout session was for," which no retry will ever fix.
+      // Returning 200 stops Stripe from retrying a request that would
+      // fail identically forever; the event stays visibly 'failed' in
+      // stripe_webhook_events for admin review either way.
+      return new Response(JSON.stringify({ received: true, error: String(err) }), { status: 200 })
+    }
+    // Genuinely retryable (transient DB/network/email-provider error) --
+    // a real non-2xx tells Stripe to actually retry this delivery, which
+    // is the entire point of this redesign: a real chance for a paid-but-
+    // unfulfilled order to self-heal instead of being silently lost.
+    return new Response(JSON.stringify({ received: true, error: String(err), retryable: true }), { status: 500 })
   }
 })

@@ -190,7 +190,30 @@
     // primitives Readiness Detail already tracks readiness_action_
     // clicked for, so no category/action-type payload is duplicated
     // here).
-    'training_report_viewed', 'training_report_printed', 'training_report_priority_clicked'
+    'training_report_viewed', 'training_report_printed', 'training_report_priority_clicked',
+
+    // Revenue Funnel + Attribution Integrity sprint -- Checkride Prep
+    // checkout observability (Section 4). checkride_prep_offer_viewed is
+    // the one canonical "the unlock modal opened" event, fired from every
+    // openUnlockModal() call site regardless of trigger (dashboard locked
+    // widget, sidebar, Training Plan task, deep link) -- previously only
+    // the readiness-personalized path logged anything
+    // (readiness_checkride_prep_offer_viewed, kept as-is for its existing
+    // consumers) and the plain-pitch path logged nothing at all.
+    // checkout_started (pre-existing name, reused per the "don't create
+    // duplicate events" instruction -- see mock_oral_checkout_started/
+    // study_pack_checkout_started for the established convention) now
+    // also fires from the unlock modal's own "Unlock Now" button, closing
+    // the real gap where a click that actually calls create-checkout-
+    // session for Checkride Prep produced no analytics signal at all
+    // until Stripe redirected back successfully. checkout_session_create_
+    // failed and checkout_cancelled complete the lifecycle: the former
+    // for a create-checkout-session request that errored or never
+    // returned a URL, the latter for Stripe's own cancel_url return trip
+    // (previously silent -- see the cancel-return IIFE in
+    // site/portal-stable.js and create-checkout-session's updated
+    // cancel_url for unlock-checkride-prep/signup-and-unlock-checkride-prep).
+    'checkride_prep_offer_viewed', 'checkout_session_create_failed', 'checkout_cancelled'
   ];
 
   // readiness-assessment.html/checkride-prep.html/apex-advantage.html etc.
@@ -294,6 +317,17 @@
       out.traffic_source = localStorage.getItem('apex_utm_source') || null;
       out.traffic_medium = localStorage.getItem('apex_utm_medium') || null;
       out.campaign = localStorage.getItem('apex_utm_campaign') || null;
+      // Revenue Funnel + Attribution Integrity sprint: traffic_content/
+      // traffic_term were captured into localStorage (apex_utm_content/
+      // apex_utm_term, see the block above) since day one but never
+      // actually attached to the per-event properties every apexTrack()
+      // call sends -- content/term-level campaign reporting (e.g. "which
+      // specific ad creative") was structurally impossible from event
+      // data alone even though the raw values were sitting right there.
+      // Purely additive: every existing consumer of utmProps()'s three
+      // original keys is unaffected.
+      out.traffic_content = localStorage.getItem('apex_utm_content') || null;
+      out.traffic_term = localStorage.getItem('apex_utm_term') || null;
     } catch (e) { /* localStorage unavailable (private mode, etc.) -- fine, just omit */ }
     return out;
   }

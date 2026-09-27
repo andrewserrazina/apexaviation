@@ -129,6 +129,33 @@
     }
   })();
 
+  /* ── Checkout cancelled — Checkride Prep ───────────────────────
+     Revenue Funnel + Attribution Integrity sprint (Section 4). Stripe's
+     own cancel_url return trip for the unlock-checkride-prep and
+     signup-and-unlock-checkride-prep purposes now carries
+     ?checkout_cancelled=1&product=checkride_prep (create-checkout-session
+     /index.ts) -- previously this landed the member back on the
+     dashboard with zero analytics signal at all, leaving no way to tell
+     "started checkout, then backed out" apart from "never started
+     checkout." Runs unconditionally at load like the purchase-pixel IIFEs
+     above, since a cancelled checkout can land a signed-out visitor here
+     too (signup-and-unlock-checkride-prep's cancel_url is portal-
+     login.html, not portal.html -- see that page's own copy of this
+     block). No dedupe needed: a cancel return trip is a one-shot
+     navigation, not a page a browser would realistically reload with the
+     same query string still attached, and even a rare double-count here
+     carries no revenue-accuracy risk the way purchase_completed does. */
+  (function () {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('checkout_cancelled') !== '1') return;
+    var product = params.get('product') || 'unknown';
+    if (window.apexTrack) apexTrack('checkout_cancelled', { product: product });
+    params.delete('checkout_cancelled');
+    params.delete('product');
+    var cleanedSearch = params.toString();
+    if (history.replaceState) history.replaceState(null, '', window.location.pathname + (cleanedSearch ? '?' + cleanedSearch : '') + window.location.hash);
+  })();
+
   /* ── New Member Activation email click tracking ───────────────
      activation_email_N_sent is logged server-side (create-free-account
      and send-lifecycle-emails' processNewMemberActivation both write
@@ -715,6 +742,18 @@
     var headingEl = document.getElementById('unlockModalHeading');
     var effectiveContext = readinessContext || (member && !member.checkridePrepUnlocked ? memberReadinessContext : null);
     var weakLabels = effectiveContext && effectiveContext.weakestLabels ? effectiveContext.weakestLabels.filter(Boolean) : [];
+    // Revenue Funnel + Attribution Integrity sprint (Section 4) -- the one
+    // canonical "offer viewed" event for every openUnlockModal() call site,
+    // regardless of trigger. Previously only the personalized/readiness
+    // path logged anything (readiness_checkride_prep_offer_viewed below,
+    // kept for its own existing consumers) -- a plain dashboard-widget or
+    // sidebar trigger produced zero signal that the pitch was even shown.
+    if (window.apexTrack) {
+      apexTrack('checkride_prep_offer_viewed', {
+        profile_id: member ? member.id : null,
+        personalized: !!(effectiveContext && weakLabels.length)
+      });
+    }
     if (effectiveContext && weakLabels.length) {
       document.getElementById('unlockModalReadinessScore').textContent =
         'Your Readiness Score: ' + effectiveContext.score + '% (' + effectiveContext.band + ')';
@@ -768,6 +807,18 @@
     unlockModalCta.disabled = true;
     unlockModalCta.textContent = 'Redirecting to secure checkout…';
 
+    // Revenue Funnel + Attribution Integrity sprint (Section 4) -- this
+    // click is the real gap between "saw the pitch" and "purchase
+    // completed": every other purchase flow in this file
+    // (mock_oral_checkout_started, study_pack_checkout_started) fires a
+    // checkout_started event the instant its own equivalent button is
+    // clicked; this one, the highest-revenue product, fired nothing at
+    // all until Stripe redirected back successfully. Reuses the existing
+    // generic checkout_started name (already in EVENT_ALLOWLIST, already
+    // read by get_channel_performance()/get_marketing_executive_funnel())
+    // rather than a new product-specific name.
+    if (window.apexTrack) apexTrack('checkout_started', { product: 'checkride_prep', checkout_step: 'unlock_modal', profile_id: member ? member.id : null });
+
     apexSupabase.functions.invoke('create-checkout-session', {
       body: { purpose: 'unlock-checkride-prep', origin: window.location.origin, utm: window.apexGetUtm ? apexGetUtm() : undefined },
       headers: { Authorization: 'Bearer ' + accessToken }
@@ -778,6 +829,7 @@
           unlockModalCta.textContent = unlockModalCtaLabel;
           unlockModalError.textContent = msg;
           unlockModalError.classList.add('show');
+          if (window.apexTrack) apexTrack('checkout_session_create_failed', { product: 'checkride_prep', profile_id: member ? member.id : null, reason: msg });
         });
       }
       if (window.apexTrackStandard) apexTrackStandard('InitiateCheckout', { content_name: 'Checkride Prep Pack' });
@@ -787,6 +839,7 @@
       unlockModalCta.textContent = unlockModalCtaLabel;
       unlockModalError.textContent = 'Could not start checkout. Please try again.';
       unlockModalError.classList.add('show');
+      if (window.apexTrack) apexTrack('checkout_session_create_failed', { product: 'checkride_prep', profile_id: member ? member.id : null, reason: 'network_or_invoke_error' });
     });
   });
 

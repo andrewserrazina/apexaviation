@@ -405,6 +405,22 @@
       }
     })();
 
+    // Revenue Funnel + Attribution Integrity sprint (Section 4) -- the
+    // signup-and-unlock-checkride-prep purpose's cancel_url lands here
+    // (the account already exists, but the member never signed in
+    // client-side, so portal.html's own equivalent IIFE never runs for
+    // this path). Same checkout_cancelled marker/behavior as that one.
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      if (params.get('checkout_cancelled') !== '1') return;
+      var product = params.get('product') || 'unknown';
+      if (window.apexTrack) apexTrack('checkout_cancelled', { product: product });
+      params.delete('checkout_cancelled');
+      params.delete('product');
+      var cleanedSearch = params.toString();
+      if (history.replaceState) history.replaceState(null, '', window.location.pathname + (cleanedSearch ? '?' + cleanedSearch : '') + window.location.hash);
+    })();
+
     // Landing here as ?view=signup-success&paid=1 means the visitor came
     // back from a completed "Get Instant Access" Stripe Checkout (see
     // instantAccessSubmit below) -- the account + unlock both already
@@ -451,14 +467,31 @@
         var fallbackAmount = successProduct === 'ground_school_pack' ? 400 : 29;
 
         var fireSignupPurchasePixel = function (amountCents) {
+          var value = isNaN(amountCents) ? fallbackAmount : amountCents / 100;
           var dedupeKey = sessionId ? 'apex_fbq_purchase_' + sessionId : null;
           if (window.fbq && (!dedupeKey || !localStorage.getItem(dedupeKey))) {
             fbq('track', 'Purchase', {
-              value: isNaN(amountCents) ? fallbackAmount : amountCents / 100,
+              value: value,
               currency: 'USD',
               content_name: contentName,
             });
             if (dedupeKey) localStorage.setItem(dedupeKey, '1');
+          }
+          // Revenue Funnel + Attribution Integrity sprint (Section 6) --
+          // this "instant access" one-step signup+purchase path fired the
+          // Meta pixel above but never the funnel purchase_completed
+          // event, so every purchase made this way was durably recorded
+          // in portal_access_purchases (authoritative) yet completely
+          // invisible to every purchase_completed-based funnel/revenue
+          // report (get_channel_performance, get_marketing_executive_
+          // funnel, get_checkride_prep_funnel_stats). Same dedupe-by-
+          // session_id guard as every other purchase_completed call site
+          // in this codebase, under its own key so it can't collide with
+          // the fbq dedupe above.
+          var funnelDedupeKey = sessionId ? 'apex_funnel_purchase_' + sessionId : null;
+          if (window.apexTrack && (!funnelDedupeKey || !localStorage.getItem(funnelDedupeKey))) {
+            apexTrack('purchase_completed', { product: successProduct, price: value, session_id: sessionId || undefined, checkout_step: 'instant_access' });
+            if (funnelDedupeKey) localStorage.setItem(funnelDedupeKey, '1');
           }
         };
 
