@@ -1,6 +1,6 @@
 # Revenue Funnel + Attribution Integrity Sprint — Report
 
-**Status: code complete, tested locally, NOT committed, NOT deployed.** Nothing in this sprint has touched production — no migration applied, no Edge Function deployed, no commit made. Everything below is sitting in the working tree, exactly as instructed.
+**Status: code complete, tested locally, committed and deployed to production.** Per explicit follow-up instruction, this sprint's work has since been pushed to `main`, the migration (`revenue_funnel_attribution_hardening`, formerly `portal/supabase-portal-schema-v146-revenue-funnel-attribution-hardening.sql`) has been applied to the live Supabase project, and both modified Edge Functions (`stripe-webhook` → v50, `create-checkout-session` → v49) have been redeployed. Each deployment was verified: the migration via direct post-apply SQL queries against production (webhook-event backfill, `checkout_session_attempts` backfill, `classify_marketing_channel`/`normalize_marketing_source` outputs all confirmed correct), and both Edge Function deployments via structural marker-count diffing between the local source and the fetched deployed copy (all markers matched exactly, confirming byte-for-byte fidelity). Everything described below reflects what is now live.
 
 ## Executive Summary
 
