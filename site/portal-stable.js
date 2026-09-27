@@ -1,6 +1,75 @@
 (function () {
   'use strict';
 
+  /* ── Checkride Prep Personalized Pitch A/B test ───────────────────
+     Revenue Funnel + Attribution Integrity sprint's follow-up
+     recommendation: does showing the existing weak-area-personalized
+     pitch (previously shown to 100% of eligible members, every time)
+     more consistently actually move modal-open -> checkout-started
+     conversion, versus today's generic pitch? One experiment, one
+     treatment arm, 50/50. See openUnlockModal() further down for where
+     this is applied, and CHECKRIDE_PREP_PITCH_EXPERIMENT_REPORT.md for
+     the full design. Declared here, at the very top of the file, rather
+     than alongside openUnlockModal(), because the ?unlocked=1 purchase-
+     tracking IIFE immediately below needs it and can run (synchronously,
+     in the no-session_id fallback path) before the rest of the file's
+     top-level `var` assignments have executed. */
+  var CHECKRIDE_PREP_PITCH_EXPERIMENT = 'checkride_prep_personalized_pitch_v1';
+
+  // Deterministic 50/50 bucketing -- a pure function of (experiment key,
+  // subject id), so the SAME member lands in the SAME bucket on every
+  // modal open, every page refresh, every session, and even weeks later
+  // at purchase time -- with no server round trip, no new table, and
+  // nothing stored client-side to lose or tamper with. Never derive a
+  // variant from Math.random() or anything else that can change between
+  // calls for the same member. FNV-1a, 32-bit -- a standard, well-
+  // distributed non-cryptographic hash; cryptographic strength is
+  // irrelevant here, only stable, even distribution across the two
+  // buckets is.
+  function experimentVariant(experimentKey, subjectId) {
+    if (!subjectId) return null;
+    var str = experimentKey + ':' + subjectId;
+    var hash = 0x811c9dc5;
+    for (var i = 0; i < str.length; i++) {
+      hash ^= str.charCodeAt(i);
+      hash = (hash * 0x01000193) >>> 0;
+    }
+    return (hash % 100) < 50 ? 'control' : 'personalized';
+  }
+
+  // Best-effort only -- recovers which experiment bucket a Checkride Prep
+  // purchaser was in, purely from their own profile id, using the SAME
+  // deterministic bucketing function the modal used when it opened (no
+  // stored/threaded state needed -- see experimentVariant() above). Only
+  // tags the purchase when this profile actually has usable readiness
+  // context (the same test openUnlockModal() below already runs before
+  // ever showing personalized copy), so a purchaser outside the
+  // experiment population is never mislabeled with a variant. Every step
+  // is wrapped so a lookup failure here can never block the real purchase
+  // tracking that calls it.
+  function resolveCheckridePrepPitchExperimentTag() {
+    if (!window.apexSupabase) return Promise.resolve(null);
+    try {
+      return apexSupabase.auth.getUser().then(function (userRes) {
+        var uid = userRes && userRes.data && userRes.data.user && userRes.data.user.id;
+        if (!uid) return null;
+        return apexSupabase.from('readiness_assessment_leads')
+          .select('weakest_category_1, weakest_category_2')
+          .eq('profile_id', uid)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .then(function (res) {
+            var lead = res && res.data && res.data[0];
+            var hasUsableContext = !!(lead && (lead.weakest_category_1 || lead.weakest_category_2));
+            if (!hasUsableContext) return null;
+            return { experiment: CHECKRIDE_PREP_PITCH_EXPERIMENT, variant: experimentVariant(CHECKRIDE_PREP_PITCH_EXPERIMENT, uid) };
+          }, function () { return null; });
+      }, function () { return null; });
+    } catch (e) {
+      return Promise.resolve(null);
+    }
+  }
+
   /* ── Meta Pixel Purchase event — Checkride Prep Pack unlock ─────
      Fires when an already-registered member completes the dashboard
      "Unlock Now" checkout (create-checkout-session's success_url for
@@ -36,8 +105,13 @@
       // call above (a page refresh on ?unlocked=1 must not double-log).
       var funnelDedupeKey = sessionId ? 'apex_funnel_purchase_' + sessionId : null;
       if (window.apexTrack && (!funnelDedupeKey || !localStorage.getItem(funnelDedupeKey))) {
-        apexTrack('purchase_completed', { product: 'checkride_prep', price: value, session_id: sessionId || undefined });
+        // Dedupe is claimed synchronously, before the best-effort, async
+        // Checkride Prep Personalized Pitch A/B test lookup below -- a
+        // slow or failed lookup must never risk a double-fire.
         if (funnelDedupeKey) localStorage.setItem(funnelDedupeKey, '1');
+        resolveCheckridePrepPitchExperimentTag().then(function (expTag) {
+          apexTrack('purchase_completed', Object.assign({ product: 'checkride_prep', price: value, session_id: sessionId || undefined }, expTag || {}));
+        });
       }
     }
 
@@ -673,6 +747,39 @@
   // param below).
   var unlockModalCtaLabel = 'Unlock Now';
 
+  // Checkride Prep Personalized Pitch A/B test -- the variant (if any)
+  // shown the last time openUnlockModal() ran, read by the CTA click
+  // handler below so checkout_started/checkout_session_create_failed can
+  // carry the same experiment tag as the offer the member actually saw.
+  // null for every member outside the experiment population.
+  var activeUnlockModalVariant = null;
+
+  // Checkride Prep Personalized Pitch A/B test -- the two readiness-level
+  // framings for the treatment arm. Kept as one small function (rather
+  // than inlined in openUnlockModal()) so they're easy to compare side by
+  // side. Never calls a category an outright "weakness" for a high
+  // scorer -- weakLabels is always just that member's own two RELATIVELY
+  // lowest categories, even at 95%+ overall -- so score >= 80 (Nearly
+  // Ready/Strong Readiness bands) gets a "stay sharp" framing instead of
+  // a "fix gaps" one. See CHECKRIDE_PREP_PITCH_EXPERIMENT_REPORT.md for
+  // the full experiment design and copy guardrails.
+  function checkridePrepPersonalizedCopy(effectiveContext, weakLabels) {
+    var labelText = weakLabels.join(' and ');
+    var highReadiness = typeof effectiveContext.score === 'number' && effectiveContext.score >= 80;
+    if (highReadiness) {
+      return {
+        heading: 'Keep Your Strong Readiness Score Consistent',
+        summary: "You're scoring well overall -- " + effectiveContext.score + '% (' + effectiveContext.band + ') -- with ' + labelText + ' relatively lower than the rest of your assessment. Checkride Prep keeps every area sharp with continued DPE-style questions, scenario practice, and readiness tracking through checkride day.',
+        ctaLabel: 'Keep My Score Sharp'
+      };
+    }
+    return {
+      heading: 'Turn Your Readiness Gaps Into a Study Plan',
+      summary: 'Your Readiness Assessment flagged ' + labelText + ' as your lowest-scoring areas. Checkride Prep gives you unlimited DPE-style questions and scenario practice targeted at exactly those areas, plus continued readiness tracking as you improve.',
+      ctaLabel: 'Train My Weak Areas'
+    };
+  }
+
   // memberReadinessContext: { score, band, weakestCats, weakestLabels },
   // loaded once per session (loadMemberReadinessContext(), called right
   // after `member` populates) from the member's own most recent
@@ -742,35 +849,62 @@
     var headingEl = document.getElementById('unlockModalHeading');
     var effectiveContext = readinessContext || (member && !member.checkridePrepUnlocked ? memberReadinessContext : null);
     var weakLabels = effectiveContext && effectiveContext.weakestLabels ? effectiveContext.weakestLabels.filter(Boolean) : [];
+    var isEligible = !!(effectiveContext && weakLabels.length);
+
+    // Checkride Prep Personalized Pitch A/B test -- "usable readiness
+    // context" (isEligible, above) is unchanged from before this
+    // experiment existed: a linked readiness_assessment_leads row with at
+    // least one real weak-area label. That population is now split 50/50
+    // (control: today's unchanged generic pitch; personalized: the
+    // weak-area pitch that used to show to 100% of this population, every
+    // time) via a deterministic hash of (experiment key, profile id) --
+    // see experimentVariant() at the top of this file. A member with no
+    // usable readiness context is never part of this experiment and
+    // always sees the unchanged generic pitch, exactly as before. See
+    // CHECKRIDE_PREP_PITCH_EXPERIMENT_REPORT.md for the full design.
+    var pitchVariant = isEligible ? experimentVariant(CHECKRIDE_PREP_PITCH_EXPERIMENT, member ? member.id : null) : null;
+    activeUnlockModalVariant = pitchVariant; // read by the CTA click handler below
+
     // Revenue Funnel + Attribution Integrity sprint (Section 4) -- the one
     // canonical "offer viewed" event for every openUnlockModal() call site,
     // regardless of trigger. Previously only the personalized/readiness
     // path logged anything (readiness_checkride_prep_offer_viewed below,
     // kept for its own existing consumers) -- a plain dashboard-widget or
     // sidebar trigger produced zero signal that the pitch was even shown.
+    // `personalized` now reflects what was actually RENDERED (the
+    // personalized-arm outcome of the experiment), not just eligibility --
+    // an eligible member bucketed into control sees the same generic
+    // pitch an ineligible member does, so both report personalized: false.
     if (window.apexTrack) {
-      apexTrack('checkride_prep_offer_viewed', {
+      apexTrack('checkride_prep_offer_viewed', Object.assign({
         profile_id: member ? member.id : null,
-        personalized: !!(effectiveContext && weakLabels.length)
-      });
+        personalized: pitchVariant === 'personalized'
+      }, pitchVariant ? { experiment: CHECKRIDE_PREP_PITCH_EXPERIMENT, variant: pitchVariant } : {}));
     }
-    if (effectiveContext && weakLabels.length) {
+    if (pitchVariant === 'personalized') {
+      var copy = checkridePrepPersonalizedCopy(effectiveContext, weakLabels);
       document.getElementById('unlockModalReadinessScore').textContent =
         'Your Readiness Score: ' + effectiveContext.score + '% (' + effectiveContext.band + ')';
-      document.getElementById('unlockModalReadinessSummary').textContent =
-        weakLabels.join(' and ') + ' scored lowest on your assessment -- Checkride Prep gives you unlimited DPE-style questions and scenario practice targeted at exactly that.';
+      document.getElementById('unlockModalReadinessSummary').textContent = copy.summary;
       ctxEl.hidden = false;
-      headingEl.textContent = 'Train Your Weak Areas';
-      unlockModalCtaLabel = 'Train My Weak Areas';
+      headingEl.textContent = copy.heading;
+      unlockModalCtaLabel = copy.ctaLabel;
       if (window.apexTrack) {
         apexTrack('readiness_checkride_prep_offer_viewed', {
           profile_id: member ? member.id : null,
           score: effectiveContext.score,
           weakest_category_1: effectiveContext.weakestCats[0] || null,
-          weakest_category_2: effectiveContext.weakestCats[1] || null
+          weakest_category_2: effectiveContext.weakestCats[1] || null,
+          experiment: CHECKRIDE_PREP_PITCH_EXPERIMENT,
+          variant: pitchVariant
         });
       }
     } else {
+      // Control arm (isEligible but bucketed 'control') and every
+      // ineligible member (pitchVariant === null) both land here --
+      // today's unchanged generic pitch, preserved exactly as it was
+      // before this experiment existed. Do NOT "improve" this branch
+      // during the experiment; it is the control group's experience.
       ctxEl.hidden = true;
       headingEl.textContent = 'Unlock the Checkride Prep System';
       unlockModalCtaLabel = 'Unlock Now';
@@ -817,7 +951,15 @@
     // generic checkout_started name (already in EVENT_ALLOWLIST, already
     // read by get_channel_performance()/get_marketing_executive_funnel())
     // rather than a new product-specific name.
-    if (window.apexTrack) apexTrack('checkout_started', { product: 'checkride_prep', checkout_step: 'unlock_modal', profile_id: member ? member.id : null });
+    // Checkride Prep Personalized Pitch A/B test -- tags this click with
+    // the same experiment/variant the member's currently-open modal is
+    // actually showing (activeUnlockModalVariant, set by openUnlockModal()
+    // above), so modal-open -> checkout-started conversion is measurable
+    // per variant. null (member outside the experiment population) adds
+    // nothing extra, same as every event below.
+    var expTag = activeUnlockModalVariant ? { experiment: CHECKRIDE_PREP_PITCH_EXPERIMENT, variant: activeUnlockModalVariant } : {};
+
+    if (window.apexTrack) apexTrack('checkout_started', Object.assign({ product: 'checkride_prep', checkout_step: 'unlock_modal', profile_id: member ? member.id : null }, expTag));
 
     apexSupabase.functions.invoke('create-checkout-session', {
       body: { purpose: 'unlock-checkride-prep', origin: window.location.origin, utm: window.apexGetUtm ? apexGetUtm() : undefined },
@@ -829,7 +971,7 @@
           unlockModalCta.textContent = unlockModalCtaLabel;
           unlockModalError.textContent = msg;
           unlockModalError.classList.add('show');
-          if (window.apexTrack) apexTrack('checkout_session_create_failed', { product: 'checkride_prep', profile_id: member ? member.id : null, reason: msg });
+          if (window.apexTrack) apexTrack('checkout_session_create_failed', Object.assign({ product: 'checkride_prep', profile_id: member ? member.id : null, reason: msg }, expTag));
         });
       }
       if (window.apexTrackStandard) apexTrackStandard('InitiateCheckout', { content_name: 'Checkride Prep Pack' });
@@ -839,7 +981,7 @@
       unlockModalCta.textContent = unlockModalCtaLabel;
       unlockModalError.textContent = 'Could not start checkout. Please try again.';
       unlockModalError.classList.add('show');
-      if (window.apexTrack) apexTrack('checkout_session_create_failed', { product: 'checkride_prep', profile_id: member ? member.id : null, reason: 'network_or_invoke_error' });
+      if (window.apexTrack) apexTrack('checkout_session_create_failed', Object.assign({ product: 'checkride_prep', profile_id: member ? member.id : null, reason: 'network_or_invoke_error' }, expTag));
     });
   });
 

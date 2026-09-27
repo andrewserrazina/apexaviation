@@ -40,7 +40,12 @@ describe('portal-stable.js: openUnlockModal() fires one canonical offer-viewed e
   it('fires checkride_prep_offer_viewed unconditionally, before the personalized/generic branch', () => {
     const body = extractFunctionBody(portalStableSource, 'function openUnlockModal(readinessContext) {')
     const canonicalIdx = body.indexOf("apexTrack('checkride_prep_offer_viewed'")
-    const branchIdx = body.indexOf('if (effectiveContext && weakLabels.length)')
+    // Post Checkride Prep Personalized Pitch A/B test: the personalized-
+    // vs-generic branch is now gated on the experiment's assigned variant
+    // (pitchVariant === 'personalized'), not directly on eligibility --
+    // but checkride_prep_offer_viewed still fires unconditionally, before
+    // that branch, for every openUnlockModal() call site.
+    const branchIdx = body.indexOf("if (pitchVariant === 'personalized')")
     expect(canonicalIdx).toBeGreaterThan(-1)
     expect(branchIdx).toBeGreaterThan(-1)
     expect(canonicalIdx).toBeLessThan(branchIdx)

@@ -216,6 +216,18 @@
     'checkride_prep_offer_viewed', 'checkout_session_create_failed', 'checkout_cancelled'
   ];
 
+  // Checkride Prep Personalized Pitch A/B test (site/portal-stable.js) --
+  // no new event names. checkride_prep_offer_viewed, readiness_checkride_
+  // prep_offer_viewed, checkout_started, checkout_session_create_failed,
+  // and purchase_completed all optionally carry two extra properties when
+  // the member is part of the experiment population (has usable readiness
+  // context, does not already own Checkride Prep):
+  //   experiment: 'checkride_prep_personalized_pitch_v1'
+  //   variant:    'control' | 'personalized'
+  // A member with no usable readiness context never receives these
+  // fields -- they are outside the experiment entirely, not "in the
+  // control group." See CHECKRIDE_PREP_PITCH_EXPERIMENT_REPORT.md.
+
   // readiness-assessment.html/checkride-prep.html/apex-advantage.html etc.
   // are canonically served from apexaviationtx.com; the member portal
   // (portal.html/portal-login.html) is on advantage.apexaviationtx.com --
