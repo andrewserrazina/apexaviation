@@ -2383,7 +2383,20 @@
     studyDays[today] = newTotal;
     apexSupabase.from('portal_study_activity')
       .upsert({ profile_id: member.id, activity_date: today, seconds: newTotal }, { onConflict: 'profile_id,activity_date' })
-      .then(function () {
+      .then(function (res) {
+        // v143 (2026-09-20) briefly revoked this exact write's table grant
+        // for 9 days, believing it had no direct client caller -- a
+        // silent failure here (supabase-js resolves with {error}, it
+        // never rejects on a DB error) is precisely what let that go
+        // unnoticed: the UI kept re-rendering from the in-memory
+        // studyDays value below as if nothing was wrong while every row
+        // silently failed to persist server-side. Logging here doesn't
+        // fix a broken grant, but it means the next one shows up in the
+        // console immediately instead of nine days later in a retention
+        // chart. Rendering still proceeds either way -- unchanged from
+        // before -- since this is a today-only in-memory reflection, not
+        // a signal that the write actually succeeded.
+        if (res && res.error) console.error('bumpStudyDay: portal_study_activity upsert failed', res.error);
         renderStreak();
         renderReadiness();
         if (isNewDay) checkAchievements();
