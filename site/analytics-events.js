@@ -116,6 +116,10 @@
     // action_clicked above (tagged source: 'readiness_plan_card') rather
     // than a new name, since it's the same real user action.
     'readiness_plan_viewed', 'readiness_paid_recommendation_viewed', 'readiness_paid_recommendation_clicked',
+    // Low-commitment alternative on the same card (Growth Sprint Phase 0
+    // follow-up) -- $19 Airspace Mastery offered alongside the $29
+    // Checkride Prep pitch for members not ready to commit yet.
+    'readiness_low_commitment_clicked',
     // Post-purchase activation (portal-login.html)
     'portal_activation_cta_viewed', 'portal_activation_cta_clicked',
     // Member-upgrade deep link (?upgrade=checkride-prep) -- real triggers

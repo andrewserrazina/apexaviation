@@ -26,12 +26,13 @@
 // italic-serif wordmark mixing) -- they are not transcribed from a
 // manual, because no such manual exists in this workspace.
 //
-// This file is ALSO duplicated, byte-for-byte, inline in BOTH
-// stripe-webhook/index.ts AND create-checkout-session/index.ts (neither
-// function's deploy path can resolve a relative import reaching outside
-// its own directory -- see the comment in each). Any change here must be
-// mirrored in both, not just one -- a byte-identity test in
-// portal/test/emailTemplates.test.js checks all three stay in sync.
+// This file is ALSO duplicated, byte-for-byte, inline in stripe-webhook/
+// index.ts, create-checkout-session/index.ts, AND send-lifecycle-emails/
+// index.ts (none of those three functions' deploy paths can resolve a
+// relative import reaching outside their own directory -- see the
+// comment in each). Any change here must be mirrored in all three, not
+// just one -- a byte-identity test in portal/test/emailTemplates.test.js
+// checks all four stay in sync.
 export const EMAIL_COLORS = {
   navy: '#0B1F3A',
   gold: '#F4B400',

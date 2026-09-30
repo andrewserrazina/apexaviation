@@ -913,11 +913,16 @@
             '<a href="portal-login.html?view=signup&dest=checkride-prep" class="btn--cta-primary" id="raCheckridePrepCta">Unlock Checkride Prep</a>' +
             '<a href="portal-login.html" class="btn--outline-gold">Continue in Free Apex Advantage</a>' +
           '</div>' +
+          '<p style="text-align:center;margin-top:14px;font-size:12.5px"><a href="portal-login.html?view=signup&dest=study-packs&source=readiness_assessment" id="raLowCommitCta" style="color:rgba(255,255,255,0.45);text-decoration:underline">Not ready for the full system? Try Airspace Mastery for $19 first &rarr;</a></p>' +
         '</div>' +
         '<div class="ra-share"><button type="button" class="btn--outline-gold" id="raShareBtn">Share My Score</button></div>';
 
       document.getElementById('raCheckridePrepCta').addEventListener('click', function () {
         if (window.apexTrack) apexTrack('readiness_checkride_prep_clicked', { score: results.overallScore, readiness_band: results.band });
+      });
+      var raLowCommitCta = document.getElementById('raLowCommitCta');
+      if (raLowCommitCta) raLowCommitCta.addEventListener('click', function () {
+        if (window.apexTrack) apexTrack('readiness_low_commitment_clicked', { score: results.overallScore, readiness_band: results.band, product: 'study_pack_airspace_mastery', source: 'readiness_assessment' });
       });
       var shareBtn = document.getElementById('raShareBtn');
       if (shareBtn) shareBtn.addEventListener('click', function () { handleShare(results); });

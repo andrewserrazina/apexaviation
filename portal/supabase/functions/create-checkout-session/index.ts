@@ -100,11 +100,12 @@ import Stripe from 'https://esm.sh/stripe@14?target=denonext'
 // Supabase deploy path used for this function cannot resolve a relative
 // import that reaches outside this function's own directory. Must be
 // kept byte-identical to _shared/emailTemplate.ts's own emailTemplate()
-// export -- the other functions that still import it normally
-// (create-free-account, send-lifecycle-emails) are unaffected. See that
-// file's own header comment for the design-system rationale (navy
-// header / white body / solid-hex text / square CTA corners) and the
-// note that no design-manual .docx exists anywhere in this repo.
+// export -- create-free-account is the only function that still imports
+// it normally (stripe-webhook and send-lifecycle-emails also carry their
+// own forced-inline copies, same reason). See that file's own header
+// comment for the design-system rationale (navy header / white body /
+// solid-hex text / square CTA corners) and the note that no design-
+// manual .docx exists anywhere in this repo.
 //
 // Audit note: this fifth copy of the shell (alongside _shared/
 // emailTemplate.ts itself and the forced-inline copies in

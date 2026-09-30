@@ -8947,6 +8947,25 @@
         readinessPaidStepViewedFired = true;
         if (window.apexTrack) apexTrack('readiness_paid_recommendation_viewed', { profile_id: member.id, route: route.route, product: route.paidCta.product });
       }
+
+      // Low-commitment alternative (Growth Sprint Phase 0 follow-up):
+      // 109 members saw this exact paid pitch and only a handful bought --
+      // most who don't convert aren't rejecting the product, they're not
+      // ready for a $29 commitment yet. Offers the $19 Airspace Mastery
+      // Study Pack as a real, cheaper first step instead of only "not
+      // now" -- Checkride-Prep-only, same gate as the outcome-focused
+      // copy above.
+      var lowCommitLink = document.getElementById('readinessPlanLowCommitLink');
+      if (lowCommitLink) {
+        lowCommitLink.hidden = !isCheckridePrepCta;
+        if (isCheckridePrepCta) {
+          document.getElementById('readinessPlanLowCommitBtn').onclick = function (e) {
+            e.preventDefault();
+            if (window.apexTrack) apexTrack('readiness_low_commitment_clicked', { profile_id: member.id, route: route.route, product: 'study_pack_airspace_mastery' });
+            showSection('study-packs');
+          };
+        }
+      }
     }
 
     if (!readinessPlanViewedFired) {

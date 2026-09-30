@@ -239,3 +239,73 @@ describe('first-question milestone entitlement fix (email-system audit, item 5)'
     expect(portalStableSource).not.toContain('first question 🎉')
   })
 })
+
+// Several of the functions below close over the module-level
+// PORTAL_LOGIN_URL const, which new Function()'s isolated scope can't
+// see. Extracted from the real source (not hardcoded) so a future change
+// to the constant can't silently desync this from what actually ships,
+// then passed in as an explicit parameter wherever one of those
+// functions is reconstructed.
+const PORTAL_LOGIN_URL = lifecycleSource.match(/const PORTAL_LOGIN_URL = '([^']+)'/)[1]
+
+describe('growth-plan follow-up: abandoned-checkout second touch (v151)', () => {
+  it('emailTemplateAbandonedCheckridePrepFollowup() mentions the real price, the 7-day guarantee, and a founding-tier urgency line when given one', () => {
+    // eslint-disable-next-line no-new-func
+    const fn = new Function('firstName', 'priceLabel', 'urgencyLine', 'PORTAL_LOGIN_URL', extractFunctionBody(lifecycleSource, 'function emailTemplateAbandonedCheckridePrepFollowup('))
+    const withUrgency = fn('Alex', '$29', 'Only 3 founding spots left at $29.', PORTAL_LOGIN_URL)
+    expect(withUrgency).toContain('$29')
+    expect(withUrgency).toContain('Only 3 founding spots left at $29.')
+    expect(withUrgency).toContain('7-day guarantee')
+
+    const withoutUrgency = fn('Alex', '$49', null, PORTAL_LOGIN_URL)
+    expect(withoutUrgency).toContain('$49')
+    expect(withoutUrgency).not.toContain('founding spots')
+  })
+
+  it('processAbandonedCheckoutsFollowup() only targets Checkride Prep purposes, gates on recovery_email_2_sent_at, and fetches live pricing rather than trusting the original quoted amount', () => {
+    const block = extractFunctionSourceBlock(lifecycleSource, 'async function processAbandonedCheckoutsFollowup(')
+    expect(block).toContain("'unlock-checkride-prep'")
+    expect(block).toContain("'signup-and-unlock-checkride-prep'")
+    expect(block).toContain('recovery_email_2_sent_at')
+    expect(block).toContain('get_checkride_prep_pricing')
+  })
+
+  it('the first-touch abandoned-checkout email for Checkride Prep names real included features, not just "you didn\'t finish"', () => {
+    // eslint-disable-next-line no-new-func
+    const fn = new Function('firstName', 'PORTAL_LOGIN_URL', extractFunctionBody(lifecycleSource, 'function emailTemplateAbandonedCheckridePrep('))
+    const html = fn('Alex', PORTAL_LOGIN_URL)
+    expect(html).toContain('AI DPE Practice')
+    expect(html).toContain('Checkride Binder Builder')
+  })
+
+  it('serve() calls the follow-up pass after the first abandoned-checkout pass', () => {
+    const firstIdx = lifecycleSource.indexOf('await processAbandonedCheckouts(supabase, results)')
+    const followupIdx = lifecycleSource.indexOf('await processAbandonedCheckoutsFollowup(supabase, results)')
+    expect(firstIdx).toBeGreaterThan(-1)
+    expect(followupIdx).toBeGreaterThan(firstIdx)
+  })
+})
+
+describe('growth-plan follow-up: low-commitment Study Pack alternative on readiness-lead emails', () => {
+  it('raLowCommitLine() links to the $19 Airspace Mastery Study Pack, not the full Checkride Prep pitch', () => {
+    // eslint-disable-next-line no-new-func
+    const raLowCommitLine = new Function('PORTAL_LOGIN_URL', extractFunctionBody(lifecycleSource, 'function raLowCommitLine('))
+    const html = raLowCommitLine(PORTAL_LOGIN_URL)
+    expect(html).toContain('$19')
+    expect(html).toContain('dest=study-packs')
+  })
+
+  it('day3 and day6 readiness-lead emails include the low-commitment alternative; day1 (the full first pitch) does not', () => {
+    const day1 = extractFunctionSourceBlock(lifecycleSource, 'function emailTemplateAssessmentDay1(')
+    const day3 = extractFunctionSourceBlock(lifecycleSource, 'function emailTemplateAssessmentDay3(')
+    const day6 = extractFunctionSourceBlock(lifecycleSource, 'function emailTemplateAssessmentDay6(')
+    expect(day1).not.toContain('raLowCommitLine()')
+    expect(day3).toContain('raLowCommitLine()')
+    expect(day6).toContain('raLowCommitLine()')
+  })
+
+  it('the day6 email mentions the 7-day guarantee', () => {
+    const day6 = extractFunctionSourceBlock(lifecycleSource, 'function emailTemplateAssessmentDay6(')
+    expect(day6).toContain('7-day guarantee')
+  })
+})

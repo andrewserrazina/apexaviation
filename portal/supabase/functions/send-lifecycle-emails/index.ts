@@ -88,7 +88,61 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { emailTemplate as template, emailHeadline, emailParagraph, emailButton } from '../_shared/emailTemplate.ts'
+
+// Inlined (not imported from ../_shared/emailTemplate.ts) because the
+// Supabase deploy path used for this function (the MCP deploy_edge_
+// function tool's single-file deploy, used to ship the v151 abandoned-
+// checkout second-touch feature) cannot resolve a relative import that
+// reaches outside this function's own directory -- same issue and same
+// fix as stripe-webhook/create-checkout-session's own inlining. Must be
+// kept byte-identical to _shared/emailTemplate.ts's exports (verified by
+// portal/test/emailTemplates.test.js). See that file's own header
+// comment for the design-system rationale.
+function template(content: string): string {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#E5E7EB;font-family:Arial,Helvetica,sans-serif;color:#1F2937;">
+  <div style="max-width:560px;margin:0 auto;background:#FFFFFF;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0B1F3A;">
+      <tr><td align="center" style="padding:28px 16px;">
+        <img src="https://apexaviationtx.com/apexwhite.png" alt="Apex Advantage" width="160" style="display:block;margin:0 auto 10px;height:auto;max-width:160px;">
+        <div style="font-size:14px;font-weight:700;letter-spacing:2px;color:#FFFFFF;font-family:Arial,Helvetica,sans-serif;">APEX ADVANTAGE</div>
+      </td></tr>
+    </table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr><td style="padding:32px 24px 8px;">
+        ${content}
+      </td></tr>
+    </table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr><td style="padding:20px 24px 28px;border-top:1px solid #E5E7EB;margin-top:12px;">
+        <p style="font-size:12px;color:#4B5563;margin:16px 0 4px;text-align:center;font-family:Arial,Helvetica,sans-serif;">Apex Aviation &middot; Austin, TX</p>
+        <p style="font-size:11px;margin:0 0 8px;text-align:center;font-family:Arial,Helvetica,sans-serif;">
+          <a href="https://apexaviationtx.com" style="color:#4B5563;text-decoration:underline;">apexaviationtx.com</a>
+        </p>
+        <p style="font-size:11px;margin:0;text-align:center;font-family:Arial,Helvetica,sans-serif;">
+          <a href="https://apexaviationtx.com/email-preferences.html" style="color:#4B5563;text-decoration:underline;">Manage email preferences</a>
+        </p>
+      </td></tr>
+    </table>
+  </div>
+</body></html>`
+}
+
+function emailHeadline(text: string): string {
+  return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;font-family:Arial,Helvetica,sans-serif;">${text}</h2>`
+}
+
+function emailParagraph(text: string, opts?: { muted?: boolean }): string {
+  const color = opts?.muted ? '#4B5563' : '#1F2937'
+  const size = opts?.muted ? '13px' : '15px'
+  return `<p style="color:${color};font-size:${size};line-height:1.7;margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;">${text}</p>`
+}
+
+function emailButton(label: string, href: string): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 20px;"><tr><td style="background:#F4B400;">` +
+    `<a href="${href}" style="display:inline-block;padding:14px 28px;color:#0B1F3A;text-decoration:none;font-weight:bold;font-size:15px;font-family:Arial,Helvetica,sans-serif;">${label}</a>` +
+    `</td></tr></table>`
+}
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -164,6 +218,13 @@ const CHECKRIDE_TIMING_SCHEDULES: Record<string, number[]> = {
 const DEFAULT_UPSELL_TIMING_BUCKET = 'within_60_days'
 const ABANDONED_CHECKOUT_MIN_HOURS = 1
 const ABANDONED_CHECKOUT_MAX_DAYS = 7
+// Second touch (Checkride-Prep-only): sent this many hours after the
+// first recovery email, if checkout is still incomplete. No separate
+// max-age cutoff needed beyond this -- it's gated on recovery_email_
+// sent_at, which itself only ever gets set inside the first email's own
+// 1-hour-to-7-day window, so a second touch is never sent more than
+// ~9 days after the original attempt.
+const ABANDONED_CHECKOUT_FOLLOWUP_HOURS = 48
 
 // New Member Activation sequence -- Emails #2/#3/#4 from the activation
 // brief (Email #1 fires synchronously at signup, in create-free-account/
@@ -999,6 +1060,26 @@ const PORTAL_LOGIN_URL = 'https://apexaviationtx.com/portal-login.html'
 function emailTemplateAbandonedCheckridePrep(firstName: string) {
   return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Still want in, ${firstName}?</h2>` +
     '<p style="color:#1F2937;font-size:15px;line-height:1.7;">Looks like you started unlocking the Checkride Prep System but didn\'t finish checkout. Nothing was charged — pick up right where you left off whenever you\'re ready.</p>' +
+    '<ul style="color:#4B5563;font-size:13.5px;line-height:1.8;margin:0 0 18px;padding-left:20px;">' +
+    '<li>300+ ACS-mapped DPE-style questions with model answers</li>' +
+    '<li>AI DPE Practice — unlimited simulated oral exams</li>' +
+    '<li>The Checkride Binder Builder, ACS Quick Reference, and progress tracking</li>' +
+    '</ul>' +
+    `<a href="${PORTAL_LOGIN_URL}?dest=checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Finish Unlocking →</a>`
+}
+
+// Second touch, Checkride-Prep-only -- sent ~48 hours after the first
+// (see ABANDONED_CHECKOUT_FOLLOWUP_HOURS below) if checkout is still
+// incomplete. Unlike the first email (a bare "still want in?" nudge),
+// this one carries genuine reasons to act now: real Early Access pricing
+// urgency (when it's actually active — never a fabricated deadline) and
+// the 7-day guarantee, which directly answers "what if I'm not sure this
+// is worth it" for anyone still on the fence two days later.
+function emailTemplateAbandonedCheckridePrepFollowup(firstName: string, priceLabel: string, urgencyLine: string | null) {
+  return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">One more thing, ${firstName}</h2>` +
+    `<p style="color:#1F2937;font-size:15px;line-height:1.7;">Your Checkride Prep unlock (${priceLabel}) is still waiting — nothing was charged, and it only takes a minute to finish.</p>` +
+    (urgencyLine ? `<p style="color:#B45309;font-size:13.5px;font-weight:700;line-height:1.6;">${urgencyLine}</p>` : '') +
+    '<p style="color:#6B7280;font-size:13px;line-height:1.6;">Covered by our 7-day guarantee — if it\'s not right for you, email us within 7 days of purchase for a full refund, no questions asked.</p>' +
     `<a href="${PORTAL_LOGIN_URL}?dest=checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Finish Unlocking →</a>`
 }
 
@@ -1042,17 +1123,32 @@ function emailTemplateAssessmentDay1(firstName: string, score: number, level: st
     `<a href="${PORTAL_LOGIN_URL}?view=signup&dest=checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Build My Complete Study Plan →</a>`
 }
 
+// Low-commitment alternative, appended to the later touches only (day1
+// leads with the full pitch first) -- Growth Sprint Phase 0 follow-up.
+// Real numbers: 109 leads saw the full Checkride Prep pitch and the
+// large majority never bought; a lot of that isn't rejection, it's "not
+// ready for $29 yet." $19 Airspace Mastery is a real, live product
+// (already built, not a placeholder), so this gives that segment an
+// actual smaller first step instead of only ever re-pitching the same
+// $29 ask three times in six days.
+function raLowCommitLine(): string {
+  return `<p style="color:#6B7280;font-size:13px;line-height:1.6;margin-top:18px;">Not ready for the full system yet? <a href="${PORTAL_LOGIN_URL}?view=signup&dest=study-packs&utm_source=email&utm_medium=email&utm_campaign=readiness_followup" style="color:#0B1F3A;text-decoration:underline;">Try the $19 Airspace Mastery Study Pack first →</a></p>`
+}
+
 function emailTemplateAssessmentDay3(firstName: string, weakCats: string[]) {
   const focus = weakCats.length ? weakCats[0] : 'the areas you missed'
   return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Quick gut check, ${firstName}</h2>` +
     `<p style="color:#1F2937;font-size:15px;line-height:1.7;">If you had to sit your oral exam tomorrow, could you confidently explain ${focus} to a DPE — not just recall the fact, but explain why it matters and apply it to a real scenario? That gap between "I know it" and "I can explain it under pressure" is exactly what the full Checkride Prep System closes.</p>` +
-    `<a href="${PORTAL_LOGIN_URL}?view=signup&dest=checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">See What's Included →</a>`
+    `<a href="${PORTAL_LOGIN_URL}?view=signup&dest=checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">See What's Included →</a>` +
+    raLowCommitLine()
 }
 
 function emailTemplateAssessmentDay6(firstName: string, timingLabel: string) {
   return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Last look, ${firstName}</h2>` +
     `<p style="color:#1F2937;font-size:15px;line-height:1.7;">You told us your checkride is ${timingLabel}. Whenever that is, the difference between scattered studying and a real plan is what actually shows up in the oral exam room. The Checkride Prep System gives you 300+ ACS-mapped questions, DPE-style scenarios, and an AI mock oral — built to close exactly the gaps your assessment turned up.</p>` +
-    `<a href="${PORTAL_LOGIN_URL}?view=signup&dest=checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Build My Complete Study Plan →</a>`
+    `<p style="color:#6B7280;font-size:13px;line-height:1.6;">Covered by our 7-day guarantee — not satisfied, email us for a full refund.</p>` +
+    `<a href="${PORTAL_LOGIN_URL}?view=signup&dest=checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Build My Complete Study Plan →</a>` +
+    raLowCommitLine()
 }
 
 // One row per lead (not a log), so each of the three stages is checked
@@ -1239,6 +1335,70 @@ async function processAbandonedCheckouts(supabase: any, results: any) {
       })
     } catch (err) {
       results.errors.push(`abandoned_checkout:${attempt.id}: ${err}`)
+    }
+  }
+}
+
+// Second touch, Checkride-Prep-only (v151's recovery_email_2_sent_at) --
+// a growth-plan audit found the single first-touch email above had sent
+// only 10 times ever against 58 real checkout_session_attempts rows,
+// with no urgency or reason to act beyond "you didn't finish." This
+// fires ABANDONED_CHECKOUT_FOLLOWUP_HOURS after the first email if
+// checkout is still incomplete, and only for Checkride Prep -- Ground
+// School/Mock Oral have no comparable real urgency (a live class's own
+// seat-scarcity messaging on the class picker already covers that case)
+// to reference in a second nudge, so they keep the single email as-is
+// rather than getting a second touch with nothing new to say.
+async function processAbandonedCheckoutsFollowup(supabase: any, results: any) {
+  const followupCutoff = new Date(Date.now() - ABANDONED_CHECKOUT_FOLLOWUP_HOURS * 3600000).toISOString()
+
+  const { data: attempts } = await supabase
+    .from('checkout_session_attempts')
+    .select('id, purpose, email, profile_id, amount_cents')
+    .is('completed_at', null)
+    .is('recovery_email_2_sent_at', null)
+    .not('recovery_email_sent_at', 'is', null)
+    .lte('recovery_email_sent_at', followupCutoff)
+    .in('purpose', ['unlock-checkride-prep', 'signup-and-unlock-checkride-prep'])
+
+  for (const attempt of attempts ?? []) {
+    if (!attempt.email) continue
+    try {
+      let firstName = 'there'
+      if (attempt.profile_id) {
+        const { data: profile } = await supabase.from('profiles').select('full_name,email_marketing_opt_out').eq('id', attempt.profile_id).maybeSingle()
+        if (profile?.full_name) firstName = profile.full_name.split(' ')[0]
+        if (profile?.email_marketing_opt_out) continue
+      }
+
+      // Live pricing, not the quoted amount_cents on the original attempt
+      // -- a founding/launch tier could have changed (or Early Access
+      // could have ended entirely) in the ~2 days since the first email,
+      // and this second touch's whole point is to reference the real,
+      // current state, not a stale snapshot.
+      const { data: pricingRows } = await supabase.rpc('get_checkride_prep_pricing', { p_profile_id: attempt.profile_id || null })
+      const pricing = (pricingRows && pricingRows[0]) || null
+      const priceLabel = pricing ? `$${Math.round(pricing.amount_cents / 100)}` : (attempt.amount_cents ? `$${Math.round(attempt.amount_cents / 100)}` : '$29')
+      const urgencyLine = pricing && pricing.tier === 'founding'
+        ? `Only ${pricing.founding_seats_remaining} founding spots left at ${priceLabel}.`
+        : pricing && pricing.tier === 'launch'
+          ? `Early Access pricing (${priceLabel}) won't last — regular price is $49.`
+          : null
+
+      const { error: markError } = await supabase
+        .from('checkout_session_attempts')
+        .update({ recovery_email_2_sent_at: new Date().toISOString() })
+        .eq('id', attempt.id)
+        .is('recovery_email_2_sent_at', null)
+      if (markError) {
+        results.errors.push(`abandoned_checkout_followup_mark:${attempt.id}:${markError.message}`)
+        continue
+      }
+
+      await sendEmail(supabase, attempt.email, 'Still thinking it over?', emailTemplateAbandonedCheckridePrepFollowup(firstName, priceLabel, urgencyLine))
+      results.abandoned_checkout_followup++
+    } catch (err) {
+      results.errors.push(`abandoned_checkout_followup:${attempt.id}: ${err}`)
     }
   }
 }
@@ -1516,7 +1676,7 @@ serve(async (req) => {
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
-  const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, checkride_upsell: 0, ground_followup: 0, abandoned_checkout: 0, seven_day_active: 0, readiness_assessment_followup: 0, recovery_sortie_notified: 0, reactivation_inactive: 0, weekly_progress: 0, new_member_activation: 0, activation_email_1_catchup: 0, mock_oral_reminder: 0, errors: [] as string[] }
+  const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, checkride_upsell: 0, ground_followup: 0, abandoned_checkout: 0, abandoned_checkout_followup: 0, seven_day_active: 0, readiness_assessment_followup: 0, recovery_sortie_notified: 0, reactivation_inactive: 0, weekly_progress: 0, new_member_activation: 0, activation_email_1_catchup: 0, mock_oral_reminder: 0, errors: [] as string[] }
 
   // exam_type hard-coded to 'private_pilot' — see get-premium-content
   // for why instrument content must never be reachable this way yet.
@@ -1588,6 +1748,7 @@ serve(async (req) => {
   await processGroundSchoolFollowUps(supabase, results)
   await processMockOralReminders(supabase, results)
   await processAbandonedCheckouts(supabase, results)
+  await processAbandonedCheckoutsFollowup(supabase, results)
   await processReadinessAssessmentFollowup(supabase, results)
 
   // Streak-protection maintenance (freeze earning/consumption, Recovery

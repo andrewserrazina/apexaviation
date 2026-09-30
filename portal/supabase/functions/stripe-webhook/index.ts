@@ -72,11 +72,12 @@ import Stripe from 'https://esm.sh/stripe@14?target=denonext'
 // Supabase deploy path used for this function cannot resolve a relative
 // import that reaches outside this function's own directory. Must be
 // kept byte-identical to _shared/emailTemplate.ts's own emailTemplate()
-// export -- the other functions that still import it normally
-// (create-free-account, send-lifecycle-emails) are unaffected. See that
-// file's own header comment for the design-system rationale (navy
-// header / white body / solid-hex text / square CTA corners) and the
-// note that no design-manual .docx exists anywhere in this repo.
+// export -- create-free-account is the only function that still imports
+// it normally (create-checkout-session and send-lifecycle-emails also
+// carry their own forced-inline copies, same reason). See that file's
+// own header comment for the design-system rationale (navy header /
+// white body / solid-hex text / square CTA corners) and the note that no
+// design-manual .docx exists anywhere in this repo.
 function template(content: string): string {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#E5E7EB;font-family:Arial,Helvetica,sans-serif;color:#1F2937;">

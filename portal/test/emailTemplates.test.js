@@ -93,13 +93,14 @@ describe('reusable email components', () => {
 })
 
 // _shared/emailTemplate.ts's own header comment documents that
-// stripe-webhook/index.ts and create-checkout-session/index.ts each
-// carry a forced-inline, "must stay byte-identical" duplicate of
-// emailTemplate() because their Supabase deploy path can't resolve a
-// relative import reaching outside the function's own directory. That's
-// exactly the kind of hand-maintained invariant that silently drifts --
-// this locks it down so a future edit to one copy without the others
-// fails CI instead of shipping a visually inconsistent email.
+// stripe-webhook/index.ts, create-checkout-session/index.ts, and
+// send-lifecycle-emails/index.ts each carry a forced-inline, "must stay
+// byte-identical" duplicate of emailTemplate() because their Supabase
+// deploy path can't resolve a relative import reaching outside the
+// function's own directory. That's exactly the kind of hand-maintained
+// invariant that silently drifts -- this locks it down so a future edit
+// to one copy without the others fails CI instead of shipping a visually
+// inconsistent email.
 describe('forced-inline shell duplicates stay byte-identical to the shared source', () => {
   function extractFunctionBody(source, functionNameMarker) {
     const startIdx = source.indexOf(functionNameMarker)
@@ -129,6 +130,11 @@ describe('forced-inline shell duplicates stay byte-identical to the shared sourc
 
   it('create-checkout-session/index.ts emailTemplate() renders identically to the shared shell', () => {
     const inlineTemplate = loadInlineTemplateFn('portal/supabase/functions/create-checkout-session/index.ts', 'function emailTemplate(')
+    expect(inlineTemplate('<p>x</p>')).toBe(emailTemplate('<p>x</p>'))
+  })
+
+  it('send-lifecycle-emails/index.ts template() renders identically to the shared shell', () => {
+    const inlineTemplate = loadInlineTemplateFn('portal/supabase/functions/send-lifecycle-emails/index.ts', 'function template(')
     expect(inlineTemplate('<p>x</p>')).toBe(emailTemplate('<p>x</p>'))
   })
 })
