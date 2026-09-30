@@ -622,7 +622,7 @@ function emailTemplateCheckrideUpsell(day: number, pricing: PricingPreview, timi
   const cta = (label: string) => `<a href="${lifecycleCtaUrl('checkride_upsell', 'upsell_day' + day, '#checkride-prep')}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">${label}</a>`
 
   if (day === 1) {
-    const intro = '<p style="color:#1F2937;font-size:15px;line-height:1.7;">Your free portal account already includes the "10 Questions DPEs Love to Ask" guide. The full Checkride Prep System adds a 300+ question DPE-style bank covering every ACS area of operation — each with a model answer, the common mistakes examiners watch for, and real-world context — plus scenario training and progress tracking.</p>'
+    const intro = '<p style="color:#1F2937;font-size:15px;line-height:1.7;">Your free portal account already includes the "10 Questions DPEs Love to Ask" guide. The full Checkride Prep System adds a 300+ question DPE-style bank covering every ACS area of operation — each with a model answer, the common mistakes examiners watch for, and real-world context — plus scenario training, the Checkride Binder Builder, and progress tracking.</p>'
     if (pricing.tier === 'founding' || pricing.tier === 'launch') {
       const tierUrgency = pricing.tier === 'founding'
         ? `${pricing.founding_seats_remaining} founding spot${pricing.founding_seats_remaining === 1 ? '' : 's'} left at ${price}, then $49`
@@ -650,13 +650,13 @@ function emailTemplateCheckrideUpsell(day: number, pricing: PricingPreview, timi
     let body: string
     if (pricing.tier === 'founding') {
       heading = `${pricing.founding_seats_remaining} founding spot${pricing.founding_seats_remaining === 1 ? '' : 's'} left at ${price}`
-      body = `Founding pricing (${price}, versus $49 after the first 25 members) won't last much longer. The full system is 300+ DPE-style questions, model answers, scenario training, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation.`
+      body = `Founding pricing (${price}, versus $49 after the first 25 members) won't last much longer. The full system is 300+ DPE-style questions, model answers, scenario training, the Checkride Binder Builder, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation.`
     } else if (pricing.tier === 'launch') {
       heading = `Your ${price} new-member price is still active`
-      body = `You're still inside your new-member pricing window — ${price} instead of the usual $49. The full system is 300+ DPE-style questions, model answers, scenario training, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation.`
+      body = `You're still inside your new-member pricing window — ${price} instead of the usual $49. The full system is 300+ DPE-style questions, model answers, scenario training, the Checkride Binder Builder, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation.`
     } else {
       heading = 'Still thinking about the Checkride Prep System?'
-      body = `300+ DPE-style questions, model answers, scenario training, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation. Unlock it whenever you're ready.`
+      body = `300+ DPE-style questions, model answers, scenario training, the Checkride Binder Builder, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation. Unlock it whenever you're ready.`
     }
     return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">${heading}</h2>` +
       `<p style="color:#1F2937;font-size:15px;line-height:1.7;">${body}</p>` +
@@ -671,20 +671,20 @@ function emailTemplateCheckrideUpsell(day: number, pricing: PricingPreview, timi
 
   if (day === 14) {
     return '<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Last look: the Checkride Prep System</h2>' +
-      '<p style="color:#1F2937;font-size:15px;line-height:1.7;">No pressure — the free guide is yours either way. But if your checkride is getting closer, the full 300+ question Checkride Prep System (DPE insight, scenario training, progress tracking) is one click away whenever you want it.</p>' +
+      '<p style="color:#1F2937;font-size:15px;line-height:1.7;">No pressure — the free guide is yours either way. But if your checkride is getting closer, the full 300+ question Checkride Prep System (DPE insight, scenario training, the Checkride Binder Builder, progress tracking) is one click away whenever you want it.</p>' +
       urgencyParagraph + cta(`Unlock for ${price} →`)
   }
 
   if (day === 21) {
     return '<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Start before you have to cram</h2>' +
-      '<p style="color:#1F2937;font-size:15px;line-height:1.7;">The students who feel calmest on checkride day usually started their oral prep well before it felt urgent. The full Checkride Prep System is there whenever you\'re ready — 300+ questions, model answers, and scenario training, at your own pace.</p>' +
+      '<p style="color:#1F2937;font-size:15px;line-height:1.7;">The students who feel calmest on checkride day usually started their oral prep well before it felt urgent. The full Checkride Prep System is there whenever you\'re ready — 300+ questions, model answers, scenario training, and the Checkride Binder Builder, at your own pace.</p>' +
       urgencyParagraph + cta(`Unlock for ${price} →`)
   }
 
   // day === 30 -- longest-running touchpoint, reached only by the
   // not_scheduled bucket.
   return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">It'll be here whenever you're ready</h2>` +
-    '<p style="color:#1F2937;font-size:15px;line-height:1.7;">The free guide is yours either way. Whenever you do lock in a checkride date, the full Checkride Prep System (300+ DPE-style questions, model answers, scenario training, progress tracking) will be right where you left it.</p>' +
+    '<p style="color:#1F2937;font-size:15px;line-height:1.7;">The free guide is yours either way. Whenever you do lock in a checkride date, the full Checkride Prep System (300+ DPE-style questions, model answers, scenario training, the Checkride Binder Builder, progress tracking) will be right where you left it.</p>' +
     urgencyParagraph + cta(`Unlock for ${price} →`)
 }
 

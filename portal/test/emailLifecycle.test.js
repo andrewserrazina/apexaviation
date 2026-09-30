@@ -309,3 +309,40 @@ describe('growth-plan follow-up: low-commitment Study Pack alternative on readin
     expect(day6).toContain('7-day guarantee')
   })
 })
+
+describe('growth-plan follow-up: pre-purchase upsell drip mentions the Checkride Binder Builder', () => {
+  // The upsell drip (emailTemplateCheckrideUpsell, days 1/3/6/7/12/14/21/30)
+  // is the main automated nudge every free, not-yet-unlocked member
+  // already receives -- it previously listed "300+ questions, AI DPE
+  // Practice, scenario training, progress tracking" at every stage but
+  // never mentioned the Binder Builder, the newest and most
+  // differentiated feature in the bundle it's trying to sell.
+  //
+  // Static source-block slicing rather than executing the function --
+  // its body declares a locally-typed arrow function (`const cta =
+  // (label: string) => ...`), which is real, valid TypeScript but not
+  // valid plain JS, so new Function() on the extracted body throws a
+  // SyntaxError. Slicing between each `if (day === N)` marker is exactly
+  // as precise for a "does this day's copy mention X" check.
+  const upsellSource = extractFunctionSourceBlock(lifecycleSource, 'function emailTemplateCheckrideUpsell(')
+  function daySlice(day, nextDay) {
+    const startIdx = upsellSource.indexOf(`if (day === ${day})`)
+    expect(startIdx, `day ${day} branch not found`).toBeGreaterThan(-1)
+    const endIdx = nextDay ? upsellSource.indexOf(`if (day === ${nextDay})`) : upsellSource.length
+    return upsellSource.slice(startIdx, endIdx === -1 ? upsellSource.length : endIdx)
+  }
+
+  it('mentions it on day 1 (both the generic and the founding/launch-urgency variants share one intro)', () => {
+    expect(daySlice(1, 3)).toContain('Checkride Binder Builder')
+  })
+
+  it('mentions it on day 7 across all three pricing tiers', () => {
+    const day7 = daySlice(7, 12)
+    expect((day7.match(/Checkride Binder Builder/g) || []).length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('mentions it on the terminal days (14, 21, 30)', () => {
+    expect(daySlice(14, 21)).toContain('Checkride Binder Builder')
+    expect(daySlice(21, null)).toContain('Checkride Binder Builder') // also covers day 30 (no further `if` marker after it)
+  })
+})
