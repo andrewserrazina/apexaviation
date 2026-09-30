@@ -301,7 +301,8 @@
       <div id="moBookingFlow" hidden style="max-width:640px;margin:32px auto 0;background:#101f38;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:26px">
         <button type="button" id="moBookingBack" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:12.5px;font-weight:700;cursor:pointer;padding:0;margin-bottom:16px">← Choose a different option</button>
         <h3 style="color:#fff;font-size:16px;font-weight:800;margin:0 0 4px" id="moBookingProductName"></h3>
-        <p style="color:rgba(255,255,255,0.5);font-size:13px;margin:0 0 18px">Pick an open time, then enter your info to pay and reserve your spot. Your free Apex Advantage account is created automatically — no separate signup step.</p>
+        <p style="color:rgba(255,255,255,0.5);font-size:13px;margin:0 0 4px">Pick an open time, then enter your info to pay and reserve your spot. Your free Apex Advantage account is created automatically — no separate signup step.</p>
+        <p style="color:rgba(255,255,255,0.35);font-size:11.5px;margin:0 0 18px">All times below are shown in your own local time zone.</p>
         <div class="mo-view-tabs">
           <button type="button" class="mo-view-tab mo-view-tab--active" data-mo-view="list">List</button>
           <button type="button" class="mo-view-tab" data-mo-view="calendar">Calendar</button>
@@ -436,12 +437,11 @@
       });
     });
 
-    // Same MO_TZ_ABBR/zonedWallClockToUtc/moFmtDateTime helpers
-    // portal-stable.js uses to render mock_oral_availability rows for a
-    // signed-in member -- ported here (this public page doesn't load
-    // portal-stable.js) so an anonymous visitor sees the exact same
-    // date/time formatting when picking a slot to book as a guest.
-    var MO_TZ_ABBR = { 'America/Chicago': 'CT', 'America/New_York': 'ET', 'America/Denver': 'MT', 'America/Los_Angeles': 'PT', 'UTC': 'UTC' };
+    // Same zonedWallClockToUtc helper portal-stable.js uses to render
+    // mock_oral_availability rows -- ported here (this public page
+    // doesn't load portal-stable.js) so an anonymous visitor sees the
+    // real UTC instant for a slot, converted correctly regardless of
+    // their own timezone.
     function tzOffsetMs(instant, timeZone) {
       var parts = {};
       new Intl.DateTimeFormat('en-US', {
@@ -458,12 +458,19 @@
       var guess = new Date(naiveUtc.getTime() - tzOffsetMs(naiveUtc, timeZone));
       return new Date(naiveUtc.getTime() - tzOffsetMs(guess, timeZone));
     }
+    // Converts the slot to a real UTC instant, then lets the browser
+    // render both the date and time in the *viewer's own* local timezone
+    // -- important for a guest who could be booking from anywhere, not
+    // just Central time. timeZoneName: 'short' asks the browser to label
+    // whatever zone it just rendered into, so the abbreviation always
+    // matches the clock time shown (a hardcoded 'CT' suffix here would be
+    // wrong for any viewer not actually in Central time, showing e.g.
+    // "11:00 PM CT" for a slot that's really 4:00 PM Central).
     function moFmtDateTime(row) {
       var start = zonedWallClockToUtc(row.class_date, row.start_time, row.timezone);
       var date = start.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
-      var time = start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-      var tz = MO_TZ_ABBR[row.timezone] || row.timezone || '';
-      return date + ' · ' + time + (tz ? ' ' + tz : '');
+      var time = start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
+      return date + ' · ' + time;
     }
 
     // Same extractInvokeError() shape portal-stable.js/portal-login.html
