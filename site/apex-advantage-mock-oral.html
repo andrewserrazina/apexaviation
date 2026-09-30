@@ -192,6 +192,27 @@
     }
     .mo-avoid-strip p { color: rgba(255,255,255,0.45); font-size: 12.5px; line-height: 1.7; margin: 0; }
 
+    /* ManyChat/deep-link targets -- #pricing already exists and is reused
+       here rather than adding a redundant anchor. Both it and the panel
+       .nav jumps into (#moBookingFlow) need scroll-margin-top equal to
+       the fixed .nav bar's height (72px, styles.css .nav__inner) plus a
+       little breathing room, or a hash/deep-link jump (or this page's own
+       flow.scrollIntoView({block:'start'}) call) lands with the section
+       header hidden behind the fixed header -- a pre-existing gap that
+       also affected the hero and sticky-CTA's own #pricing links. */
+    #pricing, #moBookingFlow { scroll-margin-top: 88px; }
+
+    /* "Loading pricing…" -- a brief, real network round-trip (not just a
+       crawler/no-JS fallback -- see the inline script below), so it's
+       given a min-height close to a real pricing card's to reduce layout
+       shift, and a subtle pulse so it reads as active rather than stuck. */
+    #moPricingGrid[data-mo-loading] {
+      min-height: 180px; display: flex; align-items: center; justify-content: center;
+    }
+    .mo-loading-pulse { animation: moPulse 1.4s ease-in-out infinite; }
+    @keyframes moPulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.75; } }
+    @media (prefers-reduced-motion: reduce) { .mo-loading-pulse { animation: none; } }
+
     /* Sticky mobile CTA -- same slim pattern established on the GS page */
     .mo-sticky-cta {
       display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 500;
@@ -235,7 +256,7 @@
       <p class="mo-hero-sub">Find out before your DPE does.</p>
       <p class="page-hero__sub" style="max-width:560px;margin:0 auto">Take a realistic, ACS-based Private Pilot mock oral with an Apex Advantage instructor and find out exactly where you stand before checkride day.</p>
       <div style="margin-top:26px">
-        <a href="#pricing" class="btn btn--primary" id="moHeroCta" data-apx-cta data-apx-cta-location="hero">BOOK MY MOCK ORAL — $129</a>
+        <a href="#pricing" class="btn btn--primary" id="moHeroCta" data-apx-cta data-apx-cta-location="hero">VIEW AVAILABLE TIMES</a>
       </div>
       <div class="mo-hero-duration">Up to 2 Hours</div>
       <div class="mo-trust-line" style="justify-content:center">
@@ -293,8 +314,8 @@
         <div class="section__eyebrow">Choose Your Mock Oral</div>
         <h2 class="section__title">Real assessment.<br/><em class="accent">Real readiness report.</em></h2>
       </div>
-      <div class="mo-pricing-grid" id="moPricingGrid">
-        <p style="text-align:center;color:rgba(255,255,255,0.4);grid-column:1/-1">Loading pricing…</p>
+      <div class="mo-pricing-grid" id="moPricingGrid" data-mo-loading>
+        <p class="mo-loading-pulse" style="text-align:center;color:rgba(255,255,255,0.4);grid-column:1/-1">Loading pricing…</p>
       </div>
       <p style="text-align:center;color:rgba(255,255,255,0.4);font-size:12.5px;margin-top:22px" id="moAccountNote">Private Pilot only at this time. You'll sign in or create a free Apex Advantage account to book your time.</p>
 
@@ -420,7 +441,7 @@
   </footer>
 
   <div class="mo-sticky-cta">
-    <a href="#pricing" class="btn btn--primary" data-apx-cta data-apx-cta-location="sticky_mobile">Book My Mock Oral</a>
+    <a href="#pricing" class="btn btn--primary" data-apx-cta data-apx-cta-location="sticky_mobile">View Available Times</a>
   </div>
 
   <script src="script.js"></script>
@@ -668,50 +689,76 @@
     // signed in goes straight to the booking flow inside the portal;
     // everyone else books right here as a guest (openMoBookingFlow above)
     // -- no separate "create an account first" step.
-    apexSupabase.from('mock_oral_products').select('*').eq('active', true).order('sort_order').then(function (res) {
-      var products = res.data || [];
+    //
+    // The products fetch and the session check used to run sequentially
+    // (fetch products, *then* check the session before rendering anything),
+    // doubling the real network time the "Loading pricing…" placeholder
+    // stays on screen for no reason -- the two calls don't depend on each
+    // other. Promise.all runs them concurrently instead. There was also no
+    // failure handling at all: a rejected products fetch (offline, a
+    // transient Supabase error) left "Loading pricing…" on screen forever,
+    // and an empty-but-successful result cleared the grid to nothing with
+    // no explanation. Both now resolve to a real, non-blank message.
+    function moShowPricingFallback(message) {
       var grid = document.getElementById('moPricingGrid');
-      if (!products.length) { grid.innerHTML = ''; return; }
+      grid.removeAttribute('data-mo-loading');
+      grid.innerHTML = '<p style="text-align:center;color:rgba(255,255,255,0.5);grid-column:1/-1">' + message + '</p>';
+    }
 
-      apexSupabase.auth.getSession().then(function (sessionRes) {
-        var isSignedIn = !!(sessionRes.data && sessionRes.data.session);
-        var accountNote = document.getElementById('moAccountNote');
-        if (accountNote && !isSignedIn) accountNote.textContent = 'Private Pilot only at this time. Booking creates your free Apex Advantage account automatically -- no separate signup step.';
+    Promise.all([
+      apexSupabase.from('mock_oral_products').select('*').eq('active', true).order('sort_order'),
+      apexSupabase.auth.getSession(),
+    ]).then(function (results) {
+      var productsRes = results[0];
+      var sessionRes = results[1];
+      var products = productsRes.data || [];
+      var grid = document.getElementById('moPricingGrid');
+      grid.removeAttribute('data-mo-loading');
 
-        grid.innerHTML = products.map(function (p) {
-          var features = ['Up to ' + Math.round(p.duration_minutes / 60) + '-hour live 1:1 Mock Oral', 'ACS-based, scenario-based questioning', 'Written Apex Mock Oral Performance Report', 'Recommended study areas'];
-          if (p.includes_recheck) features.push('One 30-minute targeted recheck');
-          var cta = isSignedIn
-            ? '<a href="portal.html#mock-oral" class="btn btn--primary" style="width:100%;text-align:center;display:block" data-apx-cta data-apx-cta-location="pricing_card">BOOK MY MOCK ORAL</a>'
-            : '<button type="button" class="btn btn--primary" style="width:100%" data-apx-cta data-apx-cta-location="pricing_card" data-mo-open-product="' + p.id + '">BOOK MY MOCK ORAL</button>';
-          return '<div class="mo-pricing-card' + (p.badge ? ' mo-pricing-card--featured' : '') + '">' +
-            (p.badge ? '<div class="mo-pricing-card__badge">' + p.badge + '</div>' : '') +
-            '<h3>' + p.name + '</h3>' +
-            '<div class="mo-pricing-card__price">$' + (p.price_cents / 100).toFixed(0) + '</div>' +
-            '<div class="mo-pricing-card__duration">Up to ' + Math.round(p.duration_minutes / 60) + ' Hours</div>' +
-            '<ul>' + features.map(function (f) { return '<li>' + f + '</li>'; }).join('') + '</ul>' +
-            cta +
-            '</div>';
-        }).join('');
+      if (!products.length) {
+        moShowPricingFallback('Pricing is temporarily unavailable — <a href="mailto:info@apexaviationtx.com" style="color:var(--gold)">email us</a> or check back shortly.');
+        return;
+      }
 
-        // Re-fire the click tracker for the newly-injected cards (the
-        // page-load delegated wiring above only reached elements present
-        // at that point).
-        grid.querySelectorAll('[data-apx-cta]').forEach(function (el) {
-          el.addEventListener('click', function () {
-            if (window.gtag) gtag('event', 'mock_oral_cta_click', { location: el.dataset.apxCtaLocation || 'unknown' });
-          });
+      var isSignedIn = !!(sessionRes.data && sessionRes.data.session);
+      var accountNote = document.getElementById('moAccountNote');
+      if (accountNote && !isSignedIn) accountNote.textContent = 'Private Pilot only at this time. Booking creates your free Apex Advantage account automatically -- no separate signup step.';
+
+      grid.innerHTML = products.map(function (p) {
+        var features = ['Up to ' + Math.round(p.duration_minutes / 60) + '-hour live 1:1 Mock Oral', 'ACS-based, scenario-based questioning', 'Written Apex Mock Oral Performance Report', 'Recommended study areas'];
+        if (p.includes_recheck) features.push('One 30-minute targeted recheck');
+        var cta = isSignedIn
+          ? '<a href="portal.html#mock-oral" class="btn btn--primary" style="width:100%;text-align:center;display:block" data-apx-cta data-apx-cta-location="pricing_card">VIEW AVAILABLE TIMES</a>'
+          : '<button type="button" class="btn btn--primary" style="width:100%" data-apx-cta data-apx-cta-location="pricing_card" data-mo-open-product="' + p.id + '">VIEW AVAILABLE TIMES</button>';
+        return '<div class="mo-pricing-card' + (p.badge ? ' mo-pricing-card--featured' : '') + '">' +
+          (p.badge ? '<div class="mo-pricing-card__badge">' + p.badge + '</div>' : '') +
+          '<h3>' + p.name + '</h3>' +
+          '<div class="mo-pricing-card__price">$' + (p.price_cents / 100).toFixed(0) + '</div>' +
+          '<div class="mo-pricing-card__duration">Up to ' + Math.round(p.duration_minutes / 60) + ' Hours</div>' +
+          '<ul>' + features.map(function (f) { return '<li>' + f + '</li>'; }).join('') + '</ul>' +
+          cta +
+          '</div>';
+      }).join('');
+
+      // Re-fire the click tracker for the newly-injected cards (the
+      // page-load delegated wiring above only reached elements present
+      // at that point).
+      grid.querySelectorAll('[data-apx-cta]').forEach(function (el) {
+        el.addEventListener('click', function () {
+          if (window.gtag) gtag('event', 'mock_oral_cta_click', { location: el.dataset.apxCtaLocation || 'unknown' });
         });
-
-        if (!isSignedIn) {
-          grid.querySelectorAll('[data-mo-open-product]').forEach(function (btn) {
-            btn.addEventListener('click', function () { openMoBookingFlow(btn.dataset.moOpenProduct, products); });
-          });
-        }
-
-        var heroCta = document.getElementById('moHeroCta');
-        if (heroCta && isSignedIn && products.length === 1) heroCta.href = 'portal.html#mock-oral';
       });
+
+      if (!isSignedIn) {
+        grid.querySelectorAll('[data-mo-open-product]').forEach(function (btn) {
+          btn.addEventListener('click', function () { openMoBookingFlow(btn.dataset.moOpenProduct, products); });
+        });
+      }
+
+      var heroCta = document.getElementById('moHeroCta');
+      if (heroCta && isSignedIn && products.length === 1) heroCta.href = 'portal.html#mock-oral';
+    }).catch(function () {
+      moShowPricingFallback('Pricing is temporarily unavailable — <a href="mailto:info@apexaviationtx.com" style="color:var(--gold)">email us</a> or check back shortly.');
     });
   </script>
 </body>
