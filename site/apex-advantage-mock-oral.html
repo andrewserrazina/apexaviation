@@ -134,6 +134,46 @@
     .mo-slot:hover:not(:disabled) { border-color: var(--gold); }
     .mo-slot--selected { border-color: var(--gold); background: rgba(244,180,0,0.1); }
     .mo-slot:disabled { opacity: 0.5; cursor: default; }
+
+    /* List/Calendar toggle + calendar grid -- same dark-panel pattern as
+       the portal's own Ground School calendar (portal.css .gs-calendar),
+       ported here since this public page doesn't load portal.css. */
+    .mo-view-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+    .mo-view-tab {
+      background: #0b1627; border: 1.5px solid rgba(255,255,255,0.12); border-radius: 6px;
+      color: rgba(255,255,255,0.6); font-size: 12.5px; font-weight: 700; padding: 7px 14px; cursor: pointer;
+    }
+    .mo-view-tab--active { border-color: var(--gold); color: var(--gold); background: rgba(244,180,0,0.08); }
+    .mo-cal-nav { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; }
+    .mo-cal-nav__label { font-size: 14px; font-weight: 700; color: #fff; min-width: 140px; text-align: center; }
+    .mo-cal-nav__btn {
+      background: #0b1627; border: 1px solid rgba(255,255,255,0.1); color: #fff;
+      width: 30px; height: 30px; border-radius: 6px; font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .mo-cal-nav__btn:hover { border-color: var(--gold); color: var(--gold); }
+    .mo-calendar-scroll { overflow-x: auto; }
+    .mo-calendar { background: #0b1627; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; overflow: hidden; min-width: 480px; }
+    .mo-calendar__header, .mo-calendar__grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+    .mo-calendar__day-label {
+      padding: 8px; text-align: center; font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+      color: rgba(255,255,255,0.4); letter-spacing: 0.06em; border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .mo-calendar__cell {
+      min-height: 64px; padding: 6px; border-right: 1px solid rgba(255,255,255,0.08);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .mo-calendar__cell:nth-child(7n) { border-right: none; }
+    .mo-calendar__cell--empty { background: rgba(0,0,0,0.15); }
+    .mo-calendar__cell--today { background: rgba(244,180,0,0.06); }
+    .mo-calendar__cell-num { display: block; font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4); margin-bottom: 4px; }
+    .mo-calendar__cell--today .mo-calendar__cell-num { color: var(--gold); }
+    .mo-cal-event {
+      background: rgba(244,180,0,0.12); border-left: 2px solid var(--gold); border-radius: 3px;
+      padding: 2px 5px; margin-bottom: 3px; font-size: 10.5px; font-weight: 700; color: #fff; cursor: pointer;
+    }
+    .mo-cal-event:hover, .mo-cal-event--selected { background: rgba(244,180,0,0.28); }
+    @media (max-width: 640px) { .mo-cal-nav__label { min-width: 110px; font-size: 13px; } }
     .mo-booking-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
     .mo-booking-form-grid label {
       display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 700;
@@ -258,11 +298,15 @@
       </div>
       <p style="text-align:center;color:rgba(255,255,255,0.4);font-size:12.5px;margin-top:22px" id="moAccountNote">Private Pilot only at this time. You'll sign in or create a free Apex Advantage account to book your time.</p>
 
-      <div id="moBookingFlow" hidden style="max-width:560px;margin:32px auto 0;background:#101f38;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:26px">
+      <div id="moBookingFlow" hidden style="max-width:640px;margin:32px auto 0;background:#101f38;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:26px">
         <button type="button" id="moBookingBack" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:12.5px;font-weight:700;cursor:pointer;padding:0;margin-bottom:16px">← Choose a different option</button>
         <h3 style="color:#fff;font-size:16px;font-weight:800;margin:0 0 4px" id="moBookingProductName"></h3>
         <p style="color:rgba(255,255,255,0.5);font-size:13px;margin:0 0 18px">Pick an open time, then enter your info to pay and reserve your spot. Your free Apex Advantage account is created automatically — no separate signup step.</p>
-        <div class="mo-slot-list" id="moBookingSlots"></div>
+        <div class="mo-view-tabs">
+          <button type="button" class="mo-view-tab mo-view-tab--active" data-mo-view="list">List</button>
+          <button type="button" class="mo-view-tab" data-mo-view="calendar">Calendar</button>
+        </div>
+        <div id="moBookingSlots"></div>
         <div id="moBookingFormWrap" hidden style="margin-top:22px;padding-top:22px;border-top:1px solid rgba(255,255,255,0.08)">
           <form id="moBookingForm" novalidate>
             <div class="mo-booking-form-grid">
@@ -437,6 +481,100 @@
 
     var moSelectedProduct = null;
     var moSelectedSlotId = null;
+    var moSlotsData = [];
+    var moViewMode = 'list';
+    var moCalMonth = new Date();
+
+    function moNoSlotsHtml() {
+      return '<p style="color:rgba(255,255,255,0.5)">No upcoming times are open right now — check back soon, or <a href="contact.html" style="color:var(--gold)">contact us</a>.</p>';
+    }
+
+    function moWireSlotButtons() {
+      var formWrap = document.getElementById('moBookingFormWrap');
+      document.querySelectorAll('#moBookingSlots [data-mo-book-slot]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          moSelectedSlotId = btn.dataset.moBookSlot;
+          document.querySelectorAll('#moBookingSlots [data-mo-book-slot]').forEach(function (b) {
+            b.classList.remove('mo-slot--selected', 'mo-cal-event--selected');
+          });
+          btn.classList.add(btn.classList.contains('mo-cal-event') ? 'mo-cal-event--selected' : 'mo-slot--selected');
+          formWrap.hidden = false;
+          formWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+      });
+    }
+
+    function renderMoSlotsList() {
+      var slotsEl = document.getElementById('moBookingSlots');
+      if (!moSlotsData.length) { slotsEl.innerHTML = moNoSlotsHtml(); return; }
+      slotsEl.innerHTML = '<div class="mo-slot-list">' + moSlotsData.map(function (s) {
+        return '<button type="button" class="mo-slot" data-mo-book-slot="' + s.id + '">' + moFmtDateTime(s) + '</button>';
+      }).join('') + '</div>';
+      moWireSlotButtons();
+    }
+
+    // Same month-grid pattern as the portal's own Ground School calendar
+    // (portal-stable.js renderGroundSchoolCalendar) -- bucketed by the
+    // *viewer's* local calendar day (via zonedWallClockToUtc, same as
+    // moFmtDateTime), not the instructor's raw class_date, so a late-
+    // evening slot in one timezone lands on the correct day for a viewer
+    // in another.
+    function moSlotsOnDay(day, month, year) {
+      return moSlotsData.filter(function (s) {
+        var d = zonedWallClockToUtc(s.class_date, s.start_time, s.timezone);
+        return d.getDate() === day && d.getMonth() === month && d.getFullYear() === year;
+      });
+    }
+
+    function renderMoSlotsCalendar() {
+      var slotsEl = document.getElementById('moBookingSlots');
+      var year = moCalMonth.getFullYear();
+      var month = moCalMonth.getMonth();
+      var firstDay = new Date(year, month, 1).getDay();
+      var daysInMonth = new Date(year, month + 1, 0).getDate();
+      var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      var dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      var today = new Date();
+
+      var html = '<div class="mo-cal-nav">' +
+        '<button type="button" class="mo-cal-nav__btn" id="moCalPrev">‹</button>' +
+        '<span class="mo-cal-nav__label">' + monthNames[month] + ' ' + year + '</span>' +
+        '<button type="button" class="mo-cal-nav__btn" id="moCalNext">›</button>' +
+        '</div><div class="mo-calendar-scroll"><div class="mo-calendar"><div class="mo-calendar__header">';
+      dayLabels.forEach(function (d) { html += '<div class="mo-calendar__day-label">' + d + '</div>'; });
+      html += '</div><div class="mo-calendar__grid">';
+      for (var e = 0; e < firstDay; e++) html += '<div class="mo-calendar__cell mo-calendar__cell--empty"></div>';
+      for (var day = 1; day <= daysInMonth; day++) {
+        var isToday = today.getDate() === day && today.getMonth() === month && today.getFullYear() === year;
+        html += '<div class="mo-calendar__cell' + (isToday ? ' mo-calendar__cell--today' : '') + '">' +
+          '<span class="mo-calendar__cell-num">' + day + '</span>';
+        moSlotsOnDay(day, month, year).forEach(function (s) {
+          var start = zonedWallClockToUtc(s.class_date, s.start_time, s.timezone);
+          html += '<div class="mo-cal-event" data-mo-book-slot="' + s.id + '">' + start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '</div>';
+        });
+        html += '</div>';
+      }
+      html += '</div></div></div>';
+      if (!moSlotsData.length) html += moNoSlotsHtml();
+      slotsEl.innerHTML = html;
+
+      document.getElementById('moCalPrev').addEventListener('click', function () { moCalMonth = new Date(year, month - 1, 1); renderMoSlotsCalendar(); });
+      document.getElementById('moCalNext').addEventListener('click', function () { moCalMonth = new Date(year, month + 1, 1); renderMoSlotsCalendar(); });
+      moWireSlotButtons();
+    }
+
+    function renderMoSlots() {
+      if (moViewMode === 'calendar') renderMoSlotsCalendar();
+      else renderMoSlotsList();
+    }
+
+    document.querySelectorAll('[data-mo-view]').forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        moViewMode = tab.dataset.moView;
+        document.querySelectorAll('[data-mo-view]').forEach(function (t) { t.classList.toggle('mo-view-tab--active', t === tab); });
+        renderMoSlots();
+      });
+    });
 
     // Guest booking flow -- lets a visitor with no Apex Advantage account
     // pick an open slot and pay right on this page, instead of being sent
@@ -448,6 +586,7 @@
       if (!product) return;
       moSelectedProduct = product;
       moSelectedSlotId = null;
+      moCalMonth = new Date();
       var flow = document.getElementById('moBookingFlow');
       var slotsEl = document.getElementById('moBookingSlots');
       var formWrap = document.getElementById('moBookingFormWrap');
@@ -459,23 +598,8 @@
       flow.scrollIntoView({ behavior: 'smooth', block: 'start' });
       slotsEl.innerHTML = '<p style="color:rgba(255,255,255,0.4)">Loading available times…</p>';
       apexSupabase.rpc('get_mock_oral_availability', { p_certificate_type: 'private_pilot' }).then(function (res) {
-        var slots = res.data || [];
-        if (!slots.length) {
-          slotsEl.innerHTML = '<p style="color:rgba(255,255,255,0.5)">No upcoming times are open right now — check back soon, or <a href="contact.html" style="color:var(--gold)">contact us</a>.</p>';
-          return;
-        }
-        slotsEl.innerHTML = slots.map(function (s) {
-          return '<button type="button" class="mo-slot" data-mo-book-slot="' + s.id + '">' + moFmtDateTime(s) + '</button>';
-        }).join('');
-        slotsEl.querySelectorAll('[data-mo-book-slot]').forEach(function (btn) {
-          btn.addEventListener('click', function () {
-            moSelectedSlotId = btn.dataset.moBookSlot;
-            slotsEl.querySelectorAll('.mo-slot').forEach(function (b) { b.classList.remove('mo-slot--selected'); });
-            btn.classList.add('mo-slot--selected');
-            formWrap.hidden = false;
-            formWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          });
-        });
+        moSlotsData = res.data || [];
+        renderMoSlots();
       });
     }
 
