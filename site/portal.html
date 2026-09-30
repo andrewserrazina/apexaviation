@@ -208,6 +208,22 @@
           </div>
         </div>
 
+        <!-- Refer-a-Friend promo -- surfaces the existing reward (a free
+             Ground School session per referral) on the page every member
+             actually visits, instead of only on the Account page. Shown
+             only to members who haven't referred anyone yet; see
+             renderReferralPromoBanner() in portal-stable.js. -->
+        <div class="portal-card" id="referralPromoBanner" hidden style="margin-bottom:24px;border-color:rgba(244,180,0,0.25);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+          <div>
+            <h3 style="color:#fff;font-size:15px;font-weight:800;margin-bottom:4px">🎁 Give a Friend a Free Ground School Class</h3>
+            <p style="color:rgba(255,255,255,0.55);font-size:13px;margin:0">Share your link — once a friend enrolls, you get a free Ground School session.</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+            <button type="button" class="btn btn--primary" id="referralPromoCopyBtn">Get My Referral Link</button>
+            <button type="button" id="referralPromoDismiss" aria-label="Dismiss" style="background:none;border:none;color:rgba(255,255,255,0.4);font-size:20px;line-height:1;cursor:pointer;padding:4px">&times;</button>
+          </div>
+        </div>
+
         <!-- First-session onboarding -- shown once, dismissible, no
              purchase CTA anywhere in it (Retention Sprint Tier 3). Two
              quick questions, then a real free first task -- not the

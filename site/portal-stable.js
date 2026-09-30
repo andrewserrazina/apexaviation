@@ -2208,6 +2208,11 @@
           member.checkridePrepUnlocked = true;
           applyUnlockState();
           toast('Unlocked! Welcome to the Checkride Prep System.');
+          // Second, delayed toast (after the first auto-clears) pointing new
+          // purchasers at the Refer-a-Friend reward while they're at their
+          // most engaged moment -- the Dashboard banner above covers
+          // everyone else, but a purchase is the single best-timed nudge.
+          setTimeout(function () { toast('Tip: refer a friend for a free Ground School class — see your Dashboard.'); }, 3200);
           // Founding ($29) vs standard ($49) isn't known client-side --
           // pull the real charged amount from the purchase record itself
           // so GA4 revenue reporting reflects what was actually paid,
@@ -7580,12 +7585,40 @@
         return '<div class="portal-referral-row"><span class="email">' + r.referred_email + '</span><span class="status">' + statusText + '</span></div>';
       }).join('');
     }
+    renderReferralPromoBanner();
   }
 
-  document.getElementById('referralCopyBtn').addEventListener('click', function () {
+  function copyReferralLink() {
     if (!referralCode) { toast('Generating your referral link — try again in a moment.'); return; }
     var link = 'https://apexaviationtx.com/contact.html?ref=' + referralCode;
     navigator.clipboard.writeText(link).then(function () { toast('Referral link copied.'); }).catch(function () { toast(link); });
+  }
+  document.getElementById('referralCopyBtn').addEventListener('click', copyReferralLink);
+
+  // Dashboard referral promo banner -- the Refer-a-Friend reward (a free
+  // Ground School session per signed-up friend) previously lived only on
+  // the Account page's "Refer a Friend" card, which almost nobody visits
+  // unprompted: as of the growth-plan audit, 157 members had a referral
+  // code auto-provisioned (ensureReferralCode() runs on every login) but
+  // zero had ever made a referral. This surfaces the same real code/
+  // reward on the Dashboard, the page every member actually lands on,
+  // and only to members who haven't used it yet -- referrals.length is
+  // already loaded by the time renderReferralProgram() runs, so no new
+  // fetch is needed here.
+  var referralPromoDismissKey = 'apex_referral_promo_dismissed';
+  function renderReferralPromoBanner() {
+    var banner = document.getElementById('referralPromoBanner');
+    if (!banner) return;
+    var dismissed = false;
+    try { dismissed = localStorage.getItem(referralPromoDismissKey) === '1'; } catch (e) {}
+    banner.hidden = dismissed || !referralCode || referrals.length > 0;
+  }
+  var referralPromoCopyBtn = document.getElementById('referralPromoCopyBtn');
+  if (referralPromoCopyBtn) referralPromoCopyBtn.addEventListener('click', copyReferralLink);
+  var referralPromoDismissBtn = document.getElementById('referralPromoDismiss');
+  if (referralPromoDismissBtn) referralPromoDismissBtn.addEventListener('click', function () {
+    document.getElementById('referralPromoBanner').hidden = true;
+    try { localStorage.setItem(referralPromoDismissKey, '1'); } catch (e) {}
   });
 
   document.getElementById('referralForm').addEventListener('submit', function (e) {

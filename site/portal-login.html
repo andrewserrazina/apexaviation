@@ -177,9 +177,9 @@
         <div class="signup-divider">or</div>
 
         <div class="instant-access-box">
-          <div class="instant-access-box__title">⚡ Get Instant Access — $29</div>
-          <div class="instant-access-box__sub">Already know you want it? Skip the wait — create your account and unlock the full 300+ question Checkride Prep System in one step. New-member pricing, guaranteed $29 (regular price $49 later).</div>
-          <button type="button" class="btn btn--primary btn--instant" id="instantAccessSubmit">Get Instant Access — $29</button>
+          <div class="instant-access-box__title">⚡ Get Instant Access — <span data-cp-price>$29</span></div>
+          <div class="instant-access-box__sub">Already know you want it? Skip the wait — create your account and unlock the full 300+ question Checkride Prep System in one step.</div>
+          <button type="button" class="btn btn--primary btn--instant" id="instantAccessSubmit">Get Instant Access — <span data-cp-price>$29</span></button>
         </div>
 
         <!-- Shown only when linked from a Ground School pack CTA
@@ -253,6 +253,30 @@
     var signupForm = document.getElementById('signupForm');
     var signupError = document.getElementById('signupError');
     var signupSubmit = document.getElementById('signupSubmit');
+
+    // ── Live Checkride Prep pricing: same RPC/pattern as checkride-prep.html/
+    // apex-advantage.html, so the "Get Instant Access" box never displays a
+    // stale $29 once Early Access ends or founding seats run out. Previously
+    // this page hardcoded $29 in the markup AND in the InitiateCheckout/
+    // checkout_started tracking calls below regardless of the real live
+    // tier -- harmless while Early Access is active (today's real price
+    // happens to be $29), but once it isn't, this page would keep
+    // advertising $29 while create-checkout-session actually charges the
+    // real live price server-side, and Meta/GA4 would keep recording the
+    // wrong checkout value. checkridePrepLivePrice feeds both the display
+    // and the tracking calls below once the RPC resolves; the literal 29
+    // in each stays only as the safety-net default if it never does. ──
+    var checkridePrepLivePrice = null;
+    (function () {
+      if (!window.apexSupabase) return;
+      apexSupabase.rpc('get_checkride_prep_pricing', { p_profile_id: null }).then(function (res) {
+        var row = res.data && res.data[0];
+        if (res.error || !row) return;
+        checkridePrepLivePrice = Math.round(row.amount_cents / 100);
+        var priceText = '$' + checkridePrepLivePrice;
+        document.querySelectorAll('[data-cp-price]').forEach(function (el) { el.textContent = priceText; });
+      }).catch(function () {});
+    })();
 
     // registration_started fires once, on the first field interaction in
     // either signup path (both the free form and "Get Instant Access"
@@ -707,21 +731,26 @@
         if (res.error || !res.data || !res.data.url) {
           return extractInvokeError(res).then(function (msg) {
             instantAccessSubmit.disabled = false;
-            instantAccessSubmit.textContent = 'Get Instant Access — $29';
+            instantAccessSubmit.textContent = 'Get Instant Access — ' + (checkridePrepLivePrice ? '$' + checkridePrepLivePrice : '$29');
             signupError.textContent = msg;
             signupError.classList.add('show');
           });
         }
+        // res.data.amount is the actual amount_cents create-checkout-session
+        // just charged (the tier it resolved server-side at click time) --
+        // more authoritative than checkridePrepLivePrice's page-load
+        // snapshot, so it wins when present.
+        var chargedPrice = res.data.amount ? Math.round(res.data.amount / 100) : (checkridePrepLivePrice || 29);
         if (window.gtag) gtag('event', 'sign_up', { method: 'email_instant_access' });
         if (window.apexTrack) {
           apexTrack('registration_completed', { product: 'checkride_prep', checkride_timing: checkrideTiming || null, checkout_step: 'instant_access' });
-          apexTrack('checkout_started', { product: 'checkride_prep', checkout_step: 'redirect_to_stripe', price: 29 });
+          apexTrack('checkout_started', { product: 'checkride_prep', checkout_step: 'redirect_to_stripe', price: chargedPrice });
         }
-        if (window.apexTrackStandard) apexTrackStandard('InitiateCheckout', { content_name: 'Checkride Prep Pack', value: 29, currency: 'USD' });
+        if (window.apexTrackStandard) apexTrackStandard('InitiateCheckout', { content_name: 'Checkride Prep Pack', value: chargedPrice, currency: 'USD' });
         window.location.href = res.data.url;
       }).catch(function () {
         instantAccessSubmit.disabled = false;
-        instantAccessSubmit.textContent = 'Get Instant Access — $29';
+        instantAccessSubmit.textContent = 'Get Instant Access — ' + (checkridePrepLivePrice ? '$' + checkridePrepLivePrice : '$29');
         signupError.textContent = 'Could not start checkout. Please try again.';
         signupError.classList.add('show');
       });
