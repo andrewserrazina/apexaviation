@@ -213,7 +213,13 @@
     // (previously silent -- see the cancel-return IIFE in
     // site/portal-stable.js and create-checkout-session's updated
     // cancel_url for unlock-checkride-prep/signup-and-unlock-checkride-prep).
-    'checkride_prep_offer_viewed', 'checkout_session_create_failed', 'checkout_cancelled'
+    'checkride_prep_offer_viewed', 'checkout_session_create_failed', 'checkout_cancelled',
+    // Checkride Binder Builder (site/portal-stable.js) -- bundled into the
+    // existing Checkride Prep unlock, no new entitlement. checkride_binder_
+    // opened fires once per visit to the feature; _section_viewed once per
+    // workbook section opened; _all_complete once, the first time every
+    // one of the 20 master-checklist sections reads 100% complete.
+    'checkride_binder_opened', 'checkride_binder_section_viewed', 'checkride_binder_all_complete'
   ];
 
   // Checkride Prep Personalized Pitch A/B test (site/portal-stable.js) --

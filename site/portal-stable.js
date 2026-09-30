@@ -521,7 +521,7 @@
   var sidebar = document.getElementById('portalSidebar');
   var overlay = document.getElementById('sidebarOverlay');
 
-  var GATED_SECTIONS = ['checkride-prep', 'dpe-library', 'ai-dpe-practice', 'scenarios', 'progress', 'vault', 'missions', 'pilot-journey'];
+  var GATED_SECTIONS = ['checkride-prep', 'dpe-library', 'ai-dpe-practice', 'scenarios', 'progress', 'vault', 'missions', 'pilot-journey', 'checkride-binder'];
 
   function showSection(id) {
     if (!document.getElementById('section-' + id)) id = 'dashboard';
@@ -584,6 +584,7 @@
     if (id === 'ai-dpe-practice' && window.apexTrack) apexTrack('first_lesson_started', { profile_id: member.id, feature: 'ai_dpe_practice' });
     if (id === 'ask-andrew') loadAskAndrewHistory();
     if (id === 'study-packs') loadStudyPacksCatalog();
+    if (id === 'checkride-binder') loadCheckrideBinder();
   }
 
   function openSidebar() { sidebar.classList.add('open'); overlay.classList.add('show'); }
@@ -10270,5 +10271,490 @@
       html;
     root.querySelector('[data-sp-back-home]').addEventListener('click', renderStudyPackHome);
     if (window.apexTrack) apexTrack('study_pack_resource_downloaded', { profile_id: member.id, pack_id: studyPacksState.packId, resource: 'quick_reference' });
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     CHECKRIDE BINDER BUILDER -- bundled into the Checkride Prep
+     unlock (no separate entitlement, no new checkout flow). One
+     gated nav item ('checkride-binder', added to GATED_SECTIONS
+     above) mounting into #checkrideBinderRoot; the 20 workbook
+     sections + dashboard render as JS view-swaps inside that one
+     div, the same pattern loadStudyPacksCatalog()/renderStudyPack*()
+     above already use -- never routed through showSection() except
+     at this single outer entry point.
+
+     Content (section labels/checklist prompts/tips/source citations,
+     transcribed from the source workbook PDF) is real paid IP, so it
+     is fetched from get-checkride-binder-content -- server-side
+     checkride_prep_unlocked enforcement, same trust model as
+     loadPremiumContent()/get-premium-content above -- never stored
+     client-side or hardcoded here. Student responses
+     (checkride_binder_responses/checkride_binder_tracker_entries)
+     are the student's own data, read/written directly via RLS
+     (auth.uid() = profile_id), the same guided_notes-proven pattern
+     wireModuleCompanionRich() already uses.
+
+     Phase 1 skeleton: proves the gate -> nav -> route -> fetch path
+     end-to-end with a placeholder view. Section-by-section rendering
+     (checkbox/dual-state/free-text/tracker-row field types) lands in
+     a later phase once all 20 sections' content is authored. ══════ */
+  var checkrideBinderState = { content: null, responses: {}, trackerEntries: {} };
+
+  function loadCheckrideBinder() {
+    var root = document.getElementById('checkrideBinderRoot');
+    if (!root || !member.checkridePrepUnlocked) return;
+    root.innerHTML = '<p style="color:rgba(255,255,255,0.4)">Loading your Checkride Binder…</p>';
+    if (window.apexTrack) apexTrack('checkride_binder_opened', { profile_id: member.id });
+
+    Promise.all([
+      apexSupabase.functions.invoke('get-checkride-binder-content', {
+        headers: { Authorization: 'Bearer ' + accessToken }
+      }),
+      apexSupabase.from('checkride_binder_responses').select('section_id, prompt_id, response_text').eq('profile_id', member.id),
+      apexSupabase.from('checkride_binder_tracker_entries').select('id, section_id, sort_order, fields').eq('profile_id', member.id).order('sort_order')
+    ]).then(function (results) {
+      var contentRes = results[0];
+      if (contentRes.error || !contentRes.data) {
+        extractInvokeError(contentRes).then(function (msg) { console.error('loadCheckrideBinder: content fetch failed', msg); });
+        renderCheckrideBinderError();
+        return;
+      }
+      checkrideBinderState.content = contentRes.data.sections || {};
+
+      checkrideBinderState.responses = {};
+      ((results[1] && results[1].data) || []).forEach(function (r) {
+        if (!checkrideBinderState.responses[r.section_id]) checkrideBinderState.responses[r.section_id] = {};
+        checkrideBinderState.responses[r.section_id][r.prompt_id] = r.response_text;
+      });
+
+      checkrideBinderState.trackerEntries = {};
+      ((results[2] && results[2].data) || []).forEach(function (row) {
+        if (!checkrideBinderState.trackerEntries[row.section_id]) checkrideBinderState.trackerEntries[row.section_id] = [];
+        checkrideBinderState.trackerEntries[row.section_id].push(row);
+      });
+
+      renderCheckrideBinderHome();
+    }).catch(function (err) {
+      console.error('loadCheckrideBinder failed', err);
+      renderCheckrideBinderError();
+    });
+  }
+
+  function renderCheckrideBinderError() {
+    var root = document.getElementById('checkrideBinderRoot');
+    if (!root) return;
+    root.innerHTML = '<div class="portal-header"><div class="portal-header__eyebrow">Checkride Binder Builder</div><h1>Could not load your binder</h1><p>Please refresh the page. If this keeps happening, contact info@apexaviationtx.com.</p></div>';
+  }
+
+  // ── Section grouping (mirrors the workbook's own 5-Part + front-matter
+  //    structure) -- the 20 real master-checklist sections plus 5 utility
+  //    pages (Open Items Log, 7-Day Countdown, and the three per-Part
+  //    closeout audits) that exist to support the 20, not as their own
+  //    counted item. ──────────────────────────────────────────────── */
+  var CHECKRIDE_BINDER_PART_GROUPS = [
+    { label: 'Getting Started', sections: ['start-here', 'binder-setup'] },
+    { label: 'Part I — The Applicant', sections: ['applicant-documents', 'iacra-application', 'knowledge-test-report', 'endorsements-experience'] },
+    { label: 'Part II — The Aircraft', sections: ['aircraft-documents', 'maintenance-airworthiness', 'know-your-aircraft'] },
+    { label: 'Part III — The Flight', sections: ['cross-country-planning', 'weather-decision-making', 'wb-performance', 'personal-minimums-adm'] },
+    { label: 'Part IV — The Oral', sections: ['dpe-show-me-drill', 'oral-answer-framework'] },
+    { label: 'Part V — Final Readiness', sections: ['cfi-final-review', 'night-before-checklist', 'checkride-morning', 'master-quick-reference', 'notes-reference'] }
+  ];
+  var CHECKRIDE_BINDER_UTILITY_SECTIONS = [
+    { id: 'open-items-log', label: 'Open Items Log' },
+    { id: 'countdown-7day', label: '7-Day Completion Plan' },
+    { id: 'part1-closeout', label: 'Part I Closeout' },
+    { id: 'part2-closeout', label: 'Part II Closeout' },
+    { id: 'part3-closeout', label: 'Part III Closeout' }
+  ];
+  var checkrideBinderView = { sectionId: null };
+
+  /* ── Progress computation -- the digital dashboard COMPUTES "sections
+     complete" from real per-item state instead of asking the student to
+     hand-count, matching the source workbook's own "check it only when
+     it's actually ready" rule. Only checklist/dual_checklist/choice
+     fields count toward completion (a real yes/no or selected state);
+     free-text fields and tracker rows are supplementary detail, not
+     required for a section to read "complete." ─────────────────────── */
+  function cbCountableFields(block) {
+    if (block.type === 'checklist') return block.items.map(function (i) { return i.id; });
+    if (block.type === 'choice') return [block.id];
+    if (block.type === 'dual_checklist') {
+      var subLabels = block.subLabels || [];
+      if (block.singleState || subLabels.length <= 1) return block.items.map(function (i) { return i.id; });
+      var out = [];
+      block.items.forEach(function (item) { subLabels.forEach(function (_, idx) { out.push(item.id + '::' + idx); }); });
+      return out;
+    }
+    return [];
+  }
+
+  function cbComputeSectionProgress(sectionId) {
+    var content = checkrideBinderState.content[sectionId];
+    if (!content) return { total: 0, done: 0 };
+    var responses = checkrideBinderState.responses[sectionId] || {};
+    var total = 0, done = 0;
+    (content.blocks || []).forEach(function (block) {
+      cbCountableFields(block).forEach(function (promptId) {
+        total++;
+        if (responses[promptId]) done++;
+      });
+    });
+    return { total: total, done: done };
+  }
+
+  function cbOpenItemsCount() {
+    var rows = checkrideBinderState.trackerEntries['open-items-log'] || [];
+    return rows.filter(function (r) { return !(r.fields && r.fields.resolved); }).length;
+  }
+
+  /* ── Persistence helpers -- responses use the guided_notes-proven
+     per-field-row upsert pattern; tracker rows are their own table since
+     they're student-added/removed, not a fixed set of prompts. ─────── */
+  function cbSaveResponse(sectionId, promptId, value) {
+    if (!checkrideBinderState.responses[sectionId]) checkrideBinderState.responses[sectionId] = {};
+    checkrideBinderState.responses[sectionId][promptId] = value;
+    apexSupabase.from('checkride_binder_responses').upsert({
+      profile_id: member.id, section_id: sectionId, prompt_id: promptId, response_text: value, updated_at: new Date().toISOString()
+    }, { onConflict: 'profile_id,section_id,prompt_id' }).then(function (res) {
+      if (res && res.error) console.error('checkride binder: save response failed', res.error);
+    });
+  }
+
+  function cbAddTrackerRow(sectionId, fields) {
+    var sortOrder = (checkrideBinderState.trackerEntries[sectionId] || []).length;
+    return apexSupabase.from('checkride_binder_tracker_entries').insert({
+      profile_id: member.id, section_id: sectionId, sort_order: sortOrder, fields: fields || {}
+    }).select('id, section_id, sort_order, fields').single().then(function (res) {
+      if (res.error) { console.error('checkride binder: add tracker row failed', res.error); return null; }
+      if (!checkrideBinderState.trackerEntries[sectionId]) checkrideBinderState.trackerEntries[sectionId] = [];
+      checkrideBinderState.trackerEntries[sectionId].push(res.data);
+      return res.data;
+    });
+  }
+
+  function cbUpdateTrackerRow(sectionId, rowId, fields) {
+    apexSupabase.from('checkride_binder_tracker_entries').update({ fields: fields, updated_at: new Date().toISOString() }).eq('id', rowId).then(function (res) {
+      if (res && res.error) console.error('checkride binder: update tracker row failed', res.error);
+    });
+  }
+
+  function cbDeleteTrackerRow(sectionId, rowId) {
+    apexSupabase.from('checkride_binder_tracker_entries').delete().eq('id', rowId).then(function (res) {
+      if (res && res.error) { console.error('checkride binder: delete tracker row failed', res.error); return; }
+      checkrideBinderState.trackerEntries[sectionId] = (checkrideBinderState.trackerEntries[sectionId] || []).filter(function (r) { return r.id !== rowId; });
+      renderCheckrideBinderSection(sectionId);
+    });
+  }
+
+  function cbEsc(s) { return escapeHtmlSafe(s == null ? '' : String(s)); }
+
+  /* ── Block renderers -- one function per content block type. Each
+     returns an HTML string; wiring (event listeners) happens once, after
+     the whole section's HTML is in the DOM, via cbWireSection(). ────── */
+  function cbRenderNote(block) {
+    return '<div class="portal-card" style="margin-bottom:14px">' +
+      (block.title ? '<div style="color:#F4B400;font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px">' + cbEsc(block.title) + '</div>' : '') +
+      '<p style="color:rgba(255,255,255,0.65);font-size:14px;line-height:1.7;margin:0">' + cbEsc(block.text) + '</p>' +
+    '</div>';
+  }
+
+  function cbRenderChecklist(block, sectionId, responses) {
+    var rows = block.items.map(function (item) {
+      var checked = responses[item.id] === 'checked';
+      return '<label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;cursor:pointer">' +
+        '<input type="checkbox" data-cb-checkbox data-prompt-id="' + cbEsc(item.id) + '"' + (checked ? ' checked' : '') + ' style="margin-top:3px">' +
+        '<span style="color:rgba(255,255,255,0.8);font-size:14px;line-height:1.5">' + cbEsc(item.label) + '</span>' +
+      '</label>';
+    }).join('');
+    return '<div class="portal-card" style="margin-bottom:14px">' +
+      (block.title ? '<h3 style="color:#fff;font-size:14.5px;font-weight:700;margin-bottom:6px">' + cbEsc(block.title) + '</h3>' : '') +
+      rows +
+    '</div>';
+  }
+
+  function cbRenderDualChecklist(block, sectionId, responses) {
+    var subLabels = block.subLabels || [];
+    var singleCheckbox = block.singleState && subLabels.length <= 1;
+    var radioSelect = block.singleState && subLabels.length >= 2;
+
+    var rows = block.items.map(function (item) {
+      if (singleCheckbox) {
+        var checked = responses[item.id] === 'checked';
+        var checkLabel = subLabels[0] || null;
+        return '<label style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;cursor:pointer">' +
+          '<input type="checkbox" data-cb-checkbox data-prompt-id="' + cbEsc(item.id) + '"' + (checked ? ' checked' : '') + ' style="margin-top:3px">' +
+          '<span style="color:rgba(255,255,255,0.8);font-size:14px;line-height:1.5">' + cbEsc(item.label) + (checkLabel ? ' <span style="color:rgba(255,255,255,0.4)">(' + cbEsc(checkLabel) + ')</span>' : '') + '</span>' +
+        '</label>';
+      }
+      if (radioSelect) {
+        var current = responses[item.id] || '';
+        var btns = subLabels.map(function (sub) {
+          var active = current === sub;
+          return '<button type="button" class="btn ' + (active ? 'btn--primary' : 'btn--ghost') + '" data-cb-radio data-prompt-id="' + cbEsc(item.id) + '" data-value="' + cbEsc(sub) + '" style="padding:6px 14px;font-size:12.5px">' + cbEsc(sub) + '</button>';
+        }).join('');
+        return '<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06)">' +
+          '<div style="color:rgba(255,255,255,0.8);font-size:14px;line-height:1.5;margin-bottom:8px">' + cbEsc(item.label) + '</div>' +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap">' + btns + '</div>' +
+        '</div>';
+      }
+      // independent multi-checkbox per subLabel
+      var boxes = subLabels.map(function (sub, idx) {
+        var promptId = item.id + '::' + idx;
+        var checked = responses[promptId] === 'checked';
+        return '<label style="display:flex;align-items:center;gap:6px;cursor:pointer">' +
+          '<input type="checkbox" data-cb-checkbox data-prompt-id="' + cbEsc(promptId) + '"' + (checked ? ' checked' : '') + '>' +
+          '<span style="color:rgba(255,255,255,0.55);font-size:12.5px">' + cbEsc(sub) + '</span>' +
+        '</label>';
+      }).join('');
+      return '<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06)">' +
+        '<div style="color:rgba(255,255,255,0.8);font-size:14px;line-height:1.5;margin-bottom:8px">' + cbEsc(item.label) + '</div>' +
+        '<div style="display:flex;gap:16px;flex-wrap:wrap">' + boxes + '</div>' +
+      '</div>';
+    }).join('');
+
+    return '<div class="portal-card" style="margin-bottom:14px">' +
+      (block.title ? '<h3 style="color:#fff;font-size:14.5px;font-weight:700;margin-bottom:6px">' + cbEsc(block.title) + '</h3>' : '') +
+      rows +
+    '</div>';
+  }
+
+  function cbRenderChoice(block, sectionId, responses) {
+    var current = responses[block.id] || '';
+    var btns = block.options.map(function (opt) {
+      var active = current === opt;
+      return '<button type="button" class="btn ' + (active ? 'btn--primary' : 'btn--ghost') + '" data-cb-radio data-prompt-id="' + cbEsc(block.id) + '" data-value="' + cbEsc(opt) + '" style="padding:8px 16px;font-size:13px">' + cbEsc(opt) + '</button>';
+    }).join('');
+    return '<div class="portal-card" style="margin-bottom:14px">' +
+      (block.title ? '<h3 style="color:#fff;font-size:14.5px;font-weight:700;margin-bottom:6px">' + cbEsc(block.title) + '</h3>' : '') +
+      (block.text ? '<p style="color:rgba(255,255,255,0.6);font-size:13.5px;margin-bottom:10px">' + cbEsc(block.text) + '</p>' : '') +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">' + btns + '</div>' +
+    '</div>';
+  }
+
+  function cbRenderFields(block, sectionId, responses) {
+    var rows = block.items.map(function (item) {
+      var val = responses[item.id] || '';
+      var input = item.multiline
+        ? '<textarea data-cb-field data-prompt-id="' + cbEsc(item.id) + '" rows="3" style="width:100%;padding:10px 12px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:13.5px;color:#fff;background:rgba(11,31,58,0.6);outline:none;resize:vertical">' + cbEsc(val) + '</textarea>'
+        : '<input type="text" data-cb-field data-prompt-id="' + cbEsc(item.id) + '" value="' + cbEsc(val) + '" style="width:100%;padding:9px 12px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font);font-size:13.5px;color:#fff;background:rgba(11,31,58,0.6);outline:none">';
+      return '<div style="margin-bottom:12px">' +
+        '<label style="display:block;color:rgba(255,255,255,0.55);font-size:12.5px;margin-bottom:5px">' + cbEsc(item.label) + '</label>' +
+        input +
+      '</div>';
+    }).join('');
+    return '<div class="portal-card" style="margin-bottom:14px">' +
+      (block.title ? '<h3 style="color:#fff;font-size:14.5px;font-weight:700;margin-bottom:10px">' + cbEsc(block.title) + '</h3>' : '') +
+      rows +
+    '</div>';
+  }
+
+  function cbRenderGrid(block, sectionId, responses) {
+    var header = '<tr><th style="text-align:left;padding:8px;border-bottom:2px solid rgba(255,255,255,0.15);color:#F4B400;font-size:11.5px;white-space:nowrap"></th>' +
+      block.columns.map(function (c) { return '<th style="text-align:left;padding:8px;border-bottom:2px solid rgba(255,255,255,0.15);color:#F4B400;font-size:11.5px;white-space:nowrap">' + cbEsc(c.label) + '</th>'; }).join('') + '</tr>';
+    var rows = block.rows.map(function (row) {
+      var cells = block.columns.map(function (col) {
+        var promptId = row.id + '::' + col.id;
+        var val = responses[promptId] || '';
+        return '<td style="padding:6px;border-bottom:1px solid rgba(255,255,255,0.06)"><input type="text" data-cb-field data-prompt-id="' + cbEsc(promptId) + '" value="' + cbEsc(val) + '" style="width:100%;min-width:90px;padding:7px 9px;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:12.5px;color:#fff;background:rgba(11,31,58,0.6);outline:none"></td>';
+      }).join('');
+      return '<tr><td style="padding:8px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.7);font-size:12.5px;white-space:nowrap">' + cbEsc(row.label) + '</td>' + cells + '</tr>';
+    }).join('');
+    return '<div class="portal-card" style="margin-bottom:14px">' +
+      (block.title ? '<h3 style="color:#fff;font-size:14.5px;font-weight:700;margin-bottom:10px">' + cbEsc(block.title) + '</h3>' : '') +
+      '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">' + header + rows + '</table></div>' +
+    '</div>';
+  }
+
+  function cbRenderTracker(block, sectionId, blockIndex) {
+    var rows = (checkrideBinderState.trackerEntries[sectionId] || []);
+    var cells = rows.map(function (row) {
+      var colCells = block.columns.map(function (col) {
+        var val = (row.fields && row.fields[col.id]) || '';
+        if (col.type === 'checkbox') {
+          return '<td style="padding:6px;border-bottom:1px solid rgba(255,255,255,0.06);text-align:center"><input type="checkbox" data-cb-tracker-field data-row-id="' + row.id + '" data-col-id="' + cbEsc(col.id) + '"' + (val ? ' checked' : '') + '></td>';
+        }
+        if (col.type === 'select') {
+          var opts = (col.options || []).map(function (o) { return '<option value="' + cbEsc(o) + '"' + (val === o ? ' selected' : '') + '>' + cbEsc(o) + '</option>'; }).join('');
+          return '<td style="padding:6px;border-bottom:1px solid rgba(255,255,255,0.06)"><select data-cb-tracker-field data-row-id="' + row.id + '" data-col-id="' + cbEsc(col.id) + '" style="width:100%;padding:6px 8px;border-radius:6px;font-size:12px;color:#fff;background:rgba(11,31,58,0.6);border:1px solid rgba(255,255,255,0.1)"><option value=""></option>' + opts + '</select></td>';
+        }
+        return '<td style="padding:6px;border-bottom:1px solid rgba(255,255,255,0.06)"><input type="text" data-cb-tracker-field data-row-id="' + row.id + '" data-col-id="' + cbEsc(col.id) + '" value="' + cbEsc(val) + '" style="width:100%;min-width:80px;padding:6px 8px;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:12px;color:#fff;background:rgba(11,31,58,0.6);outline:none"></td>';
+      }).join('');
+      return '<tr>' + colCells + '<td style="padding:6px;border-bottom:1px solid rgba(255,255,255,0.06)"><button type="button" class="btn btn--ghost" data-cb-tracker-remove data-row-id="' + row.id + '" style="padding:4px 8px;font-size:11px">Remove</button></td></tr>';
+    }).join('');
+    var header = '<tr>' + block.columns.map(function (c) { return '<th style="text-align:left;padding:8px;border-bottom:2px solid rgba(255,255,255,0.15);color:#F4B400;font-size:11.5px;white-space:nowrap">' + cbEsc(c.label) + '</th>'; }).join('') + '<th></th></tr>';
+    return '<div class="portal-card" style="margin-bottom:14px" data-cb-tracker-block data-section-id="' + cbEsc(sectionId) + '" data-block-index="' + blockIndex + '">' +
+      (block.title ? '<h3 style="color:#fff;font-size:14.5px;font-weight:700;margin-bottom:10px">' + cbEsc(block.title) + '</h3>' : '') +
+      '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">' + header + cells + '</table></div>' +
+      '<button type="button" class="btn btn--ghost" data-cb-tracker-add data-section-id="' + cbEsc(sectionId) + '" style="margin-top:10px;padding:8px 16px;font-size:13px">+ Add ' + cbEsc(block.entryLabel || 'row') + '</button>' +
+    '</div>';
+  }
+
+  function cbRenderBlock(block, sectionId, responses, blockIndex) {
+    if (block.type === 'note') return cbRenderNote(block);
+    if (block.type === 'checklist') return cbRenderChecklist(block, sectionId, responses);
+    if (block.type === 'dual_checklist') return cbRenderDualChecklist(block, sectionId, responses);
+    if (block.type === 'choice') return cbRenderChoice(block, sectionId, responses);
+    if (block.type === 'fields') return cbRenderFields(block, sectionId, responses);
+    if (block.type === 'grid') return cbRenderGrid(block, sectionId, responses);
+    if (block.type === 'tracker') return cbRenderTracker(block, sectionId, blockIndex);
+    return '';
+  }
+
+  // Fixed-row tracker blocks (e.g. W&B's 8 loading-input rows) ship a
+  // seedRows array of pre-labeled starting rows -- pre-created once, the
+  // first time a member opens a section that has any, so the table never
+  // looks confusingly empty (matching the paper form's pre-printed
+  // labels) while still leaving the real add/remove mechanism in place
+  // for anything genuinely open-ended (an extra endorsement, an extra
+  // open item).
+  function cbSeedTrackerRowsIfNeeded(sectionId) {
+    var content = checkrideBinderState.content[sectionId];
+    if (!content) return Promise.resolve();
+    var seedOps = [];
+    (content.blocks || []).forEach(function (block) {
+      if (block.type !== 'tracker' || !block.seedRows || !block.seedRows.length) return;
+      var existing = checkrideBinderState.trackerEntries[sectionId] || [];
+      if (existing.length) return;
+      block.seedRows.forEach(function (seed) {
+        var fields = {};
+        var firstColId = block.columns[0] && block.columns[0].id;
+        var seedValue = seed.item || seed.scenario || '';
+        if (firstColId && seedValue) fields[firstColId] = seedValue;
+        seedOps.push(cbAddTrackerRow(sectionId, fields));
+      });
+    });
+    return Promise.all(seedOps);
+  }
+
+  function renderCheckrideBinderSection(sectionId) {
+    checkrideBinderView.sectionId = sectionId;
+    var root = document.getElementById('checkrideBinderRoot');
+    var content = checkrideBinderState.content[sectionId];
+    if (!root || !content) { renderCheckrideBinderHome(); return; }
+
+    cbSeedTrackerRowsIfNeeded(sectionId).then(function () {
+      var responses = checkrideBinderState.responses[sectionId] || {};
+      var progress = cbComputeSectionProgress(sectionId);
+      var blocksHtml = (content.blocks || []).map(function (block, idx) { return cbRenderBlock(block, sectionId, responses, idx); }).join('');
+
+      root.innerHTML =
+        '<button type="button" class="btn btn--ghost" data-cb-back style="margin-bottom:16px">← Checkride Binder</button>' +
+        '<div class="portal-header">' +
+          '<div class="portal-header__eyebrow">' + (content.pages ? 'Pages ' + cbEsc(content.pages) : 'Checkride Binder Builder') + '</div>' +
+          '<h1>' + cbEsc(content.title) + '</h1>' +
+          (content.intro ? '<p>' + cbEsc(content.intro) + '</p>' : '') +
+          (progress.total > 0 ? '<p data-cb-progress style="color:rgba(255,255,255,0.4);font-size:12.5px">' + progress.done + ' of ' + progress.total + ' items checked</p>' : '') +
+        '</div>' +
+        blocksHtml +
+        (content.sourceCheck ? '<div class="portal-card" style="background:rgba(244,180,0,0.06);border-color:rgba(244,180,0,0.2)"><p style="color:rgba(244,180,0,0.85);font-size:12px;margin:0"><strong>Source check:</strong> ' + cbEsc(content.sourceCheck) + '</p></div>' : '');
+
+      cbWireSection(root, sectionId);
+      if (window.apexTrack) apexTrack('checkride_binder_section_viewed', { profile_id: member.id, section_id: sectionId });
+    });
+  }
+
+  function cbWireSection(root, sectionId) {
+    root.querySelector('[data-cb-back]').addEventListener('click', renderCheckrideBinderHome);
+
+    root.querySelectorAll('[data-cb-checkbox]').forEach(function (el) {
+      el.addEventListener('change', function () {
+        cbSaveResponse(sectionId, el.dataset.promptId, el.checked ? 'checked' : '');
+        cbRefreshSectionProgressBadge(sectionId);
+      });
+    });
+
+    root.querySelectorAll('[data-cb-radio]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        cbSaveResponse(sectionId, btn.dataset.promptId, btn.dataset.value);
+        renderCheckrideBinderSection(sectionId);
+      });
+    });
+
+    root.querySelectorAll('[data-cb-field]').forEach(function (el) {
+      el.addEventListener('blur', function () { cbSaveResponse(sectionId, el.dataset.promptId, el.value); });
+    });
+
+    root.querySelectorAll('[data-cb-tracker-field]').forEach(function (el) {
+      var handler = function () {
+        var rowId = el.dataset.rowId;
+        var row = (checkrideBinderState.trackerEntries[sectionId] || []).filter(function (r) { return r.id === rowId; })[0];
+        if (!row) return;
+        row.fields = row.fields || {};
+        row.fields[el.dataset.colId] = el.type === 'checkbox' ? el.checked : el.value;
+        cbUpdateTrackerRow(sectionId, rowId, row.fields);
+      };
+      el.addEventListener(el.tagName === 'SELECT' || el.type === 'checkbox' ? 'change' : 'blur', handler);
+    });
+
+    root.querySelectorAll('[data-cb-tracker-remove]').forEach(function (btn) {
+      btn.addEventListener('click', function () { cbDeleteTrackerRow(sectionId, btn.dataset.rowId); });
+    });
+
+    root.querySelectorAll('[data-cb-tracker-add]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        cbAddTrackerRow(sectionId, {}).then(function () { renderCheckrideBinderSection(sectionId); });
+      });
+    });
+  }
+
+  // Cheap in-place progress update after a checkbox toggle -- avoids a
+  // full section re-render (and the resulting scroll/focus jump) for the
+  // single most frequent interaction on this page.
+  function cbRefreshSectionProgressBadge(sectionId) {
+    var root = document.getElementById('checkrideBinderRoot');
+    var badge = root && root.querySelector('.portal-header p[data-cb-progress]');
+    var progress = cbComputeSectionProgress(sectionId);
+    if (badge) badge.textContent = progress.done + ' of ' + progress.total + ' items checked';
+  }
+
+  function renderCheckrideBinderHome() {
+    checkrideBinderView.sectionId = null;
+    var root = document.getElementById('checkrideBinderRoot');
+    if (!root) return;
+
+    var allSectionIds = CHECKRIDE_BINDER_PART_GROUPS.reduce(function (acc, g) { return acc.concat(g.sections); }, []);
+    var completeCount = allSectionIds.filter(function (id) {
+      var p = cbComputeSectionProgress(id);
+      return p.total > 0 && p.done === p.total;
+    }).length;
+    var openItems = cbOpenItemsCount();
+
+    var groupsHtml = CHECKRIDE_BINDER_PART_GROUPS.map(function (group) {
+      var rows = group.sections.map(function (id) {
+        var content = checkrideBinderState.content[id];
+        if (!content) return '';
+        var p = cbComputeSectionProgress(id);
+        var pct = p.total > 0 ? Math.round((p.done / p.total) * 100) : 0;
+        var statusLabel = p.total === 0 ? '' : (p.done === p.total ? 'Complete' : (p.done > 0 ? pct + '%' : 'Not started'));
+        return '<button type="button" class="portal-card portal-quicklink" data-cb-open-section="' + cbEsc(id) + '" style="width:100%;text-align:left;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">' +
+          '<span style="color:#fff;font-size:14px;font-weight:600">' + cbEsc(content.title) + '</span>' +
+          '<span style="color:' + (p.done === p.total && p.total > 0 ? '#F4B400' : 'rgba(255,255,255,0.4)') + ';font-size:12.5px;font-weight:700">' + statusLabel + '</span>' +
+        '</button>';
+      }).join('');
+      return '<div style="margin-bottom:22px"><div class="portal-header__eyebrow" style="margin-bottom:10px">' + cbEsc(group.label) + '</div>' + rows + '</div>';
+    }).join('');
+
+    var utilityHtml = CHECKRIDE_BINDER_UTILITY_SECTIONS.filter(function (u) { return checkrideBinderState.content[u.id]; }).map(function (u) {
+      return '<button type="button" class="btn btn--ghost" data-cb-open-section="' + cbEsc(u.id) + '" style="margin:0 8px 8px 0;padding:8px 14px;font-size:12.5px">' + cbEsc(u.label) + '</button>';
+    }).join('');
+
+    root.innerHTML =
+      '<div class="portal-header">' +
+        '<div class="portal-header__eyebrow">Checkride Binder Builder</div>' +
+        '<h1>Build it once. Show up organized.</h1>' +
+        '<p>Your guided workbook for organizing documents, aircraft records, cross-country planning, and checkride-day preparation.</p>' +
+      '</div>' +
+      '<div class="portal-admin-metrics" style="margin-bottom:20px">' +
+        '<div class="portal-card portal-stat"><div class="portal-stat__value">' + completeCount + ' / ' + allSectionIds.length + '</div><div class="portal-stat__label">Sections Complete</div></div>' +
+        '<div class="portal-card portal-stat"><div class="portal-stat__value">' + openItems + '</div><div class="portal-stat__label">Open Items</div></div>' +
+      '</div>' +
+      groupsHtml +
+      '<div style="margin-top:8px"><div class="portal-header__eyebrow" style="margin-bottom:10px">More</div>' + utilityHtml + '</div>';
+
+    root.querySelectorAll('[data-cb-open-section]').forEach(function (btn) {
+      btn.addEventListener('click', function () { renderCheckrideBinderSection(btn.dataset.cbOpenSection); });
+    });
+
+    if (completeCount === allSectionIds.length && window.apexTrack) apexTrack('checkride_binder_all_complete', { profile_id: member.id });
   }
 })();
