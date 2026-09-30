@@ -1003,13 +1003,21 @@
   var moRescheduleBookingId = null;
   var moIntakeBookingId = null;
 
-  var MO_TZ_ABBR = { 'America/Chicago': 'CT', 'America/New_York': 'ET', 'America/Denver': 'MT', 'America/Los_Angeles': 'PT', 'UTC': 'UTC' };
+  // Converts the slot to a real UTC instant, then lets the browser render
+  // both the date and time in the *viewer's own* local timezone --
+  // important since a member could be signed in from anywhere, not just
+  // Central time. timeZoneName: 'short' asks the browser to label
+  // whatever zone it just rendered into, so the abbreviation always
+  // matches the clock time shown. A hardcoded 'CT' suffix here (the prior
+  // MO_TZ_ABBR lookup, keyed off the *instructor's* timezone) was wrong
+  // for any viewer not actually in Central time -- e.g. showing "11:00 PM
+  // CT" for a slot that's really 4:00 PM Central, a real mismatch against
+  // the admin's own availability table.
   function moFmtDateTime(row) {
     var start = zonedWallClockToUtc(row.class_date, row.start_time, row.timezone);
     var date = start.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
-    var time = start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-    var tz = MO_TZ_ABBR[row.timezone] || row.timezone || '';
-    return date + ' · ' + time + (tz ? ' ' + tz : '');
+    var time = start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
+    return date + ' · ' + time;
   }
   function moPrice(cents) { return '$' + (cents / 100).toFixed(0); }
 
