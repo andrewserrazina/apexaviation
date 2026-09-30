@@ -455,11 +455,14 @@
     if (requestedView === 'signup-success') {
       showView('signup-success');
       var successParams = new URLSearchParams(window.location.search);
-      var successProduct = successParams.get('product') === 'ground_school_pack' ? 'ground_school_pack' : 'checkride_prep';
+      var successProduct = successParams.get('product') === 'ground_school_pack' ? 'ground_school_pack' : successParams.get('product') === 'mock_oral_v2' ? 'mock_oral_v2' : 'checkride_prep';
       if (successParams.get('paid') === '1') {
         if (successProduct === 'ground_school_pack') {
           document.getElementById('signupSuccessHeading').textContent = "You're in — Ground School unlocked!";
           document.getElementById('signupSuccessSub').textContent = 'Your payment went through — every Private Pilot ground school class is already unlocked on your account, no per-session charge. Check your email for a link to set your password, then sign in to register for a class.';
+        } else if (successProduct === 'mock_oral_v2') {
+          document.getElementById('signupSuccessHeading').textContent = "You're booked — Mock Oral confirmed!";
+          document.getElementById('signupSuccessSub').textContent = 'Your payment went through and your Mock Oral time slot is reserved. Check your email for a link to set your password, then sign in to complete your intake form before your session.';
         } else {
           document.getElementById('signupSuccessHeading').textContent = "You're in — Checkride Prep unlocked!";
           document.getElementById('signupSuccessSub').textContent = 'Your payment went through and the full Checkride Prep System is already unlocked on your account. Check your email for a link to set your password, then sign in to start studying.';
@@ -488,8 +491,8 @@
         // uses the quoted amount directly.
         var sessionId = successParams.get('session_id');
         var quotedAmountCents = parseInt(successParams.get('amount_cents'), 10);
-        var contentName = successProduct === 'ground_school_pack' ? 'Private Pilot Ground School — Full Course' : 'Checkride Prep Pack';
-        var fallbackAmount = successProduct === 'ground_school_pack' ? 400 : 29;
+        var contentName = successProduct === 'ground_school_pack' ? 'Private Pilot Ground School — Full Course' : successProduct === 'mock_oral_v2' ? 'Apex Advantage Mock Oral' : 'Checkride Prep Pack';
+        var fallbackAmount = successProduct === 'ground_school_pack' ? 400 : successProduct === 'mock_oral_v2' ? 129 : 29;
 
         var fireSignupPurchasePixel = function (amountCents) {
           var value = isNaN(amountCents) ? fallbackAmount : amountCents / 100;
@@ -516,11 +519,18 @@
           var funnelDedupeKey = sessionId ? 'apex_funnel_purchase_' + sessionId : null;
           if (window.apexTrack && (!funnelDedupeKey || !localStorage.getItem(funnelDedupeKey))) {
             apexTrack('purchase_completed', { product: successProduct, price: value, session_id: sessionId || undefined, checkout_step: 'instant_access' });
+            // Same two extra events portal.html's already-signed-in
+            // ?mockoralv2=1 landing fires, so a guest booking shows up
+            // identically in the Mock Oral funnel/revenue reports.
+            if (successProduct === 'mock_oral_v2') {
+              apexTrack('mock_oral_purchase_completed', { price: value, session_id: sessionId || undefined });
+              apexTrack('mock_oral_booking_completed', { certificate_type: 'private_pilot' });
+            }
             if (funnelDedupeKey) localStorage.setItem(funnelDedupeKey, '1');
           }
         };
 
-        if (successProduct === 'ground_school_pack') {
+        if (successProduct === 'ground_school_pack' || successProduct === 'mock_oral_v2') {
           fireSignupPurchasePixel(quotedAmountCents);
         } else if (sessionId) {
           apexSupabase.rpc('get_checkout_session_amount', { p_stripe_session_id: sessionId }).then(function (res) {

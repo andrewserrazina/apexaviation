@@ -59,6 +59,16 @@
 //     here is just an early, non-atomic UX check so a student doesn't
 //     even reach Stripe for a slot someone else just took.
 //
+//   purpose: 'signup-and-book-mock-oral-v2'
+//     One-step version of 'book-mock-oral-v2' for a visitor with no Apex
+//     Advantage account -- creates the free account (same as
+//     signup-and-unlock-checkride-prep) and starts the same Stripe
+//     Checkout in one request, so a guest can pick a product + open slot
+//     on the public apex-advantage-mock-oral.html page and pay without a
+//     separate signup step first. The resulting Stripe session's
+//     metadata.purpose is still 'book-mock-oral-v2' -- stripe-webhook
+//     doesn't need to know or care whether the account existed already.
+//
 //   purpose: 'unlock-study-pack'
 //     Apex Advantage Study Packs -- generic engine, Airspace Mastery
 //     ($19, lifetime) is Pack #1. Requires the caller's access token;
@@ -938,6 +948,112 @@ serve(async (req) => {
         cancel_url: `${siteOrigin}/apex-advantage-mock-oral.html#schedule`,
       })
       await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'book-mock-oral-v2', email, profileId, amountCents: product.price_cents, utm: body.utm })
+
+      return new Response(JSON.stringify({ url: session.url, amount: product.price_cents }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // purpose: 'signup-and-book-mock-oral-v2'
+    //   Same one-step pattern as signup-and-unlock-checkride-prep, applied
+    //   to Mock Orals: a visitor with no Apex Advantage account picks a
+    //   product + open slot on the public apex-advantage-mock-oral.html
+    //   page and pays without a separate "create your account first" step.
+    //   The account is created here server-side (no password yet, same
+    //   "set your password" email as every other one-step signup path),
+    //   and the Stripe session's metadata.purpose is still 'book-mock-
+    //   oral-v2' -- stripe-webhook's handleMockOralBookingV2 only ever
+    //   reads profile_id/product_id/availability_id/full_name/email off
+    //   that metadata, so it fulfills a guest-created booking exactly the
+    //   same way it fulfills one from an already-signed-in member. No
+    //   webhook changes needed.
+    if (purpose === 'signup-and-book-mock-oral-v2') {
+      const { name, email, productId, availabilityId, utm_first, first_touch_landing } = body
+      if (!name || !email) return jsonError('Missing required fields: name, email', 400)
+      if (!productId || !availabilityId) return jsonError('Missing productId or availabilityId', 400)
+
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .ilike('email', escapeIlike(email))
+        .maybeSingle()
+      if (existingProfile) {
+        return jsonError('An account with this email already exists. Sign in and book from your dashboard instead.', 409)
+      }
+
+      const { data: product } = await supabase
+        .from('mock_oral_products')
+        .select('id, name, short_description, price_cents, active')
+        .eq('id', productId)
+        .maybeSingle()
+      if (!product || !product.active) return jsonError('That product is not currently available', 400)
+
+      const { data: slot } = await supabase
+        .from('mock_oral_availability')
+        .select('id, status, class_date, start_time, timezone')
+        .eq('id', availabilityId)
+        .maybeSingle()
+      if (!slot) return jsonError('That time slot no longer exists', 404)
+      if (slot.status !== 'open') return jsonError('That time slot was just booked by someone else. Please choose another.', 409)
+
+      const { data: created, error: createErr } = await supabase.auth.admin.createUser({
+        email,
+        email_confirm: true,
+        password: crypto.randomUUID(),
+        user_metadata: { full_name: name },
+      })
+      if (createErr) return jsonError(String(createErr), 500)
+      const newProfileId = created.user.id
+      await applySignupAttribution(supabase, newProfileId, utm_first, first_touch_landing)
+
+      const redirectTo = `${SITE_ORIGIN}/portal-reset-password.html?dest=mock-oral`
+      const { data: linkData } = await supabase.auth.admin.generateLink({
+        type: 'recovery',
+        email,
+        options: { redirectTo },
+      })
+      const actionLink = linkData?.properties?.action_link
+      if (actionLink) {
+        await supabase.functions.invoke('send-email', {
+          body: {
+            to: email,
+            subject: 'Welcome to Apex Advantage — set your password',
+            html: emailTemplate(`
+              <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Welcome to Apex Advantage, ${name.split(' ')[0]}!</h2>
+              <p style="color:#1F2937;font-size:15px;line-height:1.7;">Your account is ready and your Mock Oral booking is being processed. Set your password to get in:</p>
+              <a href="${actionLink}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Set Your Password →</a>
+              <p style="color:#4B5563;font-size:13px;line-height:1.6;">Once that's done, sign in any time at apexaviationtx.com/portal-login.html — your Mock Oral booking, intake form, and (after your session) your Performance Report will all be waiting in your dashboard.</p>
+            `),
+          },
+        })
+      }
+
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        customer_email: email,
+        line_items: [{
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: product.name,
+              description: product.short_description,
+            },
+            unit_amount: product.price_cents,
+          },
+          quantity: 1,
+        }],
+        metadata: {
+          purpose: 'book-mock-oral-v2',
+          profile_id: newProfileId,
+          product_id: product.id,
+          availability_id: slot.id,
+          full_name: name,
+          email,
+        },
+        success_url: `${siteOrigin}/portal-login.html?view=signup-success&paid=1&product=mock_oral_v2&amount_cents=${product.price_cents}&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${siteOrigin}/apex-advantage-mock-oral.html#pricing`,
+      })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'signup-and-book-mock-oral-v2', email, profileId: newProfileId, amountCents: product.price_cents, utm: body.utm })
 
       return new Response(JSON.stringify({ url: session.url, amount: product.price_cents }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

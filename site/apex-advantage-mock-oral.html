@@ -45,7 +45,7 @@
     "mainEntity": [
       { "@type": "Question", "name": "Is this a guarantee I'll pass my checkride?", "acceptedAnswer": { "@type": "Answer", "text": "No. This is a realistic assessment, not a guarantee -- no one can know exactly what your specific DPE will ask. It's built to build real understanding and judgment, and to show you where you actually stand before checkride day." } },
       { "@type": "Question", "name": "What should I have ready before my session?", "acceptedAnswer": { "@type": "Answer", "text": "If applicable: your student pilot certificate and medical, your aircraft's POH/AFM, a current sectional or EFB, and your Knowledge Test Report if you have one." } },
-      { "@type": "Question", "name": "Do I need an Apex Advantage account first?", "acceptedAnswer": { "@type": "Answer", "text": "You'll sign in or create a free Apex Advantage account as part of booking -- that's also where your Performance Report and any recheck live afterward." } },
+      { "@type": "Question", "name": "Do I need an Apex Advantage account first?", "acceptedAnswer": { "@type": "Answer", "text": "No -- pick your time and pay right on this page. Your free Apex Advantage account is created automatically as part of booking, and that's also where your Performance Report and any recheck live afterward." } },
       { "@type": "Question", "name": "What if I need to reschedule?", "acceptedAnswer": { "@type": "Answer", "text": "Reach out to info@apexaviationtx.com and we'll get you moved to another available time." } },
       { "@type": "Question", "name": "What if my mock oral doesn't go well?", "acceptedAnswer": { "@type": "Answer", "text": "That's the point of finding out now instead of on checkride day. The Mock Oral + Recheck option includes a follow-up 30-minute session targeted at your weak areas." } },
       { "@type": "Question", "name": "Is this available for Instrument or Commercial?", "acceptedAnswer": { "@type": "Answer", "text": "Private Pilot only at this time." } }
@@ -125,6 +125,25 @@
     .mo-pricing-card ul { list-style: none; padding: 0; margin: 0 0 22px; display: flex; flex-direction: column; gap: 10px; }
     .mo-pricing-card li { font-size: 13.5px; color: rgba(255,255,255,0.75); padding-left: 22px; position: relative; line-height: 1.5; }
     .mo-pricing-card li::before { content: '✓'; color: var(--gold); position: absolute; left: 0; font-weight: 800; }
+
+    .mo-slot-list { display: flex; flex-wrap: wrap; gap: 10px; }
+    .mo-slot {
+      background: #0b1627; border: 1.5px solid rgba(255,255,255,0.12); border-radius: 8px;
+      color: #fff; font-size: 13.5px; font-weight: 600; padding: 10px 16px; cursor: pointer;
+    }
+    .mo-slot:hover:not(:disabled) { border-color: var(--gold); }
+    .mo-slot--selected { border-color: var(--gold); background: rgba(244,180,0,0.1); }
+    .mo-slot:disabled { opacity: 0.5; cursor: default; }
+    .mo-booking-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+    .mo-booking-form-grid label {
+      display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 700;
+      color: rgba(255,255,255,0.55); text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    .mo-booking-form-grid input {
+      background: #0b1627; border: 1.5px solid rgba(255,255,255,0.12); border-radius: 8px;
+      color: #fff; font-size: 14px; padding: 10px 12px; font-family: inherit;
+    }
+    .mo-booking-form-grid input:focus { outline: none; border-color: var(--gold); }
 
     .mo-avoid-strip {
       max-width: 680px; margin: 40px auto 0; padding: 18px 22px;
@@ -237,7 +256,24 @@
       <div class="mo-pricing-grid" id="moPricingGrid">
         <p style="text-align:center;color:rgba(255,255,255,0.4);grid-column:1/-1">Loading pricing…</p>
       </div>
-      <p style="text-align:center;color:rgba(255,255,255,0.4);font-size:12.5px;margin-top:22px">Private Pilot only at this time. You'll sign in or create a free Apex Advantage account to book your time.</p>
+      <p style="text-align:center;color:rgba(255,255,255,0.4);font-size:12.5px;margin-top:22px" id="moAccountNote">Private Pilot only at this time. You'll sign in or create a free Apex Advantage account to book your time.</p>
+
+      <div id="moBookingFlow" hidden style="max-width:560px;margin:32px auto 0;background:#101f38;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:26px">
+        <button type="button" id="moBookingBack" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:12.5px;font-weight:700;cursor:pointer;padding:0;margin-bottom:16px">← Choose a different option</button>
+        <h3 style="color:#fff;font-size:16px;font-weight:800;margin:0 0 4px" id="moBookingProductName"></h3>
+        <p style="color:rgba(255,255,255,0.5);font-size:13px;margin:0 0 18px">Pick an open time, then enter your info to pay and reserve your spot. Your free Apex Advantage account is created automatically — no separate signup step.</p>
+        <div class="mo-slot-list" id="moBookingSlots"></div>
+        <div id="moBookingFormWrap" hidden style="margin-top:22px;padding-top:22px;border-top:1px solid rgba(255,255,255,0.08)">
+          <form id="moBookingForm" novalidate>
+            <div class="mo-booking-form-grid">
+              <label>Full Name<input type="text" id="moGuestName" name="name" required autocomplete="name" /></label>
+              <label>Email<input type="email" id="moGuestEmail" name="email" required autocomplete="email" /></label>
+            </div>
+            <button type="submit" class="btn btn--primary" style="width:100%;margin-top:18px" id="moBookingSubmit">Continue to Payment</button>
+          </form>
+        </div>
+        <p id="moBookingError" style="display:none;color:#ff6b6b;font-size:13px;margin-top:14px"></p>
+      </div>
     </div>
   </section>
 
@@ -274,7 +310,7 @@
             Do I need an Apex Advantage account first?
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div class="faq-item__answer"><p>You'll sign in or create a free Apex Advantage account as part of booking — that's also where your Performance Report and any recheck live afterward.</p></div>
+          <div class="faq-item__answer"><p>No — pick your time and pay right on this page. Your free Apex Advantage account is created automatically as part of booking, and that's also where your Performance Report and any recheck live afterward.</p></div>
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
@@ -356,17 +392,151 @@
       });
     });
 
-    // Pricing cards -- real, admin-togglable products (mock_oral_products,
-    // active=true only), not hardcoded copy. A visitor who clicks a CTA
-    // while already signed in goes straight to the booking flow inside
-    // the portal; otherwise they're sent to sign in/create a free account
-    // first, landing back on the portal's Mock Oral section afterward --
-    // same dest= pattern already used for Ground School/Checkride Prep.
-    function moCtaHref() {
-      return 'portal-login.html?view=signup&dest=mock-oral&source=mock_oral' +
-        (window.apexGetUtm ? '&' + Object.entries(apexGetUtm() || {}).filter(function (e) { return e[1]; }).map(function (e) { return e[0] + '=' + encodeURIComponent(e[1]); }).join('&') : '');
+    // Same MO_TZ_ABBR/zonedWallClockToUtc/moFmtDateTime helpers
+    // portal-stable.js uses to render mock_oral_availability rows for a
+    // signed-in member -- ported here (this public page doesn't load
+    // portal-stable.js) so an anonymous visitor sees the exact same
+    // date/time formatting when picking a slot to book as a guest.
+    var MO_TZ_ABBR = { 'America/Chicago': 'CT', 'America/New_York': 'ET', 'America/Denver': 'MT', 'America/Los_Angeles': 'PT', 'UTC': 'UTC' };
+    function tzOffsetMs(instant, timeZone) {
+      var parts = {};
+      new Intl.DateTimeFormat('en-US', {
+        timeZone: timeZone, hourCycle: 'h23',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      }).formatToParts(instant).forEach(function (p) { parts[p.type] = p.value; });
+      var asUtc = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+      return asUtc - instant.getTime();
+    }
+    function zonedWallClockToUtc(dateStr, timeStr, timeZone) {
+      var naiveUtc = new Date(dateStr + 'T' + timeStr + 'Z');
+      if (!timeZone) return naiveUtc;
+      var guess = new Date(naiveUtc.getTime() - tzOffsetMs(naiveUtc, timeZone));
+      return new Date(naiveUtc.getTime() - tzOffsetMs(guess, timeZone));
+    }
+    function moFmtDateTime(row) {
+      var start = zonedWallClockToUtc(row.class_date, row.start_time, row.timezone);
+      var date = start.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+      var time = start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      var tz = MO_TZ_ABBR[row.timezone] || row.timezone || '';
+      return date + ' · ' + time + (tz ? ' ' + tz : '');
     }
 
+    // Same extractInvokeError() shape portal-stable.js/portal-login.html
+    // already use for create-checkout-session error responses.
+    function extractInvokeError(res) {
+      if (res.data && res.data.error) return Promise.resolve(res.data.error);
+      var fallback = (res.error && res.error.message) || 'Could not start checkout. Please try again.';
+      if (res.error && res.error.context && typeof res.error.context.json === 'function') {
+        return res.error.context.json().then(function (body) {
+          return (body && body.error) || fallback;
+        }).catch(function () { return fallback; });
+      }
+      return Promise.resolve(fallback);
+    }
+
+    var moSelectedProduct = null;
+    var moSelectedSlotId = null;
+
+    // Guest booking flow -- lets a visitor with no Apex Advantage account
+    // pick an open slot and pay right on this page, instead of being sent
+    // to create an account first. get_mock_oral_availability() is already
+    // granted to the anon role (supabase-portal-schema-v97.sql), so real
+    // open slots can be shown here with no session at all.
+    function openMoBookingFlow(productId, products) {
+      var product = products.filter(function (p) { return p.id === productId; })[0];
+      if (!product) return;
+      moSelectedProduct = product;
+      moSelectedSlotId = null;
+      var flow = document.getElementById('moBookingFlow');
+      var slotsEl = document.getElementById('moBookingSlots');
+      var formWrap = document.getElementById('moBookingFormWrap');
+      var errorEl = document.getElementById('moBookingError');
+      errorEl.style.display = 'none'; errorEl.textContent = '';
+      formWrap.hidden = true;
+      document.getElementById('moBookingProductName').textContent = product.name + ' — $' + (product.price_cents / 100).toFixed(0);
+      flow.hidden = false;
+      flow.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      slotsEl.innerHTML = '<p style="color:rgba(255,255,255,0.4)">Loading available times…</p>';
+      apexSupabase.rpc('get_mock_oral_availability', { p_certificate_type: 'private_pilot' }).then(function (res) {
+        var slots = res.data || [];
+        if (!slots.length) {
+          slotsEl.innerHTML = '<p style="color:rgba(255,255,255,0.5)">No upcoming times are open right now — check back soon, or <a href="contact.html" style="color:var(--gold)">contact us</a>.</p>';
+          return;
+        }
+        slotsEl.innerHTML = slots.map(function (s) {
+          return '<button type="button" class="mo-slot" data-mo-book-slot="' + s.id + '">' + moFmtDateTime(s) + '</button>';
+        }).join('');
+        slotsEl.querySelectorAll('[data-mo-book-slot]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            moSelectedSlotId = btn.dataset.moBookSlot;
+            slotsEl.querySelectorAll('.mo-slot').forEach(function (b) { b.classList.remove('mo-slot--selected'); });
+            btn.classList.add('mo-slot--selected');
+            formWrap.hidden = false;
+            formWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          });
+        });
+      });
+    }
+
+    document.getElementById('moBookingBack').addEventListener('click', function () {
+      document.getElementById('moBookingFlow').hidden = true;
+    });
+
+    document.getElementById('moBookingForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var errorEl = document.getElementById('moBookingError');
+      errorEl.style.display = 'none'; errorEl.textContent = '';
+      if (!moSelectedProduct || !moSelectedSlotId) return;
+      var name = document.getElementById('moGuestName').value.trim();
+      var email = document.getElementById('moGuestEmail').value.trim();
+      if (!name || !email) return;
+      var submitBtn = document.getElementById('moBookingSubmit');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Redirecting to secure checkout…';
+      if (window.apexTrack) {
+        apexTrack('mock_oral_checkout_started', { product: moSelectedProduct.id, price: moSelectedProduct.price_cents / 100, certificate_type: 'private_pilot', checkout_step: 'guest_booking' });
+        apexTrack('registration_completed', { product: 'mock_oral_v2', checkout_step: 'instant_access' });
+      }
+      apexSupabase.functions.invoke('create-checkout-session', {
+        body: {
+          purpose: 'signup-and-book-mock-oral-v2',
+          name: name, email: email,
+          productId: moSelectedProduct.id, availabilityId: moSelectedSlotId,
+          origin: window.location.origin,
+          utm: window.apexGetUtm ? apexGetUtm() : undefined,
+          utm_first: window.apexGetFirstTouchUtm ? apexGetFirstTouchUtm() : undefined,
+          first_touch_landing: window.apexGetFirstTouchLanding ? apexGetFirstTouchLanding() : undefined,
+        }
+      }).then(function (res) {
+        if (res.error || !res.data || !res.data.url) {
+          return extractInvokeError(res).then(function (msg) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Continue to Payment';
+            errorEl.textContent = msg;
+            errorEl.style.display = 'block';
+            // The chosen slot may have just been taken by someone else --
+            // refresh the slot list rather than leave a stale, now-invalid
+            // selection in place.
+            openMoBookingFlow(moSelectedProduct.id, [moSelectedProduct]);
+          });
+        }
+        if (window.apexTrack) apexTrack('checkout_started', { product: 'mock_oral_v2', checkout_step: 'redirect_to_stripe', price: moSelectedProduct.price_cents / 100 });
+        if (window.apexTrackStandard) apexTrackStandard('InitiateCheckout', { content_name: moSelectedProduct.name, value: moSelectedProduct.price_cents / 100, currency: 'USD' });
+        window.location.href = res.data.url;
+      }).catch(function () {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Continue to Payment';
+        errorEl.textContent = 'Could not start checkout. Please try again.';
+        errorEl.style.display = 'block';
+      });
+    });
+
+    // Pricing cards -- real, admin-togglable products (mock_oral_products,
+    // active=true only), not hardcoded copy. A visitor who's already
+    // signed in goes straight to the booking flow inside the portal;
+    // everyone else books right here as a guest (openMoBookingFlow above)
+    // -- no separate "create an account first" step.
     apexSupabase.from('mock_oral_products').select('*').eq('active', true).order('sort_order').then(function (res) {
       var products = res.data || [];
       var grid = document.getElementById('moPricingGrid');
@@ -374,18 +544,22 @@
 
       apexSupabase.auth.getSession().then(function (sessionRes) {
         var isSignedIn = !!(sessionRes.data && sessionRes.data.session);
-        var href = isSignedIn ? 'portal.html#mock-oral' : moCtaHref();
+        var accountNote = document.getElementById('moAccountNote');
+        if (accountNote && !isSignedIn) accountNote.textContent = 'Private Pilot only at this time. Booking creates your free Apex Advantage account automatically -- no separate signup step.';
 
         grid.innerHTML = products.map(function (p) {
           var features = ['Up to ' + Math.round(p.duration_minutes / 60) + '-hour live 1:1 Mock Oral', 'ACS-based, scenario-based questioning', 'Written Apex Mock Oral Performance Report', 'Recommended study areas'];
           if (p.includes_recheck) features.push('One 30-minute targeted recheck');
+          var cta = isSignedIn
+            ? '<a href="portal.html#mock-oral" class="btn btn--primary" style="width:100%;text-align:center;display:block" data-apx-cta data-apx-cta-location="pricing_card">BOOK MY MOCK ORAL</a>'
+            : '<button type="button" class="btn btn--primary" style="width:100%" data-apx-cta data-apx-cta-location="pricing_card" data-mo-open-product="' + p.id + '">BOOK MY MOCK ORAL</button>';
           return '<div class="mo-pricing-card' + (p.badge ? ' mo-pricing-card--featured' : '') + '">' +
             (p.badge ? '<div class="mo-pricing-card__badge">' + p.badge + '</div>' : '') +
             '<h3>' + p.name + '</h3>' +
             '<div class="mo-pricing-card__price">$' + (p.price_cents / 100).toFixed(0) + '</div>' +
             '<div class="mo-pricing-card__duration">Up to ' + Math.round(p.duration_minutes / 60) + ' Hours</div>' +
             '<ul>' + features.map(function (f) { return '<li>' + f + '</li>'; }).join('') + '</ul>' +
-            '<a href="' + href + '" class="btn btn--primary" style="width:100%;text-align:center;display:block" data-apx-cta data-apx-cta-location="pricing_card">BOOK MY MOCK ORAL</a>' +
+            cta +
             '</div>';
         }).join('');
 
@@ -398,8 +572,14 @@
           });
         });
 
+        if (!isSignedIn) {
+          grid.querySelectorAll('[data-mo-open-product]').forEach(function (btn) {
+            btn.addEventListener('click', function () { openMoBookingFlow(btn.dataset.moOpenProduct, products); });
+          });
+        }
+
         var heroCta = document.getElementById('moHeroCta');
-        if (heroCta && products.length === 1) heroCta.href = href;
+        if (heroCta && isSignedIn && products.length === 1) heroCta.href = 'portal.html#mock-oral';
       });
     });
   </script>
