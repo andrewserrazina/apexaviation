@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Checkride Binder Builder | Apex Advantage</title>
+  <meta name="description" content="Turn the 80-page Apex Advantage Checkride Binder into a guided, checkbox-driven digital binder inside your portal -- 20 sections, endorsement and deficiency trackers, and a Master Status dashboard that computes your real progress. Included with Checkride Prep." />
+  <meta property="og:title" content="Checkride Binder Builder | Apex Advantage" />
+  <meta property="og:description" content="A guided, checkbox-driven digital version of the Apex Advantage Checkride Binder -- 20 sections, real trackers, computed progress. Included with the $29 Checkride Prep unlock." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://apexaviationtx.com/apex-advantage-checkride-binder" />
+  <meta property="og:image" content="https://apexaviationtx.com/apexwhite.png" />
+  <meta property="og:site_name" content="Apex Aviation" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Checkride Binder Builder | Apex Advantage" />
+  <meta name="twitter:description" content="A guided, checkbox-driven digital version of the Apex Advantage Checkride Binder -- 20 sections, real trackers, computed progress. Included with the $29 Checkride Prep unlock." />
+  <meta name="twitter:image" content="https://apexaviationtx.com/apexwhite.png" />
+  <link rel="canonical" href="https://apexaviationtx.com/apex-advantage-checkride-binder" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="pages.css" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      { "@type": "Question", "name": "Is the Checkride Binder Builder a separate purchase?", "acceptedAnswer": { "@type": "Answer", "text": "No. It's included with the Apex Advantage Checkride Prep System -- one $29 unlock, no separate checkout." } },
+      { "@type": "Question", "name": "Is this a PDF or a printable workbook?", "acceptedAnswer": { "@type": "Answer", "text": "No. It's an interactive part of the Apex Advantage member portal -- checkboxes, trackers, and a progress dashboard, not a document you download and fill out by hand." } },
+      { "@type": "Question", "name": "What certificate is this built for?", "acceptedAnswer": { "@type": "Answer", "text": "Private Pilot, built directly from the Apex Advantage Checkride Binder workbook." } },
+      { "@type": "Question", "name": "Does it replace my instructor or the ACS?", "acceptedAnswer": { "@type": "Answer", "text": "No. It's an organization and verification tool alongside your instructor, the regulations, the ACS, and your aircraft records -- not a replacement for any of them." } },
+      { "@type": "Question", "name": "Do I need an Apex Advantage account first?", "acceptedAnswer": { "@type": "Answer", "text": "You'll sign in or create a free Apex Advantage account, then unlock Checkride Prep to reach the binder -- that's also where your saved progress lives." } },
+      { "@type": "Question", "name": "How long will I have access?", "acceptedAnswer": { "@type": "Answer", "text": "Lifetime access, the same as the rest of Checkride Prep. It's a one-time payment, not a subscription." } }
+    ]
+  }
+  </script>
+  <!-- Google Analytics 4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-JFPBCF2GXE"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-JFPBCF2GXE');
+  </script>
+  <style>
+    /* ── Page-specific additions, scoped with cb- prefix ── */
+    .cb-hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--gold); color: #080f1e;
+      font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 6px 14px; border-radius: 100px; margin-bottom: 18px;
+    }
+    .cb-hero-sub {
+      font-size: clamp(20px, 2.6vw, 28px); font-weight: 700; color: var(--gold);
+      margin: 10px 0 18px; font-family: Georgia, serif; font-style: italic;
+    }
+    .cb-trust-line {
+      display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 22px; justify-content: center;
+      font-size: 13px; color: rgba(255,255,255,0.6); font-weight: 600;
+    }
+
+    .cb-parts-grid {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px;
+      max-width: 1100px; margin: 32px auto 0;
+    }
+    .cb-part-card {
+      background: #101f38; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
+      padding: 20px 16px; text-align: center;
+    }
+    .cb-part-card__num { color: var(--gold); font-size: 12px; font-weight: 800; letter-spacing: 0.08em; margin-bottom: 8px; }
+    .cb-part-card h3 { color: #fff; font-size: 14px; font-weight: 800; margin: 0 0 8px; }
+    .cb-part-card p { color: rgba(255,255,255,0.55); font-size: 12.5px; line-height: 1.55; margin: 0; }
+    @media (max-width: 900px) { .cb-parts-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .cb-parts-grid { grid-template-columns: 1fr; } }
+
+    .cb-explain-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
+      max-width: 900px; margin: 32px auto 0;
+    }
+    .cb-explain-item {
+      background: #101f38; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
+      padding: 18px 20px;
+    }
+    .cb-explain-item h3 { color: #fff; font-size: 14.5px; font-weight: 800; margin: 0 0 6px; }
+    .cb-explain-item p { color: rgba(255,255,255,0.55); font-size: 13.5px; line-height: 1.6; margin: 0; }
+    @media (max-width: 640px) { .cb-explain-grid { grid-template-columns: 1fr; } }
+
+    .cb-steps { display: flex; gap: 24px; max-width: 1000px; margin: 0 auto; }
+    .cb-step { flex: 1; text-align: center; }
+    .cb-step__num {
+      width: 40px; height: 40px; border-radius: 50%; background: #0b1627; border: 2px solid var(--gold);
+      display: flex; align-items: center; justify-content: center; margin: 0 auto 14px;
+      font-size: 15px; font-weight: 800; color: var(--gold);
+    }
+    .cb-step h3 { color: #fff; font-size: 14px; font-weight: 800; letter-spacing: 0.02em; margin: 0 0 8px; }
+    .cb-step p { color: rgba(255,255,255,0.55); font-size: 13px; line-height: 1.6; margin: 0; }
+    @media (max-width: 720px) { .cb-steps { flex-direction: column; gap: 28px; } }
+
+    .cb-pricing-card {
+      max-width: 420px; margin: 0 auto; position: relative;
+      background: rgba(244,180,0,0.05); border: 1px solid rgba(244,180,0,0.4);
+      border-radius: 14px; padding: 34px 30px; text-align: center;
+    }
+    .cb-pricing-card__eyebrow { color: rgba(255,255,255,0.5); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+    .cb-pricing-card__price { color: var(--gold); font-size: 44px; font-weight: 800; margin-bottom: 4px; }
+    .cb-pricing-card__note { color: rgba(255,255,255,0.4); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 22px; }
+    .cb-pricing-card ul { list-style: none; padding: 0; margin: 0 0 24px; display: flex; flex-direction: column; gap: 10px; text-align: left; }
+    .cb-pricing-card li { font-size: 13.5px; color: rgba(255,255,255,0.75); padding-left: 22px; position: relative; line-height: 1.5; }
+    .cb-pricing-card li::before { content: '✓'; color: var(--gold); position: absolute; left: 0; font-weight: 800; }
+
+    .cb-avoid-strip {
+      max-width: 680px; margin: 40px auto 0; padding: 18px 22px;
+      background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px;
+      text-align: center;
+    }
+    .cb-avoid-strip p { color: rgba(255,255,255,0.45); font-size: 12.5px; line-height: 1.7; margin: 0; }
+
+    .cb-sticky-cta {
+      display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 500;
+      background: #0B1F3A; border-top: 1px solid rgba(244,180,0,0.25);
+      padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    }
+    .cb-sticky-cta a { display: block; text-align: center; width: 100%; padding: 12px 20px; font-size: 14px; }
+    @media (max-width: 720px) {
+      .cb-sticky-cta { display: block; }
+      body { padding-bottom: 64px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav" id="nav">
+    <div class="container nav__inner">
+      <a href="home.html" class="nav__logo">
+        <img src="apexwhite.png" alt="Apex Aviation" height="40" style="display:block;width:auto" />
+      </a>
+      <nav class="nav__links">
+        <a href="apex-advantage.html" class="btn btn--nav-outline">Apex Advantage</a>
+        <a href="portal-login.html" style="font-size:13px;color:rgba(255,255,255,0.55)">Already registered? <span style="color:var(--gold);font-weight:600">Log in</span></a>
+      </nav>
+      <button class="nav__hamburger" id="hamburger" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <div class="nav__mobile" id="mobileMenu">
+      <a href="apex-advantage.html">Apex Advantage</a>
+      <a href="portal-login.html">Already registered? Log in</a>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       HERO
+  ════════════════════════════════════════════════════════════ -->
+  <section class="page-hero" style="padding-top:92px;padding-bottom:56px">
+    <div class="container page-hero__inner" style="max-width:760px;text-align:center;margin:0 auto">
+      <div class="cb-hero-badge">Apex Advantage &middot; Checkride Prep</div>
+      <h1 class="page-hero__title" style="margin:0 auto">NEVER WALK IN WITH THE WRONG PAPERWORK.</h1>
+      <p class="cb-hero-sub">Or the right paperwork you can't find.</p>
+      <p class="page-hero__sub" style="max-width:600px;margin:0 auto">The Apex Advantage Checkride Binder Builder turns the full 80-page Checkride Binder workbook into a guided, checkbox-driven digital binder inside your portal &mdash; every document, endorsement, and tracker organized, verified, and easy to find on checkride day.</p>
+      <div style="margin-top:26px">
+        <a href="#pricing" class="btn btn--primary" id="cbHeroCta" data-apx-cta data-apx-cta-location="hero">UNLOCK CHECKRIDE PREP &mdash; <span data-cp-price>$29</span></a>
+      </div>
+      <div class="cb-trust-line">
+        <span>20 Sections</span><span>&middot;</span><span>5 Parts</span><span>&middot;</span><span>Real Trackers</span><span>&middot;</span><span>Computed Progress</span><span>&middot;</span><span>Included With Checkride Prep</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       THE PROBLEM
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--light">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Why This Exists</div>
+        <h2 class="section__title">A disorganized binder<br/><em class="accent">is its own kind of unready.</em></h2>
+        <p class="section__desc" style="max-width:640px">Examiners don't just evaluate whether you have the right documents &mdash; they evaluate whether you know what you have, where it is, and why it matters. A scavenger hunt through a stack of paper in front of your DPE is a bad way to start a practical test you're otherwise ready for.</p>
+      </div>
+      <div class="cb-explain-grid">
+        <div class="cb-explain-item"><h3>Not A Checklist To Skim</h3><p>Every item asks you to verify, not assume &mdash; you check a box because you confirmed it, not because you think it's probably fine.</p></div>
+        <div class="cb-explain-item"><h3>Built From A Real Workbook</h3><p>Digitized directly from the Apex Advantage Checkride Binder &mdash; the same 20 sections, in the same order, nothing summarized or dropped.</p></div>
+        <div class="cb-explain-item"><h3>Real Trackers, Not Static Text</h3><p>Add and remove your own rows for endorsements, knowledge-test deficiencies, your rapid-fire oral log, and weak areas to retest.</p></div>
+        <div class="cb-explain-item"><h3>Progress You Don't Hand-Count</h3><p>The Master Status dashboard computes your real completion from your actual checkboxes &mdash; not a fraction you fill in yourself.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       WHAT'S INSIDE -- THE 5 PARTS
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section" style="background:#0b1627">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">What's Inside</div>
+        <h2 class="section__title">20 sections.<br/><em class="accent">Five parts, start to finish.</em></h2>
+        <p class="section__desc" style="max-width:640px">Work through it in order, or jump straight to whichever part needs the most attention this week.</p>
+      </div>
+      <div class="cb-parts-grid">
+        <div class="cb-part-card"><div class="cb-part-card__num">PART 01</div><h3>The Applicant</h3><p>Identity, IACRA, Knowledge Test Report, endorsements &amp; aeronautical experience.</p></div>
+        <div class="cb-part-card"><div class="cb-part-card__num">PART 02</div><h3>The Aircraft</h3><p>Documents, POH/AFM data, maintenance &amp; airworthiness, systems knowledge.</p></div>
+        <div class="cb-part-card"><div class="cb-part-card__num">PART 03</div><h3>The Flight</h3><p>Cross-country planning, weather decision-making, W&amp;B/performance, personal minimums.</p></div>
+        <div class="cb-part-card"><div class="cb-part-card__num">PART 04</div><h3>The Oral</h3><p>A real DPE "Show Me" drill, the four-step answer framework, and a rapid-fire oral log.</p></div>
+        <div class="cb-part-card"><div class="cb-part-card__num">PART 05</div><h3>Final Readiness</h3><p>Instructor final review, night-before checklist, and checkride-morning confirmation.</p></div>
+      </div>
+      <p style="text-align:center;color:rgba(255,255,255,0.4);font-size:12.5px;margin-top:24px;max-width:600px;margin-left:auto;margin-right:auto">Private Pilot, built for Part 61 and Part 141 applicants alike. Instrument and Commercial versions are not yet available.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       LOCATE. EXPLAIN. APPLY.
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--light">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">The Oral Standard</div>
+        <h2 class="section__title">Locate. Explain.<br/><em class="accent">Apply.</em></h2>
+        <p class="section__desc" style="max-width:640px">A real DPE "Show Me" drill for your applicant documents, your aircraft records, and your flight packet &mdash; because knowing an answer and being able to produce and explain the source behind it are two different skills.</p>
+      </div>
+      <div class="cb-steps">
+        <div class="cb-step"><div class="cb-step__num">1</div><h3>LOCATE</h3><p>Find the exact document, record, chart, regulation, or aircraft source &mdash; quickly.</p></div>
+        <div class="cb-step"><div class="cb-step__num">2</div><h3>EXPLAIN</h3><p>State what the source means in plain language, not just what it's called.</p></div>
+        <div class="cb-step"><div class="cb-step__num">3</div><h3>APPLY</h3><p>Connect the source to this aircraft, this route, this weather, or this decision.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PRICING / INCLUDED
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section" style="background:#0b1627" id="pricing">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Included With Checkride Prep</div>
+        <h2 class="section__title">Not a separate purchase.<br/><em class="accent">One unlock, everything included.</em></h2>
+      </div>
+      <div class="cb-pricing-card">
+        <div class="cb-pricing-card__eyebrow">Private Pilot Checkride Prep</div>
+        <div class="cb-pricing-card__price" data-cp-price>$29</div>
+        <div class="cb-pricing-card__note">One-Time Unlock &middot; Lifetime Access</div>
+        <ul>
+          <li>Checkride Binder Builder &mdash; all 20 sections</li>
+          <li>300+ ACS-mapped DPE-style oral questions</li>
+          <li>AI DPE Practice &amp; realistic scenario training</li>
+          <li>ACS Quick Reference Appendix</li>
+          <li>Readiness &amp; progress tracking</li>
+        </ul>
+        <a href="#" class="btn btn--primary" id="cbPricingCta" style="width:100%;text-align:center;display:block" data-apx-cta data-apx-cta-location="pricing_card">UNLOCK CHECKRIDE PREP &mdash; <span data-cp-price>$29</span></a>
+      </div>
+      <p style="text-align:center;color:rgba(255,255,255,0.4);font-size:12.5px;margin-top:22px">You'll sign in or create a free Apex Advantage account to unlock it.</p>
+    </div>
+  </section>
+
+  <div class="cb-avoid-strip" style="margin-top:0;margin-bottom:56px">
+    <p>The Checkride Binder Builder is an organization and verification tool, not a guarantee of checkride outcomes and not a replacement for your instructor, the regulations, the ACS, your POH/AFM, or your aircraft's own maintenance records.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       FAQ
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section section--light" id="faq">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Common Questions</div>
+        <h2 class="section__title">Checkride Binder Builder FAQs</h2>
+      </div>
+      <div class="faq-list">
+        <div class="faq-item">
+          <button class="faq-item__question">
+            Is the Checkride Binder Builder a separate purchase?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>No. It's included with the Apex Advantage Checkride Prep System — one <span data-cp-price>$29</span> unlock, no separate checkout.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            Is this a PDF or a printable workbook?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>No. It's an interactive part of the Apex Advantage member portal — checkboxes, trackers, and a progress dashboard, not a document you download and fill out by hand.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            What certificate is this built for?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>Private Pilot, built directly from the Apex Advantage Checkride Binder workbook. Instrument and Commercial versions are not yet available.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            Does it replace my instructor or the ACS?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>No. It's an organization and verification tool alongside your instructor, the regulations, the ACS, and your aircraft records — not a replacement for any of them.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            Do I need an Apex Advantage account first?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>You'll sign in or create a free Apex Advantage account, then unlock Checkride Prep to reach the binder — that's also where your saved progress lives.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">
+            How long will I have access?
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="faq-item__answer"><p>Lifetime access, the same as the rest of Checkride Prep. It's a one-time payment, not a subscription.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container footer__inner">
+      <div class="footer__brand">
+        <a href="home.html" class="nav__logo">
+          <img src="apexwhite.png" alt="Apex Aviation" height="40" style="display:block;width:auto" />
+        </a>
+        <p>Train Beyond the Checkride. Premium simulator-based aviation training opening in Austin, Texas — January 2027.</p>
+      </div>
+      <div class="footer__links">
+        <div>
+          <h4>Training</h4>
+          <a href="apex-advantage.html">Apex Advantage</a>
+          <a href="apex-advantage-private-pilot.html">Virtual Ground School</a>
+          <a href="checkride-prep.html">Checkride Prep</a>
+          <a href="apex-advantage-mock-oral.html">Mock Orals</a>
+        </div>
+        <div>
+          <h4>Company</h4>
+          <a href="about.html">About Apex</a>
+          <a href="instructors.html">Our Instructors</a>
+          <a href="portal-login.html?view=signup">Create Free Account</a>
+        </div>
+        <div>
+          <h4>Contact</h4>
+          <a href="mailto:info@apexaviationtx.com">info@apexaviationtx.com</a>
+          <span style="color:var(--gray-2);font-size:14px">Austin, Texas</span>
+        </div>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <div class="container">
+        <p>&copy; 2026 Apex Aviation. All rights reserved. · <a href="privacy.html" style="color:var(--gray-2)">Privacy Policy</a></p>
+        <p>Train Beyond the Checkride. · Austin, Texas</p>
+      </div>
+    </div>
+  </footer>
+
+  <div class="cb-sticky-cta">
+    <a href="#" id="cbStickyCtaLink" class="btn btn--primary" data-apx-cta data-apx-cta-location="sticky_mobile">Unlock Checkride Prep</a>
+  </div>
+
+  <script src="script.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="portal-supabase.js"></script>
+  <script src="analytics-events.js"></script>
+  <script>
+    if (window.apexTrack) apexTrack('checkride_binder_landing_page_view', { product: 'private_pilot_checkride_prep', feature: 'checkride_binder_builder', source_context: 'landing' });
+
+    document.querySelectorAll('[data-apx-cta]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        if (!window.gtag) return;
+        gtag('event', 'checkride_binder_landing_cta_click', { location: el.dataset.apxCtaLocation || 'unknown' });
+      });
+    });
+
+    // ── Destination link: same dest= pattern already used for Ground
+    // School/Mock Oral/Study Packs -- signed-out visitors sign in or
+    // create a free account first, then land on Checkride Prep's
+    // checkout inside the portal; a visitor already signed in goes
+    // straight there. UTM passthrough mirrors the other landing pages. ──
+    function cbCtaHref() {
+      return 'portal-login.html?view=signup&dest=checkride-prep&source=checkride_binder' +
+        (window.apexGetUtm ? '&' + Object.entries(apexGetUtm() || {}).filter(function (e) { return e[1]; }).map(function (e) { return e[0] + '=' + encodeURIComponent(e[1]); }).join('&') : '');
+    }
+
+    apexSupabase.auth.getSession().then(function (sessionRes) {
+      var isSignedIn = !!(sessionRes.data && sessionRes.data.session);
+      var href = isSignedIn ? 'portal.html#checkride-prep' : cbCtaHref();
+      ['cbHeroCta', 'cbPricingCta', 'cbStickyCtaLink'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.href = href;
+      });
+    });
+
+    // ── Live Checkride Prep pricing: same RPC/pattern as checkride-
+    // prep.html/apex-advantage.html, so this page never shows stale
+    // pricing. Trimmed (no countdown/urgency copy) -- this is a
+    // secondary feature-spotlight page, not the primary sales page. ──
+    (function () {
+      if (!window.apexSupabase) return;
+      apexSupabase.rpc('get_checkride_prep_pricing', { p_profile_id: null }).then(function (res) {
+        var row = res.data && res.data[0];
+        if (res.error || !row) return;
+        var price = '$' + Math.round(row.amount_cents / 100);
+        document.querySelectorAll('[data-cp-price]').forEach(function (el) { el.textContent = price; });
+      }).catch(function () {});
+    })();
+
+    // ── FAQ accordion (kept local to this page instead of pulling in
+    // script.js, which also wires a hamburger menu this focused header
+    // intentionally doesn't have) ──────────────────────────────────
+    document.querySelectorAll('.faq-item__question').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var item = btn.closest('.faq-item');
+        var wasOpen = item.classList.contains('open');
+        document.querySelectorAll('.faq-item').forEach(function (i) { i.classList.remove('open'); });
+        if (!wasOpen) item.classList.add('open');
+      });
+    });
+  </script>
+</body>
+</html>

@@ -88,6 +88,13 @@
     'mock_oral_page_view', 'mock_oral_checkout_started', 'mock_oral_purchase_completed',
     'mock_oral_booking_completed', 'mock_oral_intake_completed', 'mock_oral_report_viewed',
     'mock_oral_recheck_clicked', 'mock_oral_recheck_purchased',
+    // Checkride Binder Builder landing page (site/apex-advantage-
+    // checkride-binder.html) -- a feature spotlight for the digital
+    // binder bundled into Checkride Prep, not a separate product. Its
+    // CTA clicks reuse plain gtag() (data-apx-cta), the same pattern
+    // mock-oral/airspace-mastery already use for their own click events,
+    // so only the page-view needed a real apexTrack() name here.
+    'checkride_binder_landing_page_view',
     // Readiness Assessment funnel (site/readiness-assessment.html)
     'readiness_assessment_viewed', 'readiness_assessment_started', 'readiness_question_answered',
     'readiness_assessment_completed', 'readiness_score_viewed', 'readiness_signup_started',
