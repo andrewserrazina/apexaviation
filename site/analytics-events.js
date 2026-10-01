@@ -88,6 +88,15 @@
     'mock_oral_page_view', 'mock_oral_checkout_started', 'mock_oral_purchase_completed',
     'mock_oral_booking_completed', 'mock_oral_intake_completed', 'mock_oral_report_viewed',
     'mock_oral_recheck_clicked', 'mock_oral_recheck_purchased',
+    // Instructor-credibility + conversion pass -- the guest booking panel
+    // (openMoBookingFlow/moWireSlotButtons in apex-advantage-mock-oral.html)
+    // had two real invisible steps between "viewed the page" and "started
+    // checkout": whether real open times actually loaded, and whether the
+    // visitor picked one. mock_oral_cta_click (plain gtag, not in this
+    // apexTrack pipeline) only confirms the button was clicked, not that
+    // availability loaded or a slot was chosen -- these two close that gap
+    // without duplicating it.
+    'mock_oral_availability_viewed', 'mock_oral_slot_selected',
     // Checkride Binder Builder landing page (site/apex-advantage-
     // checkride-binder.html) -- a feature spotlight for the digital
     // binder bundled into Checkride Prep, not a separate product. Its

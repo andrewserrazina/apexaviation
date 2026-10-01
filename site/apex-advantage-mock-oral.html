@@ -80,6 +80,69 @@
       display: inline-block; margin-top: 14px; font-size: 12px; font-weight: 800;
       letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.5);
     }
+
+    /* Hero two-column composition -- content (headline/CTA) first in DOM
+       so mobile's single-column stack naturally puts the photo AFTER the
+       offer/CTA rather than pushing it down; desktop's 2-column grid then
+       places that same DOM order side by side (content left, photo
+       right), no reordering needed either way. */
+    .mo-hero-grid {
+      display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 48px; align-items: center;
+      max-width: 1040px; margin: 0 auto; text-align: left;
+    }
+    .mo-hero-content { text-align: left; }
+    .mo-hero-photo-wrap { display: flex; justify-content: center; }
+    @media (max-width: 860px) {
+      .mo-hero-grid { grid-template-columns: 1fr; text-align: center; gap: 28px; }
+      .mo-hero-content { text-align: center; }
+      .mo-hero-photo-wrap .mo-photo-frame { max-width: 220px; }
+    }
+
+    /* Reusable real-photo slot (hero + Meet Your Instructor section).
+       Points at a real file path; onerror swaps in a branded placeholder
+       (navy/gold, not a fake photo) so a missing/renamed image file never
+       shows a broken-image icon or shifts the layout -- the frame itself
+       always reserves the photo's space via aspect-ratio. */
+    .mo-photo-frame {
+      position: relative; width: 100%; max-width: 360px; aspect-ratio: 4 / 5;
+      border-radius: 16px; overflow: hidden; border: 2px solid rgba(244,180,0,0.35);
+      background: #0b1627; box-shadow: 0 16px 40px rgba(0,0,0,0.35);
+    }
+    .mo-photo-frame--circle { max-width: 220px; aspect-ratio: 1 / 1; border-radius: 50%; }
+    .mo-photo-img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center top; }
+    .mo-photo-fallback {
+      display: none; position: absolute; inset: 0; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+      background: linear-gradient(160deg, #101f38, #0b1627); color: rgba(244,180,0,0.85); text-align: center; padding: 16px;
+    }
+    .mo-photo-fallback svg { width: 34px; height: 34px; opacity: 0.8; }
+    .mo-photo-fallback span { font-size: 12.5px; font-weight: 700; letter-spacing: 0.03em; color: rgba(255,255,255,0.65); }
+
+    /* "Meet Your Instructor" section */
+    .mo-instructor-grid {
+      display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 44px; align-items: center;
+      max-width: 980px; margin: 0 auto;
+    }
+    .mo-instructor-photo-wrap { display: flex; justify-content: center; }
+    .mo-instructor-name { color: #fff; font-size: 22px; font-weight: 800; margin: 0 0 4px; }
+    .mo-instructor-title { color: var(--gold); font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 14px; }
+    .mo-cert-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+    .mo-instructor-bio { color: rgba(255,255,255,0.7); font-size: 14.5px; line-height: 1.75; }
+    @media (max-width: 760px) {
+      .mo-instructor-grid { grid-template-columns: 1fr; text-align: center; gap: 24px; }
+      .mo-cert-pills { justify-content: center; }
+    }
+
+    /* Personal reassurance strip near booking -- text-only (no 3rd photo;
+       the same single real photo already anchors the hero and instructor
+       section above, and a third repeat read as padding more than trust --
+       see the session report for the easy-to-add slot if a distinct third
+       photo becomes available later). */
+    .mo-reassurance {
+      max-width: 640px; margin: 0 auto 28px; text-align: center;
+      padding: 18px 22px; background: rgba(244,180,0,0.05); border: 1px solid rgba(244,180,0,0.18); border-radius: 12px;
+    }
+    .mo-reassurance strong { color: var(--gold); }
+    .mo-reassurance p { color: rgba(255,255,255,0.65); font-size: 13.5px; line-height: 1.7; margin: 6px 0 0; }
     .mo-explain-grid {
       display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
       max-width: 900px; margin: 32px auto 0;
@@ -250,17 +313,68 @@
        HERO
   ════════════════════════════════════════════════════════════ -->
   <section class="page-hero" style="padding-top:92px;padding-bottom:56px">
-    <div class="container page-hero__inner" style="max-width:760px;text-align:center;margin:0 auto">
-      <div class="mo-hero-badge">Apex Advantage · Mock Orals</div>
-      <h1 class="page-hero__title" style="margin:0 auto">ARE YOU ACTUALLY READY FOR YOUR CHECKRIDE?</h1>
-      <p class="mo-hero-sub">Find out before your DPE does.</p>
-      <p class="page-hero__sub" style="max-width:560px;margin:0 auto">Take a realistic, ACS-based Private Pilot mock oral with an Apex Advantage instructor and find out exactly where you stand before checkride day.</p>
-      <div style="margin-top:26px">
-        <a href="#pricing" class="btn btn--primary" id="moHeroCta" data-apx-cta data-apx-cta-location="hero">VIEW AVAILABLE TIMES</a>
+    <div class="container page-hero__inner mo-hero-grid">
+      <div class="mo-hero-content">
+        <div class="mo-hero-badge">Apex Advantage · Mock Orals</div>
+        <h1 class="page-hero__title">ARE YOU ACTUALLY READY FOR YOUR CHECKRIDE?</h1>
+        <p class="mo-hero-sub">Find out before your DPE does.</p>
+        <p class="page-hero__sub">Take a realistic, ACS-based Private Pilot mock oral — 1-on-1 with Andrew, Apex Aviation's founder and Chief Flight Instructor — and find out exactly where you stand before checkride day.</p>
+        <div style="margin-top:26px">
+          <a href="#pricing" class="btn btn--primary" id="moHeroCta" data-apx-cta data-apx-cta-location="hero">VIEW AVAILABLE TIMES</a>
+        </div>
+        <div class="mo-hero-duration">Up to 2 Hours</div>
+        <div class="mo-trust-line">
+          <span>Live</span><span>·</span><span>1-on-1</span><span>·</span><span>ACS-Based</span><span>·</span><span>Personalized Readiness Report</span>
+        </div>
       </div>
-      <div class="mo-hero-duration">Up to 2 Hours</div>
-      <div class="mo-trust-line" style="justify-content:center">
-        <span>Live</span><span>·</span><span>1-on-1</span><span>·</span><span>ACS-Based</span><span>·</span><span>Personalized Readiness Report</span>
+      <div class="mo-hero-photo-wrap">
+        <div class="mo-photo-frame">
+          <img class="mo-photo-img" src="assets/images/mock-oral/andrew-hero.jpg" alt="Andrew Serrazina, Apex Aviation's Founder and Chief Flight Instructor — the instructor you'll work with during your Mock Oral" width="360" height="450" loading="eager" fetchpriority="high" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+          <div class="mo-photo-fallback">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            <span>Andrew Serrazina</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       MEET YOUR INSTRUCTOR
+       Credentials sourced verbatim from the approved bio on
+       instructors.html -- CFI/CFII/Commercial ASEL & AMEL/
+       Instrument Airplane (AGI omitted here per explicit review request).
+       No claim here goes beyond that page.
+  ════════════════════════════════════════════════════════════ -->
+  <section class="section" style="background:#0b1627">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Meet Your Instructor</div>
+        <h2 class="section__title">Your Mock Oral is<br/><em class="accent">1-on-1 with Andrew.</em></h2>
+        <p class="section__desc" style="max-width:640px">This isn't a prerecorded course or a generic question bank. You'll work directly through realistic DPE-style questions, follow-ups, and scenarios designed to expose the areas where you're hesitating before checkride day.</p>
+      </div>
+      <div class="mo-instructor-grid">
+        <div class="mo-instructor-photo-wrap">
+          <div class="mo-photo-frame mo-photo-frame--circle">
+            <img class="mo-photo-img" src="assets/images/mock-oral/andrew-instructor.jpg" alt="Andrew Serrazina, Founder and Chief Flight Instructor at Apex Aviation" width="220" height="220" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+            <div class="mo-photo-fallback">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              <span>Andrew Serrazina</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h3 class="mo-instructor-name">Andrew Serrazina</h3>
+          <p class="mo-instructor-title">Founder &amp; Chief Flight Instructor, Apex Aviation</p>
+          <div class="mo-cert-pills">
+            <span class="cert-pill">CFI</span>
+            <span class="cert-pill">CFII</span>
+            <span class="cert-pill">Comm. ASEL</span>
+            <span class="cert-pill">Comm. AMEL</span>
+            <span class="cert-pill">Inst. Airplane</span>
+          </div>
+          <p class="mo-instructor-bio">Andrew holds Commercial Pilot certificates with Airplane Single-Engine Land and Multi-Engine Land privileges, an Instrument Rating, and a Flight Instructor Certificate. He's spent years helping student pilots build the knowledge, confidence, and decision-making skills checkride day actually tests — and he's the one running your session, not a question bank.</p>
+        </div>
       </div>
     </div>
   </section>
@@ -307,12 +421,21 @@
 
   <!-- ═══════════════════════════════════════════════════════════
        PRICING
+       #availability -- a stable, more descriptive alias for this same
+       section alongside the existing #pricing (kept as the primary,
+       already-distributed ManyChat destination). Both land here; neither
+       breaks the other.
   ════════════════════════════════════════════════════════════ -->
+  <div id="availability" style="scroll-margin-top:88px"></div>
   <section class="section section--light" id="pricing">
     <div class="container">
       <div class="section__header">
         <div class="section__eyebrow">Choose Your Mock Oral</div>
         <h2 class="section__title">Real assessment.<br/><em class="accent">Real readiness report.</em></h2>
+      </div>
+      <div class="mo-reassurance">
+        <strong>Your session is 1-on-1 with Andrew.</strong>
+        <p>Bring the topics you're unsure about. We'll work through realistic oral-exam questions and scenarios, identify where you're hesitating, and give you a clearer idea of what to focus on before checkride day.</p>
       </div>
       <div class="mo-pricing-grid" id="moPricingGrid" data-mo-loading>
         <p class="mo-loading-pulse" style="text-align:center;color:rgba(255,255,255,0.4);grid-column:1/-1">Loading pricing…</p>
@@ -526,6 +649,12 @@
             b.classList.remove('mo-slot--selected', 'mo-cal-event--selected');
           });
           btn.classList.add(btn.classList.contains('mo-cal-event') ? 'mo-cal-event--selected' : 'mo-slot--selected');
+          // Funnel step between "saw open times" and "started checkout"
+          // that previously had no signal at all -- a visitor could pick
+          // a slot and never reveals the form happened invisibly.
+          if (window.apexTrack && moSelectedProduct) {
+            apexTrack('mock_oral_slot_selected', { product: moSelectedProduct.id, certificate_type: 'private_pilot', view_mode: moViewMode, source_context: 'guest_booking' });
+          }
           formWrap.hidden = false;
           formWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         });
@@ -628,6 +757,14 @@
       apexSupabase.rpc('get_mock_oral_availability', { p_certificate_type: 'private_pilot' }).then(function (res) {
         moSlotsData = res.data || [];
         renderMoSlots();
+        // Previously invisible funnel step -- mock_oral_cta_click (fired
+        // on the button that opens this panel) only ever confirmed intent
+        // to look, not that real open times actually loaded. Fired once
+        // the fetch resolves, not on the click, so has_availability
+        // reflects what the visitor actually saw.
+        if (window.apexTrack) {
+          apexTrack('mock_oral_availability_viewed', { product: productId, certificate_type: 'private_pilot', has_availability: moSlotsData.length > 0, slots_count: moSlotsData.length, source_context: 'guest_booking' });
+        }
       });
     }
 
