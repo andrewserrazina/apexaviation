@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
+import { parseDateOnly, formatDateOnly } from '../lib/date'
 
 const STATUSES = [
   { value: 'available', label: 'Available' },
@@ -217,9 +218,12 @@ export default function Aircraft() {
     return (ac.squawks ?? []).filter(s => s.status !== 'resolved').length
   }
 
+  // annual_due_date is a date-only column -- must be parsed as local
+  // midnight, not UTC (see lib/date.js), or this can be off by a day for
+  // any US-based (UTC-negative) browser.
   function daysUntil(dateStr) {
     if (!dateStr) return null
-    return Math.round((new Date(dateStr) - new Date()) / 86400000)
+    return Math.round((parseDateOnly(dateStr) - new Date()) / 86400000)
   }
 
   function tachRemaining(ac) {
@@ -288,7 +292,7 @@ export default function Aircraft() {
                   <div>
                     <p className="aircraft-card__stat-label">Annual Due</p>
                     <p className="aircraft-card__stat-value" style={{ color: daysUntil(ac.annual_due_date) < 30 ? '#f87171' : daysUntil(ac.annual_due_date) < 60 ? '#fbbf24' : 'var(--text)' }}>
-                      {new Date(ac.annual_due_date).toLocaleDateString()}
+                      {formatDateOnly(ac.annual_due_date)}
                     </p>
                   </div>
                 )}
