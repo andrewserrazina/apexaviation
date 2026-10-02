@@ -1131,10 +1131,33 @@ serve(async (req) => {
       // feature (or a logging failure in create-checkout-session) simply
       // won't exist here, which is fine -- there's nothing to mark. Safe
       // to repeat on a retry (same value every time).
-      await supabase
+      //
+      // Abandoned Checkout Recovery Repair (v152): .select() on this same
+      // update tells us, for free, whether the session that just paid is
+      // the one the recovery emails were trying to win back -- this
+      // completing checkout's own utm_campaign is 'abandoned_checkout'
+      // only when its row was created by a fresh checkout session started
+      // from a recovery-email click (see abandonedCheckoutCtaUrl() /
+      // lifecycleCtaUrl() in send-lifecycle-emails/index.ts and
+      // create-checkout-session's logCheckoutAttempt(), which persists
+      // whatever UTM the client had in local storage at THAT click). A
+      // click on the email alone (checkout_recovery_1_clicked/_2_clicked,
+      // tracked client-side in portal-stable.js) is not this event --
+      // checkout_recovered only fires once Stripe confirms the charge.
+      const { data: completedAttempt } = await supabase
         .from('checkout_session_attempts')
         .update({ completed_at: new Date().toISOString() })
         .eq('stripe_session_id', session.id)
+        .select('purpose, profile_id, utm_campaign, utm_content')
+        .maybeSingle()
+
+      if (completedAttempt?.utm_campaign === 'abandoned_checkout') {
+        await supabase.from('analytics_events').insert({
+          event_name: 'checkout_recovered',
+          profile_id: completedAttempt.profile_id || null,
+          properties: { purpose: completedAttempt.purpose, recovery_content: completedAttempt.utm_content || null },
+        })
+      }
 
       if (purpose === 'unlock-checkride-prep') {
         await handleUnlockCheckridePrep(supabase, session)

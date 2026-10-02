@@ -249,33 +249,51 @@ describe('first-question milestone entitlement fix (email-system audit, item 5)'
 const PORTAL_LOGIN_URL = lifecycleSource.match(/const PORTAL_LOGIN_URL = '([^']+)'/)[1]
 
 describe('growth-plan follow-up: abandoned-checkout second touch (v151)', () => {
-  it('emailTemplateAbandonedCheckridePrepFollowup() mentions the real price, the 7-day guarantee, and a founding-tier urgency line when given one', () => {
+  // v152 repair: both templates now call abandonedCheckoutCtaUrl() for
+  // their CTA link instead of building a bare ${PORTAL_LOGIN_URL}?dest=...
+  // string inline, so reconstructing them with new Function() needs that
+  // helper injected too -- same closure-injection approach as
+  // abandonedCheckoutRecovery.test.js's own decideAbandonedCheckoutAction
+  // reconstruction.
+  function withAbandonedCheckoutCtaUrl(fnMarker, paramNames) {
+    const ctaUrlBody = extractFunctionBody(lifecycleSource, 'function abandonedCheckoutCtaUrl(')
     // eslint-disable-next-line no-new-func
-    const fn = new Function('firstName', 'priceLabel', 'urgencyLine', 'PORTAL_LOGIN_URL', extractFunctionBody(lifecycleSource, 'function emailTemplateAbandonedCheckridePrepFollowup('))
-    const withUrgency = fn('Alex', '$29', 'Only 3 founding spots left at $29.', PORTAL_LOGIN_URL)
+    return new Function(
+      'PORTAL_LOGIN_URL',
+      `function abandonedCheckoutCtaUrl(recoveryStage) { ${ctaUrlBody} }\nreturn function(${paramNames.join(', ')}) { ${extractFunctionBody(lifecycleSource, fnMarker)} }`
+    )(PORTAL_LOGIN_URL)
+  }
+
+  it('emailTemplateAbandonedCheckridePrepFollowup() mentions the real price, the 7-day guarantee, a founding-tier urgency line when given one, and a recovery_2-tagged CTA link', () => {
+    const fn = withAbandonedCheckoutCtaUrl('function emailTemplateAbandonedCheckridePrepFollowup(', ['firstName', 'priceLabel', 'urgencyLine'])
+    const withUrgency = fn('Alex', '$29', 'Only 3 founding spots left at $29.')
     expect(withUrgency).toContain('$29')
     expect(withUrgency).toContain('Only 3 founding spots left at $29.')
     expect(withUrgency).toContain('7-day guarantee')
+    expect(withUrgency).toContain('utm_content=recovery_2')
 
-    const withoutUrgency = fn('Alex', '$49', null, PORTAL_LOGIN_URL)
+    const withoutUrgency = fn('Alex', '$49', null)
     expect(withoutUrgency).toContain('$49')
     expect(withoutUrgency).not.toContain('founding spots')
   })
 
-  it('processAbandonedCheckoutsFollowup() only targets Checkride Prep purposes, gates on recovery_email_2_sent_at, and fetches live pricing rather than trusting the original quoted amount', () => {
+  it('processAbandonedCheckoutsFollowup() only targets Checkride Prep purposes (via the shared CHECKRIDE_PREP_CHECKOUT_PURPOSES constant), gates on recovery_email_2_sent_at, and fetches live pricing rather than trusting the original quoted amount', () => {
     const block = extractFunctionSourceBlock(lifecycleSource, 'async function processAbandonedCheckoutsFollowup(')
-    expect(block).toContain("'unlock-checkride-prep'")
-    expect(block).toContain("'signup-and-unlock-checkride-prep'")
+    expect(block).toContain('CHECKRIDE_PREP_CHECKOUT_PURPOSES')
+    // The constant itself still names both real purposes -- the check just
+    // moved from this function's own source to the shared constant's, so
+    // it's asserted there instead of (redundantly) here too.
+    expect(lifecycleSource).toContain("const CHECKRIDE_PREP_CHECKOUT_PURPOSES = ['unlock-checkride-prep', 'signup-and-unlock-checkride-prep']")
     expect(block).toContain('recovery_email_2_sent_at')
     expect(block).toContain('get_checkride_prep_pricing')
   })
 
-  it('the first-touch abandoned-checkout email for Checkride Prep names real included features, not just "you didn\'t finish"', () => {
-    // eslint-disable-next-line no-new-func
-    const fn = new Function('firstName', 'PORTAL_LOGIN_URL', extractFunctionBody(lifecycleSource, 'function emailTemplateAbandonedCheckridePrep('))
-    const html = fn('Alex', PORTAL_LOGIN_URL)
+  it('the first-touch abandoned-checkout email for Checkride Prep names real included features, not just "you didn\'t finish", and links with a recovery_1-tagged CTA', () => {
+    const fn = withAbandonedCheckoutCtaUrl('function emailTemplateAbandonedCheckridePrep(', ['firstName'])
+    const html = fn('Alex')
     expect(html).toContain('AI DPE Practice')
     expect(html).toContain('Checkride Binder Builder')
+    expect(html).toContain('utm_content=recovery_1')
   })
 
   it('serve() calls the follow-up pass after the first abandoned-checkout pass', () => {

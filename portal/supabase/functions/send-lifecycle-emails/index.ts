@@ -216,6 +216,17 @@ const CHECKRIDE_TIMING_SCHEDULES: Record<string, number[]> = {
   not_scheduled: [1, 14, 30],
 }
 const DEFAULT_UPSELL_TIMING_BUCKET = 'within_60_days'
+// Timing: existing, intentional values, not changed by the v152 repair --
+// see ABANDONED_CHECKOUT_RECOVERY_REPAIR_REPORT.md's "Recovery Timing"
+// section for the audit. Real-world caveat documented there too: this
+// cron (see cron.job id 1) runs once daily at 13:00 UTC, not hourly, so
+// the actual delay before an eligible row is first picked up is
+// "whatever's left until the next 13:00 UTC," i.e. anywhere from just
+// over ABANDONED_CHECKOUT_MIN_HOURS up to ~24 hours after abandonment --
+// not a tight 1-3 hour window. That cron-cadence question is explicitly
+// out of scope for this repair (the bug was never about lateness -- the
+// Sep 27/28/30 rows were never sent at all); flagged here rather than
+// silently changed.
 const ABANDONED_CHECKOUT_MIN_HOURS = 1
 const ABANDONED_CHECKOUT_MAX_DAYS = 7
 // Second touch (Checkride-Prep-only): sent this many hours after the
@@ -225,6 +236,83 @@ const ABANDONED_CHECKOUT_MAX_DAYS = 7
 // 1-hour-to-7-day window, so a second touch is never sent more than
 // ~9 days after the original attempt.
 const ABANDONED_CHECKOUT_FOLLOWUP_HOURS = 48
+
+// v152 repair: the two Checkride Prep purposes processAbandonedCheckouts/
+// processAbandonedCheckoutsFollowup/emailTemplateAbandonedCheckridePrep*
+// all need to recognize, named once instead of repeated as inline string
+// literals in four different places (the original scattered-literal form
+// is exactly how it would've been easy to add a new Checkride Prep
+// purpose somewhere and forget one of the four call sites).
+const CHECKRIDE_PREP_CHECKOUT_PURPOSES = ['unlock-checkride-prep', 'signup-and-unlock-checkride-prep']
+// Every purpose processAbandonedCheckouts actually has template copy for
+// today (Ground School and Mock Oral keep their existing single-email
+// behavior -- only Checkride Prep gets suppression beyond opt-out, since
+// it's the only one with a server-checkable entitlement flag to verify
+// against; Ground School/Mock Oral's "did they already get in" would
+// require a different check this repair doesn't attempt to add).
+const ABANDONED_CHECKOUT_SUPPORTED_PURPOSES = [...CHECKRIDE_PREP_CHECKOUT_PURPOSES, 'ground-school-registration', 'book-mock-oral']
+
+// v152 repair: every reason processAbandonedCheckouts/
+// processAbandonedCheckoutsFollowup can write to the new
+// recovery_suppressed_reason column (supabase-portal-schema-v152.sql) --
+// kept in sync with that column's own comment.
+const ABANDONED_CHECKOUT_SUPPRESSION_REASONS = {
+  OPT_OUT: 'marketing_opt_out',
+  ALREADY_ENTITLED: 'already_entitled',
+  ALREADY_ENTITLED_AT_SEND_TIME: 'already_entitled_at_send_time',
+  UNSUPPORTED_PURPOSE: 'unsupported_purpose',
+  MISSING_EMAIL: 'missing_email',
+} as const
+
+// v152 repair: same UTM-tagging convention every other lifecycle email's
+// CTA already uses (see lifecycleCtaUrl/activationCtaUrl above) -- the
+// abandoned-checkout emails were the one exception, linking with a bare
+// `?dest=checkride-prep` and no utm_* params at all, so a member who
+// clicked through and later completed checkout could never be attributed
+// back to the recovery email that brought them back (Section 6/9 of the
+// repair brief). portal-login.html's existing dest=checkride-prep special
+// case and portalDestUrl()'s utm forwarding (site/portal-stable.js) both
+// already carry arbitrary utm_* params through to the dashboard's
+// "Unlock Now" button, which already forwards window.apexGetUtm() into
+// create-checkout-session -- this just needed to actually set them.
+function abandonedCheckoutCtaUrl(recoveryStage: 'recovery_1' | 'recovery_2'): string {
+  return `${PORTAL_LOGIN_URL}?dest=checkride-prep&utm_source=email&utm_medium=email&utm_campaign=abandoned_checkout&utm_content=${recoveryStage}`
+}
+
+// v152 repair: Section 2/5's "re-check authoritative entitlement/purchase
+// state" requirement, for Checkride Prep specifically. profiles.
+// checkride_prep_unlocked is the single authoritative flag -- stripe-
+// webhook's handleUnlockCheckridePrep() sets it and inserts the
+// portal_access_purchases row in the same handler, for every completed
+// Checkride Prep purchase regardless of which checkout_session_attempts
+// row (if any) initiated it, so there's no separate "purchased through a
+// different session" state to check beyond this one flag.
+async function hasCheckridePrepEntitlement(supabase: any, profileId: string): Promise<boolean> {
+  const { data } = await supabase.from('profiles').select('checkride_prep_unlocked').eq('id', profileId).maybeSingle()
+  return !!data?.checkride_prep_unlocked
+}
+
+// v152 repair: the actual eligibility/suppression decision, pulled out as
+// a pure function (no I/O) so it can be exhaustively unit tested without
+// a database -- see portal/test/abandonedCheckoutRecovery.test.js. Takes
+// the attempt row and its already-fetched profile (null for a guest
+// checkout with no profile_id) and returns exactly what the caller should
+// do; the caller is the only thing that touches the database.
+type AbandonedCheckoutAttempt = { id: string; purpose: string; email: string | null; profile_id: string | null }
+type AbandonedCheckoutProfile = { email_marketing_opt_out?: boolean; checkride_prep_unlocked?: boolean } | null
+type AbandonedCheckoutDecision = { action: 'send' | 'suppress' | 'skip'; reason?: string }
+
+function decideAbandonedCheckoutAction(attempt: AbandonedCheckoutAttempt, profile: AbandonedCheckoutProfile): AbandonedCheckoutDecision {
+  if (!attempt.email) return { action: 'suppress', reason: ABANDONED_CHECKOUT_SUPPRESSION_REASONS.MISSING_EMAIL }
+  if (!ABANDONED_CHECKOUT_SUPPORTED_PURPOSES.includes(attempt.purpose)) {
+    return { action: 'skip', reason: ABANDONED_CHECKOUT_SUPPRESSION_REASONS.UNSUPPORTED_PURPOSE }
+  }
+  if (profile?.email_marketing_opt_out) return { action: 'suppress', reason: ABANDONED_CHECKOUT_SUPPRESSION_REASONS.OPT_OUT }
+  if (CHECKRIDE_PREP_CHECKOUT_PURPOSES.includes(attempt.purpose) && profile?.checkride_prep_unlocked) {
+    return { action: 'suppress', reason: ABANDONED_CHECKOUT_SUPPRESSION_REASONS.ALREADY_ENTITLED }
+  }
+  return { action: 'send' }
+}
 
 // New Member Activation sequence -- Emails #2/#3/#4 from the activation
 // brief (Email #1 fires synchronously at signup, in create-free-account/
@@ -1065,7 +1153,7 @@ function emailTemplateAbandonedCheckridePrep(firstName: string) {
     '<li>AI DPE Practice — unlimited simulated oral exams</li>' +
     '<li>The Checkride Binder Builder, ACS Quick Reference, and progress tracking</li>' +
     '</ul>' +
-    `<a href="${PORTAL_LOGIN_URL}?dest=checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Finish Unlocking →</a>`
+    `<a href="${abandonedCheckoutCtaUrl('recovery_1')}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Finish Unlocking →</a>`
 }
 
 // Second touch, Checkride-Prep-only -- sent ~48 hours after the first
@@ -1080,7 +1168,7 @@ function emailTemplateAbandonedCheckridePrepFollowup(firstName: string, priceLab
     `<p style="color:#1F2937;font-size:15px;line-height:1.7;">Your Checkride Prep unlock (${priceLabel}) is still waiting — nothing was charged, and it only takes a minute to finish.</p>` +
     (urgencyLine ? `<p style="color:#B45309;font-size:13.5px;font-weight:700;line-height:1.6;">${urgencyLine}</p>` : '') +
     '<p style="color:#6B7280;font-size:13px;line-height:1.6;">Covered by our 7-day guarantee — if it\'s not right for you, email us within 7 days of purchase for a full refund, no questions asked.</p>' +
-    `<a href="${PORTAL_LOGIN_URL}?dest=checkride-prep" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Finish Unlocking →</a>`
+    `<a href="${abandonedCheckoutCtaUrl('recovery_2')}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Finish Unlocking →</a>`
 }
 
 function emailTemplateAbandonedGroundSchool(firstName: string) {
@@ -1263,6 +1351,27 @@ async function processMockOralReminders(supabase: any, results: any) {
   }
 }
 
+// v152 repair -- see ABANDONED_CHECKOUT_RECOVERY_REPAIR_REPORT.md for the
+// full root-cause writeup. Two independent defects fixed here:
+//
+// 1. The only conditional skip in the old loop (email_marketing_opt_out)
+//    left zero trace anywhere -- not in `results`, not in any table -- so
+//    an opted-out profile's checkout row was silently rediscovered by the
+//    SELECT below and silently re-skipped on every single cron run
+//    forever, with nothing to distinguish "will be sent next run" from
+//    "permanently stuck." decideAbandonedCheckoutAction() now returns an
+//    explicit decision, and a 'suppress' decision is written once to
+//    recovery_suppressed_at/recovery_suppressed_reason (v152.sql) so the
+//    row drops out of the SELECT below for good, with an auditable reason.
+//
+// 2. The claim-before-send UPDATE never checked how many rows it actually
+//    affected -- `.update(...).eq('id', attempt.id).is('recovery_email_
+//    sent_at', null)` returns `error: null` whether it updated one row or
+//    zero, so two overlapping executions racing on the same attempt would
+//    BOTH see no error and BOTH send, despite the mark-before-send
+//    ordering. `.select('id')` + checking the returned row now makes this
+//    a real atomic claim: whichever caller's UPDATE actually flips the
+//    column from null wins, the other sees an empty result and backs off.
 async function processAbandonedCheckouts(supabase: any, results: any) {
   const minAge = new Date(Date.now() - ABANDONED_CHECKOUT_MIN_HOURS * 3600000).toISOString()
   const maxAge = new Date(Date.now() - ABANDONED_CHECKOUT_MAX_DAYS * 86400000).toISOString()
@@ -1272,57 +1381,116 @@ async function processAbandonedCheckouts(supabase: any, results: any) {
     .select('id, purpose, email, profile_id, created_at')
     .is('completed_at', null)
     .is('recovery_email_sent_at', null)
+    .is('recovery_suppressed_at', null)
     .lte('created_at', minAge)
     .gte('created_at', maxAge)
 
   for (const attempt of attempts ?? []) {
-    if (!attempt.email) continue
+    results.abandoned_checkout_candidates = (results.abandoned_checkout_candidates || 0) + 1
     try {
       let firstName = 'there'
+      let profile: { full_name?: string; email_marketing_opt_out?: boolean; checkride_prep_unlocked?: boolean } | null = null
       if (attempt.profile_id) {
-        const { data: profile } = await supabase.from('profiles').select('full_name,email_marketing_opt_out').eq('id', attempt.profile_id).maybeSingle()
+        const { data } = await supabase.from('profiles').select('full_name,email_marketing_opt_out,checkride_prep_unlocked').eq('id', attempt.profile_id).maybeSingle()
+        profile = data
         if (profile?.full_name) firstName = profile.full_name.split(' ')[0]
-        // Cart-recovery is a conversion nudge, not a receipt -- the same
-        // opt-out that suppresses processCheckrideUpsell/processWeakArea
-        // applies here. A guest checkout with no profile_id has no
-        // account to hold that preference on, so it's unaffected (same
-        // reasoning as processGroundSchoolFollowUps' walk-in case).
-        if (profile?.email_marketing_opt_out) continue
+      }
+
+      const decision = decideAbandonedCheckoutAction(attempt, profile)
+
+      if (decision.action === 'skip') {
+        // Genuinely not something this job handles (e.g. a purpose it has
+        // no template for) -- not written to the row at all, same as the
+        // original `else continue`, since there's nothing to suppress a
+        // future, different repair from reconsidering.
+        continue
+      }
+
+      if (decision.action === 'suppress') {
+        const { data: claimed } = await supabase
+          .from('checkout_session_attempts')
+          .update({ recovery_suppressed_at: new Date().toISOString(), recovery_suppressed_reason: decision.reason })
+          .eq('id', attempt.id)
+          .is('recovery_suppressed_at', null)
+          .select('id')
+        if (claimed && claimed.length) {
+          if (decision.reason === ABANDONED_CHECKOUT_SUPPRESSION_REASONS.OPT_OUT) results.abandoned_checkout_suppressed_opt_out = (results.abandoned_checkout_suppressed_opt_out || 0) + 1
+          else if (decision.reason === ABANDONED_CHECKOUT_SUPPRESSION_REASONS.ALREADY_ENTITLED) results.abandoned_checkout_suppressed_entitled = (results.abandoned_checkout_suppressed_entitled || 0) + 1
+        }
+        continue
+      }
+
+      // decision.action === 'send' from here on. Re-check entitlement one
+      // more time immediately before claiming -- Section 2/5's "before
+      // EVERY recovery send" requirement -- since the profile read above
+      // could be a moment stale by the time execution reaches here (a
+      // weak-area/upsell email earlier in this same run, or simply another
+      // row's processing time, could overlap a real purchase completing).
+      if (CHECKRIDE_PREP_CHECKOUT_PURPOSES.includes(attempt.purpose) && attempt.profile_id) {
+        if (await hasCheckridePrepEntitlement(supabase, attempt.profile_id)) {
+          await supabase
+            .from('checkout_session_attempts')
+            .update({ recovery_suppressed_at: new Date().toISOString(), recovery_suppressed_reason: ABANDONED_CHECKOUT_SUPPRESSION_REASONS.ALREADY_ENTITLED_AT_SEND_TIME })
+            .eq('id', attempt.id)
+            .is('recovery_suppressed_at', null)
+          results.abandoned_checkout_suppressed_entitled = (results.abandoned_checkout_suppressed_entitled || 0) + 1
+          continue
+        }
       }
 
       let subject: string
       let html: string
-      if (attempt.purpose === 'unlock-checkride-prep' || attempt.purpose === 'signup-and-unlock-checkride-prep') {
+      if (CHECKRIDE_PREP_CHECKOUT_PURPOSES.includes(attempt.purpose)) {
         subject = 'You started unlocking Checkride Prep'
         html = emailTemplateAbandonedCheckridePrep(firstName)
       } else if (attempt.purpose === 'ground-school-registration') {
         subject = 'You started registering for ground school'
         html = emailTemplateAbandonedGroundSchool(firstName)
-      } else if (attempt.purpose === 'book-mock-oral') {
+      } else {
+        // attempt.purpose === 'book-mock-oral' -- the only other member of
+        // ABANDONED_CHECKOUT_SUPPORTED_PURPOSES.
         subject = 'You started booking a Mock Oral'
         html = emailTemplateAbandonedMockOral(firstName)
-      } else {
-        continue
       }
 
-      // Mark before sending, not after -- same reasoning as
-      // processWeakArea's log-before-send: a crash between send and log
-      // would otherwise re-send this exact nudge on every future run
-      // forever, which is worse than the reverse (a rare skipped send on
-      // a genuine one-off failure, same tradeoff already accepted
-      // elsewhere in this file).
-      const { error: markError } = await supabase
+      // Atomic claim: only proceeds to send if THIS call is the one that
+      // actually flips recovery_email_sent_at from null -- see this
+      // function's header comment, defect 2.
+      const { data: claimed, error: markError } = await supabase
         .from('checkout_session_attempts')
         .update({ recovery_email_sent_at: new Date().toISOString() })
         .eq('id', attempt.id)
         .is('recovery_email_sent_at', null)
+        .select('id')
       if (markError) {
         results.errors.push(`abandoned_checkout_mark:${attempt.id}:${markError.message}`)
         continue
       }
+      if (!claimed || !claimed.length) {
+        // Lost the race to another concurrent execution -- not an error,
+        // just this invocation backing off. Nothing left to do.
+        continue
+      }
 
-      await sendEmail(supabase, attempt.email, subject, html)
+      try {
+        await sendEmail(supabase, attempt.email!, subject, html)
+      } catch (sendErr) {
+        // The claim above already committed, so this exact attempt will
+        // not be retried automatically -- same "mark before send" tradeoff
+        // already accepted elsewhere in this file (a rare skipped send on
+        // genuine failure, never a duplicate). Surfaced loudly rather than
+        // silently counted as a successful send.
+        results.abandoned_checkout_send_failures = (results.abandoned_checkout_send_failures || 0) + 1
+        results.errors.push(`abandoned_checkout_send:${attempt.id}: ${sendErr}`)
+        continue
+      }
       results.abandoned_checkout++
+
+      await supabase.from('analytics_events').insert({
+        event_name: 'checkout_recovery_1_sent',
+        profile_id: attempt.profile_id || null,
+        properties: { purpose: attempt.purpose, recovery_sequence: 1 },
+      })
 
       // checkout_abandoned funnel event -- logged here (not client-side)
       // since abandonment is only detectable server-side, once this same
@@ -1357,18 +1525,44 @@ async function processAbandonedCheckoutsFollowup(supabase: any, results: any) {
     .select('id, purpose, email, profile_id, amount_cents')
     .is('completed_at', null)
     .is('recovery_email_2_sent_at', null)
+    .is('recovery_suppressed_at', null)
     .not('recovery_email_sent_at', 'is', null)
     .lte('recovery_email_sent_at', followupCutoff)
-    .in('purpose', ['unlock-checkride-prep', 'signup-and-unlock-checkride-prep'])
+    .in('purpose', CHECKRIDE_PREP_CHECKOUT_PURPOSES)
 
   for (const attempt of attempts ?? []) {
+    results.abandoned_checkout_followup_candidates = (results.abandoned_checkout_followup_candidates || 0) + 1
     if (!attempt.email) continue
     try {
       let firstName = 'there'
+      let optedOut = false
+      let alreadyEntitled = false
       if (attempt.profile_id) {
-        const { data: profile } = await supabase.from('profiles').select('full_name,email_marketing_opt_out').eq('id', attempt.profile_id).maybeSingle()
+        const { data: profile } = await supabase.from('profiles').select('full_name,email_marketing_opt_out,checkride_prep_unlocked').eq('id', attempt.profile_id).maybeSingle()
         if (profile?.full_name) firstName = profile.full_name.split(' ')[0]
-        if (profile?.email_marketing_opt_out) continue
+        optedOut = !!profile?.email_marketing_opt_out
+        alreadyEntitled = !!profile?.checkride_prep_unlocked
+      }
+
+      // Same suppression rules as the first touch, not duplicated as a
+      // separate decision function since this job's eligibility shape
+      // (Checkride-Prep-only, already filtered in the query above) is
+      // simpler -- just the two checks inline.
+      if (optedOut || alreadyEntitled) {
+        const { data: claimed } = await supabase
+          .from('checkout_session_attempts')
+          .update({
+            recovery_suppressed_at: new Date().toISOString(),
+            recovery_suppressed_reason: optedOut ? ABANDONED_CHECKOUT_SUPPRESSION_REASONS.OPT_OUT : ABANDONED_CHECKOUT_SUPPRESSION_REASONS.ALREADY_ENTITLED,
+          })
+          .eq('id', attempt.id)
+          .is('recovery_suppressed_at', null)
+          .select('id')
+        if (claimed && claimed.length) {
+          if (optedOut) results.abandoned_checkout_suppressed_opt_out = (results.abandoned_checkout_suppressed_opt_out || 0) + 1
+          else results.abandoned_checkout_suppressed_entitled = (results.abandoned_checkout_suppressed_entitled || 0) + 1
+        }
+        continue
       }
 
       // Live pricing, not the quoted amount_cents on the original attempt
@@ -1385,18 +1579,44 @@ async function processAbandonedCheckoutsFollowup(supabase: any, results: any) {
           ? `Early Access pricing (${priceLabel}) won't last — regular price is $49.`
           : null
 
-      const { error: markError } = await supabase
+      // Final re-check immediately before claiming, same reasoning as
+      // processAbandonedCheckouts' own send-time guard.
+      if (attempt.profile_id && await hasCheckridePrepEntitlement(supabase, attempt.profile_id)) {
+        await supabase
+          .from('checkout_session_attempts')
+          .update({ recovery_suppressed_at: new Date().toISOString(), recovery_suppressed_reason: ABANDONED_CHECKOUT_SUPPRESSION_REASONS.ALREADY_ENTITLED_AT_SEND_TIME })
+          .eq('id', attempt.id)
+          .is('recovery_suppressed_at', null)
+        results.abandoned_checkout_suppressed_entitled = (results.abandoned_checkout_suppressed_entitled || 0) + 1
+        continue
+      }
+
+      const { data: claimed, error: markError } = await supabase
         .from('checkout_session_attempts')
         .update({ recovery_email_2_sent_at: new Date().toISOString() })
         .eq('id', attempt.id)
         .is('recovery_email_2_sent_at', null)
+        .select('id')
       if (markError) {
         results.errors.push(`abandoned_checkout_followup_mark:${attempt.id}:${markError.message}`)
         continue
       }
+      if (!claimed || !claimed.length) continue // lost the race to another concurrent execution
 
-      await sendEmail(supabase, attempt.email, 'Still thinking it over?', emailTemplateAbandonedCheckridePrepFollowup(firstName, priceLabel, urgencyLine))
+      try {
+        await sendEmail(supabase, attempt.email, 'Still thinking it over?', emailTemplateAbandonedCheckridePrepFollowup(firstName, priceLabel, urgencyLine))
+      } catch (sendErr) {
+        results.abandoned_checkout_send_failures = (results.abandoned_checkout_send_failures || 0) + 1
+        results.errors.push(`abandoned_checkout_followup_send:${attempt.id}: ${sendErr}`)
+        continue
+      }
       results.abandoned_checkout_followup++
+
+      await supabase.from('analytics_events').insert({
+        event_name: 'checkout_recovery_2_sent',
+        profile_id: attempt.profile_id || null,
+        properties: { purpose: attempt.purpose, recovery_sequence: 2 },
+      })
     } catch (err) {
       results.errors.push(`abandoned_checkout_followup:${attempt.id}: ${err}`)
     }
@@ -1676,7 +1896,21 @@ serve(async (req) => {
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
-  const results = { inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, checkride_upsell: 0, ground_followup: 0, abandoned_checkout: 0, abandoned_checkout_followup: 0, seven_day_active: 0, readiness_assessment_followup: 0, recovery_sortie_notified: 0, reactivation_inactive: 0, weekly_progress: 0, new_member_activation: 0, activation_email_1_catchup: 0, mock_oral_reminder: 0, errors: [] as string[] }
+  // v152 repair (Section 11, observability): abandoned_checkout_candidates/
+  // _followup_candidates count every row the eligibility SELECT returned,
+  // regardless of what happened to it next -- the single number that was
+  // completely absent before this repair and would have made the Sep
+  // 27/28/30 defect visible immediately (candidates > 0 every day, sent +
+  // suppressed staying flat). _suppressed_opt_out/_suppressed_entitled and
+  // _send_failures break down exactly what became of those candidates.
+  const results = {
+    inactivity: 0, first_question: 0, readiness: 0, checkride_mode: 0, weak_area: 0, countdown: 0, checkride_upsell: 0, ground_followup: 0,
+    abandoned_checkout: 0, abandoned_checkout_followup: 0,
+    abandoned_checkout_candidates: 0, abandoned_checkout_followup_candidates: 0,
+    abandoned_checkout_suppressed_opt_out: 0, abandoned_checkout_suppressed_entitled: 0, abandoned_checkout_send_failures: 0,
+    seven_day_active: 0, readiness_assessment_followup: 0, recovery_sortie_notified: 0, reactivation_inactive: 0, weekly_progress: 0,
+    new_member_activation: 0, activation_email_1_catchup: 0, mock_oral_reminder: 0, errors: [] as string[],
+  }
 
   // exam_type hard-coded to 'private_pilot' — see get-premium-content
   // for why instrument content must never be reachable this way yet.

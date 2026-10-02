@@ -254,6 +254,30 @@
     apexTrack('activation_email_' + match[1] + '_clicked', {});
   })();
 
+  /* ── Abandoned Checkout Recovery Repair (v152): recovery-email click
+     tracking ───────────────────────────────────────────────────
+     Same shape as the activation-email click tracking immediately above --
+     checkout_recovery_N_sent is logged server-side (send-lifecycle-emails'
+     processAbandonedCheckouts/processAbandonedCheckoutsFollowup, straight
+     to analytics_events). This is the _clicked half: fires once per page
+     load whenever the arriving URL still carries utm_campaign=
+     abandoned_checkout&utm_content=recovery_1|recovery_2 (see
+     abandonedCheckoutCtaUrl() in that same file), whether this is a direct
+     hit or the tail end of a logged-out round trip through
+     portal-login.html. Independent of the auth guard below, same
+     reasoning as the activation-email IIFE. checkout_recovered (the
+     actual completed-purchase event) is separate and fires server-side
+     from stripe-webhook only once Stripe confirms the charge -- this
+     event is just "they clicked," never conflated with "they bought." */
+  (function () {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('utm_campaign') !== 'abandoned_checkout') return;
+    var content = params.get('utm_content') || '';
+    var match = /^recovery_([12])$/.exec(content);
+    if (!match || !window.apexTrack) return;
+    apexTrack('checkout_recovery_' + match[1] + '_clicked', {});
+  })();
+
   /* ── Auth guard — real Supabase session + profile ────────────── */
   var member = null;
   var accessToken = null;

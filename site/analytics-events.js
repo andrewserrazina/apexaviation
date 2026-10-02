@@ -54,12 +54,27 @@
 // stay out of this client-side list too -- see docs/
 // ANALYTICS_EVENT_DICTIONARY.md for the complete picture across all of
 // the above, client and server.
+//
+// Abandoned Checkout Recovery Repair (v152): checkout_recovery_1_sent/
+// checkout_recovery_2_sent (send-lifecycle-emails' processAbandonedCheckouts/
+// processAbandonedCheckoutsFollowup) and checkout_recovered (stripe-webhook,
+// fired only once Stripe confirms a charge whose checkout_session_attempts
+// row carries utm_campaign=abandoned_checkout) are the same kind of
+// server-side-only event as checkout_abandoned above, for the same reason.
+// checkout_recovery_1_clicked/checkout_recovery_2_clicked ARE real
+// apexTrack() calls (site/portal-stable.js's recovery-email click-tracking
+// IIFE) and are listed below alongside the rest.
 (function () {
   var EVENT_ALLOWLIST = [
     // Marketing site / acquisition
     'landing_page_viewed', 'pricing_viewed', 'registration_started', 'registration_completed',
     'product_preview_viewed', 'checkout_started', 'purchase_completed',
     'early_access_cta_click',
+    // Abandoned Checkout Recovery Repair (v152) -- the _clicked half of the
+    // checkout_recovery_N_sent/_clicked/checkout_recovered funnel (see the
+    // header comment above for the full event list and which half of each
+    // pair is server-side-only).
+    'checkout_recovery_1_clicked', 'checkout_recovery_2_clicked',
     // Ground School funnel
     'ground_school_schedule_viewed', 'ground_school_class_selected', 'ground_school_reserve_form_opened',
     'ground_school_class_purchased',
