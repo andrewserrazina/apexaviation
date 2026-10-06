@@ -12,7 +12,45 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { emailTemplate } from '../_shared/emailTemplate.ts'
+
+// Inlined (not imported from ../_shared/emailTemplate.ts) because the
+// Supabase deploy path used for this function (the MCP deploy_edge_
+// function tool's single-file deploy) cannot resolve a relative import
+// that reaches outside this function's own directory -- same issue and
+// same fix as stripe-webhook/create-checkout-session/send-lifecycle-
+// emails's own forced-inline copies (bug sweep, Oct 2026 deploy). Must
+// be kept byte-identical to _shared/emailTemplate.ts's own emailTemplate()
+// export -- verified by portal/test/emailTemplates.test.js, which now
+// also checks this copy alongside the other three.
+function emailTemplate(content: string): string {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#E5E7EB;font-family:Arial,Helvetica,sans-serif;color:#1F2937;">
+  <div style="max-width:560px;margin:0 auto;background:#FFFFFF;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0B1F3A;">
+      <tr><td align="center" style="padding:28px 16px;">
+        <img src="https://apexaviationtx.com/apexwhite.png" alt="Apex Advantage" width="160" style="display:block;margin:0 auto 10px;height:auto;max-width:160px;">
+        <div style="font-size:14px;font-weight:700;letter-spacing:2px;color:#FFFFFF;font-family:Arial,Helvetica,sans-serif;">APEX ADVANTAGE</div>
+      </td></tr>
+    </table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr><td style="padding:32px 24px 8px;">
+        ${content}
+      </td></tr>
+    </table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr><td style="padding:20px 24px 28px;border-top:1px solid #E5E7EB;margin-top:12px;">
+        <p style="font-size:12px;color:#4B5563;margin:16px 0 4px;text-align:center;font-family:Arial,Helvetica,sans-serif;">Apex Aviation &middot; Austin, TX</p>
+        <p style="font-size:11px;margin:0 0 8px;text-align:center;font-family:Arial,Helvetica,sans-serif;">
+          <a href="https://apexaviationtx.com" style="color:#4B5563;text-decoration:underline;">apexaviationtx.com</a>
+        </p>
+        <p style="font-size:11px;margin:0;text-align:center;font-family:Arial,Helvetica,sans-serif;">
+          <a href="https://apexaviationtx.com/email-preferences.html" style="color:#4B5563;text-decoration:underline;">Manage email preferences</a>
+        </p>
+      </td></tr>
+    </table>
+  </div>
+</body></html>`
+}
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!

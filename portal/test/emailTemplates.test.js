@@ -137,4 +137,9 @@ describe('forced-inline shell duplicates stay byte-identical to the shared sourc
     const inlineTemplate = loadInlineTemplateFn('portal/supabase/functions/send-lifecycle-emails/index.ts', 'function template(')
     expect(inlineTemplate('<p>x</p>')).toBe(emailTemplate('<p>x</p>'))
   })
+
+  it('create-free-account/index.ts emailTemplate() renders identically to the shared shell', () => {
+    const inlineTemplate = loadInlineTemplateFn('portal/supabase/functions/create-free-account/index.ts', 'function emailTemplate(')
+    expect(inlineTemplate('<p>x</p>')).toBe(emailTemplate('<p>x</p>'))
+  })
 })

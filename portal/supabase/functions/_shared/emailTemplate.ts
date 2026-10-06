@@ -27,12 +27,13 @@
 // manual, because no such manual exists in this workspace.
 //
 // This file is ALSO duplicated, byte-for-byte, inline in stripe-webhook/
-// index.ts, create-checkout-session/index.ts, AND send-lifecycle-emails/
-// index.ts (none of those three functions' deploy paths can resolve a
-// relative import reaching outside their own directory -- see the
-// comment in each). Any change here must be mirrored in all three, not
-// just one -- a byte-identity test in portal/test/emailTemplates.test.js
-// checks all four stay in sync.
+// index.ts, create-checkout-session/index.ts, send-lifecycle-emails/
+// index.ts, AND (as of the Oct 2026 bug-sweep deploy) create-free-
+// account/index.ts (none of those four functions' deploy paths can
+// resolve a relative import reaching outside their own directory -- see
+// the comment in each). Any change here must be mirrored in all four,
+// not just one -- a byte-identity test in portal/test/emailTemplates.test.js
+// checks all five stay in sync.
 export const EMAIL_COLORS = {
   navy: '#0B1F3A',
   gold: '#F4B400',
