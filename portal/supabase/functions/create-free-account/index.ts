@@ -61,6 +61,16 @@ const CHECKRIDE_TIMING_CLAUSE: Record<string, string> = {
 // own "reply to this email" line a lie.
 const ACTIVATION_REPLY_TO = 'info@apexaviationtx.com'
 
+// Escapes ilike's own wildcard characters so a case-insensitive *exact*
+// match on client-supplied email actually only matches that literal
+// email -- same helper and reasoning as create-checkout-session/index.ts's
+// own escapeIlike(), duplicated here since these functions share no
+// module today. Without this, a signup with `%` or `_` in the email
+// turns the duplicate-account check below into a SQL LIKE pattern.
+function escapeIlike(value: string): string {
+  return value.replace(/[\\%_]/g, (c) => '\\' + c)
+}
+
 // First-touch UTM capture (supabase-portal-schema-v58.sql) -- these
 // values come from the visitor's browser (analytics-events.js reading
 // its own first-visit-only localStorage keys), so they're treated as
@@ -90,10 +100,23 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
+    // Case-insensitive on purpose (bug sweep, Oct 2026) -- mobile
+    // keyboards auto-capitalize the first letter of email fields and
+    // browser autofill varies case, so a case-sensitive exact match here
+    // let a returning visitor who typed their email with different
+    // casing than their stored profile slip past this check entirely:
+    // auth.admin.createUser() below then failed with Supabase Auth's own
+    // (case-insensitive) duplicate-user error instead of this function's
+    // deliberate, friendly 409. Matches this codebase's established
+    // lower(email) convention everywhere else (see e.g.
+    // supabase-portal-schema-v57/v63/v76-v78/v110.sql) and the
+    // escapeIlike()+.ilike() pattern create-checkout-session/index.ts's
+    // signup-and-book-mock-oral-v2 purpose already used for this exact
+    // check.
     const { data: existingProfile } = await supabase
       .from('profiles')
       .select('id')
-      .eq('email', email)
+      .ilike('email', escapeIlike(email))
       .maybeSingle()
 
     if (existingProfile) {

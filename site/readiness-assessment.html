@@ -786,7 +786,20 @@
       btn.disabled = true;
       btn.textContent = 'Creating your account…';
       savedLeadEmail = email;
-      saveLead(null); // anonymous for now -- claim_readiness_assessment_by_email() (v78.sql) reconciles this once the account exists
+      // Bug sweep, Oct 2026: this used to call saveLead(null) right here,
+      // before knowing whether create-free-account would even succeed --
+      // so every retry by an already-existing member (the common 409
+      // "already exists" case) still wrote a permanent, never-reconciled
+      // anonymous lead row for a person who already has a real profile.
+      // claim_readiness_assessment_by_email() (v78.sql) only runs INSIDE
+      // a successful create-free-account call, so a lead saved ahead of a
+      // failed attempt was never cleaned up. Saving is now deferred into
+      // the .then() below: on success we save WITH the real profile_id
+      // already known (no reconciliation needed at all), on a genuine
+      // failure (network/server error, not "already exists") we still
+      // save anonymously to preserve the original resilience intent, and
+      // on "already exists" we save nothing -- that person already has a
+      // profile, so there's nothing anonymous left to capture.
       if (window.apexTrack) apexTrack('readiness_signup_started', { mode: 'signup' });
       window.apexSupabase.functions.invoke('create-free-account', {
         body: {
@@ -827,10 +840,21 @@
               if (loginEmailEl) loginEmailEl.value = email;
               document.getElementById('raGateError').textContent = msg;
               document.getElementById('raGateError').style.display = 'block';
+            } else {
+              // Genuine failure (network/server error), not "already
+              // exists" -- this email isn't a real account, so save the
+              // lead anonymously same as before, preserving the original
+              // resilience intent (don't lose their result just because
+              // account creation failed this one time).
+              saveLead(null);
             }
           });
           return;
         }
+        // Success -- save directly with the real, just-created profile_id
+        // instead of null. No reconciliation needed: there was no lead
+        // row for this attempt to claim, since none was saved before now.
+        saveLead(res.data.id);
         if (window.apexTrack) {
           apexTrack('readiness_signup_completed', { mode: 'signup' });
           // Funnel-coherence fix: readiness_signup_completed (mode:

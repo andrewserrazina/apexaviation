@@ -128,6 +128,15 @@ function template(content: string): string {
 </body></html>`
 }
 
+// Escapes ilike's own wildcard characters so a case-insensitive *exact*
+// match on a lead's stored email actually only matches that literal
+// email -- same helper and reasoning as create-checkout-session/index.ts's
+// own escapeIlike(), duplicated here since these functions share no
+// module today.
+function escapeIlike(value: string): string {
+  return value.replace(/[\\%_]/g, (c) => '\\' + c)
+}
+
 function emailHeadline(text: string): string {
   return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;font-family:Arial,Helvetica,sans-serif;">${text}</h2>`
 }
@@ -1261,7 +1270,15 @@ async function processReadinessAssessmentFollowup(supabase: any, results: any) {
 
   for (const lead of leads ?? []) {
     try {
-      const { data: existingProfile } = await supabase.from('profiles').select('id').eq('email', lead.email).maybeSingle()
+      if (!lead.email) continue
+      // Case-insensitive on purpose (bug sweep, Oct 2026) -- a lead whose
+      // email differs only in case from their real profile.email (mobile
+      // auto-capitalization, different browser autofill, etc.) previously
+      // read as "not yet a member" here and got the full day1/day3/day6
+      // nurture sequence despite already being a real signed-up member.
+      // Matches the fix in create-free-account/index.ts and
+      // create-checkout-session/index.ts.
+      const { data: existingProfile } = await supabase.from('profiles').select('id').ilike('email', escapeIlike(lead.email)).maybeSingle()
       if (existingProfile) continue
 
       const daysOld = (Date.now() - new Date(lead.created_at).getTime()) / 86400000

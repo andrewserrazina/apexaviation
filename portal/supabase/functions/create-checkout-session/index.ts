@@ -425,10 +425,15 @@ serve(async (req) => {
       if (!name || !email) return jsonError('Missing required fields: name, email', 400)
       const safeCheckrideTiming = CHECKRIDE_TIMINGS.includes(checkride_timing) ? checkride_timing : null
 
+      // Case-insensitive on purpose (bug sweep, Oct 2026) -- see
+      // escapeIlike()'s own comment above, and the matching fix in
+      // create-free-account/index.ts. This purpose's own sibling,
+      // signup-and-book-mock-oral-v2 below, already used this correct
+      // pattern; this one was the original, never backported.
       const { data: existingProfile } = await supabase
         .from('profiles')
         .select('id')
-        .eq('email', email)
+        .ilike('email', escapeIlike(email))
         .maybeSingle()
       if (existingProfile) {
         return jsonError('An account with this email already exists. Sign in and unlock from your dashboard instead.', 409)
@@ -651,10 +656,12 @@ serve(async (req) => {
       const { name, email, dest, utm_first, first_touch_landing } = body
       if (!name || !email) return jsonError('Missing required fields: name, email', 400)
 
+      // Case-insensitive on purpose (bug sweep, Oct 2026) -- see
+      // escapeIlike()'s own comment above.
       const { data: existingProfile } = await supabase
         .from('profiles')
         .select('id')
-        .eq('email', email)
+        .ilike('email', escapeIlike(email))
         .maybeSingle()
       if (existingProfile) {
         return jsonError('An account with this email already exists. Sign in and unlock from your dashboard instead.', 409)
@@ -713,7 +720,12 @@ serve(async (req) => {
         }],
         metadata: { purpose: 'unlock-ground-school-pack', profile_id: newProfileId },
         success_url: `${siteOrigin}/portal-login.html?view=signup-success&paid=1&product=ground_school_pack&amount_cents=${GROUND_SCHOOL_PACK_PRICE_CENTS}&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${siteOrigin}/portal-login.html?view=signup-success&product=ground_school_pack`,
+        // checkout_cancelled=1 (bug sweep, Oct 2026) -- missing here while
+        // present on the sibling signup-and-unlock-checkride-prep purpose's
+        // own cancel_url above, so portal-login.html's checkout_cancelled
+        // IIFE never fired for this purpose and the funnel silently
+        // undercounted cancellations for this one checkout path.
+        cancel_url: `${siteOrigin}/portal-login.html?view=signup-success&checkout_cancelled=1&product=ground_school_pack`,
       })
       await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'signup-and-unlock-ground-school-pack', email, profileId: newProfileId, amountCents: GROUND_SCHOOL_PACK_PRICE_CENTS, utm: body.utm })
 

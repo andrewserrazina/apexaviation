@@ -108,6 +108,15 @@ function template(content: string): string {
 </body></html>`
 }
 
+// Escapes ilike's own wildcard characters so a case-insensitive *exact*
+// match on a Stripe-collected email actually only matches that literal
+// email -- same helper and reasoning as create-checkout-session/index.ts's
+// own escapeIlike(), duplicated here since these functions share no
+// module today.
+function escapeIlike(value: string): string {
+  return value.replace(/[\\%_]/g, (c) => '\\' + c)
+}
+
 // Same UTM convention as send-lifecycle-emails/index.ts's lifecycleCtaUrl()
 // -- every purchase-confirmation CTA in this file links straight to
 // portal.html with no attribution at all today (email-system audit,
@@ -551,10 +560,13 @@ async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Che
   if (!sessionId && !scheduledClassId) throw new Error('No ground school id on checkout session metadata')
   if (!email) throw new Error('No email on checkout session')
 
+  // Case-insensitive on purpose (bug sweep, Oct 2026) -- see escapeIlike()'s
+  // own comment above; matches the fix in create-free-account/index.ts and
+  // create-checkout-session/index.ts.
   const { data: matchingProfile } = await supabase
     .from('profiles')
     .select('id')
-    .eq('email', email)
+    .ilike('email', escapeIlike(email))
     .maybeSingle()
 
   if (scheduledClassId) {
