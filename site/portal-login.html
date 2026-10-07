@@ -174,9 +174,9 @@
         </form>
         <p class="login-note" style="margin-top:12px">You'll get an email to set your password right away — no payment required to join.</p>
 
-        <div class="signup-divider">or</div>
+        <div class="signup-divider" id="checkridePrepDivider">or</div>
 
-        <div class="instant-access-box">
+        <div class="instant-access-box" id="checkridePrepInstantBox">
           <div class="instant-access-box__title">⚡ Get Instant Access — <span data-cp-price>$29</span></div>
           <div class="instant-access-box__sub">Already know you want it? Skip the wait — create your account and unlock the full 300+ question Checkride Prep System in one step.</div>
           <button type="button" class="btn btn--primary btn--instant" id="instantAccessSubmit">Get Instant Access — <span data-cp-price>$29</span></button>
@@ -379,6 +379,32 @@
       document.getElementById('signupHeadline').textContent = FREE_GUIDE_COPY[signupDest].headline;
       document.getElementById('signupBadge').textContent = FREE_GUIDE_COPY[signupDest].badge;
       document.getElementById('signupSub').textContent = FREE_GUIDE_COPY[signupDest].sub;
+    }
+
+    // Growth analytics finding (Oct 2026): every CTA on checkride-prep.html
+    // reads "UNLOCK CHECKRIDE PREP -- $29" and lands here with
+    // ?dest=checkride-prep, yet this view's default layout led with the
+    // free-signup form and buried the matching $29 Instant Access option
+    // below an "or" divider -- checkout data showed the one-step signup-
+    // and-unlock-checkride-prep purpose completing at ~71% versus ~40%
+    // for a free member coming back later to unlock, so making a visitor
+    // who already clicked a $29 CTA re-decide "free or paid?" from
+    // scratch here was costing real conversions. When the referring CTA
+    // already signaled purchase intent, promote the Instant Access box
+    // (and its "or" divider) above the free form instead of reordering
+    // the DOM's authored source -- the free path stays fully intact and
+    // one step away, just no longer first.
+    if (signupDest === 'checkride-prep') {
+      document.getElementById('signupHeadline').textContent = 'Unlock Checkride Prep.'
+      document.getElementById('signupBadge').textContent = '⚡ 300+ DPE-style questions — instant access'
+      document.getElementById('signupSub').textContent = "Create your account and unlock the full Checkride Prep System in one step. Prefer to start free and unlock later? That's still an option below."
+      var cpForm = document.getElementById('signupForm')
+      var cpDivider = document.getElementById('checkridePrepDivider')
+      var cpInstantBox = document.getElementById('checkridePrepInstantBox')
+      if (cpForm && cpDivider && cpInstantBox && cpForm.parentNode) {
+        cpForm.parentNode.insertBefore(cpDivider, cpForm)
+        cpForm.parentNode.insertBefore(cpInstantBox, cpDivider)
+      }
     }
 
     // GS -> Portal Growth Funnel, section 3 -- a Ground School purchaser

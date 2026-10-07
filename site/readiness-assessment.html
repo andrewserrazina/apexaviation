@@ -207,6 +207,34 @@
       .ra-gate, .ra-convert { padding: 24px 20px; }
       .ra-highlight-row { grid-template-columns: 1fr; }
     }
+
+    /* Analytics finding (Oct 2026): viewed -> started completion on this
+       page runs ~41% on mobile but only ~17% on desktop/tablet -- the
+       opposite of what you'd expect for a 20-question quiz. The mobile
+       breakpoint above already tightens this exact hero for narrow-but-
+       TALL phone viewports; nothing tightened it for wide-but-SHORT
+       desktop browser windows (a 1366x768 laptop's actual viewport,
+       after browser chrome, is often under 700px tall), where the
+       untouched 96px/48px hero padding plus eyebrow + h1 + lede +
+       subline + 3-item benefits list + valuestrip very plausibly pushes
+       the "Start" button below the fold before anyone scrolls. This
+       mirrors the mobile tightening at the same rough proportion rather
+       than shrinking type/copy, so the fix is "reach the CTA sooner,"
+       not "say less." Deliberately width-gated only (not height-gated):
+       a max-height query would also need to repaint on window resize
+       and degrades less gracefully across browsers than a stable
+       breakpoint tied to the same 640px cutoff already proven on the
+       mobile side above.
+       TODO: confirm against real desktop Clarity session recordings
+       (already installed on this page) once a few more land, rather
+       than treating this as fully validated. */
+    @media (min-width: 641px) {
+      .ra-hero { padding: 56px 0 32px; }
+      .ra-hero__lede { margin-bottom: 4px; }
+      .ra-hero__subline { margin-bottom: 14px; }
+      .ra-benefits { margin-bottom: 14px; gap: 8px; }
+      .ra-hero__valuestrip { margin-bottom: 14px; }
+    }
   </style>
 </head>
 <body>

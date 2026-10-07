@@ -109,6 +109,25 @@ function escapeIlike(value: string): string {
   return value.replace(/[\\%_]/g, (c) => '\\' + c)
 }
 
+// Attribution audit (Oct 2026): signup_utm_source was fragmenting one
+// real channel across multiple differently-spelled/differently-cased
+// values depending on which ad/landing page tagged the click --
+// 'facebook', 'fb', 'meta', and 'FACEBOOK' all meaning the same ad
+// platform, 'ig' vs 'instagram' the same thing. That silently understated
+// each real channel's own conversion rate in any query grouping by
+// source (several rows instead of one). sanitizeUtm() below lowercases
+// every source value for this same reason (casing alone was already
+// fragmenting sources with no alias at all), then this map additionally
+// collapses known SAME-PLATFORM alias spellings on top of that. Never
+// touches `medium` (paid_social vs social is a real, meaningful
+// distinction, not an alias) -- an unrecognized source is still stored,
+// just lowercased, never dropped or guessed at.
+const UTM_SOURCE_ALIASES: Record<string, string> = {
+  fb: 'facebook',
+  meta: 'facebook',
+  ig: 'instagram',
+}
+
 // First-touch UTM capture (supabase-portal-schema-v58.sql) -- these
 // values come from the visitor's browser (analytics-events.js reading
 // its own first-visit-only localStorage keys), so they're treated as
@@ -119,6 +138,10 @@ function sanitizeUtm(utm: any): Record<string, string | null> {
   for (const key of ['source', 'medium', 'campaign', 'content', 'term']) {
     const val = utm && typeof utm === 'object' ? utm[key] : null
     out[key] = typeof val === 'string' && /^[\x20-\x7e]{1,200}$/.test(val) ? val : null
+  }
+  if (out.source) {
+    const lowered = out.source.toLowerCase()
+    out.source = UTM_SOURCE_ALIASES[lowered] || lowered
   }
   return out
 }
