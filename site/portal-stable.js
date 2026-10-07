@@ -672,12 +672,15 @@
     });
     document.querySelectorAll('[data-locked-widget]').forEach(function (card) {
       var overlay = card.querySelector('.portal-locked-widget__overlay');
-      var content = card.querySelector('.portal-locked-widget__content');
+      // querySelectorAll, not querySelector -- a consolidated group (e.g.
+      // data-widget="secondary-metrics") wraps several widgets' content
+      // blocks under one overlay, not just one.
+      var contents = card.querySelectorAll('.portal-locked-widget__content');
       if (overlay) overlay.style.display = unlocked ? 'none' : 'flex';
-      if (content) {
+      contents.forEach(function (content) {
         content.style.filter = unlocked ? 'none' : '';
         content.style.pointerEvents = unlocked ? 'auto' : 'none';
-      }
+      });
     });
   }
 

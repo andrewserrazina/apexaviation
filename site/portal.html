@@ -568,63 +568,65 @@
             </div>
           </div>
 
-          <div class="portal-card portal-locked-widget" data-locked-widget data-widget="streak">
-            <div class="portal-locked-widget__content">
-              <!-- Sprint 1: "Training Consistency" replaces "Study Streak" /
-                   the flame emoji -- same computeStreaks()/renderStreak()
-                   data and math, presentation only (professional aviation-
-                   training tone, not a consumer habit-app flame). -->
-              <div class="portal-header__eyebrow" style="margin-bottom:14px">Training Consistency</div>
-              <div class="portal-streak">
-                <div class="portal-streak__flame" id="streakFlame" aria-hidden="true">
-                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><rect x="4" y="14" width="4" height="7" rx="1" fill="#F4B400"/><rect x="10" y="9" width="4" height="12" rx="1" fill="#F4B400"/><rect x="16" y="4" width="4" height="17" rx="1" fill="#F4B400"/></svg>
+          <!-- Secondary metrics (Growth: Oct 2026) -- upgrade_prompt_viewed
+               -> upgrade_prompt_clicked data (Jul 27 - Oct 7) showed streak,
+               weak-areas, and pilot-rank each converting under 1.5% CTR
+               individually (0.7%, 1.5%, 0.8%) vs readiness's 7.6% -- three
+               near-identical "Tap to unlock" asks competing for the same
+               glance. Consolidated into one shared prompt. ACS Coverage Map
+               (4.0% CTR, its own section below) performs close enough to
+               readiness that it keeps its own standalone ask. -->
+          <div class="portal-locked-widget-group portal-locked-widget" data-locked-widget data-widget="secondary-metrics">
+            <div class="portal-locked-widget-group__grid">
+              <div class="portal-card">
+                <div class="portal-locked-widget__content">
+                  <!-- Sprint 1: "Training Consistency" replaces "Study Streak" /
+                       the flame emoji -- same computeStreaks()/renderStreak()
+                       data and math, presentation only (professional aviation-
+                       training tone, not a consumer habit-app flame). -->
+                  <div class="portal-header__eyebrow" style="margin-bottom:14px">Training Consistency</div>
+                  <div class="portal-streak">
+                    <div class="portal-streak__flame" id="streakFlame" aria-hidden="true">
+                      <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><rect x="4" y="14" width="4" height="7" rx="1" fill="#F4B400"/><rect x="10" y="9" width="4" height="12" rx="1" fill="#F4B400"/><rect x="16" y="4" width="4" height="17" rx="1" fill="#F4B400"/></svg>
+                    </div>
+                    <div>
+                      <div class="portal-streak__current"><span id="streakCurrent">0</span> DAYS</div>
+                      <div class="portal-streak__meta">Best: <span id="streakLongest">0</span> days · <span id="streakDaysStudied">0</span> total training days</div>
+                      <div class="portal-streak__meta" id="streakFreezeMeta" hidden><span id="streakFreezeCount">0</span> freeze(s) banked — one covers a missed day automatically</div>
+                    </div>
+                  </div>
+                  <div id="recoverySortieBanner" style="display:none;margin-top:14px;padding:12px 14px;background:rgba(244,180,0,0.08);border:1px solid rgba(244,180,0,0.25);border-radius:8px">
+                    <p style="color:#F4B400;font-size:13px;font-weight:700;margin-bottom:4px">Recovery Sortie available</p>
+                    <p style="color:rgba(255,255,255,0.55);font-size:12.5px;line-height:1.5">You missed a day with no freeze banked. Answer 3 questions today to restore your streak.</p>
+                  </div>
                 </div>
-                <div>
-                  <div class="portal-streak__current"><span id="streakCurrent">0</span> DAYS</div>
-                  <div class="portal-streak__meta">Best: <span id="streakLongest">0</span> days · <span id="streakDaysStudied">0</span> total training days</div>
-                  <div class="portal-streak__meta" id="streakFreezeMeta" hidden><span id="streakFreezeCount">0</span> freeze(s) banked — one covers a missed day automatically</div>
+              </div>
+
+              <div class="portal-card">
+                <div class="portal-locked-widget__content">
+                  <div class="portal-header__eyebrow" style="margin-bottom:14px">Areas to Focus On</div>
+                  <div id="weakAreasList"><p style="color:rgba(255,255,255,0.4);font-size:13px">Keep studying — we'll surface your weakest ACS areas here.</p></div>
+                  <p id="weakAreasAiDpeNote" style="color:rgba(255,255,255,0.4);font-size:12px;margin-top:10px" hidden></p>
                 </div>
               </div>
-              <div id="recoverySortieBanner" style="display:none;margin-top:14px;padding:12px 14px;background:rgba(244,180,0,0.08);border:1px solid rgba(244,180,0,0.25);border-radius:8px">
-                <p style="color:#F4B400;font-size:13px;font-weight:700;margin-bottom:4px">Recovery Sortie available</p>
-                <p style="color:rgba(255,255,255,0.55);font-size:12.5px;line-height:1.5">You missed a day with no freeze banked. Answer 3 questions today to restore your streak.</p>
+
+              <div class="portal-card">
+                <div class="portal-locked-widget__content">
+                  <div class="portal-header__eyebrow" style="margin-bottom:14px">Pilot Rank</div>
+                  <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">
+                    <span id="xpRankLabel" style="color:#fff;font-size:16px;font-weight:700">Student Pilot</span>
+                    <span style="color:rgba(255,255,255,0.5);font-size:13px"><span id="xpTotal">0</span> XP</span>
+                  </div>
+                  <div class="portal-progress-bar"><div class="portal-progress-bar__fill" id="xpRankBar" style="width:0%"></div></div>
+                  <p id="xpRankNext" style="color:rgba(255,255,255,0.4);font-size:12px;margin-top:8px">— XP to next rank</p>
+                  <p id="xpRankDisclaimer" style="color:rgba(255,255,255,0.3);font-size:11px;margin-top:6px"></p>
+                </div>
               </div>
             </div>
             <div class="portal-locked-widget__overlay" data-unlock-trigger style="display:none">
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="#F4B400" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round"/></svg>
-              <span>Unlock Streak Freezes & Recovery Sorties</span>
-              <small>$29 · Tap to unlock</small>
-            </div>
-          </div>
-
-          <div class="portal-card portal-locked-widget" data-locked-widget data-widget="weak-areas">
-            <div class="portal-locked-widget__content">
-              <div class="portal-header__eyebrow" style="margin-bottom:14px">Areas to Focus On</div>
-              <div id="weakAreasList"><p style="color:rgba(255,255,255,0.4);font-size:13px">Keep studying — we'll surface your weakest ACS areas here.</p></div>
-              <p id="weakAreasAiDpeNote" style="color:rgba(255,255,255,0.4);font-size:12px;margin-top:10px" hidden></p>
-            </div>
-            <div class="portal-locked-widget__overlay" data-unlock-trigger style="display:none">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="#F4B400" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round"/></svg>
-              <span>See Exactly What to Study Next</span>
-              <small>$29 · Tap to unlock</small>
-            </div>
-          </div>
-
-          <div class="portal-card portal-locked-widget" data-locked-widget data-widget="pilot-rank">
-            <div class="portal-locked-widget__content">
-              <div class="portal-header__eyebrow" style="margin-bottom:14px">Pilot Rank</div>
-              <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">
-                <span id="xpRankLabel" style="color:#fff;font-size:16px;font-weight:700">Student Pilot</span>
-                <span style="color:rgba(255,255,255,0.5);font-size:13px"><span id="xpTotal">0</span> XP</span>
-              </div>
-              <div class="portal-progress-bar"><div class="portal-progress-bar__fill" id="xpRankBar" style="width:0%"></div></div>
-              <p id="xpRankNext" style="color:rgba(255,255,255,0.4);font-size:12px;margin-top:8px">— XP to next rank</p>
-              <p id="xpRankDisclaimer" style="color:rgba(255,255,255,0.3);font-size:11px;margin-top:6px"></p>
-            </div>
-            <div class="portal-locked-widget__overlay" data-unlock-trigger style="display:none">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="#F4B400" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round"/></svg>
-              <span>Track Your Pilot Rank & XP</span>
-              <small>$29 · Tap to unlock</small>
+              <span>Unlock Your Full Training Picture</span>
+              <small>$29 · Streak, Weak Areas & Pilot Rank</small>
             </div>
           </div>
         </div>

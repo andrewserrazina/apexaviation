@@ -863,6 +863,7 @@
   .portal-grid--4 { grid-template-columns: repeat(2, 1fr); }
   .portal-grid--3 { grid-template-columns: repeat(2, 1fr); }
   .portal-admin-metrics { grid-template-columns: repeat(2, 1fr); }
+  .portal-locked-widget-group { grid-column: span 2; }
 }
 @media (max-width: 900px) {
   .portal-sidebar-toggle { display: flex; }
@@ -876,6 +877,8 @@
 }
 @media (max-width: 640px) {
   .portal-grid--2, .portal-grid--3, .portal-grid--4 { grid-template-columns: 1fr; }
+  .portal-locked-widget-group { grid-column: span 1; }
+  .portal-locked-widget-group__grid { grid-template-columns: 1fr; }
   .portal-my-training__grid { grid-template-columns: 1fr; }
   .portal-welcome { flex-direction: column; align-items: flex-start; }
   .portal-main { padding: 24px 16px 56px; }
@@ -935,6 +938,15 @@
   font-size: 12px;
   color: var(--gold-light);
   font-weight: 600;
+}
+
+/* ─── Locked-widget group: several widgets, one shared unlock prompt
+     (Growth: Oct 2026 -- see portal.html for the CTR data behind this) ── */
+.portal-locked-widget-group { grid-column: span 3; }
+.portal-locked-widget-group__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
 }
 
 /* ─── Locked-section placeholder (whole section, not just a widget) ─ */
