@@ -252,6 +252,32 @@ function sanitizeUtm(utm: any): Record<string, string | null> {
   return out
 }
 
+// document.referrer, forwarded by analytics-events.js -- a genuine
+// channel signal independent of UTM params (a visitor arriving from an
+// unlabeled Facebook post or a Google organic result carries no utm_*,
+// but still has a referrer). Same untrusted-client-input treatment as
+// sanitizeUtm(): capped length, printable-ASCII only, dropped silently
+// if malformed rather than failing the checkout.
+function sanitizeReferrer(ref: any): string | null {
+  return typeof ref === 'string' && /^[\x20-\x7e]{1,1000}$/.test(ref) ? ref : null
+}
+
+// Ad-platform click IDs (fbclid/gclid/msclkid/ttclid/gbraid/wbraid) --
+// present on paid-ad clicks even when the destination URL carries no
+// utm_* params at all (several of this platform's own ad templates omit
+// them). Stored as jsonb; each value is validated independently so one
+// malformed id doesn't drop the others.
+const CLICK_ID_KEYS = ['fbclid', 'gclid', 'msclkid', 'ttclid', 'gbraid', 'wbraid']
+function sanitizeClickIds(clickIds: any): Record<string, string> | null {
+  if (!clickIds || typeof clickIds !== 'object') return null
+  const out: Record<string, string> = {}
+  for (const key of CLICK_ID_KEYS) {
+    const val = clickIds[key]
+    if (typeof val === 'string' && /^[\x20-\x7e]{1,300}$/.test(val)) out[key] = val
+  }
+  return Object.keys(out).length > 0 ? out : null
+}
+
 // The "signup-and-unlock-*" purposes below create a brand-new profile as
 // part of a one-step checkout (no separate create-free-account call at
 // all), which meant every account created this way had signup_utm_*
@@ -260,12 +286,32 @@ function sanitizeUtm(utm: any): Record<string, string | null> {
 // was silently dropped. Mirrors create-free-account/index.ts's own
 // signup_utm_*/first_touch_*/last_touch_* write, just reusable across
 // both branches below instead of duplicated inline.
-async function applySignupAttribution(supabase: any, profileId: string, utmFirst: any, firstTouchLanding: any) {
+// referrerFirst/clickIdsFirst/firstTouchAnonId/signupTouch are the newer
+// acquisition-attribution-repair fields (profiles.first_touch_referrer/
+// first_touch_click_ids/first_touch_anon_id/signup_touch_* --
+// supabase-portal-schema-v156.sql). signupTouch captures whichever touch
+// was active at this exact moment of account creation -- distinct from
+// first-touch (the visitor's very first ever recorded touch, which may be
+// an earlier, different session) and never conflated with it below.
+async function applySignupAttribution(supabase: any, profileId: string, utmFirst: any, firstTouchLanding: any, referrerFirst?: any, clickIdsFirst?: any, firstTouchAnonId?: any, signupTouch?: any) {
   const safeUtm = sanitizeUtm(utmFirst)
   const hasUtm = Object.values(safeUtm).some((v) => v !== null)
   const landingPage = firstTouchLanding && typeof firstTouchLanding.landing_page === 'string' ? firstTouchLanding.landing_page.slice(0, 500) : null
   const touchAt = firstTouchLanding && typeof firstTouchLanding.at === 'string' ? firstTouchLanding.at : null
-  if (!hasUtm && !landingPage) return
+
+  const safeReferrerFirst = sanitizeReferrer(referrerFirst)
+  const safeClickIdsFirst = sanitizeClickIds(clickIdsFirst)
+  const safeFirstTouchAnonId = typeof firstTouchAnonId === 'string' && /^[A-Za-z0-9_-]{1,80}$/.test(firstTouchAnonId) ? firstTouchAnonId : null
+
+  const safeSignupTouchUtm = sanitizeUtm(signupTouch)
+  const hasSignupTouchUtm = Object.values(safeSignupTouchUtm).some((v) => v !== null)
+  const safeSignupTouchReferrer = sanitizeReferrer(signupTouch && signupTouch.referrer)
+  const safeSignupTouchClickIds = sanitizeClickIds(signupTouch && signupTouch.click_ids)
+  const signupTouchLandingPage = signupTouch && typeof signupTouch.landing_page === 'string' ? signupTouch.landing_page.slice(0, 500) : null
+  const signupTouchAt = signupTouch && typeof signupTouch.at === 'string' ? signupTouch.at : null
+  const hasSignupTouch = hasSignupTouchUtm || !!safeSignupTouchReferrer || !!safeSignupTouchClickIds || !!signupTouchLandingPage
+
+  if (!hasUtm && !landingPage && !safeReferrerFirst && !safeClickIdsFirst && !safeFirstTouchAnonId && !hasSignupTouch) return
   await supabase.from('profiles').update({
     ...(hasUtm ? {
       signup_utm_source: safeUtm.source, signup_utm_medium: safeUtm.medium, signup_utm_campaign: safeUtm.campaign,
@@ -275,6 +321,18 @@ async function applySignupAttribution(supabase: any, profileId: string, utmFirst
     } : {}),
     ...(landingPage ? { first_touch_landing_page: landingPage, last_touch_landing_page: landingPage } : {}),
     ...(touchAt ? { first_touch_at: touchAt, last_touch_at: touchAt } : {}),
+    ...(safeReferrerFirst ? { first_touch_referrer: safeReferrerFirst } : {}),
+    ...(safeClickIdsFirst ? { first_touch_click_ids: safeClickIdsFirst } : {}),
+    ...(safeFirstTouchAnonId ? { first_touch_anon_id: safeFirstTouchAnonId } : {}),
+    ...(hasSignupTouchUtm ? {
+      signup_touch_source: safeSignupTouchUtm.source, signup_touch_medium: safeSignupTouchUtm.medium,
+      signup_touch_campaign: safeSignupTouchUtm.campaign, signup_touch_content: safeSignupTouchUtm.content,
+      signup_touch_term: safeSignupTouchUtm.term,
+    } : {}),
+    ...(safeSignupTouchReferrer ? { signup_touch_referrer: safeSignupTouchReferrer } : {}),
+    ...(safeSignupTouchClickIds ? { signup_touch_click_ids: safeSignupTouchClickIds } : {}),
+    ...(signupTouchLandingPage ? { signup_touch_landing_page: signupTouchLandingPage } : {}),
+    ...(signupTouchAt ? { signup_touch_at: signupTouchAt } : {}),
   }).eq('id', profileId)
 }
 
@@ -284,9 +342,14 @@ async function applySignupAttribution(supabase: any, profileId: string, utmFirst
 // when (if) the session actually completes; a row with no completed_at
 // after a while is what "abandoned" means. Best-effort: a logging
 // failure here must never block the checkout itself.
-async function logCheckoutAttempt(supabase: any, args: { stripeSessionId: string; purpose: string; email?: string | null; profileId?: string | null; amountCents: number; utm?: any }) {
+async function logCheckoutAttempt(supabase: any, args: { stripeSessionId: string; purpose: string; email?: string | null; profileId?: string | null; amountCents: number; utm?: any; referrer?: any; clickIds?: any }) {
   try {
     const safeUtm = sanitizeUtm(args.utm)
+    // referrer/click_ids here are the purchase-touch signal -- whichever
+    // touch was active at the moment of THIS checkout attempt, captured
+    // per-attempt rather than overwriting any profile-level column, so a
+    // later purchase by an email-retargeted return visitor is never
+    // mislabeled as that visitor's first-touch.
     await supabase.from('checkout_session_attempts').insert({
       stripe_session_id: args.stripeSessionId,
       purpose: args.purpose,
@@ -298,6 +361,8 @@ async function logCheckoutAttempt(supabase: any, args: { stripeSessionId: string
       utm_campaign: safeUtm.campaign,
       utm_content: safeUtm.content,
       utm_term: safeUtm.term,
+      referrer: sanitizeReferrer(args.referrer),
+      click_ids: sanitizeClickIds(args.clickIds),
     })
   } catch (err) {
     console.error('logCheckoutAttempt failed', err)
@@ -378,7 +443,7 @@ serve(async (req) => {
         // near the top of site/portal-stable.js.
         cancel_url: `${siteOrigin}/portal.html?checkout_cancelled=1&product=checkride_prep#dashboard`,
       })
-      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'unlock-checkride-prep', email, profileId, amountCents: pricing.amount_cents, utm: body.utm })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'unlock-checkride-prep', email, profileId, amountCents: pricing.amount_cents, utm: body.utm, referrer: body.referrer, clickIds: body.click_ids })
 
       return new Response(JSON.stringify({ url: session.url, tier: pricing.tier, amount: pricing.amount_cents }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -439,7 +504,7 @@ serve(async (req) => {
         success_url: `${siteOrigin}/portal.html?membership=1&tier=${tier}&amount_cents=${amountCents}&session_id={CHECKOUT_SESSION_ID}#account`,
         cancel_url: `${siteOrigin}/portal.html#account`,
       })
-      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'join-membership', email, profileId, amountCents, utm: body.utm })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'join-membership', email, profileId, amountCents, utm: body.utm, referrer: body.referrer, clickIds: body.click_ids })
 
       return new Response(JSON.stringify({ url: session.url, tier, amount: amountCents }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -447,7 +512,7 @@ serve(async (req) => {
     }
 
     if (purpose === 'signup-and-unlock-checkride-prep') {
-      const { name, email, dest, checkride_timing, utm_first, first_touch_landing } = body
+      const { name, email, dest, checkride_timing, utm_first, first_touch_landing, click_ids_first, referrer_first, first_touch_anon_id, signup_touch } = body
       if (!name || !email) return jsonError('Missing required fields: name, email', 400)
       const safeCheckrideTiming = CHECKRIDE_TIMINGS.includes(checkride_timing) ? checkride_timing : null
 
@@ -476,7 +541,7 @@ serve(async (req) => {
       if (safeCheckrideTiming) {
         await supabase.from('profiles').update({ checkride_timing: safeCheckrideTiming }).eq('id', newProfileId)
       }
-      await applySignupAttribution(supabase, newProfileId, utm_first, first_touch_landing)
+      await applySignupAttribution(supabase, newProfileId, utm_first, first_touch_landing, referrer_first, click_ids_first, first_touch_anon_id, signup_touch)
 
       // Brand new profile, so this is always founding-or-launch ($29),
       // never standard -- get_checkride_prep_pricing()'s launch window
@@ -549,7 +614,7 @@ serve(async (req) => {
         // lands here rather than portal.html).
         cancel_url: `${siteOrigin}/portal-login.html?view=signup-success&checkout_cancelled=1&product=checkride_prep`,
       })
-      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'signup-and-unlock-checkride-prep', email, profileId: newProfileId, amountCents: pricing.amount_cents, utm: body.utm })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'signup-and-unlock-checkride-prep', email, profileId: newProfileId, amountCents: pricing.amount_cents, utm: body.utm, referrer: body.referrer, clickIds: body.click_ids })
 
       return new Response(JSON.stringify({ url: session.url, tier: pricing.tier, amount: pricing.amount_cents }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -595,7 +660,7 @@ serve(async (req) => {
         success_url: `${siteOrigin}/portal.html?groundschoolpack=1&amount_cents=${GROUND_SCHOOL_PACK_PRICE_CENTS}&session_id={CHECKOUT_SESSION_ID}#ground-school`,
         cancel_url: `${siteOrigin}/portal.html#ground-school`,
       })
-      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'unlock-ground-school-pack', email, profileId, amountCents: GROUND_SCHOOL_PACK_PRICE_CENTS, utm: body.utm })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'unlock-ground-school-pack', email, profileId, amountCents: GROUND_SCHOOL_PACK_PRICE_CENTS, utm: body.utm, referrer: body.referrer, clickIds: body.click_ids })
 
       return new Response(JSON.stringify({ url: session.url, amount: GROUND_SCHOOL_PACK_PRICE_CENTS }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -671,7 +736,7 @@ serve(async (req) => {
         success_url: `${siteOrigin}/portal.html?groundschoolpack=1&amount_cents=${upgradeAmountCents}&session_id={CHECKOUT_SESSION_ID}#ground-school`,
         cancel_url: `${siteOrigin}/portal.html#ground-school`,
       })
-      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'upgrade-ground-school-pack', email, profileId, amountCents: upgradeAmountCents, utm: body.utm })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'upgrade-ground-school-pack', email, profileId, amountCents: upgradeAmountCents, utm: body.utm, referrer: body.referrer, clickIds: body.click_ids })
 
       return new Response(JSON.stringify({ url: session.url, amount: upgradeAmountCents, creditedCents }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -679,7 +744,7 @@ serve(async (req) => {
     }
 
     if (purpose === 'signup-and-unlock-ground-school-pack') {
-      const { name, email, dest, utm_first, first_touch_landing } = body
+      const { name, email, dest, utm_first, first_touch_landing, click_ids_first, referrer_first, first_touch_anon_id, signup_touch } = body
       if (!name || !email) return jsonError('Missing required fields: name, email', 400)
 
       // Case-insensitive on purpose (bug sweep, Oct 2026) -- see
@@ -701,7 +766,7 @@ serve(async (req) => {
       })
       if (createErr) return jsonError(String(createErr), 500)
       const newProfileId = created.user.id
-      await applySignupAttribution(supabase, newProfileId, utm_first, first_touch_landing)
+      await applySignupAttribution(supabase, newProfileId, utm_first, first_touch_landing, referrer_first, click_ids_first, first_touch_anon_id, signup_touch)
 
       // Same "set your password" email pattern as
       // signup-and-unlock-checkride-prep -- the account is real and
@@ -753,7 +818,7 @@ serve(async (req) => {
         // undercounted cancellations for this one checkout path.
         cancel_url: `${siteOrigin}/portal-login.html?view=signup-success&checkout_cancelled=1&product=ground_school_pack`,
       })
-      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'signup-and-unlock-ground-school-pack', email, profileId: newProfileId, amountCents: GROUND_SCHOOL_PACK_PRICE_CENTS, utm: body.utm })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'signup-and-unlock-ground-school-pack', email, profileId: newProfileId, amountCents: GROUND_SCHOOL_PACK_PRICE_CENTS, utm: body.utm, referrer: body.referrer, clickIds: body.click_ids })
 
       return new Response(JSON.stringify({ url: session.url, amount: GROUND_SCHOOL_PACK_PRICE_CENTS }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -804,7 +869,7 @@ serve(async (req) => {
         success_url: `${siteOrigin}/portal.html?mockoral=1&session_id={CHECKOUT_SESSION_ID}#mock-oral`,
         cancel_url: `${siteOrigin}/portal.html#mock-oral`,
       })
-      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'book-mock-oral', email, profileId, amountCents: MOCK_ORAL_PRICE_CENTS, utm: body.utm })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'book-mock-oral', email, profileId, amountCents: MOCK_ORAL_PRICE_CENTS, utm: body.utm, referrer: body.referrer, clickIds: body.click_ids })
 
       return new Response(JSON.stringify({ url: session.url, amount: MOCK_ORAL_PRICE_CENTS }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -869,7 +934,7 @@ serve(async (req) => {
           success_url: `${siteOrigin}/portal.html?registered=1&amount_cents=${GROUND_SCHOOL_PRICE_CENTS}&session_id={CHECKOUT_SESSION_ID}&class_title=${encodeURIComponent(scheduledClass.title)}&class_when=${encodeURIComponent(when)}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}#ground-school`,
           cancel_url: `${siteOrigin}/portal.html#ground-school`,
         })
-        await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'ground-school-registration', email, amountCents: GROUND_SCHOOL_PRICE_CENTS, utm: body.utm })
+        await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'ground-school-registration', email, amountCents: GROUND_SCHOOL_PRICE_CENTS, utm: body.utm, referrer: body.referrer, clickIds: body.click_ids })
 
         return new Response(JSON.stringify({ url: session.url, amount: GROUND_SCHOOL_PRICE_CENTS }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -918,7 +983,7 @@ serve(async (req) => {
         success_url: `${siteOrigin}/portal.html?registered=1&amount_cents=${GROUND_SCHOOL_PRICE_CENTS}&session_id={CHECKOUT_SESSION_ID}&class_title=${encodeURIComponent(groundSession.title)}&class_when=${encodeURIComponent(when)}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}#ground-school`,
         cancel_url: `${siteOrigin}/portal.html#ground-school`,
       })
-      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'ground-school-registration', email, amountCents: GROUND_SCHOOL_PRICE_CENTS, utm: body.utm })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'ground-school-registration', email, amountCents: GROUND_SCHOOL_PRICE_CENTS, utm: body.utm, referrer: body.referrer, clickIds: body.click_ids })
 
       return new Response(JSON.stringify({ url: session.url, amount: GROUND_SCHOOL_PRICE_CENTS }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -985,7 +1050,7 @@ serve(async (req) => {
         success_url: `${siteOrigin}/portal.html?mockoralv2=1&session_id={CHECKOUT_SESSION_ID}#mock-oral`,
         cancel_url: `${siteOrigin}/apex-advantage-mock-oral.html#schedule`,
       })
-      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'book-mock-oral-v2', email, profileId, amountCents: product.price_cents, utm: body.utm })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'book-mock-oral-v2', email, profileId, amountCents: product.price_cents, utm: body.utm, referrer: body.referrer, clickIds: body.click_ids })
 
       return new Response(JSON.stringify({ url: session.url, amount: product.price_cents }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -1006,7 +1071,7 @@ serve(async (req) => {
     //   same way it fulfills one from an already-signed-in member. No
     //   webhook changes needed.
     if (purpose === 'signup-and-book-mock-oral-v2') {
-      const { name, email, productId, availabilityId, utm_first, first_touch_landing } = body
+      const { name, email, productId, availabilityId, utm_first, first_touch_landing, click_ids_first, referrer_first, first_touch_anon_id, signup_touch } = body
       if (!name || !email) return jsonError('Missing required fields: name, email', 400)
       if (!productId || !availabilityId) return jsonError('Missing productId or availabilityId', 400)
 
@@ -1042,7 +1107,7 @@ serve(async (req) => {
       })
       if (createErr) return jsonError(String(createErr), 500)
       const newProfileId = created.user.id
-      await applySignupAttribution(supabase, newProfileId, utm_first, first_touch_landing)
+      await applySignupAttribution(supabase, newProfileId, utm_first, first_touch_landing, referrer_first, click_ids_first, first_touch_anon_id, signup_touch)
 
       const redirectTo = `${SITE_ORIGIN}/portal-reset-password.html?dest=mock-oral`
       const { data: linkData } = await supabase.auth.admin.generateLink({
@@ -1091,7 +1156,7 @@ serve(async (req) => {
         success_url: `${siteOrigin}/portal-login.html?view=signup-success&paid=1&product=mock_oral_v2&amount_cents=${product.price_cents}&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${siteOrigin}/apex-advantage-mock-oral.html#pricing`,
       })
-      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'signup-and-book-mock-oral-v2', email, profileId: newProfileId, amountCents: product.price_cents, utm: body.utm })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'signup-and-book-mock-oral-v2', email, profileId: newProfileId, amountCents: product.price_cents, utm: body.utm, referrer: body.referrer, clickIds: body.click_ids })
 
       return new Response(JSON.stringify({ url: session.url, amount: product.price_cents }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -1146,7 +1211,7 @@ serve(async (req) => {
         success_url: `${siteOrigin}/portal.html?studypackunlocked=1&pack=${encodeURIComponent(pack.id)}&amount_cents=${pack.price_cents}&session_id={CHECKOUT_SESSION_ID}#study-packs`,
         cancel_url: `${siteOrigin}/portal.html#study-packs`,
       })
-      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'unlock-study-pack', email, profileId, amountCents: pack.price_cents, utm: body.utm })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'unlock-study-pack', email, profileId, amountCents: pack.price_cents, utm: body.utm, referrer: body.referrer, clickIds: body.click_ids })
 
       return new Response(JSON.stringify({ url: session.url, amount: pack.price_cents }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

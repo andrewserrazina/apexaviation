@@ -2379,7 +2379,9 @@
             name: nameInput.value.trim(),
             email: emailInput.value.trim(),
             origin: window.location.origin,
-            utm: window.apexGetUtm ? apexGetUtm() : undefined
+            utm: window.apexGetUtm ? apexGetUtm() : undefined,
+            referrer: window.apexGetReferrer ? apexGetReferrer() : undefined,
+            click_ids: window.apexGetClickIds ? apexGetClickIds() : undefined
           }
         }).then(function (res) {
           if (res.error || !res.data || !res.data.url) {

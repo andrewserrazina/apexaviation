@@ -323,6 +323,42 @@
 
   var UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
 
+  // Acquisition & Revenue Attribution Repair -- click IDs survive even
+  // when a platform strips/rewrites utm_ params on the redirect (a real,
+  // observed gap: a tagged ad click with no utm_source at all still
+  // carries fbclid/gclid, which is real channel signal we were
+  // discarding). Same first-touch/last-touch persistence pattern as the
+  // UTM_KEYS above -- captured only on a fresh landing, first-touch never
+  // overwritten.
+  var CLICK_ID_KEYS = ['fbclid', 'gclid', 'msclkid', 'ttclid', 'gbraid', 'wbraid'];
+
+  function captureClickIdsAndReferrer(params) {
+    var clickIds = {};
+    var sawAny = false;
+    CLICK_ID_KEYS.forEach(function (k) {
+      var val = params.get(k);
+      if (val) { clickIds[k] = val; sawAny = true; }
+    });
+    if (sawAny) {
+      var json = JSON.stringify(clickIds);
+      localStorage.setItem('apex_click_ids', json);
+      if (!localStorage.getItem('apex_click_ids_first')) localStorage.setItem('apex_click_ids_first', json);
+    }
+    // document.referrer -- where the visitor actually came from (ad
+    // platform, search engine, direct), distinct from apex_landing_page
+    // (which URL on OUR site they landed on). Only written alongside a
+    // fresh UTM/click-id touch, same "real new touch" gating as
+    // apex_landing_page, so an internal in-app navigation never
+    // overwrites it with an empty/same-origin referrer.
+    try {
+      if (document.referrer) {
+        localStorage.setItem('apex_referrer', document.referrer);
+        if (!localStorage.getItem('apex_referrer_first')) localStorage.setItem('apex_referrer_first', document.referrer);
+      }
+    } catch (e) { /* document.referrer blocked -- fine, omit */ }
+    return sawAny;
+  }
+
   // True only for the exact page load where a fresh utm_ param was seen
   // in the URL -- distinguishes "this visit is a new tagged touch" from
   // every other call to utmProps() that's just reading back whatever's
@@ -355,17 +391,36 @@
     try {
       var params = new URLSearchParams(window.location.search);
       var sawFreshUtm = UTM_KEYS.some(function (k) { return params.has(k); });
+      // Acquisition & Revenue Attribution Repair -- a tagged ad click that
+      // arrives with NO utm_ params but a real click id (fbclid/gclid/...)
+      // is still a genuine new touch; previously only a fresh utm_ param
+      // counted, so this class of arrival silently never updated landing
+      // page/timestamp/first-touch-anon-id at all.
+      var sawFreshClickId = CLICK_ID_KEYS.some(function (k) { return params.has(k); });
+      var sawFreshTouch = sawFreshUtm || sawFreshClickId;
       if (sawFreshUtm) {
-        freshUtmSeenThisLoad = true;
         UTM_KEYS.forEach(function (k) {
           var val = params.get(k) || '';
           localStorage.setItem('apex_' + k, val);
           if (!localStorage.getItem('apex_' + k + '_first')) localStorage.setItem('apex_' + k + '_first', val);
         });
+      }
+      captureClickIdsAndReferrer(params);
+      if (sawFreshTouch) {
+        freshUtmSeenThisLoad = true;
         localStorage.setItem('apex_landing_page', window.location.href);
         localStorage.setItem('apex_last_touch_at', new Date().toISOString());
         if (!localStorage.getItem('apex_landing_page_first')) localStorage.setItem('apex_landing_page_first', window.location.href);
         if (!localStorage.getItem('apex_first_touch_at')) localStorage.setItem('apex_first_touch_at', new Date().toISOString());
+        // Provenance: which anon_id was actually behind the first touch,
+        // recorded directly (not just inferable later via
+        // analytics_identity_map, which only links whatever anon_id is
+        // active AT SIGNUP -- this captures it at the moment of the touch
+        // itself, before any of that exists).
+        if (!localStorage.getItem('apex_first_touch_anon_id')) {
+          var firstTouchAnon = anonId();
+          if (firstTouchAnon) localStorage.setItem('apex_first_touch_anon_id', firstTouchAnon);
+        }
       }
       out.traffic_source = localStorage.getItem('apex_utm_source') || null;
       out.traffic_medium = localStorage.getItem('apex_utm_medium') || null;
@@ -381,6 +436,12 @@
       // original keys is unaffected.
       out.traffic_content = localStorage.getItem('apex_utm_content') || null;
       out.traffic_term = localStorage.getItem('apex_utm_term') || null;
+      // Acquisition & Revenue Attribution Repair -- click ids + referrer
+      // attached to every event's properties, same additive spirit as
+      // content/term above.
+      var rawClickIds = localStorage.getItem('apex_click_ids');
+      out.click_ids = rawClickIds ? JSON.parse(rawClickIds) : null;
+      out.referrer = localStorage.getItem('apex_referrer') || null;
     } catch (e) { /* localStorage unavailable (private mode, etc.) -- fine, just omit */ }
     return out;
   }
@@ -481,6 +542,56 @@
     } catch (e) { return { landing_page: null, at: null }; }
   }
 
+  // Acquisition & Revenue Attribution Repair -- click ids + referrer,
+  // first-touch and latest-touch, same shape/reasoning as the UTM getters
+  // above. Passed alongside utm_first/utm to create-free-account/
+  // create-checkout-session so a click-id-only arrival (no utm_source at
+  // all) is never silently lost.
+  function getFirstTouchClickIds() {
+    try {
+      var raw = localStorage.getItem('apex_click_ids_first') || localStorage.getItem('apex_click_ids');
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+  function getClickIds() {
+    try {
+      var raw = localStorage.getItem('apex_click_ids');
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+  function getFirstTouchReferrer() {
+    try { return localStorage.getItem('apex_referrer_first') || localStorage.getItem('apex_referrer') || null; } catch (e) { return null; }
+  }
+  function getReferrer() {
+    try { return localStorage.getItem('apex_referrer') || null; } catch (e) { return null; }
+  }
+  function getFirstTouchAnonId() {
+    try { return localStorage.getItem('apex_first_touch_anon_id') || null; } catch (e) { return null; }
+  }
+
+  // "Signup-touch" -- whatever touch is actually active RIGHT NOW, at the
+  // moment an account is being created, bundled as one snapshot distinct
+  // from getFirstTouchUtm() (the visitor's very first-ever touch, which
+  // this signup may be happening long after). The two are only ever the
+  // SAME values when this is also this visitor's first visit -- that's
+  // the common case, which is exactly why this distinction didn't exist
+  // before: it only matters for the member who first found Apex organically
+  // weeks ago, then actually converted off a later retargeting touch
+  // (paid social, an email click) -- previously that retargeting touch
+  // was invisible at signup time, visible only transiently in last-touch
+  // localStorage. NULL fields throughout mean "no fresh tagged touch was
+  // ever recorded for this browser," never fabricated.
+  function getSignupTouch() {
+    var utm = getUtm();
+    return {
+      source: utm.source, medium: utm.medium, campaign: utm.campaign, content: utm.content, term: utm.term,
+      referrer: getReferrer(),
+      click_ids: getClickIds(),
+      landing_page: (function () { try { return localStorage.getItem('apex_landing_page') || null; } catch (e) { return null; } })(),
+      at: (function () { try { return localStorage.getItem('apex_last_touch_at') || null; } catch (e) { return null; } })(),
+    };
+  }
+
   // Runs unconditionally at script load (same reasoning as captureRef()
   // above: a page that never happens to call apexTrack() this session --
   // e.g. a member landing straight on a portal section with no funnel
@@ -556,4 +667,10 @@
   window.apexGetFirstTouchLanding = getFirstTouchLanding;
   window.apexSyncLastTouchIfFresh = syncLastTouchIfFresh;
   window.apexGetAnonId = anonId;
+  window.apexGetFirstTouchClickIds = getFirstTouchClickIds;
+  window.apexGetClickIds = getClickIds;
+  window.apexGetFirstTouchReferrer = getFirstTouchReferrer;
+  window.apexGetReferrer = getReferrer;
+  window.apexGetFirstTouchAnonId = getFirstTouchAnonId;
+  window.apexGetSignupTouch = getSignupTouch;
 })();

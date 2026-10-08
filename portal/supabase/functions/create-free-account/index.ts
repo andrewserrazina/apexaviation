@@ -146,11 +146,35 @@ function sanitizeUtm(utm: any): Record<string, string | null> {
   return out
 }
 
+// document.referrer -- a genuine channel signal independent of UTM
+// params. Same untrusted-client-input treatment as sanitizeUtm() above:
+// capped length, printable-ASCII only, dropped silently if malformed.
+// Duplicated in create-checkout-session/index.ts, same reasoning as this
+// file's other duplicated helpers.
+function sanitizeReferrer(ref: any): string | null {
+  return typeof ref === 'string' && /^[\x20-\x7e]{1,1000}$/.test(ref) ? ref : null
+}
+
+// Ad-platform click IDs (fbclid/gclid/msclkid/ttclid/gbraid/wbraid) --
+// present on paid-ad clicks even when the destination URL carries no
+// utm_* params at all. Stored as jsonb; each value validated
+// independently so one malformed id doesn't drop the others.
+const CLICK_ID_KEYS = ['fbclid', 'gclid', 'msclkid', 'ttclid', 'gbraid', 'wbraid']
+function sanitizeClickIds(clickIds: any): Record<string, string> | null {
+  if (!clickIds || typeof clickIds !== 'object') return null
+  const out: Record<string, string> = {}
+  for (const key of CLICK_ID_KEYS) {
+    const val = clickIds[key]
+    if (typeof val === 'string' && /^[\x20-\x7e]{1,300}$/.test(val)) out[key] = val
+  }
+  return Object.keys(out).length > 0 ? out : null
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    const { name, email, dest, checkride_timing, utm_first, first_touch_landing, ref, source, intent } = await req.json()
+    const { name, email, dest, checkride_timing, utm_first, first_touch_landing, ref, source, intent, click_ids_first, referrer_first, first_touch_anon_id, signup_touch } = await req.json()
     if (!name || !email) {
       return new Response(JSON.stringify({ error: 'Missing required fields: name, email' }), {
         status: 400,
@@ -211,7 +235,25 @@ serve(async (req) => {
     // syncLastTouchIfFresh(), supabase-portal-schema-v83.sql).
     const landingPage = first_touch_landing && typeof first_touch_landing.landing_page === 'string' ? first_touch_landing.landing_page.slice(0, 500) : null
     const touchAt = first_touch_landing && typeof first_touch_landing.at === 'string' ? first_touch_landing.at : null
-    if (safeCheckrideTiming || hasUtm || landingPage) {
+
+    // Newer acquisition-attribution-repair fields (supabase-portal-
+    // schema-v156.sql). signup_touch_* captures whichever touch was
+    // active at this exact moment of account creation -- distinct from
+    // first_touch_* (the visitor's very first ever recorded touch, which
+    // may be an earlier, different session) and never conflated with it.
+    const safeReferrerFirst = sanitizeReferrer(referrer_first)
+    const safeClickIdsFirst = sanitizeClickIds(click_ids_first)
+    const safeFirstTouchAnonId = typeof first_touch_anon_id === 'string' && /^[A-Za-z0-9_-]{1,80}$/.test(first_touch_anon_id) ? first_touch_anon_id : null
+
+    const safeSignupTouchUtm = sanitizeUtm(signup_touch)
+    const hasSignupTouchUtm = Object.values(safeSignupTouchUtm).some((v) => v !== null)
+    const safeSignupTouchReferrer = sanitizeReferrer(signup_touch && signup_touch.referrer)
+    const safeSignupTouchClickIds = sanitizeClickIds(signup_touch && signup_touch.click_ids)
+    const signupTouchLandingPage = signup_touch && typeof signup_touch.landing_page === 'string' ? signup_touch.landing_page.slice(0, 500) : null
+    const signupTouchAt = signup_touch && typeof signup_touch.at === 'string' ? signup_touch.at : null
+    const hasSignupTouch = hasSignupTouchUtm || !!safeSignupTouchReferrer || !!safeSignupTouchClickIds || !!signupTouchLandingPage
+
+    if (safeCheckrideTiming || hasUtm || landingPage || safeReferrerFirst || safeClickIdsFirst || safeFirstTouchAnonId || hasSignupTouch) {
       await supabase.from('profiles').update({
         ...(safeCheckrideTiming ? { checkride_timing: safeCheckrideTiming } : {}),
         ...(hasUtm ? {
@@ -228,6 +270,18 @@ serve(async (req) => {
         } : {}),
         ...(landingPage ? { first_touch_landing_page: landingPage, last_touch_landing_page: landingPage } : {}),
         ...(touchAt ? { first_touch_at: touchAt, last_touch_at: touchAt } : {}),
+        ...(safeReferrerFirst ? { first_touch_referrer: safeReferrerFirst } : {}),
+        ...(safeClickIdsFirst ? { first_touch_click_ids: safeClickIdsFirst } : {}),
+        ...(safeFirstTouchAnonId ? { first_touch_anon_id: safeFirstTouchAnonId } : {}),
+        ...(hasSignupTouchUtm ? {
+          signup_touch_source: safeSignupTouchUtm.source, signup_touch_medium: safeSignupTouchUtm.medium,
+          signup_touch_campaign: safeSignupTouchUtm.campaign, signup_touch_content: safeSignupTouchUtm.content,
+          signup_touch_term: safeSignupTouchUtm.term,
+        } : {}),
+        ...(safeSignupTouchReferrer ? { signup_touch_referrer: safeSignupTouchReferrer } : {}),
+        ...(safeSignupTouchClickIds ? { signup_touch_click_ids: safeSignupTouchClickIds } : {}),
+        ...(signupTouchLandingPage ? { signup_touch_landing_page: signupTouchLandingPage } : {}),
+        ...(signupTouchAt ? { signup_touch_at: signupTouchAt } : {}),
       }).eq('id', created.user.id)
     }
 

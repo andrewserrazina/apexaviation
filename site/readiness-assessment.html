@@ -849,6 +849,10 @@
           utm_first: window.apexGetFirstTouchUtm ? apexGetFirstTouchUtm() : undefined,
           first_touch_landing: window.apexGetFirstTouchLanding ? apexGetFirstTouchLanding() : undefined,
           ref: window.apexGetFirstTouchRef ? apexGetFirstTouchRef() : undefined,
+          click_ids_first: window.apexGetFirstTouchClickIds ? apexGetFirstTouchClickIds() : undefined,
+          referrer_first: window.apexGetFirstTouchReferrer ? apexGetFirstTouchReferrer() : undefined,
+          first_touch_anon_id: window.apexGetFirstTouchAnonId ? apexGetFirstTouchAnonId() : undefined,
+          signup_touch: window.apexGetSignupTouch ? apexGetSignupTouch() : undefined,
         }
       }).then(function (res) {
         btn.disabled = false;
