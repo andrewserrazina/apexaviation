@@ -322,4 +322,71 @@ describe('stripe-webhook purpose handlers: idempotency guards against a genuine 
     expect(body).toContain("from('scheduled_ground_class_enrollments')\n      .select('id')\n      .eq('stripe_session_id', session.id)")
     expect(body).toContain("from('ground_registrations')\n    .select('id')\n    .eq('stripe_session_id', session.id)")
   })
+
+  // Financial Reporting Accuracy fix (v153) -- investigation found the
+  // Admin Dashboard's "Total Platform Revenue" (reads paid invoices +
+  // paid ground_registrations) silently excluded Study Packs and both
+  // Mock Oral products entirely, because their handlers never wrote an
+  // invoices row at all. Static source checks that each handler writes
+  // one, tagged with the right `product`, and with its own
+  // stripe_session_id so a retry can never double-count it.
+  function extractInvoicesInsertsIn(body) {
+    const inserts = []
+    let searchFrom = 0
+    const marker = "from('invoices').insert("
+    while (true) {
+      const idx = body.indexOf(marker, searchFrom)
+      if (idx === -1) break
+      const braceOpen = body.indexOf('{', idx)
+      const braceClose = findMatchingBrace(body, braceOpen)
+      inserts.push(body.slice(braceOpen, braceClose + 1))
+      searchFrom = braceClose + 1
+    }
+    return inserts
+  }
+
+  it.each([
+    ['handleUnlockStudyPack', 'study_pack'],
+    ['handleMockOralBooking', 'mock_oral'],
+    ['handleMockOralBookingV2', 'mock_oral_v2'],
+    ['handleJoinMembership', 'membership'],
+  ])('%s writes an invoices row tagged product: %s, with its own stripe_session_id', (handlerName, product) => {
+    const body = extractHandler(handlerName)
+    const inserts = extractInvoicesInsertsIn(body)
+    expect(inserts.length, `${handlerName} should write exactly one invoices row`).toBe(1)
+    expect(inserts[0]).toContain(`product: '${product}'`)
+    expect(inserts[0]).toContain('stripe_session_id: session.id')
+  })
+
+  it('handleJoinMembership guards its invoices insert with its own stripe_session_id conflict check -- member_subscriptions.upsert() does not protect it', () => {
+    const body = extractHandler('handleJoinMembership')
+    // Unlike every other handler here, member_subscriptions is upserted
+    // on stripe_subscription_id, which a retry of the SAME checkout
+    // session reaches again without error -- so this invoices insert is
+    // the only thing standing between a retry and a double-counted sale.
+    const insertIdx = body.indexOf("from('invoices').insert(")
+    expect(insertIdx).toBeGreaterThan(-1)
+    const after = body.slice(insertIdx)
+    expect(after).toContain("invoiceError.code === '23505'")
+    expect(after).toContain("invoiceError.message?.includes('stripe_session_id')")
+  })
+
+  it('every other invoices-writing handler relies on an earlier guard, not a 23505 check of its own, to stay idempotent on retry', () => {
+    // handleUnlockCheckridePrep/handleUnlockStudyPack/handleMockOralBooking/
+    // handleMockOralBookingV2/handleUnlockGroundSchoolPack/
+    // handleUpgradeGroundSchoolPack all return early (see the tests above)
+    // before ever reaching their own invoices.insert() on a genuine retry
+    // -- confirms none of them accidentally need the same explicit guard
+    // handleJoinMembership does, which would be a sign the early-return
+    // ordering regressed.
+    ;['handleUnlockStudyPack', 'handleMockOralBooking', 'handleMockOralBookingV2'].forEach((name) => {
+      const body = extractHandler(name)
+      const insertIdx = body.indexOf("from('invoices').insert(")
+      const earlyReturnIdx = body.indexOf("if (insertError.code === '23505'")
+      const existingCheckIdx = body.indexOf('if (existingBooking) return')
+      const guardIdx = earlyReturnIdx !== -1 ? earlyReturnIdx : existingCheckIdx
+      expect(guardIdx, `${name} should have an early-fulfilled guard before its invoices insert`).toBeGreaterThan(-1)
+      expect(guardIdx).toBeLessThan(insertIdx)
+    })
+  })
 })

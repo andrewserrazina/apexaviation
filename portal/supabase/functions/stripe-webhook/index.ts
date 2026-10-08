@@ -236,6 +236,8 @@ async function handleUnlockCheckridePrep(supabase: any, session: Stripe.Checkout
     description: 'Apex Advantage Checkride Prep Unlock' + tierSuffix,
     amount_cents: amountCents,
     status: 'paid',
+    product: 'checkride_prep',
+    stripe_session_id: session.id,
   })
 
   // Conversion event for the Phase 5 admin analytics dashboard. Logged
@@ -337,6 +339,26 @@ async function handleUnlockStudyPack(supabase: any, session: Stripe.Checkout.Ses
     throw insertError
   }
 
+  // Financial Reporting Accuracy fix (v153) -- Study Pack revenue had no
+  // server-side record anywhere except study_pack_entitlements.amount_cents
+  // (visible only in the admin Study Packs panel's own per-pack total,
+  // never in "Total Platform Revenue" or the Marketing & Funnel Revenue
+  // dashboard, both of which read/aggregate from invoices). This mirrors
+  // every other purchase handler in this file: one invoices row per real
+  // sale, tagged with product + stripe_session_id so it can't double-count
+  // on a retry (study_pack_entitlements' own stripe_session_id guard above
+  // already prevents this code from being reached twice for the same
+  // session, but the column exists for the same traceability every other
+  // product's invoice row has).
+  await supabase.from('invoices').insert({
+    student_id: profileId,
+    description: `Apex Advantage Study Pack — ${packName}`,
+    amount_cents: amountCents,
+    status: 'paid',
+    product: 'study_pack',
+    stripe_session_id: session.id,
+  })
+
   if (email) {
     await sendEmail(supabase, email, `You're in — ${packName}`,
       template(`
@@ -432,6 +454,8 @@ async function handleUpgradeGroundSchoolPack(supabase: any, session: Stripe.Chec
     description: 'Apex Advantage Private Pilot Ground School — Upgrade to Full Course',
     amount_cents: amountCents,
     status: 'paid',
+    product: 'ground_school_pack_upgrade',
+    stripe_session_id: session.id,
   })
 
   await supabase.from('portal_events').insert({
@@ -514,6 +538,8 @@ async function handleUnlockGroundSchoolPack(supabase: any, session: Stripe.Check
     description: 'Apex Advantage Private Pilot Ground School — Full Course',
     amount_cents: amountCents,
     status: 'paid',
+    product: 'ground_school_pack',
+    stripe_session_id: session.id,
   })
 
   await supabase.from('portal_events').insert({
@@ -818,6 +844,19 @@ async function handleMockOralBooking(supabase: any, session: Stripe.Checkout.Ses
     throw insertError
   }
 
+  // Financial Reporting Accuracy fix (v153) -- same gap as Study Packs:
+  // mock_oral_requests.amount_cents was never mirrored into invoices, so
+  // this product's revenue was invisible to both "Total Platform Revenue"
+  // (admin dashboard) and the Marketing & Funnel Revenue dashboard.
+  await supabase.from('invoices').insert({
+    student_id: profileId,
+    description: '60-Minute Mock Oral',
+    amount_cents: amountCents,
+    status: 'paid',
+    product: 'mock_oral',
+    stripe_session_id: session.id,
+  })
+
   await sendEmail(supabase, email, "You're booked — 60-Minute Mock Oral",
     template(`
       <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Thanks, ${fullName.split(' ')[0]}!</h2>
@@ -930,6 +969,19 @@ async function handleMockOralBookingV2(supabase: any, session: Stripe.Checkout.S
     throw bookingError
   }
 
+  // Financial Reporting Accuracy fix (v153) -- same gap as the legacy Mock
+  // Oral/Study Pack products: mock_oral_bookings.amount_cents was never
+  // mirrored into invoices, so this product's revenue was invisible to
+  // both "Total Platform Revenue" and the Marketing & Funnel dashboard.
+  await supabase.from('invoices').insert({
+    student_id: profileId,
+    description: 'Apex Advantage Mock Oral (Private Pilot)',
+    amount_cents: amountCents,
+    status: 'paid',
+    product: 'mock_oral_v2',
+    stripe_session_id: session.id,
+  })
+
   const when = new Date(`${claimedSlot.class_date}T${claimedSlot.start_time}`).toLocaleString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit',
   })
@@ -969,6 +1021,7 @@ async function handleJoinMembership(supabase: any, session: Stripe.Checkout.Sess
 
   const subscription = await stripe.subscriptions.retrieve(session.subscription as string)
   const price = subscription.items.data[0]?.price
+  const amountCents = session.amount_total ?? price?.unit_amount ?? 0
 
   const { error: subError } = await supabase.from('member_subscriptions').upsert({
     profile_id: profileId,
@@ -984,6 +1037,29 @@ async function handleJoinMembership(supabase: any, session: Stripe.Checkout.Sess
     updated_at: new Date().toISOString(),
   }, { onConflict: 'stripe_subscription_id' })
   if (subError) console.error('stripe-webhook: member_subscriptions upsert failed', subError)
+
+  // Financial Reporting Accuracy fix (v153) -- membership revenue (new
+  // signup charge) had NO server-side dollar record anywhere -- not in
+  // invoices, not in member_subscriptions (which only tracks status/
+  // period dates, never an amount). Unlike every other purpose handler in
+  // this file, member_subscriptions.upsert() above is keyed on
+  // stripe_subscription_id, not stripe_session_id, and genuinely does not
+  // protect against a retry of this same checkout.session.completed event
+  // re-running this far -- so, uniquely among the invoices.insert() calls
+  // in this file, this one needs its own stripe_session_id conflict check
+  // rather than relying on an earlier table's guard to prevent ever
+  // reaching it twice.
+  const { error: invoiceError } = await supabase.from('invoices').insert({
+    student_id: profileId,
+    description: `Apex Advantage Membership — ${tier} (new)`,
+    amount_cents: amountCents,
+    status: 'paid',
+    product: 'membership',
+    stripe_session_id: session.id,
+  })
+  if (invoiceError && !(invoiceError.code === '23505' && invoiceError.message?.includes('stripe_session_id'))) {
+    console.error('stripe-webhook: membership invoice insert failed', invoiceError)
+  }
 
   const email = session.customer_details?.email || session.customer_email
   if (email) {
