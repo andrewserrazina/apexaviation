@@ -18,6 +18,7 @@ import path from 'node:path'
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const source = readFileSync(path.join(REPO_ROOT, 'site/portal-stable.js'), 'utf8')
 const seedSql = readFileSync(path.join(REPO_ROOT, 'portal/supabase-portal-schema-v150-checkride-binder-content-seed.sql'), 'utf8')
+const trackerIdMigrationSql = readFileSync(path.join(REPO_ROOT, 'portal/supabase-portal-schema-v154-checkride-binder-tracker-block-isolation.sql'), 'utf8')
 
 function findMatchingBrace(str, openIdx) {
   let depth = 0
@@ -170,6 +171,107 @@ describe('Client wiring: renderer dispatch, persistence calls, and event names',
   })
 })
 
+// Tracker Block Isolation Fix (v154) -- cbRenderTracker and
+// cbIsFirstTrackerBlockInSection both close over the module-level
+// checkrideBinderState, same shim pattern as makeComputeSectionProgress
+// above. cbEsc is stubbed as a plain passthrough (its own escaping
+// behavior is unrelated to what's under test here -- row membership).
+function makeTrackerRenderer() {
+  const checkrideBinderState = { content: {}, trackerEntries: {} }
+
+  const isFirstMarker = 'function cbIsFirstTrackerBlockInSection(sectionId, blockIndex) {'
+  const isFirstStart = source.indexOf(isFirstMarker)
+  expect(isFirstStart, 'cbIsFirstTrackerBlockInSection not found').toBeGreaterThan(-1)
+  const isFirstBraceOpen = isFirstStart + isFirstMarker.length - 1
+  const isFirstBraceClose = findMatchingBrace(source, isFirstBraceOpen)
+  const isFirstBody = source.slice(isFirstBraceOpen + 1, isFirstBraceClose)
+  // eslint-disable-next-line no-new-func
+  const cbIsFirstTrackerBlockInSection = new Function('checkrideBinderState', 'sectionId', 'blockIndex', isFirstBody)
+    .bind(null, checkrideBinderState)
+
+  const renderMarker = 'function cbRenderTracker(block, sectionId, blockIndex) {'
+  const renderStart = source.indexOf(renderMarker)
+  expect(renderStart, 'cbRenderTracker not found').toBeGreaterThan(-1)
+  const renderBraceOpen = renderStart + renderMarker.length - 1
+  const renderBraceClose = findMatchingBrace(source, renderBraceOpen)
+  const renderBody = source.slice(renderBraceOpen + 1, renderBraceClose)
+  const cbEsc = (s) => (s == null ? '' : String(s))
+  // eslint-disable-next-line no-new-func
+  const cbRenderTracker = new Function(
+    'checkrideBinderState', 'cbIsFirstTrackerBlockInSection', 'cbEsc', 'block', 'sectionId', 'blockIndex', renderBody
+  ).bind(null, checkrideBinderState, cbIsFirstTrackerBlockInSection, cbEsc)
+
+  return { checkrideBinderState, cbRenderTracker }
+}
+
+describe('Tracker Block Isolation Fix (v154): multi-tracker sections never bleed rows into each other', () => {
+  // Real shape, trimmed: endorsements-experience has 5 tracker blocks in
+  // production; 2 is enough to prove isolation.
+  function twoTrackerSection() {
+    return {
+      blocks: [
+        { type: 'tracker', id: 'endorsement-tracker', title: 'Endorsement Tracker', entryLabel: 'Endorsement', columns: [{ id: 'purpose', label: 'Purpose' }] },
+        { type: 'tracker', id: 'missing-item-action-plan', title: 'Missing-Item Action Plan', entryLabel: 'Missing item', columns: [{ id: 'item', label: 'Item' }] }
+      ]
+    }
+  }
+
+  it('each tracker block only renders rows tagged with its own block_key', () => {
+    const { checkrideBinderState, cbRenderTracker } = makeTrackerRenderer()
+    const sectionId = 'endorsements-experience'
+    checkrideBinderState.content[sectionId] = twoTrackerSection()
+    checkrideBinderState.trackerEntries[sectionId] = [
+      { id: 'row-a', block_key: 'endorsement-tracker', fields: { purpose: 'Solo endorsement' } },
+      { id: 'row-b', block_key: 'missing-item-action-plan', fields: { item: 'Missing logbook entry' } }
+    ]
+
+    const endorsementHtml = cbRenderTracker(checkrideBinderState.content[sectionId].blocks[0], sectionId, 0)
+    const actionPlanHtml = cbRenderTracker(checkrideBinderState.content[sectionId].blocks[1], sectionId, 1)
+
+    expect(endorsementHtml).toContain('Solo endorsement')
+    expect(endorsementHtml).not.toContain('Missing logbook entry')
+    expect(actionPlanHtml).toContain('Missing logbook entry')
+    expect(actionPlanHtml).not.toContain('Solo endorsement')
+  })
+
+  it('a legacy row with no block_key (written before the column existed) renders under the section\'s FIRST tracker block only, never duplicated into every tracker -- this is the exact bug that shipped', () => {
+    const { checkrideBinderState, cbRenderTracker } = makeTrackerRenderer()
+    const sectionId = 'endorsements-experience'
+    checkrideBinderState.content[sectionId] = twoTrackerSection()
+    checkrideBinderState.trackerEntries[sectionId] = [
+      { id: 'legacy-row', block_key: null, fields: { purpose: 'Pre-migration endorsement' } }
+    ]
+
+    const endorsementHtml = cbRenderTracker(checkrideBinderState.content[sectionId].blocks[0], sectionId, 0)
+    const actionPlanHtml = cbRenderTracker(checkrideBinderState.content[sectionId].blocks[1], sectionId, 1)
+
+    expect(endorsementHtml).toContain('Pre-migration endorsement')
+    expect(actionPlanHtml).not.toContain('Pre-migration endorsement')
+  })
+
+  it('removing one block\'s row leaves the other tracker\'s rows completely untouched', () => {
+    const { checkrideBinderState, cbRenderTracker } = makeTrackerRenderer()
+    const sectionId = 'endorsements-experience'
+    checkrideBinderState.content[sectionId] = twoTrackerSection()
+    checkrideBinderState.trackerEntries[sectionId] = [
+      { id: 'row-a', block_key: 'endorsement-tracker', fields: { purpose: 'Solo endorsement' } },
+      { id: 'row-b', block_key: 'missing-item-action-plan', fields: { item: 'Missing logbook entry' } }
+    ]
+
+    // Simulates cbDeleteTrackerRow('endorsements-experience', 'row-a')'s
+    // own local-state filter -- the real function's delete-by-id is
+    // already correctly scoped; what was broken was ever showing row-a
+    // in the OTHER table to begin with.
+    checkrideBinderState.trackerEntries[sectionId] = checkrideBinderState.trackerEntries[sectionId].filter((r) => r.id !== 'row-a')
+
+    const endorsementHtml = cbRenderTracker(checkrideBinderState.content[sectionId].blocks[0], sectionId, 0)
+    const actionPlanHtml = cbRenderTracker(checkrideBinderState.content[sectionId].blocks[1], sectionId, 1)
+
+    expect(endorsementHtml).not.toContain('Solo endorsement')
+    expect(actionPlanHtml).toContain('Missing logbook entry')
+  })
+})
+
 describe('Seeded content (v150 migration): data integrity', () => {
   const MASTER_20 = [
     'start-here', 'binder-setup', 'applicant-documents', 'iacra-application', 'knowledge-test-report',
@@ -242,6 +344,40 @@ describe('Seeded content (v150 migration): data integrity', () => {
       expect(section.title, sectionId).toBeTruthy()
       for (const block of section.blocks || []) {
         expect(block.type, `${sectionId}: block missing type`).toBeTruthy()
+      }
+    }
+  })
+
+  // Tracker Block Isolation Fix (v154) -- every tracker block needs a
+  // stable id so checkride_binder_tracker_entries.block_key can tell rows
+  // belonging to different trackers in the same section apart (see
+  // cbRenderTracker's own tests above). The v154 migration's id_map is
+  // parsed back out of its SQL VALUES list (not hand-copied) so this test
+  // fails the moment a future content edit adds/renames a tracker block
+  // without updating the migration that tags it -- exactly the class of
+  // bug that shipped (no tooling ever enforced this pairing before).
+  function extractTrackerIdMap() {
+    const re = /\('([^']*)',\s*'((?:[^']|'')*)',\s*'([^']*)'\)/g
+    const map = {}
+    let match
+    while ((match = re.exec(trackerIdMigrationSql)) !== null) {
+      const [, sectionId, title, newId] = match
+      if (!map[sectionId]) map[sectionId] = {}
+      map[sectionId][title.replace(/''/g, "'")] = newId
+    }
+    return map
+  }
+
+  it('every tracker block in every section has a mapped id in the v154 migration, and ids are unique within their section', () => {
+    const idMap = extractTrackerIdMap()
+    for (const [sectionId, section] of Object.entries(sections)) {
+      const seenIds = new Set()
+      for (const block of section.blocks || []) {
+        if (block.type !== 'tracker') continue
+        const mapped = idMap[sectionId] && idMap[sectionId][block.title]
+        expect(mapped, `tracker "${block.title}" in section "${sectionId}" has no entry in v154's id_map -- add one, or block_key can't distinguish its rows from any other tracker in this section`).toBeTruthy()
+        expect(seenIds.has(mapped), `duplicate tracker id "${mapped}" within section "${sectionId}"`).toBe(false)
+        seenIds.add(mapped)
       }
     }
   })

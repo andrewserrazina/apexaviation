@@ -10398,7 +10398,7 @@
         headers: { Authorization: 'Bearer ' + accessToken }
       }),
       apexSupabase.from('checkride_binder_responses').select('section_id, prompt_id, response_text').eq('profile_id', member.id),
-      apexSupabase.from('checkride_binder_tracker_entries').select('id, section_id, sort_order, fields').eq('profile_id', member.id).order('sort_order')
+      apexSupabase.from('checkride_binder_tracker_entries').select('id, section_id, block_key, sort_order, fields').eq('profile_id', member.id).order('sort_order')
     ]).then(function (results) {
       var contentRes = results[0];
       if (contentRes.error || !contentRes.data) {
@@ -10507,11 +10507,11 @@
     });
   }
 
-  function cbAddTrackerRow(sectionId, fields) {
+  function cbAddTrackerRow(sectionId, blockKey, fields) {
     var sortOrder = (checkrideBinderState.trackerEntries[sectionId] || []).length;
     return apexSupabase.from('checkride_binder_tracker_entries').insert({
-      profile_id: member.id, section_id: sectionId, sort_order: sortOrder, fields: fields || {}
-    }).select('id, section_id, sort_order, fields').single().then(function (res) {
+      profile_id: member.id, section_id: sectionId, block_key: blockKey, sort_order: sortOrder, fields: fields || {}
+    }).select('id, section_id, block_key, sort_order, fields').single().then(function (res) {
       if (res.error) { console.error('checkride binder: add tracker row failed', res.error); return null; }
       if (!checkrideBinderState.trackerEntries[sectionId]) checkrideBinderState.trackerEntries[sectionId] = [];
       checkrideBinderState.trackerEntries[sectionId].push(res.data);
@@ -10652,8 +10652,30 @@
     '</div>';
   }
 
+  // Tracker Block Isolation Fix (v154) -- several sections have more than
+  // one tracker block (endorsements-experience has 5), and rows are only
+  // ever fetched/stored keyed by (profile_id, section_id) -- block_key is
+  // what distinguishes rows belonging to THIS tracker from every other
+  // tracker in the same section. A row written before block_key existed
+  // has it NULL; those are only ever shown under the section's first
+  // tracker block (matching where they'd have appeared before this fix),
+  // never duplicated into every tracker the way the original bug did.
+  function cbIsFirstTrackerBlockInSection(sectionId, blockIndex) {
+    var content = checkrideBinderState.content[sectionId];
+    var blocks = (content && content.blocks) || [];
+    for (var i = 0; i < blockIndex; i++) {
+      if (blocks[i] && blocks[i].type === 'tracker') return false;
+    }
+    return true;
+  }
+
   function cbRenderTracker(block, sectionId, blockIndex) {
-    var rows = (checkrideBinderState.trackerEntries[sectionId] || []);
+    var blockKey = block.id || null;
+    var showLegacyNullRows = cbIsFirstTrackerBlockInSection(sectionId, blockIndex);
+    var rows = (checkrideBinderState.trackerEntries[sectionId] || []).filter(function (row) {
+      if (blockKey && row.block_key === blockKey) return true;
+      return !row.block_key && showLegacyNullRows;
+    });
     var cells = rows.map(function (row) {
       var colCells = block.columns.map(function (col) {
         var val = (row.fields && row.fields[col.id]) || '';
@@ -10672,7 +10694,7 @@
     return '<div class="portal-card" style="margin-bottom:14px" data-cb-tracker-block data-section-id="' + cbEsc(sectionId) + '" data-block-index="' + blockIndex + '">' +
       (block.title ? '<h3 style="color:#fff;font-size:14.5px;font-weight:700;margin-bottom:10px">' + cbEsc(block.title) + '</h3>' : '') +
       '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">' + header + cells + '</table></div>' +
-      '<button type="button" class="btn btn--ghost" data-cb-tracker-add data-section-id="' + cbEsc(sectionId) + '" style="margin-top:10px;padding:8px 16px;font-size:13px">+ Add ' + cbEsc(block.entryLabel || 'row') + '</button>' +
+      '<button type="button" class="btn btn--ghost" data-cb-tracker-add data-section-id="' + cbEsc(sectionId) + '" data-block-key="' + cbEsc(blockKey || '') + '" style="margin-top:10px;padding:8px 16px;font-size:13px">+ Add ' + cbEsc(block.entryLabel || 'row') + '</button>' +
     '</div>';
   }
 
@@ -10700,14 +10722,23 @@
     var seedOps = [];
     (content.blocks || []).forEach(function (block) {
       if (block.type !== 'tracker' || !block.seedRows || !block.seedRows.length) return;
-      var existing = checkrideBinderState.trackerEntries[sectionId] || [];
+      var blockKey = block.id || null;
+      // Tracker Block Isolation Fix (v154) -- this used to check whether
+      // the whole SECTION had any tracker rows at all before seeding,
+      // so a section with a second, unrelated tracker block that already
+      // had rows (e.g. a manually-added "Calculation Workspace" entry)
+      // would silently skip ever seeding "Loading Inputs" for that
+      // member. Scoped to this block's own rows instead.
+      var existing = (checkrideBinderState.trackerEntries[sectionId] || []).filter(function (r) {
+        return blockKey ? r.block_key === blockKey : !r.block_key;
+      });
       if (existing.length) return;
       block.seedRows.forEach(function (seed) {
         var fields = {};
         var firstColId = block.columns[0] && block.columns[0].id;
         var seedValue = seed.item || seed.scenario || '';
         if (firstColId && seedValue) fields[firstColId] = seedValue;
-        seedOps.push(cbAddTrackerRow(sectionId, fields));
+        seedOps.push(cbAddTrackerRow(sectionId, blockKey, fields));
       });
     });
     return Promise.all(seedOps);
@@ -10779,7 +10810,7 @@
 
     root.querySelectorAll('[data-cb-tracker-add]').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        cbAddTrackerRow(sectionId, {}).then(function () { renderCheckrideBinderSection(sectionId); });
+        cbAddTrackerRow(sectionId, btn.dataset.blockKey || null, {}).then(function () { renderCheckrideBinderSection(sectionId); });
       });
     });
   }
