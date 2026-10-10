@@ -7,6 +7,10 @@ const mockGetSession = jest.fn()
 const mockOnAuthStateChange = jest.fn()
 const mockSignOut = jest.fn()
 const mockSignInWithPassword = jest.fn()
+const mockSignUp = jest.fn()
+const mockResend = jest.fn()
+const mockResetPasswordForEmail = jest.fn()
+const mockUpdateUser = jest.fn()
 const mockStartAutoRefresh = jest.fn()
 const mockStopAutoRefresh = jest.fn()
 
@@ -17,6 +21,10 @@ jest.mock('../lib/supabase', () => ({
       onAuthStateChange: (...args: unknown[]) => mockOnAuthStateChange(...args),
       signOut: (...args: unknown[]) => mockSignOut(...args),
       signInWithPassword: (...args: unknown[]) => mockSignInWithPassword(...args),
+      signUp: (...args: unknown[]) => mockSignUp(...args),
+      resend: (...args: unknown[]) => mockResend(...args),
+      resetPasswordForEmail: (...args: unknown[]) => mockResetPasswordForEmail(...args),
+      updateUser: (...args: unknown[]) => mockUpdateUser(...args),
       startAutoRefresh: (...args: unknown[]) => mockStartAutoRefresh(...args),
       stopAutoRefresh: (...args: unknown[]) => mockStopAutoRefresh(...args),
     },
@@ -51,6 +59,10 @@ describe('AuthContext', () => {
     mockOnAuthStateChange.mockReset()
     mockSignOut.mockReset()
     mockSignInWithPassword.mockReset()
+    mockSignUp.mockReset()
+    mockResend.mockReset()
+    mockResetPasswordForEmail.mockReset()
+    mockUpdateUser.mockReset()
     mockStartAutoRefresh.mockReset()
     mockStopAutoRefresh.mockReset()
     mockOnAuthStateChange.mockReturnValue({ data: { subscription: { unsubscribe: jest.fn() } } })
@@ -151,6 +163,283 @@ describe('AuthContext', () => {
       signInResult = await result.current.signIn('pilot@example.com', 'wrong')
     })
     expect(signInResult).toEqual({ ok: false, message: 'That email or password is incorrect.' })
+  })
+
+  describe('signUp', () => {
+    it('succeeds and reports needsVerification when no session comes back ("Confirm email" is ON)', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+      mockSignUp.mockResolvedValue({ data: { user: { id: 'u1', identities: [{ id: 'identity-1' }] }, session: null }, error: null })
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.loading).toBe(false))
+
+      let signUpResult
+      await act(async () => {
+        signUpResult = await result.current.signUp('new@example.com', 'abc123')
+      })
+      expect(signUpResult).toEqual({ ok: true, needsVerification: true })
+      expect(mockSignUp).toHaveBeenCalledWith({
+        email: 'new@example.com',
+        password: 'abc123',
+        options: { emailRedirectTo: 'https://apexaviationtx.com/mobile-auth-redirect.html?type=signup' },
+      })
+    })
+
+    it('succeeds and reports no verification needed when a session comes back immediately ("Confirm email" is OFF)', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+      mockSignUp.mockResolvedValue({ data: { user: { id: 'u1', identities: [{ id: 'identity-1' }] }, session: FAKE_SESSION }, error: null })
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.loading).toBe(false))
+
+      let signUpResult
+      await act(async () => {
+        signUpResult = await result.current.signUp('new@example.com', 'abc123')
+      })
+      expect(signUpResult).toEqual({ ok: true, needsVerification: false })
+    })
+
+    it('surfaces a safe, non-enumerating message when the error shape signals an existing account', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+      mockSignUp.mockResolvedValue({ data: { user: null, session: null }, error: { code: 'user_already_exists', message: 'User already registered' } })
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.loading).toBe(false))
+
+      let signUpResult
+      await act(async () => {
+        signUpResult = await result.current.signUp('existing@example.com', 'abc123')
+      })
+      expect(signUpResult).toEqual({ ok: false, message: 'An account with this email already exists. Try signing in instead.' })
+    })
+
+    it('surfaces the same safe existing-account message via the empty-identities success shape', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+      mockSignUp.mockResolvedValue({ data: { user: { id: 'u1', identities: [] }, session: null }, error: null })
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.loading).toBe(false))
+
+      let signUpResult
+      await act(async () => {
+        signUpResult = await result.current.signUp('existing@example.com', 'abc123')
+      })
+      expect(signUpResult).toEqual({ ok: false, message: 'An account with this email already exists. Try signing in instead.' })
+    })
+
+    it('surfaces Supabase’s own weak-password message as-is', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+      mockSignUp.mockResolvedValue({ data: { user: null, session: null }, error: { message: 'Password should be at least 6 characters.' } })
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.loading).toBe(false))
+
+      let signUpResult
+      await act(async () => {
+        signUpResult = await result.current.signUp('new@example.com', 'ab')
+      })
+      expect(signUpResult).toEqual({ ok: false, message: 'Password should be at least 6 characters.' })
+    })
+
+    it('surfaces a generic message for an unrelated returned error, never the raw text', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+      mockSignUp.mockResolvedValue({ data: { user: null, session: null }, error: { message: 'relation "auth.users" does not exist' } })
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.loading).toBe(false))
+
+      let signUpResult
+      await act(async () => {
+        signUpResult = await result.current.signUp('new@example.com', 'abc123')
+      })
+      expect(signUpResult).toEqual({ ok: false, message: 'We couldn’t create your account. Check your connection and try again.' })
+    })
+
+    // Matches signIn's own established convention for modeling a network
+    // failure (see "does not sign out or discard the session on a
+    // transient/network error" above) -- supabase-js's auth methods
+    // never throw for a connectivity failure, they resolve with an
+    // AuthRetryableFetchError.
+    it('surfaces the same generic, safe message on a network failure', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+      mockSignUp.mockResolvedValue({
+        data: { user: null, session: null },
+        error: { name: 'AuthRetryableFetchError', message: 'Network request failed' },
+      })
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.loading).toBe(false))
+
+      let signUpResult
+      await act(async () => {
+        signUpResult = await result.current.signUp('new@example.com', 'abc123')
+      })
+      expect(signUpResult).toEqual({ ok: false, message: 'We couldn’t create your account. Check your connection and try again.' })
+    })
+  })
+
+  describe('resendVerificationEmail', () => {
+    it('reports ok:true on success', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+      mockResend.mockResolvedValue({ error: null })
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.loading).toBe(false))
+
+      let resendResult
+      await act(async () => {
+        resendResult = await result.current.resendVerificationEmail('new@example.com')
+      })
+      expect(resendResult).toEqual({ ok: true })
+      expect(mockResend).toHaveBeenCalledWith({
+        type: 'signup',
+        email: 'new@example.com',
+        options: { emailRedirectTo: 'https://apexaviationtx.com/mobile-auth-redirect.html?type=signup' },
+      })
+    })
+
+    it('surfaces a friendly cooldown message on rate limiting', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+      mockResend.mockResolvedValue({ error: { status: 429, message: 'For security purposes, you can only request this after 42 seconds.' } })
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.loading).toBe(false))
+
+      let resendResult
+      await act(async () => {
+        resendResult = await result.current.resendVerificationEmail('new@example.com')
+      })
+      expect(resendResult).toEqual({ ok: false, message: 'Please wait a bit before requesting another email.' })
+    })
+  })
+
+  describe('requestPasswordReset', () => {
+    it('reports ok:true regardless of whether the email has an account (never reveals existence)', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+      mockResetPasswordForEmail.mockResolvedValue({ error: null })
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.loading).toBe(false))
+
+      let resetResult
+      await act(async () => {
+        resetResult = await result.current.requestPasswordReset('whoever@example.com')
+      })
+      expect(resetResult).toEqual({ ok: true })
+      expect(mockResetPasswordForEmail).toHaveBeenCalledWith('whoever@example.com', {
+        redirectTo: 'https://apexaviationtx.com/mobile-auth-redirect.html?type=recovery',
+      })
+    })
+
+    it('still reports ok:true when the request throws outright (never a distinguishable response shape)', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+      mockResetPasswordForEmail.mockRejectedValue(new Error('Network request failed'))
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.loading).toBe(false))
+
+      let resetResult
+      await act(async () => {
+        resetResult = await result.current.requestPasswordReset('whoever@example.com')
+      })
+      expect(resetResult).toEqual({ ok: true })
+    })
+
+    it('surfaces a friendly cooldown message on rate limiting -- the one response shape allowed to differ', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+      mockResetPasswordForEmail.mockResolvedValue({ error: { status: 429, message: 'For security purposes, you can only request this after 42 seconds.' } })
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.loading).toBe(false))
+
+      let resetResult
+      await act(async () => {
+        resetResult = await result.current.requestPasswordReset('whoever@example.com')
+      })
+      expect(resetResult).toEqual({ ok: false, message: 'Please wait a bit before requesting another reset email.' })
+    })
+  })
+
+  describe('password recovery session handling', () => {
+    it('isPasswordRecovery becomes true when a PASSWORD_RECOVERY auth event fires', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.loading).toBe(false))
+      expect(result.current.isPasswordRecovery).toBe(false)
+
+      const onAuthStateChangeCallback = mockOnAuthStateChange.mock.calls[0][0] as (event: string, session: unknown) => void
+      await act(async () => {
+        onAuthStateChangeCallback('PASSWORD_RECOVERY', FAKE_SESSION)
+      })
+
+      expect(result.current.isPasswordRecovery).toBe(true)
+      expect(result.current.session).toEqual(FAKE_SESSION)
+    })
+
+    it('updatePassword succeeds and clears isPasswordRecovery', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+      mockUpdateUser.mockResolvedValue({ error: null })
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.loading).toBe(false))
+
+      const onAuthStateChangeCallback = mockOnAuthStateChange.mock.calls[0][0] as (event: string, session: unknown) => void
+      await act(async () => {
+        onAuthStateChangeCallback('PASSWORD_RECOVERY', FAKE_SESSION)
+      })
+      expect(result.current.isPasswordRecovery).toBe(true)
+
+      let updateResult
+      await act(async () => {
+        updateResult = await result.current.updatePassword('new-strong-password')
+      })
+      expect(updateResult).toEqual({ ok: true })
+      expect(mockUpdateUser).toHaveBeenCalledWith({ password: 'new-strong-password' })
+      expect(result.current.isPasswordRecovery).toBe(false)
+    })
+
+    it('updatePassword surfaces Supabase’s own weak-password message and leaves isPasswordRecovery true', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+      mockUpdateUser.mockResolvedValue({ error: { message: 'Password should be at least 6 characters.' } })
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.loading).toBe(false))
+
+      const onAuthStateChangeCallback = mockOnAuthStateChange.mock.calls[0][0] as (event: string, session: unknown) => void
+      await act(async () => {
+        onAuthStateChangeCallback('PASSWORD_RECOVERY', FAKE_SESSION)
+      })
+
+      let updateResult
+      await act(async () => {
+        updateResult = await result.current.updatePassword('ab')
+      })
+      expect(updateResult).toEqual({ ok: false, message: 'Password should be at least 6 characters.' })
+      expect(result.current.isPasswordRecovery).toBe(true)
+    })
+
+    it('clearPasswordRecovery signs out locally and clears both session and isPasswordRecovery', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+      mockSignOut.mockResolvedValue({ error: null })
+
+      const { result } = await renderHook(() => useAuth(), { wrapper })
+      await waitFor(() => expect(result.current.loading).toBe(false))
+
+      const onAuthStateChangeCallback = mockOnAuthStateChange.mock.calls[0][0] as (event: string, session: unknown) => void
+      await act(async () => {
+        onAuthStateChangeCallback('PASSWORD_RECOVERY', FAKE_SESSION)
+      })
+      expect(result.current.isPasswordRecovery).toBe(true)
+
+      await act(async () => {
+        await result.current.clearPasswordRecovery()
+      })
+
+      expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' })
+      expect(result.current.isPasswordRecovery).toBe(false)
+      expect(result.current.session).toBeNull()
+    })
   })
 
   // G: sign out clears the session.

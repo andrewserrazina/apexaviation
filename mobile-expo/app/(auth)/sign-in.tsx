@@ -1,16 +1,41 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { KeyboardAvoidingView, Platform, TextInput, View, StyleSheet } from 'react-native'
+import { router, useLocalSearchParams } from 'expo-router'
 import { useAuth } from '../../contexts/AuthContext'
 import { AppText } from '../../components/AppText'
 import { Button } from '../../components/Button'
 import { colors, radii, spacing } from '../../constants/theme'
 
 export default function SignInScreen() {
-  const { signIn } = useAuth()
-  const [email, setEmail] = useState('')
+  const { signIn, authCallbackError, setAuthCallbackError } = useAuth()
+  // Carries the typed email back from Create Account (Delivery
+  // requirement: "Preserve the user's email when returning to the login
+  // screen") -- both sign-up.tsx's own "Back to Sign In" link and its
+  // "an account with this email already exists" error path send the
+  // learner here with ?email= set, matching the web portal's own
+  // backToSignInFromSignup convention (site/portal-login.html).
+  const params = useLocalSearchParams<{ email?: string }>()
+  const [email, setEmail] = useState(params.email ?? '')
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // A deep-link callback (expired/invalid verification or recovery link)
+  // routes here and sets this once -- shown here, then cleared, so it
+  // never reappears on a later, unrelated visit to this screen.
+  useEffect(() => {
+    if (authCallbackError) {
+      // Same established repo-wide pattern as e.g. practice/index.tsx's
+      // own loadActive() effect -- this lint rule flags setState calls
+      // inside effects generally; this one specifically surfaces a
+      // one-shot deep-link error exactly once, which has no other
+      // trigger than "this screen just mounted/received a new value."
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setError(authCallbackError)
+      setAuthCallbackError(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authCallbackError])
 
   async function handleSubmit() {
     if (!email.trim() || !password) {
@@ -79,6 +104,25 @@ export default function SignInScreen() {
           ) : null}
 
           <Button label="Sign In" onPress={handleSubmit} loading={submitting} testID="sign-in-submit" />
+
+          <Button
+            label="Forgot password?"
+            onPress={() => router.push({ pathname: '/(auth)/forgot-password', params: email.trim() ? { email: email.trim() } : undefined })}
+            variant="ghost"
+            testID="sign-in-forgot-password"
+          />
+        </View>
+
+        <View style={styles.footer}>
+          <AppText variant="body" color={colors.mutedText} center>
+            New to Apex Advantage?
+          </AppText>
+          <Button
+            label="Create Free Account"
+            onPress={() => router.push({ pathname: '/(auth)/sign-up', params: email.trim() ? { email: email.trim() } : undefined })}
+            variant="secondary"
+            testID="sign-in-create-account"
+          />
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -90,6 +134,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', padding: spacing.xl, gap: spacing.xxl },
   brand: { gap: spacing.xs },
   form: { gap: spacing.md },
+  footer: { gap: spacing.sm },
   input: {
     marginTop: 6,
     minHeight: 48,

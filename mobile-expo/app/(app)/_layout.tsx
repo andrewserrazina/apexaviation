@@ -13,10 +13,20 @@ import { colors, fonts } from '../../constants/theme'
 // authenticated screen -- rather than inside Home, so the Practice tab
 // can read the same entitlement/loading state without a second bootstrap
 // call of its own (Sprint 1A Rev2 section 2/3).
+//
+// isPasswordRecovery is checked here too, not just in (auth)/_layout.tsx
+// -- a recovery session is a real Supabase session (see that file's own
+// comment), so without this, any route that somehow lands on /(app)
+// while a password-reset link's code has been exchanged but no new
+// password set yet (a slow navigation, a manually-typed deep link, a
+// future bug in useAuthDeepLinks.ts's own router.replace) would render
+// the full authenticated app instead of forcing the new-password step
+// first.
 export default function AppLayout() {
-  const { session, loading } = useAuth()
+  const { session, loading, isPasswordRecovery } = useAuth()
 
   if (loading) return <LoadingState label="Loading Apex Advantage…" />
+  if (isPasswordRecovery) return <Redirect href="/(auth)/reset-password" />
   if (!session) return <Redirect href="/(auth)/sign-in" />
 
   return (

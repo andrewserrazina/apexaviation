@@ -1,4 +1,4 @@
-import { isStaleRefreshTokenError } from '../lib/authErrors'
+import { isStaleRefreshTokenError, isExistingAccountError, isRateLimitError } from '../lib/authErrors'
 
 describe('isStaleRefreshTokenError', () => {
   // C: refresh_token_not_found is recognized as stale.
@@ -32,5 +32,41 @@ describe('isStaleRefreshTokenError', () => {
     expect(isStaleRefreshTokenError(null)).toBe(false)
     expect(isStaleRefreshTokenError(undefined)).toBe(false)
     expect(isStaleRefreshTokenError('a string')).toBe(false)
+  })
+})
+
+describe('isExistingAccountError', () => {
+  it('recognizes user_already_exists by code', () => {
+    expect(isExistingAccountError({ code: 'user_already_exists', message: 'User already registered' })).toBe(true)
+  })
+
+  it('falls back to message text when code is missing', () => {
+    expect(isExistingAccountError({ message: 'User already registered' })).toBe(true)
+  })
+
+  it('does not treat an unrelated error as an existing-account error', () => {
+    expect(isExistingAccountError({ code: 'weak_password', message: 'Password should be at least 6 characters.' })).toBe(false)
+  })
+
+  it('handles null/undefined/non-object input safely', () => {
+    expect(isExistingAccountError(null)).toBe(false)
+    expect(isExistingAccountError(undefined)).toBe(false)
+    expect(isExistingAccountError('a string')).toBe(false)
+  })
+})
+
+describe('isRateLimitError', () => {
+  it('recognizes a 429 status', () => {
+    expect(isRateLimitError({ status: 429, message: 'For security purposes, you can only request this after 42 seconds.' })).toBe(true)
+  })
+
+  it('does not treat a non-429 status as rate limiting', () => {
+    expect(isRateLimitError({ status: 400, message: 'Bad request' })).toBe(false)
+  })
+
+  it('handles null/undefined/non-object input safely', () => {
+    expect(isRateLimitError(null)).toBe(false)
+    expect(isRateLimitError(undefined)).toBe(false)
+    expect(isRateLimitError('a string')).toBe(false)
   })
 })

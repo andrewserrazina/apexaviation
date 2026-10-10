@@ -15,6 +15,7 @@ export interface AuthApiErrorLike {
   name?: string
   code?: string
   message?: string
+  status?: number
 }
 
 // Supabase Auth's documented error codes for a refresh token that can
@@ -37,4 +38,35 @@ export function isStaleRefreshTokenError(error: unknown): boolean {
   if (err.name !== 'AuthApiError') return false
   if (err.code && STALE_REFRESH_TOKEN_CODES.has(err.code)) return true
   return typeof err.message === 'string' && STALE_REFRESH_TOKEN_MESSAGE.test(err.message)
+}
+
+// signUp()'s documented error for an email that's already registered --
+// the same "account already exists" fact the web portal's own
+// create-free-account Edge Function already tells a visitor directly
+// (site/portal-login.html: "An account with this email already exists.
+// Try signing in instead."), so surfacing it here too is matching an
+// established product convention, not a new enumeration risk this
+// codebase didn't already accept. Distinct from the OTHER way Supabase
+// signals this (an empty `identities` array on a successful, error-less
+// response) -- checked separately in AuthContext.signUp, since that case
+// has no error object for this function to inspect at all.
+const EXISTING_ACCOUNT_CODES = new Set(['user_already_exists'])
+const EXISTING_ACCOUNT_MESSAGE = /already registered/i
+
+export function isExistingAccountError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const err = error as AuthApiErrorLike
+  if (err.code && EXISTING_ACCOUNT_CODES.has(err.code)) return true
+  return typeof err.message === 'string' && EXISTING_ACCOUNT_MESSAGE.test(err.message)
+}
+
+// GoTrue's rate limit response (HTTP 429, e.g. "For security purposes,
+// you can only request this after 42 seconds.") for resend()/
+// resetPasswordForEmail() -- surfaced as a distinct, friendly "please
+// wait" message rather than either a raw passthrough or the generic
+// network-failure copy, since neither is accurate here.
+export function isRateLimitError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const err = error as AuthApiErrorLike
+  return err.status === 429
 }

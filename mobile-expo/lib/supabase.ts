@@ -63,9 +63,16 @@ export const supabase = createClient(supabaseUrl || 'https://placeholder.invalid
     autoRefreshToken: true,
     persistSession: true,
     // React Native has no URL bar to parse a magic-link/OAuth redirect
-    // fragment from -- this app doesn't use either flow in Sprint 1A, and
-    // leaving detection on would make supabase-js scan `window.location`,
-    // which doesn't meaningfully exist in this environment.
+    // fragment from -- supabase-js would otherwise scan `window.location`,
+    // which doesn't meaningfully exist in this environment. This app
+    // handles an incoming verification/recovery deep link itself (see
+    // hooks/useAuthDeepLinks.ts) by extracting the `code` param and
+    // calling exchangeCodeForSession() directly, which is exactly what
+    // flowType: 'pkce' below is for -- it's Supabase's own documented
+    // flow for native/mobile apps, generating a short-lived `code` in the
+    // link instead of putting the access/refresh tokens directly in the
+    // URL.
     detectSessionInUrl: false,
+    flowType: 'pkce',
   },
 })
