@@ -9,12 +9,12 @@ import { validateRegistrationForm } from '../../lib/registrationValidation'
 import { colors, radii, spacing } from '../../constants/theme'
 
 // Same URLs/convention as app/(app)/profile.tsx's existing Privacy
-// Policy link. There is no Terms of Service page in this repository yet
-// -- apexaviationtx.com/terms.html must be published before this build
-// can actually satisfy Apple's requirement that this link work; see this
-// Sprint's own report for the full flag. Wiring it to the real,
-// intended path now means nothing else needs to change once that page
-// exists.
+// Policy link. site/terms.html now exists (added in this Sprint) --
+// still flagged in this Sprint's report as needing a legal/business
+// review before this build ships (it describes real, already-published
+// product policies where they exist, and is explicit about the few
+// business decisions -- e.g. a unified cross-product refund window --
+// that were deliberately left out rather than invented).
 const TERMS_OF_SERVICE_URL = 'https://apexaviationtx.com/terms.html'
 const PRIVACY_POLICY_URL = 'https://apexaviationtx.com/privacy.html'
 

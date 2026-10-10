@@ -87,7 +87,7 @@ it('ignores a cold-start URL unrelated to the auth callback (e.g. a notification
 
 it('exchanges a signup callback code and does not force navigation -- the session-redirect already handles it', async () => {
   mockGetInitialURL.mockResolvedValue('apexadvantage://auth-callback?type=signup&code=signup-code')
-  mockExchangeCodeForSession.mockResolvedValue({ error: null })
+  mockExchangeCodeForSession.mockResolvedValue({ data: { redirectType: null }, error: null })
 
   await renderHook(() => useAuthDeepLinks())
   await waitFor(() => expect(mockExchangeCodeForSession).toHaveBeenCalledWith('signup-code'))
@@ -96,15 +96,52 @@ it('exchanges a signup callback code and does not force navigation -- the sessio
   expect(mockSetAuthCallbackError).not.toHaveBeenCalled()
 })
 
-it('exchanges a recovery callback code and routes to the reset-password screen', async () => {
+it('exchanges a recovery callback code and routes to the reset-password screen, using the SDK’s own redirectType', async () => {
   mockGetInitialURL.mockResolvedValue('apexadvantage://auth-callback?type=recovery&code=recovery-code')
-  mockExchangeCodeForSession.mockResolvedValue({ error: null })
+  mockExchangeCodeForSession.mockResolvedValue({ data: { redirectType: 'recovery' }, error: null })
 
   await renderHook(() => useAuthDeepLinks())
   await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/(auth)/reset-password'))
 
   expect(mockExchangeCodeForSession).toHaveBeenCalledWith('recovery-code')
   expect(mockSetAuthCallbackError).not.toHaveBeenCalled()
+})
+
+// Security review finding: the ?type= query param travels through two
+// URL hops (the web bounce page, then this custom-scheme link) and must
+// never be the deciding signal for whether a recovery session gets
+// treated as one -- supabase-js's own redirectType (derived from the
+// locally-stored PKCE record, never from the URL) is authoritative.
+describe('redirectType is the authoritative signal, not the ?type= query param', () => {
+  it('routes to reset-password when the SDK reports redirectType: "recovery", even if the URL said type=signup', async () => {
+    mockGetInitialURL.mockResolvedValue('apexadvantage://auth-callback?type=signup&code=some-code')
+    mockExchangeCodeForSession.mockResolvedValue({ data: { redirectType: 'recovery' }, error: null })
+
+    await renderHook(() => useAuthDeepLinks())
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/(auth)/reset-password'))
+  })
+
+  it('does NOT route to reset-password when the SDK reports a non-recovery redirectType, even if the URL said type=recovery', async () => {
+    // The security-relevant direction: a mis-set or (hypothetically)
+    // tampered ?type=recovery must never force the reset-password
+    // screen for a session the SDK itself did not derive from a
+    // recovery flow.
+    mockGetInitialURL.mockResolvedValue('apexadvantage://auth-callback?type=recovery&code=some-code')
+    mockExchangeCodeForSession.mockResolvedValue({ data: { redirectType: 'signup' }, error: null })
+
+    await renderHook(() => useAuthDeepLinks())
+    await waitFor(() => expect(mockExchangeCodeForSession).toHaveBeenCalled())
+
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the ?type= query param only when the SDK reports no redirectType at all', async () => {
+    mockGetInitialURL.mockResolvedValue('apexadvantage://auth-callback?type=recovery&code=some-code')
+    mockExchangeCodeForSession.mockResolvedValue({ data: { redirectType: null }, error: null })
+
+    await renderHook(() => useAuthDeepLinks())
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/(auth)/reset-password'))
+  })
 })
 
 it('a URL with no code (already-used/expired link) surfaces the expired-link message and returns to sign-in', async () => {
@@ -127,6 +164,26 @@ it('a failed code exchange (expired/already-used) surfaces the same message and 
   expect(mockSetAuthCallbackError).toHaveBeenCalledWith('That link has expired or was already used. Please request a new one.')
 })
 
+// Security review finding: this specific failure (the PKCE code_verifier
+// isn't in this app installation's storage -- see
+// isPkceCodeVerifierMissingError's own comment) is NOT the same thing as
+// an expired/already-used link, and must say so -- the generic message
+// would send someone to request a brand new link when the real fix is
+// "open this on the device you started on."
+it('a code-verifier-missing exchange failure (opened on a different device/app) surfaces a distinct, accurate message', async () => {
+  mockGetInitialURL.mockResolvedValue('apexadvantage://auth-callback?type=recovery&code=some-code')
+  mockExchangeCodeForSession.mockResolvedValue({
+    error: { name: 'AuthPKCECodeVerifierMissingError', code: 'pkce_code_verifier_not_found', message: 'PKCE code verifier not found in storage.' },
+  })
+
+  await renderHook(() => useAuthDeepLinks())
+  await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/(auth)/sign-in'))
+
+  expect(mockSetAuthCallbackError).toHaveBeenCalledWith(
+    'That link needs to be opened on the same device where you started creating your account or requesting a password reset. Please try again from this device.'
+  )
+})
+
 it('a thrown exchange error is handled the same way, never left uncaught', async () => {
   mockGetInitialURL.mockResolvedValue('apexadvantage://auth-callback?type=recovery&code=stale-code')
   mockExchangeCodeForSession.mockRejectedValue(new Error('network down'))
@@ -140,7 +197,7 @@ it('a thrown exchange error is handled the same way, never left uncaught', async
 it('processes the SAME url only once, even if delivered via both getInitialURL and a live url event', async () => {
   const url = 'apexadvantage://auth-callback?type=recovery&code=recovery-code'
   mockGetInitialURL.mockResolvedValue(url)
-  mockExchangeCodeForSession.mockResolvedValue({ error: null })
+  mockExchangeCodeForSession.mockResolvedValue({ data: { redirectType: 'recovery' }, error: null })
 
   await renderHook(() => useAuthDeepLinks())
   await waitFor(() => expect(mockExchangeCodeForSession).toHaveBeenCalledTimes(1))

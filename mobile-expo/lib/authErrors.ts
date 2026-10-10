@@ -50,6 +50,16 @@ export function isStaleRefreshTokenError(error: unknown): boolean {
 // signals this (an empty `identities` array on a successful, error-less
 // response) -- checked separately in AuthContext.signUp, since that case
 // has no error object for this function to inspect at all.
+//
+// Security review (verified against the installed @supabase/auth-js
+// source, GoTrueClient.js's own signUp() doc comment): the obfuscated
+// empty-`identities` response only replaces this error when BOTH
+// "Confirm email" AND "Confirm phone" are enabled project-wide (phone
+// auth isn't used anywhere in this product, so it's very likely OFF) --
+// with phone confirmation off, signUp() against an existing confirmed
+// email returns THIS error regardless of the email-confirmation setting.
+// Both branches are kept (defense in depth), but in practice this is the
+// one that actually fires for this project.
 const EXISTING_ACCOUNT_CODES = new Set(['user_already_exists'])
 const EXISTING_ACCOUNT_MESSAGE = /already registered/i
 
@@ -69,4 +79,32 @@ export function isRateLimitError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false
   const err = error as AuthApiErrorLike
   return err.status === 429
+}
+
+// Security review finding: exchangeCodeForSession()'s single most
+// common real-world failure is NOT an expired/already-used link -- it's
+// opening the link on a different device/app installation than the one
+// that started signUp()/resetPasswordForEmail(). PKCE's whole security
+// property is that the code_verifier it generated at that moment never
+// leaves the device (stored in this app's own SecureStore, see
+// lib/largeSecureStore.ts); exchanging the code requires sending that
+// SAME verifier back, which simply isn't there on a second device/app
+// instance. Verified directly against the installed @supabase/auth-js
+// source (GoTrueClient.js's _exchangeCodeForSession, lib/errors.ts) --
+// this throws AuthPKCECodeVerifierMissingError (name
+// 'AuthPKCECodeVerifierMissingError', code 'pkce_code_verifier_not_found'),
+// which IS an AuthError and so comes back as a normal `{ error }` result,
+// never an uncaught throw. Telling the learner "that link expired" for
+// THIS specific cause would be actively wrong -- the link is fine, it
+// just needs to be opened on the device/app where registration or the
+// reset request actually started.
+const PKCE_VERIFIER_MISSING_CODES = new Set(['pkce_code_verifier_not_found'])
+const PKCE_VERIFIER_MISSING_MESSAGE = /code verifier/i
+
+export function isPkceCodeVerifierMissingError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const err = error as AuthApiErrorLike
+  if (err.code && PKCE_VERIFIER_MISSING_CODES.has(err.code)) return true
+  if (err.name === 'AuthPKCECodeVerifierMissingError') return true
+  return typeof err.message === 'string' && PKCE_VERIFIER_MISSING_MESSAGE.test(err.message)
 }

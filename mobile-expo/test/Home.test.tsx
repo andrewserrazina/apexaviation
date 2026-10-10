@@ -249,17 +249,81 @@ describe('HomeScreen', () => {
     })
   })
 
-  // Rev2 section 3: the locked state has no purchase/web steering.
-  it('renders a neutral locked state with no URL, browser, or purchase language when unentitled', async () => {
-    mockUseBootstrapContext.mockReturnValue(
-      bootstrapContextFixture({ data: bootstrapFixture({ access: { checkride_prep: false, ground_school_pack: false, study_pack_entitlements: [] } }), entitled: false })
-    )
-    mockUseHomeDrill.mockReturnValue(homeDrillFixture())
+  // Priority 3 (free student experience): a free account's Home used to
+  // be a single-message dead end (LockedState) -- it now shows a real,
+  // useful dashboard instead. The Checkride Prep teaser specifically
+  // must still carry zero purchase/checkout/price/URL language (Rev2
+  // section 3's original compliance bar for this exact wall, preserved
+  // even though it's no longer the WHOLE screen) -- Apple's anti-
+  // steering rules are about directing someone to pay outside IAP for
+  // content that should be sold through it, which is a different thing
+  // from the free Readiness Assessment link this screen does show.
+  describe('free account (checkride_prep not unlocked)', () => {
+    function freeContext(overrides: Partial<ReturnType<typeof defaultBootstrapContext>> = {}) {
+      return bootstrapContextFixture({
+        data: bootstrapFixture({ access: { checkride_prep: false, ground_school_pack: false, study_pack_entitlements: [] } }),
+        entitled: false,
+        ...overrides,
+      })
+    }
 
-    await render(<HomeScreen />)
+    it('welcomes the learner by name instead of showing a dead-end message', async () => {
+      mockUseBootstrapContext.mockReturnValue(freeContext())
+      mockUseHomeDrill.mockReturnValue(homeDrillFixture())
 
-    expect(screen.getByText('Checkride Prep isn’t included on this account')).toBeTruthy()
-    const forbidden = /https?:\/\/|apexaviationtx|browser|buy|purchase|checkout|price|\$\d/i
-    expect(screen.queryByText(forbidden)).toBeNull()
+      await render(<HomeScreen />)
+
+      expect(screen.getByText('Jordan Pilot')).toBeTruthy()
+      expect(screen.queryByText('Checkride Prep isn’t included on this account')).toBeNull()
+    })
+
+    it('shows a working link to the free Readiness Assessment', async () => {
+      mockUseBootstrapContext.mockReturnValue(freeContext())
+      mockUseHomeDrill.mockReturnValue(homeDrillFixture())
+
+      await render(<HomeScreen />)
+
+      expect(screen.getByText('Take the Free Assessment')).toBeTruthy()
+      expect(screen.getByText(/free diagnostic quiz/i)).toBeTruthy()
+    })
+
+    it('accurately distinguishes free from paid features, without touting locked Ground School/Library content as "free"', async () => {
+      mockUseBootstrapContext.mockReturnValue(freeContext())
+      mockUseHomeDrill.mockReturnValue(homeDrillFixture())
+
+      await render(<HomeScreen />)
+
+      expect(screen.getByText('FREE')).toBeTruthy()
+      expect(screen.getByText('CHECKRIDE PREP')).toBeTruthy()
+      expect(screen.queryByText(/ground school/i)).toBeNull()
+      expect(screen.queryByText(/study pack/i)).toBeNull()
+    })
+
+    it('the Checkride Prep teaser names the features but carries zero checkout/price/purchase-URL language', async () => {
+      mockUseBootstrapContext.mockReturnValue(freeContext())
+      mockUseHomeDrill.mockReturnValue(homeDrillFixture())
+
+      await render(<HomeScreen />)
+
+      expect(screen.getByText('Ready for the full Checkride Prep System?')).toBeTruthy()
+      // "purchase" alone is allowed elsewhere on this screen (the
+      // Readiness Assessment card's reassuring "no account or purchase
+      // required" is pro-user, not steering) -- what's actually
+      // forbidden is checkout/price/buy-now-style CTA language, and no
+      // bare URL at all, within this specific teaser's own text.
+      const teaserText = screen.getByText(/Checkride Prep unlocks separately/i)
+      expect(String(teaserText.props.children)).not.toMatch(/buy|checkout|\$\d|unlock now|tap to unlock|https?:\/\//i)
+    })
+
+    it('never shows a bare purchase/checkout URL anywhere on the free dashboard -- the only link is the free Readiness Assessment', async () => {
+      mockUseBootstrapContext.mockReturnValue(freeContext())
+      mockUseHomeDrill.mockReturnValue(homeDrillFixture())
+
+      await render(<HomeScreen />)
+
+      const urlPattern = /https?:\/\/\S+/i
+      const matches = screen.queryAllByText(urlPattern)
+      expect(matches.length).toBe(0) // the assessment URL itself is only ever passed to Linking.openURL, never rendered as visible text
+    })
   })
 })

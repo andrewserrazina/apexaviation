@@ -1,4 +1,4 @@
-import { isStaleRefreshTokenError, isExistingAccountError, isRateLimitError } from '../lib/authErrors'
+import { isStaleRefreshTokenError, isExistingAccountError, isRateLimitError, isPkceCodeVerifierMissingError } from '../lib/authErrors'
 
 describe('isStaleRefreshTokenError', () => {
   // C: refresh_token_not_found is recognized as stale.
@@ -68,5 +68,40 @@ describe('isRateLimitError', () => {
     expect(isRateLimitError(null)).toBe(false)
     expect(isRateLimitError(undefined)).toBe(false)
     expect(isRateLimitError('a string')).toBe(false)
+  })
+})
+
+// Verified against the installed @supabase/auth-js source
+// (GoTrueClient.js / lib/errors.ts) -- see isPkceCodeVerifierMissingError's
+// own comment in lib/authErrors.ts for the exact shape this is matching.
+describe('isPkceCodeVerifierMissingError', () => {
+  it('recognizes the real error by code', () => {
+    expect(
+      isPkceCodeVerifierMissingError({
+        name: 'AuthPKCECodeVerifierMissingError',
+        code: 'pkce_code_verifier_not_found',
+        message: 'PKCE code verifier not found in storage.',
+      })
+    ).toBe(true)
+  })
+
+  it('recognizes it by name alone, when code is missing', () => {
+    expect(isPkceCodeVerifierMissingError({ name: 'AuthPKCECodeVerifierMissingError', message: 'PKCE code verifier not found in storage.' })).toBe(
+      true
+    )
+  })
+
+  it('falls back to message text when both code and name are missing (older SDK)', () => {
+    expect(isPkceCodeVerifierMissingError({ message: 'both auth code and code verifier should be non-empty' })).toBe(true)
+  })
+
+  it('does not treat an unrelated error (e.g. an already-used code) as a missing verifier', () => {
+    expect(isPkceCodeVerifierMissingError({ name: 'AuthApiError', code: 'invalid_grant', message: 'invalid flow state' })).toBe(false)
+  })
+
+  it('handles null/undefined/non-object input safely', () => {
+    expect(isPkceCodeVerifierMissingError(null)).toBe(false)
+    expect(isPkceCodeVerifierMissingError(undefined)).toBe(false)
+    expect(isPkceCodeVerifierMissingError('a string')).toBe(false)
   })
 })

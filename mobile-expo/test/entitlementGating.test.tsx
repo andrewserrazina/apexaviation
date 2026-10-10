@@ -112,14 +112,19 @@ describe('entitlement gating (Rev2 section 3)', () => {
     mockUseBootstrapContext.mockReset()
   })
 
+  // Priority 3 (free student experience): Home's unentitled view is no
+  // longer a single locked-state message (see test/Home.test.tsx's own
+  // "free account" suite for the full coverage of that new dashboard) --
+  // what this test still needs to prove is narrower and unchanged: an
+  // unentitled Home must never generate a premium mobile-daily-drill
+  // request, regardless of what it renders instead.
   it('an unentitled Home never calls mobile-daily-drill', async () => {
     mockUseBootstrapContext.mockReturnValue(unentitledBootstrapContext())
 
     await render(<HomeScreen />)
 
-    expect(screen.getByText('Checkride Prep isn’t included on this account')).toBeTruthy()
+    expect(screen.getByText('Jordan Pilot')).toBeTruthy()
     expect(mockFetchDailyDrill).not.toHaveBeenCalled()
-    expect(screen.queryByText(FORBIDDEN_STEERING)).toBeNull()
   })
 
   it('an unentitled Practice tab never calls mobile-daily-drill and shows a locked state, not a retryable error', async () => {

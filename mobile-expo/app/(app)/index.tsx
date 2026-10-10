@@ -1,18 +1,32 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Pressable, View, StyleSheet } from 'react-native'
+import { Linking, Pressable, View, StyleSheet } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useBootstrapContext } from '../../contexts/BootstrapContext'
 import { useHomeDrill } from '../../hooks/useHomeDrill'
 import { Screen } from '../../components/Screen'
 import { AppText } from '../../components/AppText'
+import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { MetricCard } from '../../components/MetricCard'
 import { ReadinessCard } from '../../components/ReadinessCard'
 import { TodaysDrillCard } from '../../components/TodaysDrillCard'
 import { SectionHeader } from '../../components/SectionHeader'
-import { ErrorState, LoadingState, LockedState } from '../../components/StateViews'
+import { ErrorState, LoadingState } from '../../components/StateViews'
 import { colors, spacing } from '../../constants/theme'
+
+// Free, no-account-required tool, already live on the public site --
+// the one substantial thing a free member can actually DO today, so
+// it's what Home's free-tier view leads with (Priority 3: "a new free
+// account should have a useful dashboard rather than appearing broken
+// or entirely locked"). Opening it is not purchase/checkout steering --
+// Apple's anti-steering rules govern directing someone to pay outside
+// IAP for content that should be sold through it, not a plain link to
+// free content -- so this is a DELIBERATELY different case from the
+// Checkride Prep teaser below it, which still carries zero URL/price/
+// purchase language, matching this screen's own previously-reviewed
+// compliance bar (see FreeCheckridePrepTeaser's own comment).
+const FREE_READINESS_ASSESSMENT_URL = 'https://apexaviationtx.com/readiness-assessment.html'
 
 export default function HomeScreen() {
   const bootstrap = useBootstrapContext()
@@ -76,8 +90,30 @@ export default function HomeScreen() {
 
   if (!access.checkride_prep) {
     return (
-      <Screen scroll={false}>
-        <LockedState />
+      <Screen refreshing={refreshing} onRefresh={onRefresh}>
+        <View style={styles.headerRow}>
+          <View style={styles.flexOne}>
+            <AppText variant="caption" color={colors.mutedText}>
+              Welcome
+            </AppText>
+            <AppText variant="title" heading weight="bold">
+              {user.full_name ?? 'Pilot'}
+            </AppText>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Profile and settings"
+            onPress={() => router.push('/(app)/profile')}
+            style={styles.avatarButton}
+            hitSlop={8}
+          >
+            <Ionicons name="person-circle" size={40} color={colors.navy} />
+          </Pressable>
+        </View>
+
+        <FreeReadinessAssessmentCard />
+        <FreeVsPaidCard />
+        <FreeCheckridePrepTeaser />
       </Screen>
     )
   }
@@ -173,6 +209,74 @@ export default function HomeScreen() {
   )
 }
 
+// Priority 3 (free student experience): the one substantial, genuinely
+// free, already-functioning tool a free member can use today -- opens
+// in the system browser since this app has no in-app web view. Plain
+// content link, not purchase steering (see this file's own URL-constant
+// comment above for why that distinction matters here).
+function FreeReadinessAssessmentCard() {
+  return (
+    <Card>
+      <SectionHeader title="Free Readiness Assessment" subtitle="See where you stand before you ever open a question bank" />
+      <AppText variant="body" color={colors.mutedText}>
+        A short, free diagnostic quiz that gives you an honest read on how checkride-ready you are right now -- no account or purchase required.
+      </AppText>
+      <Button label="Take the Free Assessment" onPress={() => Linking.openURL(FREE_READINESS_ASSESSMENT_URL)} variant="secondary" />
+    </Card>
+  )
+}
+
+// Accurate, non-deceptive free-vs-paid breakdown (Priority 3 requirement)
+// -- lists only what a $0 account can ACTUALLY do today. Ground School
+// and Study Pack browsing are deliberately left out: every module/pack
+// shows LOCKED for a true free account, so touting either as a "free
+// feature" here would be the exact misleading impression this card
+// exists to avoid.
+function FreeVsPaidCard() {
+  return (
+    <Card>
+      <SectionHeader title="What's included" />
+      <View style={styles.planRow}>
+        <AppText variant="label" weight="semibold" color={colors.success}>
+          FREE
+        </AppText>
+        <AppText variant="body" color={colors.mutedText} style={styles.planText}>
+          Your account and dashboard, and the free Readiness Assessment above.
+        </AppText>
+      </View>
+      <View style={styles.planRow}>
+        <AppText variant="label" weight="semibold" color={colors.goldDeep}>
+          CHECKRIDE PREP
+        </AppText>
+        <AppText variant="body" color={colors.mutedText} style={styles.planText}>
+          DPE Question Library, Scenario Training Center, AI Oral Practice, and progress tracking unlock separately.
+        </AppText>
+      </View>
+    </Card>
+  )
+}
+
+// Unchanged compliance bar from the original LockedState this replaced
+// on Home (see that component's own comment in StateViews.tsx): zero
+// URL, browser, price, or purchase/checkout language. Apple's
+// anti-steering rules are about directing someone to pay OUTSIDE IAP for
+// content that should be sold through it -- this card only names what
+// Checkride Prep includes, the same way the rest of this screen already
+// names what's free, and points to a person (instructor/support)
+// instead of anywhere purchasable.
+function FreeCheckridePrepTeaser() {
+  return (
+    <Card>
+      <AppText variant="subtitle" weight="semibold">
+        Ready for the full Checkride Prep System?
+      </AppText>
+      <AppText variant="body" color={colors.mutedText}>
+        Checkride Prep unlocks separately from your free account. If you believe it should already be unlocked on your account, contact your instructor or Apex support.
+      </AppText>
+    </Card>
+  )
+}
+
 // Presentation-only: the server value (certificate_type, current_rank)
 // is authoritative and never altered, only reformatted for display --
 // e.g. "student_pilot" -> "Student Pilot". A value with no underscores
@@ -196,4 +300,6 @@ const styles = StyleSheet.create({
   metricsRow: { flexDirection: 'row', gap: spacing.sm },
   weakAreaList: { gap: spacing.xs },
   weakAreaRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  planRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
+  planText: { flex: 1 },
 })

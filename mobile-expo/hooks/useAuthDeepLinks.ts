@@ -18,9 +18,18 @@ import * as Linking from 'expo-linking'
 import { router, useRootNavigationState } from 'expo-router'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { isPkceCodeVerifierMissingError } from '../lib/authErrors'
 import { logDevError } from '../lib/api/errors'
 
 const EXPIRED_LINK_MESSAGE = 'That link has expired or was already used. Please request a new one.'
+// Security review finding: the generic message above is actively WRONG
+// for this specific, real failure mode -- see isPkceCodeVerifierMissingError's
+// own comment. Telling someone their link "expired" when it's actually
+// fine (just opened somewhere the original code_verifier never reached)
+// sends them to request a new one, which works around the real problem
+// instead of explaining it.
+const WRONG_DEVICE_MESSAGE =
+  'That link needs to be opened on the same device where you started creating your account or requesting a password reset. Please try again from this device.'
 
 export function useAuthDeepLinks(): void {
   const rootNavigationState = useRootNavigationState()
@@ -41,18 +50,22 @@ export function useAuthDeepLinks(): void {
       if (!code) {
         // A link that was already used once, or is otherwise malformed,
         // can arrive with no `code` at all (Supabase's own redirect adds
-        // ?error=...&error_description=... instead in that case) --
-        // there is nothing to exchange, so this is the same "that link
-        // doesn't work anymore" outcome as an exchange failure below.
+        // ?error=...&error_description=... instead in that case, in the
+        // URL HASH not the query string -- site/mobile-auth-redirect.html
+        // reads and shows that directly on the web page itself, so by the
+        // time the app is ever launched there's nothing more specific
+        // left to surface here) -- there is nothing to exchange, so this
+        // is the same "that link doesn't work anymore" outcome as an
+        // exchange failure below.
         setAuthCallbackError(EXPIRED_LINK_MESSAGE)
         router.replace('/(auth)/sign-in')
         return
       }
 
-      const { error } = await supabase.auth.exchangeCodeForSession(code)
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code)
       if (error) {
         logDevError('useAuthDeepLinks.exchangeCodeForSession', error)
-        setAuthCallbackError(EXPIRED_LINK_MESSAGE)
+        setAuthCallbackError(isPkceCodeVerifierMissingError(error) ? WRONG_DEVICE_MESSAGE : EXPIRED_LINK_MESSAGE)
         router.replace('/(auth)/sign-in')
         return
       }
@@ -64,7 +77,22 @@ export function useAuthDeepLinks(): void {
       // because a session now exists. A signup-type link's exchange is a
       // perfectly normal sign-in; that same layout's existing
       // session-redirect handles it with no special-casing needed here.
-      if (type === 'recovery') {
+      //
+      // Security review finding (fixed here): `data.redirectType` is
+      // supabase-js's OWN authoritative answer to "was this a recovery
+      // flow?" -- derived from the PKCE verifier record it stored
+      // locally when resetPasswordForEmail()/signUp() started, not from
+      // anything that travelled through the email link. Preferred over
+      // this function's own `type` query param (still read as a
+      // fallback only, since `redirectType` could in principle be absent
+      // on an older SDK) because `type` is hand-threaded through two URL
+      // hops (the web bounce page, then this custom-scheme link) where it
+      // could be stripped, mis-set, or -- if a future change ever let it
+      // -- tampered with; `redirectType` cannot be spoofed via the URL at
+      // all, since it never came from the URL in the first place.
+      const redirectType = (data as { redirectType?: string | null } | null)?.redirectType ?? null
+      const isRecovery = redirectType ? redirectType === 'recovery' : type === 'recovery'
+      if (isRecovery) {
         router.replace('/(auth)/reset-password')
       }
     } catch (err) {

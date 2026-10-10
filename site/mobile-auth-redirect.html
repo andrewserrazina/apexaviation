@@ -62,9 +62,28 @@
     // Mail/Safari with no way to show the visitor anything. This page's
     // only job is to forward into the app when it's installed, and show
     // a real fallback when it isn't or the forward doesn't fire.
-    var params = new URLSearchParams(window.location.search);
-    var type = params.get('type');
-    var code = params.get('code');
+    //
+    // Security review finding (fixed here): Supabase's two outcomes land
+    // in DIFFERENT parts of the URL. A successful PKCE exchange code
+    // arrives as a QUERY param (?code=...), which is what this page
+    // originally only checked -- but an expired/already-used/invalid
+    // link's error details (error, error_code, error_description) arrive
+    // in the URL HASH fragment instead (e.g. ...#error=access_denied&
+    // error_code=otp_expired&error_description=Email+link+is+invalid...).
+    // Only checking window.location.search meant this page could never
+    // actually show the REAL reason a link didn't work -- including the
+    // single most common real-world cause of "my verification link says
+    // invalid": a mail security gateway prefetching/scanning the link
+    // before the person ever taps it, which redeems a single-use token
+    // server-side with no human involved. That's a pre-existing property
+    // of every Supabase link-based email action (not something this
+    // feature introduced), but this page should still surface it
+    // accurately rather than a generic guess.
+    var queryParams = new URLSearchParams(window.location.search);
+    var hashParams = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+    var type = queryParams.get('type');
+    var code = queryParams.get('code');
+    var errorDescription = hashParams.get('error_description') || queryParams.get('error_description');
 
     function appUrl() {
       var qs = [];
@@ -77,6 +96,12 @@
       document.getElementById('spinner').style.display = 'none';
       document.getElementById('heading').textContent = 'Link no longer valid.';
       document.getElementById('subtext').textContent = 'This link has expired or was already used.';
+      // Supabase's own error_description is already a short, human-
+      // readable sentence (e.g. "Email link is invalid or has expired")
+      // -- shown as-is when present (textContent only, never innerHTML,
+      // so nothing in it can inject markup) instead of the generic
+      // message, since it's the real reason, not a guess.
+      if (errorDescription) document.getElementById('linkError').textContent = errorDescription.replace(/\+/g, ' ');
       document.getElementById('linkError').classList.add('show');
       document.getElementById('fallback').classList.add('show');
     } else {
