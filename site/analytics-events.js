@@ -144,6 +144,14 @@
     // follow-up) -- $19 Airspace Mastery offered alongside the $29
     // Checkride Prep pitch for members not ready to commit yet.
     'readiness_low_commitment_clicked',
+    // Refer-a-Friend program (site/portal-stable.js) -- added because the
+    // program had zero measurable funnel: 172 members have a code
+    // auto-provisioned and zero have ever referred anyone, but neither the
+    // Account page's "Refer a Friend" card nor the Dashboard promo banner
+    // (added 2026-09-30 specifically to fix low visibility) fired a single
+    // analytics event, so there was no way to tell "nobody saw it" from
+    // "they saw it and declined" -- see ANALYTICS_EVENT_DICTIONARY.md.
+    'referral_promo_banner_viewed', 'referral_link_copied', 'referral_promo_dismissed',
     // Post-purchase activation (portal-login.html)
     'portal_activation_cta_viewed', 'portal_activation_cta_clicked',
     // Member-upgrade deep link (?upgrade=checkride-prep) -- real triggers

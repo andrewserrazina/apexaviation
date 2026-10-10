@@ -7623,12 +7623,17 @@
     renderReferralPromoBanner();
   }
 
-  function copyReferralLink() {
+  // `source` distinguishes the Account page's own "Refer a Friend" card
+  // from the Dashboard promo banner below -- both call this same
+  // function, and without a source on the fired event there'd be no way
+  // to tell which entry point actually drives shares.
+  function copyReferralLink(source) {
     if (!referralCode) { toast('Generating your referral link — try again in a moment.'); return; }
     var link = 'https://apexaviationtx.com/contact.html?ref=' + referralCode;
+    if (window.apexTrack) apexTrack('referral_link_copied', { profile_id: member.id, source: source });
     navigator.clipboard.writeText(link).then(function () { toast('Referral link copied.'); }).catch(function () { toast(link); });
   }
-  document.getElementById('referralCopyBtn').addEventListener('click', copyReferralLink);
+  document.getElementById('referralCopyBtn').addEventListener('click', function () { copyReferralLink('account_page'); });
 
   // Dashboard referral promo banner -- the Refer-a-Friend reward (a free
   // Ground School session per signed-up friend) previously lived only on
@@ -7641,18 +7646,30 @@
   // already loaded by the time renderReferralProgram() runs, so no new
   // fetch is needed here.
   var referralPromoDismissKey = 'apex_referral_promo_dismissed';
+  // Guards against firing referral_promo_banner_viewed once per
+  // re-render (renderReferralProgram/this banner can re-run several
+  // times in one page session as other data loads) -- same
+  // once-per-session-not-per-render intent as testimonialDismissedThisSession
+  // just below, so a member who sees the banner once this session isn't
+  // double/triple-counted as three "views."
+  var referralPromoViewTrackedThisSession = false;
   function renderReferralPromoBanner() {
     var banner = document.getElementById('referralPromoBanner');
     if (!banner) return;
     var dismissed = false;
     try { dismissed = localStorage.getItem(referralPromoDismissKey) === '1'; } catch (e) {}
     banner.hidden = dismissed || !referralCode || referrals.length > 0;
+    if (!banner.hidden && !referralPromoViewTrackedThisSession) {
+      referralPromoViewTrackedThisSession = true;
+      if (window.apexTrack) apexTrack('referral_promo_banner_viewed', { profile_id: member.id });
+    }
   }
   var referralPromoCopyBtn = document.getElementById('referralPromoCopyBtn');
-  if (referralPromoCopyBtn) referralPromoCopyBtn.addEventListener('click', copyReferralLink);
+  if (referralPromoCopyBtn) referralPromoCopyBtn.addEventListener('click', function () { copyReferralLink('dashboard_banner'); });
   var referralPromoDismissBtn = document.getElementById('referralPromoDismiss');
   if (referralPromoDismissBtn) referralPromoDismissBtn.addEventListener('click', function () {
     document.getElementById('referralPromoBanner').hidden = true;
+    if (window.apexTrack) apexTrack('referral_promo_dismissed', { profile_id: member.id });
     try { localStorage.setItem(referralPromoDismissKey, '1'); } catch (e) {}
   });
 

@@ -232,6 +232,12 @@ addition to* those automatic ones.
 **Trigger:** The arriving page's URL still carries `utm_campaign=new_member_activation&utm_content=welcome_N`, checked once on load in `portal-stable.js`'s activation-email click-tracking IIFE.
 **Expected frequency:** ≤1 per email per profile (a member could click the same email link twice across two page loads, which would double-count — a known, accepted limitation, not something this pass fixes).
 
+### `referral_promo_banner_viewed` / `referral_link_copied` / `referral_promo_dismissed`
+**Trigger:** The Dashboard's Refer-a-Friend promo banner (`renderReferralPromoBanner()`, `portal-stable.js`) becomes visible to a member who hasn't referred anyone yet / either referral-link copy button ("Get My Referral Link" on the banner, or "Copy Link" on the Account page's own Refer a Friend card) is clicked / the banner's dismiss ("×") is clicked.
+**Properties:** `profile_id` on all three; `referral_link_copied` also carries `source` (`'dashboard_banner'` or `'account_page'`) so the two entry points can be told apart.
+**Why this exists:** before this pass, neither entry point fired any event at all — 172 members had a referral code auto-provisioned and zero had ever made a referral, and there was no way to tell "nobody saw/clicked it" from "they saw it and declined." This is the diagnostic instrumentation for that gap, not a fix to the program itself.
+**Expected frequency:** `referral_promo_banner_viewed` ≤1 per profile per page session (deduped client-side — the banner's own render function can re-run several times in one session as other data loads); the click events can repeat per session.
+
 ---
 
 ## Apex Advantage Mock Orals ($129/2-hour ACS-based product)
