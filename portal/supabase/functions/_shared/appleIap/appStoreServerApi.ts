@@ -54,6 +54,17 @@ async function requestTransactionInfo(
 // the decoded payload's own `environment` claim matches where we found
 // it (a production call that comes back self-reporting Sandbox would be
 // a sign of a replayed/misused sandbox transaction).
+//
+// Also falls back on 401: for an app with no Production App Store
+// release yet (this app, pre-launch/TestFlight-only), Apple's
+// Production endpoint has been widely reported to answer 401 rather
+// than the documented 404 for a sandbox-only transaction -- there is no
+// production app record for it to say "not found" against. Falling
+// back here doesn't weaken the trust boundary: environmentQueried still
+// has to match the `environment` claim inside Apple's own signed
+// payload (checked by the caller), so a genuine credential failure
+// still fails at the Sandbox call too, just with a correct diagnosis
+// instead of silently misreporting "Production rejected this."
 export async function getTransactionInfo(
   transactionId: string,
   credentials: AppStoreServerApiJwtParams
@@ -62,7 +73,7 @@ export async function getTransactionInfo(
     const response = await requestTransactionInfo(PRODUCTION_URL, transactionId, credentials)
     return { environmentQueried: 'Production', response }
   } catch (err) {
-    if (err instanceof AppStoreServerApiError && err.status === 404) {
+    if (err instanceof AppStoreServerApiError && (err.status === 404 || err.status === 401)) {
       const response = await requestTransactionInfo(SANDBOX_URL, transactionId, credentials)
       return { environmentQueried: 'Sandbox', response }
     }
