@@ -34,9 +34,19 @@ interface StartErrorState {
 function buildAdHocTitle(kind: AdHocPracticeKind, area?: WeakArea): string {
   if (kind === 'quick') return 'Quick Practice'
   if (kind === 'standard') return 'Standard Practice'
+  if (kind === 'checkride') return 'Checkride Mode'
+  if (kind === 'rapid_fire') return 'DPE Rapid Fire'
   const code = `${area?.area_code}.${area?.task_code}`
   return `Weak Area Practice • ${code}${area?.task_title ? ` ${area.task_title}` : ''}`
 }
+
+// Mobile parity (Phase 5, item 5): DPE Rapid Fire is the one ad-hoc kind
+// that carries a visible countdown on the session screen -- see that
+// screen's own comment for why time running out never force-submits a
+// partial session (complete_mobile_practice_session() requires exactly
+// one rating per question; see supabase-portal-schema-v143's
+// incomplete_submission check).
+const RAPID_FIRE_SECONDS = 5 * 60
 
 export default function PracticeTabScreen() {
   const bootstrap = useBootstrapContext()
@@ -240,7 +250,10 @@ export default function PracticeTabScreen() {
         // navigation continues regardless of whether this local write
         // succeeded.
       }
-      router.push({ pathname: '/(app)/practice/session/[sessionId]', params: { sessionId: result.session_id, title } })
+      router.push({
+        pathname: '/(app)/practice/session/[sessionId]',
+        params: kind === 'rapid_fire' ? { sessionId: result.session_id, title, timedSeconds: String(RAPID_FIRE_SECONDS) } : { sessionId: result.session_id, title },
+      })
     } catch (err) {
       logDevError('Practice.handleStart', err)
       const apiErr = err instanceof ApiError ? err : new ApiError({ kind: 'server', userMessage: 'We couldn’t start that practice session.' })
@@ -350,6 +363,48 @@ export default function PracticeTabScreen() {
             accessibilityHint="Start a 10-question ad-hoc practice session"
           />
           {startError && startError.kind === 'standard' ? (
+            <AppText variant="caption" color={colors.danger}>
+              {startError.message}
+            </AppText>
+          ) : null}
+        </Card>
+
+        <Card>
+          <AppText variant="subtitle" weight="semibold">
+            Checkride Mode
+          </AppText>
+          <AppText variant="caption" color={colors.mutedText}>
+            20 questions • a full-length checkride-style set
+          </AppText>
+          <Button
+            label="Start Checkride Mode"
+            onPress={() => handleStart('checkride', 20)}
+            loading={starting}
+            disabled={disableNewAdHoc}
+            accessibilityHint="Start a 20-question checkride-style ad-hoc practice session"
+          />
+          {startError && startError.kind === 'checkride' ? (
+            <AppText variant="caption" color={colors.danger}>
+              {startError.message}
+            </AppText>
+          ) : null}
+        </Card>
+
+        <Card accent="gold">
+          <AppText variant="subtitle" weight="semibold">
+            DPE Rapid Fire
+          </AppText>
+          <AppText variant="caption" color={colors.mutedText}>
+            15 questions • 5-minute countdown
+          </AppText>
+          <Button
+            label="Start Rapid Fire"
+            onPress={() => handleStart('rapid_fire', 15)}
+            loading={starting}
+            disabled={disableNewAdHoc}
+            accessibilityHint="Start a timed 15-question rapid-fire practice session"
+          />
+          {startError && startError.kind === 'rapid_fire' ? (
             <AppText variant="caption" color={colors.danger}>
               {startError.message}
             </AppText>

@@ -21,7 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const KEY_PREFIX = 'apex-advantage-active-practice:'
 
-export type AdHocPracticeKind = 'quick' | 'standard' | 'weak_area'
+export type AdHocPracticeKind = 'quick' | 'standard' | 'weak_area' | 'checkride' | 'rapid_fire'
 
 export interface ActivePracticeSession {
   sessionId: string
@@ -54,7 +54,7 @@ function isActivePracticeSession(value: unknown): value is ActivePracticeSession
   if (
     !isNonEmptyString(v.sessionId) ||
     !isNonEmptyString(v.userId) ||
-    (v.kind !== 'quick' && v.kind !== 'standard' && v.kind !== 'weak_area') ||
+    (v.kind !== 'quick' && v.kind !== 'standard' && v.kind !== 'weak_area' && v.kind !== 'checkride' && v.kind !== 'rapid_fire') ||
     !isNonEmptyString(v.title) ||
     !isNonEmptyString(v.startedAt) ||
     typeof v.sessionSize !== 'number' ||

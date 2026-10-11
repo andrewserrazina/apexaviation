@@ -8,6 +8,7 @@ import { ProgressIndicator } from '../../../../components/ProgressIndicator'
 import { RevealContent } from '../../../../components/RevealContent'
 import { RatingButtons } from '../../../../components/RatingButtons'
 import { PracticeCompletionView } from '../../../../components/PracticeCompletionView'
+import { RapidFireTimer } from '../../../../components/RapidFireTimer'
 import { ErrorState, LoadingState, EmptyState, LockedState } from '../../../../components/StateViews'
 import { useAdHocPracticeSession } from '../../../../hooks/useAdHocPracticeSession'
 import { usePostCompleteRefresh } from '../../../../hooks/usePostCompleteRefresh'
@@ -31,7 +32,15 @@ import { colors, spacing } from '../../../../constants/theme'
 // header; the server's resume response is what actually drives
 // everything else on this screen.
 export default function AdHocPracticeSessionScreen() {
-  const { sessionId, title } = useLocalSearchParams<{ sessionId: string; title?: string }>()
+  const { sessionId, title, timedSeconds } = useLocalSearchParams<{ sessionId: string; title?: string; timedSeconds?: string }>()
+  // Phase 5 (mobile parity), item 5: DPE Rapid Fire's only difference
+  // from any other ad-hoc session is this optional timer -- the Practice
+  // hub passes timedSeconds only when it started a rapid_fire session
+  // (see that screen's own RAPID_FIRE_SECONDS comment). Parsed defensively
+  // since route params are always strings (or absent) -- an invalid value
+  // just means no timer renders, never a crash.
+  const parsedTimedSeconds = timedSeconds ? Number(timedSeconds) : NaN
+  const rapidFireTotalSeconds = Number.isFinite(parsedTimedSeconds) && parsedTimedSeconds > 0 ? parsedTimedSeconds : null
   const bootstrap = useBootstrapContext()
   const { user } = useAuth()
 
@@ -146,6 +155,8 @@ export default function AdHocPracticeSessionScreen() {
         {headerLabel.toUpperCase()}
       </AppText>
       <ProgressIndicator current={session.currentIndex + 1} total={session.total} />
+
+      {rapidFireTotalSeconds !== null ? <RapidFireTimer totalSeconds={rapidFireTotalSeconds} enabled /> : null}
 
       <Card>
         {session.currentQuestion.category ? (

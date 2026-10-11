@@ -195,6 +195,54 @@ it('Standard Practice calls startAdHocPractice with session_size 10 and no acs_t
   await waitFor(() => expect(mockPush).toHaveBeenCalledTimes(1))
 })
 
+// 11a. Mobile parity (Phase 5, item 5): Checkride Mode sends
+// session_size=20 and navigates WITHOUT a timedSeconds param -- only
+// Rapid Fire is timed.
+it('Checkride Mode calls startAdHocPractice with session_size 20 and navigates with no timedSeconds param', async () => {
+  mockUseBootstrapContext.mockReturnValue(bootstrapContext())
+  mockStartAdHocPractice.mockResolvedValue({
+    session_id: 's1',
+    mode: 'dpe_questions',
+    started_at: '2026-01-01T00:00:00Z',
+    target_acs_tasks: [],
+    questions: [{ id: 'q1', question: 'Q?', category: null }],
+  })
+
+  await render(<PracticeTabScreen />)
+  fireEvent.press(screen.getByRole('button', { name: 'Start Checkride Mode' }))
+
+  await waitFor(() => expect(mockStartAdHocPractice).toHaveBeenCalledWith({ session_size: 20 }))
+  await waitFor(() => expect(mockPush).toHaveBeenCalledTimes(1))
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: '/(app)/practice/session/[sessionId]',
+    params: { sessionId: 's1', title: 'Checkride Mode' },
+  })
+})
+
+// 11b. Mobile parity (Phase 5, item 5): DPE Rapid Fire sends
+// session_size=15 and navigates WITH a 300-second timedSeconds param,
+// the one thing that distinguishes it from every other ad-hoc kind.
+it('DPE Rapid Fire calls startAdHocPractice with session_size 15 and navigates with timedSeconds=300', async () => {
+  mockUseBootstrapContext.mockReturnValue(bootstrapContext())
+  mockStartAdHocPractice.mockResolvedValue({
+    session_id: 's1',
+    mode: 'dpe_questions',
+    started_at: '2026-01-01T00:00:00Z',
+    target_acs_tasks: [],
+    questions: [{ id: 'q1', question: 'Q?', category: null }],
+  })
+
+  await render(<PracticeTabScreen />)
+  fireEvent.press(screen.getByRole('button', { name: 'Start Rapid Fire' }))
+
+  await waitFor(() => expect(mockStartAdHocPractice).toHaveBeenCalledWith({ session_size: 15 }))
+  await waitFor(() => expect(mockPush).toHaveBeenCalledTimes(1))
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: '/(app)/practice/session/[sessionId]',
+    params: { sessionId: 's1', title: 'DPE Rapid Fire', timedSeconds: '300' },
+  })
+})
+
 // 12. Weak Area sends exact bootstrap acs_task_id and session_size=5
 it('Practice I.A calls startAdHocPractice with the exact bootstrap-provided acs_task_id and session_size 5', async () => {
   mockUseBootstrapContext.mockReturnValue(

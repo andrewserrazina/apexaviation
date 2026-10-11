@@ -11,9 +11,10 @@ import { ApiError } from '../lib/api/errors'
 
 const mockPush = jest.fn()
 const mockReplace = jest.fn()
+const mockUseLocalSearchParams = jest.fn()
 jest.mock('expo-router', () => ({
   router: { push: (...args: unknown[]) => mockPush(...args), replace: (...args: unknown[]) => mockReplace(...args) },
-  useLocalSearchParams: () => ({ sessionId: 'session-1', title: 'Quick Practice' }),
+  useLocalSearchParams: () => mockUseLocalSearchParams(),
 }))
 
 const mockUseBootstrapContext = jest.fn()
@@ -100,6 +101,7 @@ describe('AdHocPracticeSessionScreen', () => {
   beforeEach(() => {
     mockPush.mockReset()
     mockReplace.mockReset()
+    mockUseLocalSearchParams.mockReset().mockReturnValue({ sessionId: 'session-1', title: 'Quick Practice' })
     mockUseBootstrapContext.mockReset()
     mockUseAuth.mockReset().mockReturnValue({ user: { id: 'u1' } })
     mockUseAdHocPracticeSession.mockReset()
@@ -276,5 +278,39 @@ describe('AdHocPracticeSessionScreen', () => {
     await render(<AdHocPracticeSessionScreen />)
 
     expect(screen.queryByRole('button', { name: 'Back to Home' })).toBeNull()
+  })
+
+  // Mobile parity (Phase 5, item 5): DPE Rapid Fire's countdown only
+  // renders when the hub navigated here with a timedSeconds param --
+  // every other ad-hoc kind (Quick/Standard/Weak Area/Checkride Mode)
+  // never passes one, and must never show a countdown.
+  it('shows the Rapid Fire countdown when timedSeconds is present in the route params', async () => {
+    mockUseLocalSearchParams.mockReturnValue({ sessionId: 'session-1', title: 'DPE Rapid Fire', timedSeconds: '300' })
+    mockUseBootstrapContext.mockReturnValue(bootstrapContext())
+    mockUseAdHocPracticeSession.mockReturnValue(baseSession())
+
+    await render(<AdHocPracticeSessionScreen />)
+
+    expect(screen.getByText('TIME REMAINING')).toBeTruthy()
+    expect(screen.getByText('5:00')).toBeTruthy()
+  })
+
+  it('never shows a countdown for an untimed ad-hoc kind (no timedSeconds param)', async () => {
+    mockUseBootstrapContext.mockReturnValue(bootstrapContext())
+    mockUseAdHocPracticeSession.mockReturnValue(baseSession())
+
+    await render(<AdHocPracticeSessionScreen />)
+
+    expect(screen.queryByText('TIME REMAINING')).toBeNull()
+  })
+
+  it('ignores a malformed timedSeconds param rather than crashing', async () => {
+    mockUseLocalSearchParams.mockReturnValue({ sessionId: 'session-1', title: 'DPE Rapid Fire', timedSeconds: 'not-a-number' })
+    mockUseBootstrapContext.mockReturnValue(bootstrapContext())
+    mockUseAdHocPracticeSession.mockReturnValue(baseSession())
+
+    await render(<AdHocPracticeSessionScreen />)
+
+    expect(screen.queryByText('TIME REMAINING')).toBeNull()
   })
 })
