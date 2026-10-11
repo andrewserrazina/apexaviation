@@ -117,7 +117,7 @@ export default function TrainingReportScreen() {
 
       {view.recommendedAction ? (
         <ReportSection title="Recommended Next Training Action">
-          <AppText variant="body" weight="semibold" color={colors.navy}>
+          <AppText variant="body" weight="semibold" color={colors.textPrimary}>
             {view.recommendedAction.categoryLabel}
           </AppText>
           <AppText variant="caption" color={colors.mutedText}>

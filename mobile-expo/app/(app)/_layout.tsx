@@ -44,9 +44,9 @@ function AppTabs() {
       screenOptions={{
         headerShown: true,
         header: () => <AppHeader />,
-        tabBarActiveTintColor: colors.navy,
+        tabBarActiveTintColor: colors.gold,
         tabBarInactiveTintColor: colors.mutedText,
-        tabBarStyle: { backgroundColor: colors.white, borderTopColor: colors.border },
+        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
         tabBarLabelStyle: { fontFamily: fonts.bodySemiBold, fontSize: 11 },
       }}
     >

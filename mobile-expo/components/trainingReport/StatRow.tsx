@@ -14,7 +14,7 @@ export function StatRow({ stats }: { stats: Stat[] }) {
     <View style={styles.row}>
       {stats.map((stat, i) => (
         <View key={i} style={styles.stat}>
-          <AppText variant="title" weight="bold" color={colors.navy}>
+          <AppText variant="title" weight="bold" color={colors.textPrimary}>
             {stat.value}
           </AppText>
           <AppText variant="caption" color={colors.mutedText}>

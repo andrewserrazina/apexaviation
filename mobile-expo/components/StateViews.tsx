@@ -12,7 +12,7 @@ import { CheckridePrepPaywall } from './CheckridePrepPaywall'
 export function LoadingState({ label = 'Loading…' }: { label?: string }) {
   return (
     <View style={styles.wrap} accessibilityLiveRegion="polite">
-      <ActivityIndicator size="large" color={colors.navy} />
+      <ActivityIndicator size="large" color={colors.gold} />
       <AppText variant="body" color={colors.mutedText}>
         {label}
       </AppText>

@@ -31,9 +31,9 @@ export function ConfidenceRatingGroup({ value, disabled, onChange }: ConfidenceR
             accessibilityRole="radio"
             accessibilityState={{ selected, disabled: !!disabled }}
             accessibilityLabel={opt.label}
-            style={[styles.option, { backgroundColor: selected ? colors.goldSoft : colors.white, borderColor: selected ? colors.gold : colors.border }]}
+            style={[styles.option, { backgroundColor: selected ? colors.goldSoft : colors.surface, borderColor: selected ? colors.gold : colors.border }]}
           >
-            <AppText variant="caption" weight="semibold" color={selected ? colors.goldDeep : colors.navy}>
+            <AppText variant="caption" weight="semibold" color={selected ? colors.goldDeep : colors.textPrimary}>
               {opt.label}
             </AppText>
           </Pressable>

@@ -22,7 +22,7 @@ export function MetricCard({ label, value, helper, accent, valueVariant = 'displ
       <AppText variant="label" weight="semibold" color={colors.mutedText}>
         {label.toUpperCase()}
       </AppText>
-      <AppText variant={valueVariant} heading weight="bold" color={accent ? colors.goldDeep : colors.navy}>
+      <AppText variant={valueVariant} heading weight="bold" color={accent ? colors.goldDeep : colors.textPrimary}>
         {value}
       </AppText>
       {helper ? (

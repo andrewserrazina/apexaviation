@@ -32,7 +32,7 @@ export function MasteryCheckView({ masteryCheck, onBack, packName }: { masteryCh
     return (
       <View style={styles.wrap}>
         <LibraryBackButton label={packName} onPress={onBack} />
-        <AppText variant="title" heading weight="bold" color={passed ? colors.success : colors.navy}>
+        <AppText variant="title" heading weight="bold" color={passed ? colors.success : colors.textPrimary}>
           {pct}% — {passed ? 'Passed' : 'Not Yet'}
         </AppText>
         <AppText variant="body" color={colors.mutedText}>

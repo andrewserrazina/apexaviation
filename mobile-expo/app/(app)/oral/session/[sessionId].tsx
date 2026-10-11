@@ -95,7 +95,7 @@ export default function OralSessionScreen() {
               key={i}
               style={[styles.bubble, turn.role === 'student' ? styles.studentBubble : styles.dpeBubble, turn.pending && styles.pendingBubble]}
             >
-              <AppText variant="body" color={turn.role === 'student' ? colors.white : colors.navy}>
+              <AppText variant="body" color={turn.role === 'student' ? colors.white : colors.textPrimary}>
                 {turn.message}
               </AppText>
             </View>
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   messages: { padding: spacing.lg, gap: spacing.sm },
   bubble: { maxWidth: '85%', borderRadius: radii.lg, padding: spacing.md },
-  dpeBubble: { backgroundColor: colors.white, alignSelf: 'flex-start', borderWidth: 1, borderColor: colors.navyBorder },
+  dpeBubble: { backgroundColor: colors.surface, alignSelf: 'flex-start', borderWidth: 1, borderColor: colors.navyBorder },
   studentBubble: { backgroundColor: colors.navy, alignSelf: 'flex-end' },
   pendingBubble: { opacity: 0.6 },
   errorBar: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xs },
@@ -162,10 +162,10 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     fontSize: 16,
-    color: colors.navy,
+    color: colors.textPrimary,
   },
 })

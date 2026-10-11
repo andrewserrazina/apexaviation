@@ -27,7 +27,7 @@ export function RapidFireTimer({ totalSeconds, enabled }: RapidFireTimerProps) {
       <AppText variant="label" weight="semibold" color={colors.mutedText}>
         {expired ? "TIME'S UP" : 'TIME REMAINING'}
       </AppText>
-      <AppText variant="title" weight="bold" color={expired ? colors.goldDeep : colors.navy}>
+      <AppText variant="title" weight="bold" color={expired ? colors.goldDeep : colors.textPrimary}>
         {expired ? 'Finish rating to submit' : formatCountdownClock(remainingSeconds)}
       </AppText>
     </Card>

@@ -169,7 +169,7 @@ function FilterTab({ label, active, onPress }: { label: string; active: boolean;
       onPress={onPress}
       style={[styles.tab, active && styles.tabActive]}
     >
-      <AppText variant="caption" weight="semibold" color={active ? colors.white : colors.navy}>
+      <AppText variant="caption" weight="semibold" color={active ? colors.white : colors.textPrimary}>
         {label}
       </AppText>
     </Pressable>
@@ -268,8 +268,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     fontSize: 15,
-    color: colors.navy,
-    backgroundColor: colors.white,
+    color: colors.textPrimary,
+    backgroundColor: colors.surface,
   },
   tabsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   tab: {

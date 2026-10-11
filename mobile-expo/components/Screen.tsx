@@ -46,7 +46,7 @@ export function Screen({ children, scroll = true, refreshing, onRefresh, content
           keyboardShouldPersistTaps="handled"
           refreshControl={
             onRefresh ? (
-              <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={colors.navy} colors={[colors.navy]} />
+              <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={colors.gold} colors={[colors.gold]} />
             ) : undefined
           }
         >
@@ -60,7 +60,7 @@ export function Screen({ children, scroll = true, refreshing, onRefresh, content
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.lightGray },
+  safeArea: { flex: 1, backgroundColor: colors.background },
   flexOne: { flex: 1 },
   scrollContent: { flexGrow: 1 },
   padded: { padding: spacing.lg, gap: spacing.lg },

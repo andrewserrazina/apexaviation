@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     borderColor: colors.navyBorder,
     borderRadius: radii.md,
     padding: spacing.sm,
-    color: colors.navy,
+    color: colors.textPrimary,
     fontSize: 14,
     textAlignVertical: 'top',
   },

@@ -59,7 +59,7 @@ export default function SignUpScreen() {
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.brand}>
-          <AppText variant="display" heading weight="bold" color={colors.navy} center>
+          <AppText variant="display" heading weight="bold" color={colors.textPrimary} center>
             Create Your Account
           </AppText>
           <AppText variant="body" color={colors.mutedText} center>
@@ -150,11 +150,11 @@ export default function SignUpScreen() {
             </View>
             <AppText variant="caption" color={colors.mutedText} style={styles.termsText}>
               I agree to the{' '}
-              <AppText variant="caption" weight="semibold" color={colors.navy} onPress={() => Linking.openURL(TERMS_OF_SERVICE_URL)}>
+              <AppText variant="caption" weight="semibold" color={colors.gold} onPress={() => Linking.openURL(TERMS_OF_SERVICE_URL)}>
                 Terms of Service
               </AppText>{' '}
               and{' '}
-              <AppText variant="caption" weight="semibold" color={colors.navy} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>
+              <AppText variant="caption" weight="semibold" color={colors.gold} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>
                 Privacy Policy
               </AppText>
               .
@@ -176,7 +176,7 @@ export default function SignUpScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.lightGray },
+  flex: { flex: 1, backgroundColor: colors.background },
   scrollContent: { flexGrow: 1, justifyContent: 'center', padding: spacing.xl, gap: spacing.xxl },
   brand: { gap: spacing.xs },
   form: { gap: spacing.md },
@@ -186,10 +186,10 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
     fontSize: 16,
-    color: colors.navy,
+    color: colors.textPrimary,
   },
   passwordRow: { position: 'relative', justifyContent: 'center' },
   passwordInput: { paddingRight: 48 },

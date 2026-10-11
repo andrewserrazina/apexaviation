@@ -104,9 +104,9 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.danger,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
     fontSize: 16,
-    color: colors.navy,
+    color: colors.textPrimary,
   },
 })

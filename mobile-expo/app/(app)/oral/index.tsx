@@ -182,7 +182,7 @@ export default function OralTabScreen() {
                 {session.questionsAsked} questions asked
               </AppText>
               {session.debrief ? (
-                <AppText variant="caption" weight="semibold" color={colors.navy}>
+                <AppText variant="caption" weight="semibold" color={colors.textPrimary}>
                   {dpeVerdictLabel(session.debrief.overallReadiness)}
                 </AppText>
               ) : (

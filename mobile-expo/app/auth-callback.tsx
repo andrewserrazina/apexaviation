@@ -35,5 +35,5 @@ export default function AuthCallbackScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.lightGray },
+  container: { flex: 1, backgroundColor: colors.background },
 })

@@ -11,7 +11,21 @@
 // actually-shipped brand, and the shipped brand wins here (Montserrat),
 // exactly as it does on the web and portal today. See
 // SPRINT_1A_MOBILE_VERTICAL_SLICE_REPORT.md for the full writeup.
-
+//
+// Dark re-theme (parity pass): the mobile app previously ran an inverted
+// color scheme from the real web/portal -- light gray screens, white
+// cards, navy text. Web's actual shipped design (site/styles.css,
+// portal/src/styles.css) is a DARK navy theme: near-black page
+// background (#080f1e), navy-2/navy-3 card surfaces, translucent white
+// text, gold as the one accent. Every value below is taken from that
+// real, deployed CSS, not invented -- background/surface/surfaceAlt
+// mirror web's three navy elevation tiers exactly, textPrimary/
+// textSecondary mirror its translucent-white text tokens, and success/
+// warning/danger/info mirror its actual semantic colors (which are
+// brighter pastel tones tuned to read on navy, not mobile's old
+// darker-for-white-backgrounds versions). goldDeep is updated to web's
+// own --gold-2 hex rather than mobile's previously independently-chosen
+// shade.
 export const colors = {
   navy: '#0B1F3A',
   gold: '#F4B400',
@@ -19,22 +33,48 @@ export const colors = {
   lightGray: '#F5F7FA',
   darkGray: '#2D3748',
 
+  // Three-tier dark elevation system, darkest to lightest -- matches
+  // web's --off-white/body-bg, --navy-2, --navy-3 exactly (site/
+  // styles.css, portal/src/styles.css). Screens sit on `background`;
+  // cards float above it on `surface`; a card nested inside a card (rare)
+  // uses `surfaceAlt`. `navy` itself (#0B1F3A) sits between background
+  // and surface in lightness, which is why hero bars/headers using it
+  // directly already read correctly as their own elevation tier.
+  background: '#080F1E',
+  surface: '#162C4F',
+  surfaceAlt: '#1E3B68',
+
   // Derived, not in AGENTS.md verbatim, but needed for a real interface --
   // tints/shades of the two brand colors and the neutral scale only,
   // never a hue AGENTS.md doesn't already name.
   navyDeep: '#071527',
-  navySoft: 'rgba(11, 31, 58, 0.06)',
-  navyBorder: 'rgba(11, 31, 58, 0.12)',
+  // Soft neutral overlay (icon badges, inactive pills, etc.) -- was a
+  // light tint of navy for a white background; now the equivalent role
+  // on a dark background is a light tint of white, matching web's own
+  // rgba(255,255,255,…) overlay convention.
+  navySoft: 'rgba(255, 255, 255, 0.08)',
+  navyBorder: 'rgba(255, 255, 255, 0.09)',
   goldSoft: 'rgba(244, 180, 0, 0.14)',
-  goldDeep: '#C48F00',
-  border: '#E2E8F0',
-  mutedText: '#64748B',
-  success: '#1E7A4C',
-  successSoft: 'rgba(30, 122, 76, 0.12)',
-  warning: '#B7791F',
-  warningSoft: 'rgba(183, 121, 31, 0.12)',
-  danger: '#B42318',
-  dangerSoft: 'rgba(180, 35, 24, 0.10)',
+  goldLight: '#F9D04A',
+  goldDeep: '#D4920A',
+  border: 'rgba(255, 255, 255, 0.09)',
+  // Primary translucent-white body text and secondary/muted text --
+  // web's --text and --gray tokens exactly.
+  textPrimary: 'rgba(255, 255, 255, 0.85)',
+  mutedText: 'rgba(255, 255, 255, 0.55)',
+  // Label text for content sitting on a solid gold fill (buttons,
+  // avatar initials) -- matches the portal app's own gold-button
+  // convention (dark navy text on gold), not the marketing site's white-
+  // on-gold variant, since this is the portal experience being ported.
+  textOnGold: '#0B1F3A',
+  success: '#34D399',
+  successSoft: 'rgba(52, 211, 153, 0.15)',
+  warning: '#F4B400',
+  warningSoft: 'rgba(244, 180, 0, 0.15)',
+  danger: '#F87171',
+  dangerSoft: 'rgba(239, 68, 68, 0.15)',
+  info: '#60A5FA',
+  infoSoft: 'rgba(96, 165, 250, 0.15)',
 } as const
 
 export const fonts = {
@@ -62,7 +102,8 @@ export const spacing = {
 export const radii = {
   sm: 8,
   md: 12,
-  lg: 16,
+  // Matches web's --radius-lg (20px) exactly.
+  lg: 20,
   pill: 999,
 } as const
 
@@ -75,12 +116,18 @@ export const type = {
   label: { fontSize: 12, lineHeight: 16, letterSpacing: 0.6 },
 } as const
 
+// Dark-theme shadows read very differently than light-theme ones -- a
+// navy-tinted shadow against a navy/near-black background barely shows
+// at all, so this is now a true black shadow at low opacity (matching
+// web's own --shadow: 0 4px 24px rgba(0,0,0,.4)), with the card's
+// border doing most of the work of separating it from the background
+// rather than the shadow alone.
 export const shadow = {
   card: {
-    shadowColor: colors.navy,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.4,
     shadowRadius: 12,
-    elevation: 2,
+    elevation: 4,
   },
 } as const

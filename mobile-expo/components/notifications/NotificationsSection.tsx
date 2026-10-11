@@ -20,7 +20,7 @@ function PreferenceRow({ label, value, saving, onToggle }: PreferenceRowProps) {
       <AppText variant="body" style={styles.preferenceLabel}>
         {label}
       </AppText>
-      <Switch value={value} onValueChange={onToggle} disabled={saving} trackColor={{ false: colors.navyBorder, true: colors.navy }} thumbColor={colors.white} />
+      <Switch value={value} onValueChange={onToggle} disabled={saving} trackColor={{ false: colors.navyBorder, true: colors.gold }} thumbColor={colors.white} />
     </View>
   )
 }

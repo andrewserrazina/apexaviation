@@ -59,7 +59,7 @@ export default function CheckEmailScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <AppText variant="display" heading weight="bold" color={colors.navy} center>
+        <AppText variant="display" heading weight="bold" color={colors.textPrimary} center>
           Check your email.
         </AppText>
         <AppText variant="body" color={colors.mutedText} center>
@@ -88,6 +88,6 @@ export default function CheckEmailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.lightGray, justifyContent: 'center', padding: spacing.xl },
+  container: { flex: 1, backgroundColor: colors.background, justifyContent: 'center', padding: spacing.xl },
   content: { gap: spacing.lg },
 })

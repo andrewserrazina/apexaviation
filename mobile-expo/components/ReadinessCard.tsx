@@ -57,7 +57,7 @@ export function ReadinessCard({ overallScore, evidenceLevel, reasonCodes }: Read
           {Math.round(overallScore)}
         </AppText>
         <View style={styles.evidenceBadge}>
-          <AppText variant="label" weight="semibold" color={colors.navy}>
+          <AppText variant="label" weight="semibold" color={colors.goldDeep}>
             {EVIDENCE_LABEL[evidenceLevel].toUpperCase()}
           </AppText>
         </View>

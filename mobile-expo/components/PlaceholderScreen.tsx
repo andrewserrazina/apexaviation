@@ -18,7 +18,7 @@ export function PlaceholderScreen({ icon, title, description }: PlaceholderScree
     <Screen scroll={false}>
       <View style={styles.wrap}>
         <View style={styles.iconCircle}>
-          <Ionicons name={icon} size={36} color={colors.navy} />
+          <Ionicons name={icon} size={36} color={colors.goldDeep} />
         </View>
         <AppText variant="title" heading weight="bold" center>
           {title}

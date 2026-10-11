@@ -149,7 +149,7 @@ function DatePart({
 function bandColor(band: CheckrideUrgencyBand): string {
   if (band === 'today' || band === 'urgent') return colors.danger
   if (band === 'soon') return colors.goldDeep
-  return colors.navy
+  return colors.textPrimary
 }
 
 const styles = StyleSheet.create({
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
     fontSize: 15,
-    color: colors.navy,
+    color: colors.textPrimary,
     textAlign: 'center',
   },
 })

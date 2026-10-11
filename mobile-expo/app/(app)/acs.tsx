@@ -52,7 +52,7 @@ function TaskRow({ task }: { task: MobileAcsTaskInfo }) {
   return (
     <View style={styles.taskRow}>
       <View style={styles.taskRowHeader}>
-        <AppText variant="label" weight="semibold" color={colors.navy}>
+        <AppText variant="label" weight="semibold" color={colors.textPrimary}>
           {task.area_code}.{task.task_code}
         </AppText>
         <AppText variant="body" style={styles.taskTitle}>
@@ -139,7 +139,7 @@ function CategoryCard({ category, expanded, onToggle, tasks, tasksLoading, tasks
           </AppText>
         ) : null}
 
-        <AppText variant="caption" weight="semibold" color={colors.navy}>
+        <AppText variant="caption" weight="semibold" color={colors.gold}>
           {expanded ? 'Hide tasks ▲' : 'View tasks ▼'}
         </AppText>
       </Pressable>

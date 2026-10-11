@@ -12,7 +12,7 @@ import { Card } from '../Card'
 export function ReportSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <Card>
-      <AppText variant="subtitle" weight="semibold" color={colors.navy}>
+      <AppText variant="subtitle" weight="semibold" color={colors.textPrimary}>
         {title}
       </AppText>
       <View style={styles.body}>{children}</View>

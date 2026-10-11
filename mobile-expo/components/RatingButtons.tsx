@@ -31,10 +31,10 @@ export function RatingButtons({ value, onChange }: RatingButtonsProps) {
             accessibilityLabel={opt.label}
             style={[
               styles.option,
-              { backgroundColor: selected ? opt.soft : colors.white, borderColor: selected ? opt.color : colors.border },
+              { backgroundColor: selected ? opt.soft : colors.surface, borderColor: selected ? opt.color : colors.border },
             ]}
           >
-            <AppText variant="body" weight="semibold" color={selected ? opt.color : colors.navy} center>
+            <AppText variant="body" weight="semibold" color={selected ? opt.color : colors.textPrimary} center>
               {opt.label}
             </AppText>
           </Pressable>

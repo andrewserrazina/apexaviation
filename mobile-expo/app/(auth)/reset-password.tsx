@@ -55,7 +55,7 @@ export default function ResetPasswordScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.content}>
-          <AppText variant="display" heading weight="bold" color={colors.navy} center>
+          <AppText variant="display" heading weight="bold" color={colors.textPrimary} center>
             Link no longer valid.
           </AppText>
           <AppText variant="body" color={colors.mutedText} center>
@@ -71,7 +71,7 @@ export default function ResetPasswordScreen() {
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.container}>
         <View style={styles.content}>
-          <AppText variant="display" heading weight="bold" color={colors.navy} center>
+          <AppText variant="display" heading weight="bold" color={colors.textPrimary} center>
             Set a new password.
           </AppText>
           <AppText variant="body" color={colors.mutedText} center>
@@ -129,8 +129,8 @@ export default function ResetPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.lightGray },
-  container: { flex: 1, backgroundColor: colors.lightGray, justifyContent: 'center', padding: spacing.xl },
+  flex: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, backgroundColor: colors.background, justifyContent: 'center', padding: spacing.xl },
   content: { gap: spacing.lg },
   input: {
     marginTop: 6,
@@ -138,9 +138,9 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
     fontSize: 16,
-    color: colors.navy,
+    color: colors.textPrimary,
   },
 })

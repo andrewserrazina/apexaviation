@@ -18,7 +18,7 @@ export function SectionHeader({ title, subtitle, icon, accent = 'navy' }: Sectio
     <View style={styles.row}>
       {icon ? (
         <View style={[styles.badge, accent === 'gold' ? styles.badgeGold : styles.badgeNavy]}>
-          <Ionicons name={icon} size={18} color={accent === 'gold' ? colors.goldDeep : colors.navy} />
+          <Ionicons name={icon} size={18} color={accent === 'gold' ? colors.goldDeep : colors.textPrimary} />
         </View>
       ) : null}
       <View style={styles.wrap}>

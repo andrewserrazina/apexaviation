@@ -77,7 +77,7 @@ export function ModuleQuizView({
                       accessibilityLabel={`${c.key}) ${c.label}`}
                       style={[styles.choiceRow, selected ? styles.choiceRowSelected : null]}
                     >
-                      <AppText variant="body" color={selected ? colors.navy : colors.mutedText}>
+                      <AppText variant="body" color={selected ? colors.goldDeep : colors.mutedText}>
                         {c.key}) {c.label}
                       </AppText>
                     </Pressable>
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
     minHeight: 70,
     textAlignVertical: 'top',
-    color: colors.navy,
+    color: colors.textPrimary,
   },
   resultBox: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm, gap: 4 },
 })

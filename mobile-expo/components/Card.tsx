@@ -29,7 +29,7 @@ export function Card({ children, style, accent }: CardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: radii.lg,
     padding: spacing.lg,
     borderWidth: 1,

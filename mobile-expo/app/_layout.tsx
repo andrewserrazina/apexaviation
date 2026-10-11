@@ -78,7 +78,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.lightGray } }}>
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(app)" />
           {/* Real route for the apexadvantage://auth-callback deep link

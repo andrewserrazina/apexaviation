@@ -25,7 +25,7 @@ export function ObjectiveCheckbox({ label, checked, disabled, onToggle }: Object
       style={styles.row}
     >
       <Ionicons name={checked ? 'checkbox' : 'square-outline'} size={22} color={checked ? colors.gold : colors.mutedText} />
-      <AppText variant="body" color={checked ? colors.navy : colors.mutedText} style={styles.label}>
+      <AppText variant="body" color={checked ? colors.textPrimary : colors.mutedText} style={styles.label}>
         {label}
       </AppText>
     </Pressable>

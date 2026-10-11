@@ -31,7 +31,7 @@ export function AppText({ variant = 'body', weight = 'regular', heading = false,
     fontFamily: heading ? fonts.heading : weightToFont[weight],
     fontSize: scale.fontSize,
     lineHeight: scale.lineHeight,
-    color: color ?? colors.navy,
+    color: color ?? colors.textPrimary,
     textAlign: center ? 'center' : undefined,
     letterSpacing: 'letterSpacing' in scale ? scale.letterSpacing : undefined,
   }

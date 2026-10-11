@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     fontSize: 14,
-    color: colors.navy,
+    color: colors.textPrimary,
   },
   inputMultiline: { minHeight: 90, textAlignVertical: 'top' },
   inputSingleLine: { minHeight: 44 },

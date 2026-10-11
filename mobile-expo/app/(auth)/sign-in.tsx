@@ -53,7 +53,7 @@ export default function SignInScreen() {
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.container}>
         <View style={styles.brand}>
-          <AppText variant="display" heading weight="bold" color={colors.navy} center>
+          <AppText variant="display" heading weight="bold" color={colors.textPrimary} center>
             Apex Advantage
           </AppText>
           <AppText variant="body" color={colors.mutedText} center>
@@ -130,7 +130,7 @@ export default function SignInScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.lightGray },
+  flex: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1, justifyContent: 'center', padding: spacing.xl, gap: spacing.xxl },
   brand: { gap: spacing.xs },
   form: { gap: spacing.md },
@@ -141,9 +141,9 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
     fontSize: 16,
-    color: colors.navy,
+    color: colors.textPrimary,
   },
 })
