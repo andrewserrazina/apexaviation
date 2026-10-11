@@ -5,10 +5,26 @@ import { colors, radii, shadow, spacing } from '../constants/theme'
 interface CardProps {
   children: ReactNode
   style?: ViewStyle
+  // Optional left-edge color bar -- a lightweight way to give a card
+  // visual weight (a primary action vs. a purely informational one)
+  // without a new shape/shadow/radius, so every existing Card caller
+  // that doesn't pass this renders exactly as before.
+  accent?: 'gold' | 'navy'
 }
 
-export function Card({ children, style }: CardProps) {
-  return <View style={[styles.card, style]}>{children}</View>
+export function Card({ children, style, accent }: CardProps) {
+  return (
+    <View
+      style={[
+        styles.card,
+        accent === 'gold' && styles.accentGold,
+        accent === 'navy' && styles.accentNavy,
+        style,
+      ]}
+    >
+      {children}
+    </View>
+  )
 }
 
 const styles = StyleSheet.create({
@@ -21,4 +37,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     ...shadow.card,
   },
+  accentGold: { borderLeftWidth: 4, borderLeftColor: colors.gold },
+  accentNavy: { borderLeftWidth: 4, borderLeftColor: colors.navy },
 })

@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Linking, Pressable, View, StyleSheet } from 'react-native'
+import { Linking, View, StyleSheet } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
 import { useBootstrapContext } from '../../contexts/BootstrapContext'
 import { useHomeDrill } from '../../hooks/useHomeDrill'
 import { Screen } from '../../components/Screen'
 import { AppText } from '../../components/AppText'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
+import { HomeHeader } from '../../components/HomeHeader'
 import { MetricCard } from '../../components/MetricCard'
 import { ReadinessCard } from '../../components/ReadinessCard'
 import { TodaysDrillCard } from '../../components/TodaysDrillCard'
@@ -91,25 +91,12 @@ export default function HomeScreen() {
   if (!access.checkride_prep) {
     return (
       <Screen refreshing={refreshing} onRefresh={onRefresh}>
-        <View style={styles.headerRow}>
-          <View style={styles.flexOne}>
-            <AppText variant="caption" color={colors.mutedText}>
-              Welcome
-            </AppText>
-            <AppText variant="title" heading weight="bold">
-              {user.full_name ?? 'Pilot'}
-            </AppText>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Profile and settings"
-            onPress={() => router.push('/(app)/profile')}
-            style={styles.avatarButton}
-            hitSlop={8}
-          >
-            <Ionicons name="person-circle" size={40} color={colors.navy} />
-          </Pressable>
-        </View>
+        <HomeHeader
+          eyebrow="WELCOME ABOARD"
+          name={user.full_name ?? 'Pilot'}
+          tagline="Your checkride prep starts here."
+          onAvatarPress={() => router.push('/(app)/profile')}
+        />
 
         <FreeReadinessAssessmentCard />
         <FreeVsPaidCard />
@@ -120,25 +107,12 @@ export default function HomeScreen() {
 
   return (
     <Screen refreshing={refreshing} onRefresh={onRefresh}>
-      <View style={styles.headerRow}>
-        <View style={styles.flexOne}>
-          <AppText variant="caption" color={colors.mutedText}>
-            Welcome back
-          </AppText>
-          <AppText variant="title" heading weight="bold">
-            {user.full_name ?? 'Pilot'}
-          </AppText>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Profile and settings"
-          onPress={() => router.push('/(app)/profile')}
-          style={styles.avatarButton}
-          hitSlop={8}
-        >
-          <Ionicons name="person-circle" size={40} color={colors.navy} />
-        </Pressable>
-      </View>
+      <HomeHeader
+        eyebrow="WELCOME BACK"
+        name={user.full_name ?? 'Pilot'}
+        tagline="Keep building toward checkride day."
+        onAvatarPress={() => router.push('/(app)/profile')}
+      />
 
       {(training.certificate_type || training.aircraft_class) && (
         <Card style={styles.trainingCard}>
@@ -189,8 +163,8 @@ export default function HomeScreen() {
       ) : null}
 
       {home.weak_areas.length > 0 ? (
-        <Card>
-          <SectionHeader title="Weak Areas" subtitle="From your recent practice, server-computed" />
+        <Card accent="gold">
+          <SectionHeader title="Weak Areas" subtitle="From your recent practice, server-computed" icon="alert-circle-outline" accent="gold" />
           <View style={styles.weakAreaList}>
             {home.weak_areas.map((area) => (
               <View key={area.acs_task_id} style={styles.weakAreaRow}>
@@ -217,10 +191,15 @@ export default function HomeScreen() {
 // comment above for why that distinction matters here).
 function FreeReadinessAssessmentCard() {
   return (
-    <Card>
-      <SectionHeader title="Free Readiness Assessment" subtitle="See where you stand before you ever open a question bank" />
+    <Card accent="gold">
+      <SectionHeader
+        title="Free Readiness Assessment"
+        subtitle="Your first step toward checkride confidence"
+        icon="speedometer-outline"
+        accent="gold"
+      />
       <AppText variant="body" color={colors.mutedText}>
-        A short, free diagnostic quiz that gives you an honest read on how checkride-ready you are right now -- no account or purchase required.
+        Five minutes, zero cost: a short diagnostic that gives you an honest, personalized read on how checkride-ready you are right now -- no account or purchase required.
       </AppText>
       <Button label="Take the Free Assessment" onPress={() => Linking.openURL(FREE_READINESS_ASSESSMENT_URL)} variant="secondary" />
     </Card>
@@ -235,14 +214,14 @@ function FreeReadinessAssessmentCard() {
 // exists to avoid.
 function FreeVsPaidCard() {
   return (
-    <Card>
-      <SectionHeader title="What's included" />
+    <Card accent="navy">
+      <SectionHeader title="Your Plan at a Glance" icon="layers-outline" accent="navy" />
       <View style={styles.planRow}>
         <AppText variant="label" weight="semibold" color={colors.success}>
           FREE
         </AppText>
         <AppText variant="body" color={colors.mutedText} style={styles.planText}>
-          Your account and dashboard, and the free Readiness Assessment above.
+          Your account, dashboard, and the free Readiness Assessment above -- already unlocked.
         </AppText>
       </View>
       <View style={styles.planRow}>
@@ -250,7 +229,7 @@ function FreeVsPaidCard() {
           CHECKRIDE PREP
         </AppText>
         <AppText variant="body" color={colors.mutedText} style={styles.planText}>
-          DPE Question Library, Scenario Training Center, AI Oral Practice, and progress tracking unlock separately.
+          The full DPE Question Library, Scenario Training Center, AI Oral Practice, and progress tracking -- unlocked together.
         </AppText>
       </View>
     </Card>
@@ -267,12 +246,10 @@ function FreeVsPaidCard() {
 // instead of anywhere purchasable.
 function FreeCheckridePrepTeaser() {
   return (
-    <Card>
-      <AppText variant="subtitle" weight="semibold">
-        Ready for the full Checkride Prep System?
-      </AppText>
+    <Card accent="gold">
+      <SectionHeader title="Ready for the full Checkride Prep System?" icon="ribbon-outline" accent="gold" />
       <AppText variant="body" color={colors.mutedText}>
-        Checkride Prep unlocks separately from your free account. If you believe it should already be unlocked on your account, contact your instructor or Apex support.
+        Checkride Prep unlocks separately from your free account, bringing the DPE Question Library, Scenario Training Center, and AI Oral Practice together in one place. If you believe it should already be unlocked, contact your instructor or Apex support.
       </AppText>
     </Card>
   )
@@ -294,9 +271,6 @@ function formatSnakeCaseLabel(value: string | null): string | null {
 }
 
 const styles = StyleSheet.create({
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  flexOne: { flex: 1 },
-  avatarButton: { padding: 2 },
   trainingCard: { gap: 4 },
   metricsRow: { flexDirection: 'row', gap: spacing.sm },
   weakAreaList: { gap: spacing.xs },

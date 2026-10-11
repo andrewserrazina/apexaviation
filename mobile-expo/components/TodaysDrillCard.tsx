@@ -32,8 +32,13 @@ export function TodaysDrillCard({ status, estimatedMinutes, targetAcsTasks, onPr
   const isCompleted = status === 'completed'
 
   return (
-    <Card>
-      <SectionHeader title={copy.title} subtitle={`${estimatedMinutes} min • ${targetAcsTasks.length} focus areas`} />
+    <Card accent="navy">
+      <SectionHeader
+        title={copy.title}
+        subtitle={`${estimatedMinutes} min • ${targetAcsTasks.length} focus areas`}
+        icon="today-outline"
+        accent="navy"
+      />
 
       {targetAcsTasks.length > 0 ? (
         <View style={styles.chipRow}>

@@ -355,7 +355,7 @@ describe('HomeScreen', () => {
       await render(<HomeScreen />)
 
       expect(screen.getByText('Take the Free Assessment')).toBeTruthy()
-      expect(screen.getByText(/free diagnostic quiz/i)).toBeTruthy()
+      expect(screen.getByText(/zero cost/i)).toBeTruthy()
     })
 
     it('accurately distinguishes free from paid features, without touting locked Ground School/Library content as "free"', async () => {
