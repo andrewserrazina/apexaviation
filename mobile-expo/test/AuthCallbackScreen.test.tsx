@@ -22,6 +22,24 @@ jest.mock('../hooks/useAuthDeepLinks', () => ({
   useAuthCallback: (...args: unknown[]) => mockUseAuthCallback(...args),
 }))
 
+// This screen has nothing to do with entitlement -- these two mocks
+// exist only to avoid the real BootstrapContext -> ... -> AsyncStorage
+// import chain now reachable through StateViews.tsx's
+// CheckridePrepPaywall import (used by ErrorState's sibling export,
+// not by this screen itself).
+jest.mock('../hooks/useCheckridePrepPurchase', () => ({
+  useCheckridePrepPurchase: () => ({
+    state: 'idle',
+    product: null,
+    errorMessage: null,
+    purchase: jest.fn(),
+    restore: jest.fn(),
+  }),
+}))
+jest.mock('../contexts/BootstrapContext', () => ({
+  useBootstrapContext: () => ({ data: null, refresh: jest.fn() }),
+}))
+
 beforeEach(() => {
   mockUseLocalSearchParams.mockReset()
   mockUseAuthCallback.mockReset()

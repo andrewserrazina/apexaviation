@@ -7,6 +7,7 @@ import { Screen } from '../../components/Screen'
 import { AppText } from '../../components/AppText'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
+import { CheckridePrepPaywall } from '../../components/CheckridePrepPaywall'
 import { HomeHeader } from '../../components/HomeHeader'
 import { MetricCard } from '../../components/MetricCard'
 import { ReadinessCard } from '../../components/ReadinessCard'
@@ -236,21 +237,19 @@ function FreeVsPaidCard() {
   )
 }
 
-// Unchanged compliance bar from the original LockedState this replaced
-// on Home (see that component's own comment in StateViews.tsx): zero
-// URL, browser, price, or purchase/checkout language. Apple's
-// anti-steering rules are about directing someone to pay OUTSIDE IAP for
-// content that should be sold through it -- this card only names what
-// Checkride Prep includes, the same way the rest of this screen already
-// names what's free, and points to a person (instructor/support)
-// instead of anywhere purchasable.
+// Was a deliberate zero-purchase-language dead end before Apple IAP
+// existed (Sprint 1A Rev2 section 3's original compliance bar for this
+// card). Now that in-app purchase is the real, required way to buy
+// digital content on iOS, this card leads with the actual purchase
+// flow (CheckridePrepPaywall) instead of a text-only description --
+// Apple's anti-steering rules are about directing someone to pay
+// OUTSIDE IAP for content that should be sold through it, which is the
+// opposite of what this card now does.
 function FreeCheckridePrepTeaser() {
   return (
     <Card accent="gold">
       <SectionHeader title="Ready for the full Checkride Prep System?" icon="ribbon-outline" accent="gold" />
-      <AppText variant="body" color={colors.mutedText}>
-        Checkride Prep unlocks separately from your free account, bringing the DPE Question Library, Scenario Training Center, and AI Oral Practice together in one place. If you believe it should already be unlocked, contact your instructor or Apex support.
-      </AppText>
+      <CheckridePrepPaywall showHeading={false} />
     </Card>
   )
 }

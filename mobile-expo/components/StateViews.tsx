@@ -2,6 +2,7 @@ import { ActivityIndicator, View, StyleSheet } from 'react-native'
 import { colors, spacing } from '../constants/theme'
 import { AppText } from './AppText'
 import { Button } from './Button'
+import { CheckridePrepPaywall } from './CheckridePrepPaywall'
 
 // LoadingState, ErrorState, and EmptyState are grouped in one file since
 // they share the same "centered message inside a screen" shape -- kept as
@@ -60,19 +61,16 @@ export function EmptyState({ title, message, actionLabel, onAction }: EmptyState
 }
 
 // The one locked-access state for a learner whose bootstrap-reported
-// access.checkride_prep is false. Sprint 1A has no in-app purchase flow,
-// so this is deliberately a dead end with NO url/price/checkout/browser
-// steering of any kind (Sprint 1A Rev2 section 3) -- a plain account-
-// state message pointing the learner to a human, not a purchase path.
+// access.checkride_prep is false. Through Sprint 1A this was a
+// deliberate dead end (no in-app purchase flow existed yet) -- it now
+// renders the real Apple IAP purchase flow (CheckridePrepPaywall) that
+// every one of this component's callers gets for free. Kept as the
+// same exported name/signature so none of those call sites need to
+// change.
 export function LockedState() {
   return (
     <View style={styles.wrap}>
-      <AppText variant="subtitle" weight="semibold" center>
-        Checkride Prep isn’t included on this account
-      </AppText>
-      <AppText variant="body" color={colors.mutedText} center>
-        If you believe this is a mistake, contact your instructor or Apex support.
-      </AppText>
+      <CheckridePrepPaywall />
     </View>
   )
 }

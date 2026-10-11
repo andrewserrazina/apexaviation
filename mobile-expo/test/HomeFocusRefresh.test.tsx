@@ -15,6 +15,16 @@ jest.mock('expo-router', () => ({
 }))
 
 const mockUseBootstrapContext = jest.fn()
+jest.mock('../hooks/useCheckridePrepPurchase', () => ({
+  useCheckridePrepPurchase: () => ({
+    state: 'idle',
+    product: null,
+    errorMessage: null,
+    purchase: jest.fn(),
+    restore: jest.fn(),
+  }),
+}))
+
 jest.mock('../contexts/BootstrapContext', () => ({
   useBootstrapContext: () => mockUseBootstrapContext(),
 }))

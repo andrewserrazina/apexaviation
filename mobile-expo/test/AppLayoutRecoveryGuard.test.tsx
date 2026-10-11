@@ -15,6 +15,16 @@ jest.mock('expo-router', () => {
   }
 })
 
+jest.mock('../hooks/useCheckridePrepPurchase', () => ({
+  useCheckridePrepPurchase: () => ({
+    state: 'idle',
+    product: null,
+    errorMessage: null,
+    purchase: jest.fn(),
+    restore: jest.fn(),
+  }),
+}))
+
 jest.mock('../contexts/BootstrapContext', () => ({
   BootstrapProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))

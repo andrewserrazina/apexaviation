@@ -81,6 +81,16 @@ jest.mock('../lib/activeOralSessionStorage', () => ({
 }))
 
 const mockUseBootstrapContext = jest.fn()
+jest.mock('../hooks/useCheckridePrepPurchase', () => ({
+  useCheckridePrepPurchase: () => ({
+    state: 'idle',
+    product: null,
+    errorMessage: null,
+    purchase: jest.fn(),
+    restore: jest.fn(),
+  }),
+}))
+
 jest.mock('../contexts/BootstrapContext', () => ({
   useBootstrapContext: () => mockUseBootstrapContext(),
 }))
@@ -103,7 +113,15 @@ function unentitledBootstrapContext() {
   }
 }
 
-const FORBIDDEN_STEERING = /https?:\/\/|apexaviationtx|browser|buy|purchase|checkout|price|\$\d/i
+// Apple IAP implementation: the locked state now legitimately shows
+// "Purchase"/"Restore Purchases" controls and StoreKit's own real price
+// (which may itself contain "$") -- those words were only forbidden
+// back when no purchase path existed at all. What's still genuinely
+// forbidden is WEB/Stripe steering: a bare URL, this app's own web
+// domain, or sending someone to a browser to pay outside IAP for
+// digital content that must be sold through it (Apple's actual
+// anti-steering rule).
+const FORBIDDEN_STEERING = /https?:\/\/|apexaviationtx|browser/i
 
 describe('entitlement gating (Rev2 section 3)', () => {
   beforeEach(() => {

@@ -11,6 +11,16 @@ import { render, screen, fireEvent, act } from '@testing-library/react-native'
 import AcsScreen from '../app/(app)/acs'
 
 const mockUseBootstrapContext = jest.fn()
+jest.mock('../hooks/useCheckridePrepPurchase', () => ({
+  useCheckridePrepPurchase: () => ({
+    state: 'idle',
+    product: null,
+    errorMessage: null,
+    purchase: jest.fn(),
+    restore: jest.fn(),
+  }),
+}))
+
 jest.mock('../contexts/BootstrapContext', () => ({
   useBootstrapContext: () => mockUseBootstrapContext(),
 }))
