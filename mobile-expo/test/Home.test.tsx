@@ -114,6 +114,44 @@ describe('HomeScreen', () => {
     expect(screen.getByText('Best: 20d')).toBeTruthy()
   })
 
+  // ACS task names request: Weak Areas used to show only the bare code
+  // (e.g. "I.C"), with no indication of what that task actually is --
+  // mobile-bootstrap now enriches each weak area with its real name.
+  it('shows each weak area’s real name next to its code, when the server provides one', async () => {
+    mockUseBootstrapContext.mockReturnValue(
+      bootstrapContextFixture({
+        data: bootstrapFixture({
+          home: {
+            todays_drill: null,
+            weak_areas: [
+              { acs_task_id: 't1', area_code: 'I', task_code: 'C', area_title: 'Preflight Preparation', task_title: 'Weather Information', evidence_score: 0.4 },
+            ],
+          },
+        }),
+      })
+    )
+    mockUseHomeDrill.mockReturnValue(homeDrillFixture())
+
+    await render(<HomeScreen />)
+
+    expect(screen.getByText('I.C Weather Information')).toBeTruthy()
+  })
+
+  it('falls back to the bare code alone for a weak area with no title (older/un-enriched data)', async () => {
+    mockUseBootstrapContext.mockReturnValue(
+      bootstrapContextFixture({
+        data: bootstrapFixture({
+          home: { todays_drill: null, weak_areas: [{ acs_task_id: 't1', area_code: 'I', task_code: 'C', evidence_score: 0.4 }] },
+        }),
+      })
+    )
+    mockUseHomeDrill.mockReturnValue(homeDrillFixture())
+
+    await render(<HomeScreen />)
+
+    expect(screen.getByText('I.C')).toBeTruthy()
+  })
+
   // Physical-device fix: a raw snake_case server rank value ("student_
   // pilot") was rendering with the literal underscore and wrapping
   // mid-word ("stud/ent_/pilot") in the giant numeric display font.
@@ -246,6 +284,39 @@ describe('HomeScreen', () => {
       const completedButton = screen.getByRole('button', { name: 'Completed' })
       expect(completedButton).toBeTruthy()
       expect(completedButton.props.accessibilityState?.disabled).toBe(true)
+    })
+
+    // ACS task names request: a focus-area chip used to show only the
+    // bare code (e.g. "I.C"), with no indication of what that task
+    // actually is -- now appends the real title when mobile-bootstrap
+    // provides one.
+    it('shows the task’s real name next to its code in a focus-area chip, when the server provides one', async () => {
+      mockUseBootstrapContext.mockReturnValue(bootstrapContextFixture())
+      mockUseHomeDrill.mockReturnValue(
+        homeDrillFixture({
+          drill: {
+            id: 'd1',
+            status: 'pending',
+            estimated_minutes: 10,
+            target_acs_tasks: [{ acs_task_id: 't1', area_code: 'I', task_code: 'C', area_title: 'Preflight Preparation', task_title: 'Weather Information' }],
+          },
+        })
+      )
+
+      await render(<HomeScreen />)
+      expect(screen.getByText('I.C Weather Information')).toBeTruthy()
+    })
+
+    it('falls back to the bare code alone when no title is provided (older/un-enriched data)', async () => {
+      mockUseBootstrapContext.mockReturnValue(bootstrapContextFixture())
+      mockUseHomeDrill.mockReturnValue(
+        homeDrillFixture({
+          drill: { id: 'd1', status: 'pending', estimated_minutes: 10, target_acs_tasks: [{ acs_task_id: 't1', area_code: 'I', task_code: 'C' }] },
+        })
+      )
+
+      await render(<HomeScreen />)
+      expect(screen.getByText('I.C')).toBeTruthy()
     })
   })
 

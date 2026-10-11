@@ -598,3 +598,28 @@ it('never fabricates an ACS task title -- only area_code.task_code and the serve
   expect(screen.getByText('III.B')).toBeTruthy()
   expect(screen.getByText('Evidence: 71%')).toBeTruthy()
 })
+
+// ACS task names request: a weak-area card used to show only the bare
+// code (e.g. "III.B"), with no indication of what that task actually is
+// -- now appends the real title when mobile-bootstrap provides one. The
+// anti-fabrication test above still holds: the server-provided fixture
+// there simply has no task_title, so the client still falls back to the
+// bare code -- it never invents one.
+it('shows the weak area’s real name next to its code, when the server provides one', async () => {
+  mockUseBootstrapContext.mockReturnValue(
+    bootstrapContext({
+      data: bootstrapFixture({
+        home: {
+          todays_drill: null,
+          weak_areas: [
+            { acs_task_id: 'task-uuid-456', area_code: 'III', task_code: 'B', area_title: 'Airport Operations', task_title: 'Traffic Patterns', evidence_score: 0.71 },
+          ],
+        },
+      }),
+    })
+  )
+
+  await render(<PracticeTabScreen />)
+
+  expect(screen.getByText('III.B Traffic Patterns')).toBeTruthy()
+})

@@ -138,6 +138,39 @@ serve(async (req) => {
 
     const streak = Array.isArray(streakRow) ? streakRow[0] : streakRow
 
+    // Enrich weak_areas/target_acs_tasks with their human-readable names.
+    // readiness_snapshots.weak_tasks and daily_drills.target_acs_tasks
+    // are stored as plain {area_code, task_code, acs_task_id} (+
+    // evidence_score for weak_tasks) at computation time, with no
+    // title -- the only place a mobile learner previously saw a task's
+    // real name was ACS Explorer's separate 'tasks' action
+    // (get_member_acs_task_breakdown(), mobile-readiness/index.ts),
+    // which left Home's Weak Areas card and Today's Drill's focus-area
+    // chips showing a bare code like "I.C" with nothing to explain what
+    // it is. Looking titles up by the exact ids already known here
+    // (rather than re-deriving them from that broader scoped RPC) keeps
+    // this to one small, indexed query against acs_tasks regardless of
+    // how many of the two lists are non-empty, and never fails the
+    // whole bootstrap response if it comes back empty -- a missing
+    // title just means the client falls back to showing the code alone,
+    // exactly like before.
+    const weakTaskRefs: { acs_task_id: string }[] = latestReadiness?.weak_tasks ?? []
+    const targetTaskRefs: { acs_task_id: string }[] = todaysDrill?.target_acs_tasks ?? []
+    const acsTaskIds = Array.from(new Set([...weakTaskRefs, ...targetTaskRefs].map((t) => t.acs_task_id)))
+
+    let acsTaskTitlesById = new Map<string, { area_title: string; task_title: string }>()
+    if (acsTaskIds.length > 0) {
+      const { data: acsTaskRows } = await supabase.from('acs_tasks').select('id, area_title, task_title').in('id', acsTaskIds)
+      acsTaskTitlesById = new Map(
+        (acsTaskRows || []).map((r: { id: string; area_title: string; task_title: string }) => [r.id, { area_title: r.area_title, task_title: r.task_title }])
+      )
+    }
+
+    function withTaskTitle<T extends { acs_task_id: string }>(task: T): T & { area_title: string | null; task_title: string | null } {
+      const names = acsTaskTitlesById.get(task.acs_task_id)
+      return { ...task, area_title: names?.area_title ?? null, task_title: names?.task_title ?? null }
+    }
+
     const bootstrap = {
       user: {
         id: profile.id,
@@ -177,10 +210,10 @@ serve(async (req) => {
               id: todaysDrill.id,
               status: todaysDrill.status,
               estimated_minutes: todaysDrill.estimated_minutes,
-              target_acs_tasks: todaysDrill.target_acs_tasks,
+              target_acs_tasks: targetTaskRefs.map(withTaskTitle),
             }
           : null,
-        weak_areas: latestReadiness?.weak_tasks ?? [],
+        weak_areas: weakTaskRefs.map(withTaskTitle),
       },
     }
 

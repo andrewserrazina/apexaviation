@@ -41,6 +41,7 @@ export function TodaysDrillCard({ status, estimatedMinutes, targetAcsTasks, onPr
             <View key={task.acs_task_id} style={styles.chip}>
               <AppText variant="caption" weight="semibold" color={colors.navy}>
                 {task.area_code}.{task.task_code}
+                {task.task_title ? ` ${task.task_title}` : ''}
               </AppText>
             </View>
           ))}

@@ -34,7 +34,8 @@ interface StartErrorState {
 function buildAdHocTitle(kind: AdHocPracticeKind, area?: WeakArea): string {
   if (kind === 'quick') return 'Quick Practice'
   if (kind === 'standard') return 'Standard Practice'
-  return `Weak Area Practice • ${area?.area_code}.${area?.task_code}`
+  const code = `${area?.area_code}.${area?.task_code}`
+  return `Weak Area Practice • ${code}${area?.task_title ? ` ${area.task_title}` : ''}`
 }
 
 export default function PracticeTabScreen() {
@@ -375,6 +376,7 @@ export default function PracticeTabScreen() {
             <Card key={area.acs_task_id}>
               <AppText variant="subtitle" weight="semibold">
                 {area.area_code}.{area.task_code}
+                {area.task_title ? ` ${area.task_title}` : ''}
               </AppText>
               <AppText variant="caption" color={colors.mutedText}>
                 Evidence: {Math.round(area.evidence_score * 100)}%

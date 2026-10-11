@@ -194,8 +194,9 @@ export default function HomeScreen() {
           <View style={styles.weakAreaList}>
             {home.weak_areas.map((area) => (
               <View key={area.acs_task_id} style={styles.weakAreaRow}>
-                <AppText variant="body" weight="medium">
+                <AppText variant="body" weight="medium" style={styles.weakAreaLabel}>
                   {area.area_code}.{area.task_code}
+                  {area.task_title ? ` ${area.task_title}` : ''}
                 </AppText>
                 <AppText variant="caption" color={colors.mutedText}>
                   {Math.round(area.evidence_score * 100)}%
@@ -299,7 +300,8 @@ const styles = StyleSheet.create({
   trainingCard: { gap: 4 },
   metricsRow: { flexDirection: 'row', gap: spacing.sm },
   weakAreaList: { gap: spacing.xs },
-  weakAreaRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  weakAreaRow: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm },
+  weakAreaLabel: { flex: 1 },
   planRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
   planText: { flex: 1 },
 })

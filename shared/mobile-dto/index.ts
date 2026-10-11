@@ -49,6 +49,16 @@ export interface MobileAcsTaskRef {
   acs_task_id: string
   area_code: string
   task_code: string
+  // Optional: populated only where the Edge Function actually enriches
+  // a task reference with its human-readable name (currently mobile-
+  // bootstrap's home.weak_areas and home.todays_drill.target_acs_tasks,
+  // which look these up from acs_tasks by id after reading the stored
+  // readiness_snapshots.weak_tasks/daily_drills.target_acs_tasks rows --
+  // see that function's own comment). Every other MobileAcsTaskRef
+  // producer is unaffected and simply omits these two fields, which
+  // TypeScript (and every existing consumer) already treats as valid.
+  area_title?: string | null
+  task_title?: string | null
 }
 
 // REV3.4/3.15: the one resolved training context every mobile surface
