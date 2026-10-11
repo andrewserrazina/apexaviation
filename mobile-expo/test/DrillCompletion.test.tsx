@@ -20,6 +20,24 @@ jest.mock('../hooks/usePostCompleteRefresh', () => ({
   usePostCompleteRefresh: (...args: unknown[]) => mockUsePostCompleteRefresh(...args),
 }))
 
+jest.mock('../hooks/useCheckridePrepPurchase', () => ({
+  useCheckridePrepPurchase: () => ({
+    state: 'idle',
+    product: null,
+    errorMessage: null,
+    purchase: jest.fn(),
+    restore: jest.fn(),
+  }),
+}))
+
+// This screen never actually renders the locked state (a completed
+// drill session implies entitlement), so this mock exists only to
+// avoid the real BootstrapContext -> ... -> AsyncStorage import chain
+// now reachable through StateViews.tsx's CheckridePrepPaywall import.
+jest.mock('../contexts/BootstrapContext', () => ({
+  useBootstrapContext: () => ({ data: null, refresh: jest.fn() }),
+}))
+
 function containsNodeType(node: unknown, type: string): boolean {
   if (!node || typeof node !== 'object') return false
   const n = node as { type?: string; children?: unknown[] }

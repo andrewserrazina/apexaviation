@@ -10,6 +10,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.apexaviationtx.advantage",
+      "deploymentTarget": "16.4",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -53,7 +54,8 @@
           "icon": "./assets/android-icon-monochrome.png",
           "color": "#F4B400"
         }
-      ]
+      ],
+      "expo-iap"
     ],
     "extra": {
       "router": {},

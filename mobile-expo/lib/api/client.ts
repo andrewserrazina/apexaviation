@@ -20,6 +20,7 @@ type EdgeFunctionName =
   | 'mobile-review-queue'
   | 'mobile-ground-school'
   | 'mobile-training-report'
+  | 'mobile-iap-verify-purchase'
 
 export interface InvokeErrorLike {
   message?: string

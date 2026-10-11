@@ -17,6 +17,16 @@ jest.mock('expo-router', () => ({
 }))
 
 const mockUseBootstrapContext = jest.fn()
+jest.mock('../hooks/useCheckridePrepPurchase', () => ({
+  useCheckridePrepPurchase: () => ({
+    state: 'idle',
+    product: null,
+    errorMessage: null,
+    purchase: jest.fn(),
+    restore: jest.fn(),
+  }),
+}))
+
 jest.mock('../contexts/BootstrapContext', () => ({
   useBootstrapContext: () => mockUseBootstrapContext(),
 }))
@@ -370,20 +380,23 @@ describe('HomeScreen', () => {
       expect(screen.queryByText(/study pack/i)).toBeNull()
     })
 
-    it('the Checkride Prep teaser names the features but carries zero checkout/price/purchase-URL language', async () => {
+    // Apple IAP implementation: the teaser now leads with the real
+    // purchase flow (CheckridePrepPaywall) instead of a text-only
+    // disclaimer -- "Purchase"/"Restore Purchases" controls are now the
+    // intended, required content here, not forbidden steering. What's
+    // still genuinely forbidden is WEB/Stripe steering: this app's own
+    // domain, a bare URL, or sending someone to a browser to pay
+    // outside IAP for content that must be sold through it.
+    it('the Checkride Prep teaser shows the real purchase controls, with zero web/browser-checkout steering', async () => {
       mockUseBootstrapContext.mockReturnValue(freeContext())
       mockUseHomeDrill.mockReturnValue(homeDrillFixture())
 
       await render(<HomeScreen />)
 
       expect(screen.getByText('Ready for the full Checkride Prep System?')).toBeTruthy()
-      // "purchase" alone is allowed elsewhere on this screen (the
-      // Readiness Assessment card's reassuring "no account or purchase
-      // required" is pro-user, not steering) -- what's actually
-      // forbidden is checkout/price/buy-now-style CTA language, and no
-      // bare URL at all, within this specific teaser's own text.
-      const teaserText = screen.getByText(/Checkride Prep unlocks separately/i)
-      expect(String(teaserText.props.children)).not.toMatch(/buy|checkout|\$\d|unlock now|tap to unlock|https?:\/\//i)
+      expect(screen.getByRole('button', { name: 'Unlock Checkride Prep' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Restore Purchases' })).toBeTruthy()
+      expect(screen.queryByText(/https?:\/\/|apexaviationtx|browser/i)).toBeNull()
     })
 
     it('never shows a bare purchase/checkout URL anywhere on the free dashboard -- the only link is the free Readiness Assessment', async () => {
