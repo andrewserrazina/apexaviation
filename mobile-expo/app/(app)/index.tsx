@@ -8,6 +8,7 @@ import { AppText } from '../../components/AppText'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { CheckridePrepPaywall } from '../../components/CheckridePrepPaywall'
+import { CheckrideCountdownCard } from '../../components/CheckrideCountdownCard'
 import { HomeHeader } from '../../components/HomeHeader'
 import { MetricCard } from '../../components/MetricCard'
 import { ReadinessCard } from '../../components/ReadinessCard'
@@ -99,6 +100,7 @@ export default function HomeScreen() {
           onAvatarPress={() => router.push('/(app)/profile')}
         />
 
+        <CheckrideCountdownCard profileId={user.id} checkrideDate={training.checkride_date} onSaved={bootstrap.refresh} />
         <FreeReadinessAssessmentCard />
         <FreeVsPaidCard />
         <FreeCheckridePrepTeaser />
@@ -114,6 +116,8 @@ export default function HomeScreen() {
         tagline="Keep building toward checkride day."
         onAvatarPress={() => router.push('/(app)/profile')}
       />
+
+      <CheckrideCountdownCard profileId={user.id} checkrideDate={training.checkride_date} onSaved={bootstrap.refresh} />
 
       {(training.certificate_type || training.aircraft_class) && (
         <Card style={styles.trainingCard}>

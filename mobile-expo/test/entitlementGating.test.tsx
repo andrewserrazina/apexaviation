@@ -95,6 +95,14 @@ jest.mock('../contexts/BootstrapContext', () => ({
   useBootstrapContext: () => mockUseBootstrapContext(),
 }))
 
+// CheckrideCountdownCard otherwise pulls in the real supabase.ts ->
+// largeSecureStore.ts -> AsyncStorage chain via checkrideDateDirect.ts,
+// same AsyncStorage-avoidance reasoning as every other mock in this
+// file. None of this suite's assertions are about the countdown card.
+jest.mock('../lib/api/checkrideDateDirect', () => ({
+  upsertCheckrideDate: jest.fn(),
+}))
+
 function unentitledBootstrapContext() {
   return {
     data: {
