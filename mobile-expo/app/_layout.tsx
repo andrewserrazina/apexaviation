@@ -6,7 +6,6 @@ import { PlayfairDisplay_700Bold, PlayfairDisplay_400Regular_Italic } from '@exp
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { AuthProvider } from '../contexts/AuthContext'
 import { useNotificationRouting } from '../hooks/useNotificationRouting'
-import { useAuthDeepLinks } from '../hooks/useAuthDeepLinks'
 import { ErrorState } from '../components/StateViews'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { logDevError } from '../lib/api/errors'
@@ -79,23 +78,21 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        {/* Needs useAuth(), so it's mounted as AuthProvider's child, not
-            a sibling call in this component's own body (which would
-            render before any AuthProvider context exists to read). */}
-        <AuthDeepLinkHandler />
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.lightGray } }}>
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(app)" />
+          {/* Real route for the apexadvantage://auth-callback deep link
+              every verification/recovery email ultimately opens -- see
+              app/auth-callback.tsx's own header comment for why this
+              must be an actual file-based route rather than a Linking
+              listener (the previous approach, which produced Expo
+              Router's own "Unmatched Route" screen on a physical
+              device). Explicitly declared here, matching (auth)/(app)
+              above, rather than relying on it being auto-discovered
+              alongside them. */}
+          <Stack.Screen name="auth-callback" />
         </Stack>
       </AuthProvider>
     </SafeAreaProvider>
   )
-}
-
-// Handles an incoming email-verification/password-recovery deep link
-// (apexadvantage://auth-callback?...) regardless of which screen is
-// currently showing -- see useAuthDeepLinks.ts for the full contract.
-function AuthDeepLinkHandler() {
-  useAuthDeepLinks()
-  return null
 }
