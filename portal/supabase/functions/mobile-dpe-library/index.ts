@@ -62,7 +62,7 @@ serve(async (req) => {
       supabase.from('dpe_categories').select('id, label, section_label, sort_order').eq('exam_type', 'private_pilot').order('sort_order'),
       supabase
         .from('dpe_questions')
-        .select('id, category, question, model_answer, common_mistakes, dpe_evaluating, real_world_application, acs_reference, sort_order')
+        .select('id, category, question, model_answer, common_mistakes, dpe_evaluating, real_world_application, acs_reference, sort_order, is_scenario, scenario_order')
         .eq('exam_type', 'private_pilot')
         .order('sort_order'),
       supabase

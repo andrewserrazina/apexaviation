@@ -28,6 +28,7 @@ export default function PracticeLayout() {
       <Stack.Screen name="[drillId]" />
       <Stack.Screen name="session/[sessionId]" />
       <Stack.Screen name="library" />
+      <Stack.Screen name="scenarios" />
     </Stack>
   )
 }

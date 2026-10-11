@@ -36,6 +36,17 @@ function matchesSearch(question: MobileDpeQuestion, term: string): boolean {
   return haystack.includes(term.toLowerCase())
 }
 
+// Mobile parity (Phase 5, item 2): Scenario Training is literally the
+// is_scenario=true subset of this same question bank, ordered by
+// scenario_order -- see web's SCENARIO_IDS/SCENARIOS construction in
+// site/portal-stable.js. Not a second content system to keep in sync.
+export function getScenarios(questions: MobileDpeQuestion[]): MobileDpeQuestion[] {
+  return questions
+    .filter((q) => q.is_scenario)
+    .slice()
+    .sort((a, b) => (a.scenario_order ?? 0) - (b.scenario_order ?? 0))
+}
+
 export function filterDpeLibrary(
   categories: MobileDpeCategory[],
   questions: MobileDpeQuestion[],

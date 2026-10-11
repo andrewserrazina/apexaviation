@@ -818,7 +818,9 @@ function isValidDpeLibraryQuestion(value: unknown): boolean {
     isNullableString(value.dpe_evaluating) &&
     isNullableString(value.real_world_application) &&
     isNullableString(value.acs_reference) &&
-    typeof value.sort_order === 'number'
+    typeof value.sort_order === 'number' &&
+    typeof value.is_scenario === 'boolean' &&
+    (value.scenario_order === null || typeof value.scenario_order === 'number')
   )
 }
 

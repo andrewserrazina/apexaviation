@@ -324,6 +324,11 @@ export default function PracticeTabScreen() {
         <Button label="Browse the Library" onPress={() => router.push('/(app)/practice/library')} variant="secondary" />
       </Card>
 
+      <Card accent="navy">
+        <SectionHeader title="Scenario Training Center" subtitle="Think it through before you reveal the model answer" icon="git-network-outline" accent="navy" />
+        <Button label="Start Scenario Training" onPress={() => router.push('/(app)/practice/scenarios')} variant="secondary" />
+      </Card>
+
       <View style={styles.section}>
         <SectionHeader title="On-Demand Practice" />
 

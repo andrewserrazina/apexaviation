@@ -973,6 +973,14 @@ export interface MobileDpeQuestion {
   real_world_application: string | null
   acs_reference: string | null
   sort_order: number
+  // Mobile parity (Phase 5, item 2): Scenario Training reuses this same
+  // question bank -- web's Scenario Center is literally dpe_questions
+  // rows where is_scenario=true, ordered by scenario_order (see site/
+  // portal-stable.js's own SCENARIO_IDS/SCENARIOS construction). Not a
+  // separate content system; just a different filtered/sorted view of
+  // the same rows this response already carries.
+  is_scenario: boolean
+  scenario_order: number | null
 }
 
 export interface MobileDpeQuestionProgress {

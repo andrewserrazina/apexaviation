@@ -18,6 +18,8 @@ function question(overrides: Partial<MobileDpeQuestion> = {}): MobileDpeQuestion
     dpe_evaluating: null,
     real_world_application: null,
     acs_reference: 'PA.I.C.K1',
+    is_scenario: false,
+    scenario_order: null,
     sort_order: 1,
     ...overrides,
   }
