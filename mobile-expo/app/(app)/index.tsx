@@ -3,12 +3,14 @@ import { Linking, View, StyleSheet } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import { useBootstrapContext } from '../../contexts/BootstrapContext'
 import { useHomeDrill } from '../../hooks/useHomeDrill'
+import { useDailyQuestion } from '../../hooks/useDailyQuestion'
 import { Screen } from '../../components/Screen'
 import { AppText } from '../../components/AppText'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { CheckridePrepPaywall } from '../../components/CheckridePrepPaywall'
 import { CheckrideCountdownCard } from '../../components/CheckrideCountdownCard'
+import { DailyQuestionCard } from '../../components/DailyQuestionCard'
 import { HomeHeader } from '../../components/HomeHeader'
 import { MetricCard } from '../../components/MetricCard'
 import { ReadinessCard } from '../../components/ReadinessCard'
@@ -33,6 +35,9 @@ const FREE_READINESS_ASSESSMENT_URL = 'https://apexaviationtx.com/readiness-asse
 export default function HomeScreen() {
   const bootstrap = useBootstrapContext()
   const drill = useHomeDrill(bootstrap.data?.home.todays_drill ?? null, { enabled: bootstrap.ready && bootstrap.entitled })
+  // Mobile parity (Phase 5, item 4): gated on bootstrap readiness only,
+  // never on entitlement -- see useDailyQuestion's own comment.
+  const dailyQuestion = useDailyQuestion({ enabled: bootstrap.ready })
   const [refreshing, setRefreshing] = useState(false)
 
   const onRefresh = useCallback(async () => {
@@ -101,6 +106,14 @@ export default function HomeScreen() {
         />
 
         <CheckrideCountdownCard profileId={user.id} checkrideDate={training.checkride_date} onSaved={bootstrap.refresh} />
+        <DailyQuestionCard
+          profileId={user.id}
+          question={dailyQuestion.question}
+          loading={dailyQuestion.loading}
+          error={dailyQuestion.error}
+          onRetry={dailyQuestion.retry}
+          entitled={false}
+        />
         <FreeReadinessAssessmentCard />
         <FreeVsPaidCard />
         <FreeCheckridePrepTeaser />
@@ -118,6 +131,15 @@ export default function HomeScreen() {
       />
 
       <CheckrideCountdownCard profileId={user.id} checkrideDate={training.checkride_date} onSaved={bootstrap.refresh} />
+
+      <DailyQuestionCard
+        profileId={user.id}
+        question={dailyQuestion.question}
+        loading={dailyQuestion.loading}
+        error={dailyQuestion.error}
+        onRetry={dailyQuestion.retry}
+        entitled
+      />
 
       {(training.certificate_type || training.aircraft_class) && (
         <Card style={styles.trainingCard}>

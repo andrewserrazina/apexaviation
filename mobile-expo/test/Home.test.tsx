@@ -39,6 +39,23 @@ jest.mock('../lib/api/checkrideDateDirect', () => ({
   upsertCheckrideDate: jest.fn(),
 }))
 
+// DailyQuestionCard otherwise pulls in the real supabase.ts ->
+// largeSecureStore.ts -> AsyncStorage chain via dailyQuestion.ts/
+// dpeLibraryDirect.ts/studyActivityDirect.ts, same AsyncStorage-
+// avoidance reasoning as every other mock in this file. None of this
+// suite's assertions are about Question of the Day.
+jest.mock('../hooks/useDailyQuestion', () => ({
+  useDailyQuestion: () => ({ question: null, loading: false, error: null, retry: jest.fn() }),
+}))
+jest.mock('../lib/api/dpeLibraryDirect', () => ({
+  setQuestionFavorited: jest.fn(),
+  setQuestionStudied: jest.fn(),
+  touchQuestionLastViewed: jest.fn(),
+}))
+jest.mock('../lib/api/studyActivityDirect', () => ({
+  ensureStudyActivityToday: jest.fn(),
+}))
+
 const mockUseHomeDrill = jest.fn()
 jest.mock('../hooks/useHomeDrill', () => ({
   useHomeDrill: (...args: unknown[]) => mockUseHomeDrill(...args),

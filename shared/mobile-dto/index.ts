@@ -989,3 +989,18 @@ export interface MobileDpeLibraryResponse {
   // key the same as { favorited: false, completed: false, last_viewed_at: null }.
   progress: Record<string, MobileDpeQuestionProgress>
 }
+
+// Mobile parity (Phase 5, item 4): Daily Question of the Day. Same
+// question id space as MobileDpeQuestion (dpe_questions.id), so the
+// client reuses the exact same favorite/studied progress writes
+// (lib/api/dpeLibraryDirect.ts) -- this is deliberately NOT its own
+// content type with its own progress model.
+export interface MobileDailyQuestion {
+  id: string
+  question: string
+  model_answer: string
+  dpe_evaluating: string | null
+  real_world_application: string | null
+  category: string
+  category_label: string
+}
