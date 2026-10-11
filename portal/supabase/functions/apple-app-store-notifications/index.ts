@@ -35,6 +35,11 @@
 // on a refund/revoke, this checks whether the profile has ANY other
 // qualifying grant (another still-valid apple_iap_transactions row, or
 // any portal_access_purchases row at all) and leaves access alone if so.
+// (stripe-webhook/index.ts has no charge.refunded handler at all today --
+// a Stripe-side refund of a web purchase never revokes access, for any
+// product, not just this one -- so "has a portal_access_purchases row"
+// is already exactly as strong a signal as the web side itself relies on;
+// this function isn't weakening anything the web side guarantees.)
 //
 // Env vars required (Supabase Edge Function secrets):
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (both auto-provided)
