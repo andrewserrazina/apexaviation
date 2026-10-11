@@ -6,9 +6,9 @@
 //   purpose: 'unlock-checkride-prep'
 //     An already-signed-in free member unlocking the Checkride Prep
 //     System (DPE library, scenarios, progress tracking, etc). Priced
-//     via get_checkride_prep_pricing() (founding/launch/standard tiers,
-//     decided server-side from portal_access_purchases and the caller's
-//     own profiles.created_at -- never trusted from the client). Requires
+//     via get_checkride_prep_pricing() -- a permanent $29 as of v158,
+//     decided server-side (never trusted from the client) so a future
+//     price change still only needs to touch that one function. Requires
 //     the caller's Supabase access token so we know *which* profile to
 //     unlock; never trust a client-supplied id.
 //
@@ -26,9 +26,9 @@
 //     (same logic as create-free-account) AND starts a Checkride Prep
 //     checkout in a single request, for a visitor who already knows they
 //     want it rather than making them come back later from the
-//     dashboard. Always prices at the founding/launch discount since the
-//     account is (by construction) brand new at the moment this runs --
-//     see get_checkride_prep_pricing()'s launch-window rule. No auth
+//     dashboard. Priced the same permanent $29 as the unlock-checkride-
+//     prep branch above, via the same get_checkride_prep_pricing() call.
+//     No auth
 //     token available yet (the account doesn't have a password set) --
 //     the new profile id comes directly from auth.admin.createUser's
 //     result, not from a client-supplied value.
@@ -407,7 +407,7 @@ serve(async (req) => {
         console.error(`create-checkout-session: get_checkride_prep_pricing failed for profile ${profileId}`, pricingError)
         return jsonError('Could not determine pricing. Please try again in a moment.', 500)
       }
-      const pricing: PricingRow = (pricingRows && pricingRows[0]) || { tier: 'standard', amount_cents: 4900, founding_seats_remaining: 0, launch_expires_at: null }
+      const pricing: PricingRow = (pricingRows && pricingRows[0]) || { tier: 'standard', amount_cents: 2900, founding_seats_remaining: 0, launch_expires_at: null }
 
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
@@ -543,21 +543,20 @@ serve(async (req) => {
       }
       await applySignupAttribution(supabase, newProfileId, utm_first, first_touch_landing, referrer_first, click_ids_first, first_touch_anon_id, signup_touch)
 
-      // Brand new profile, so this is always founding-or-launch ($29),
-      // never standard -- get_checkride_prep_pricing()'s launch window
-      // is measured from profiles.created_at, which is effectively "now"
-      // for a profile created a few lines above.
+      // $29 is the permanent price (get_checkride_prep_pricing(), v158) --
+      // this call is kept rather than hardcoding the amount so a future
+      // price change still only needs to touch that one function.
       // Unlike the unlock-checkride-prep branch above, this doesn't abort
       // on a pricing error -- the free account was just created a few
       // lines up, so bailing out here would strand a real member with an
-      // account but no way to check out. Falls back to the customer-
-      // favorable $29 (never silently overcharges), but still logs the
-      // error so a real RPC bug doesn't go unnoticed.
+      // account but no way to check out. Falls back to the known-current
+      // $29 (never silently overcharges), but still logs the error so a
+      // real RPC bug doesn't go unnoticed.
       const { data: pricingRows, error: pricingError } = await supabase.rpc('get_checkride_prep_pricing', { p_profile_id: newProfileId })
       if (pricingError) {
         console.error(`create-checkout-session: get_checkride_prep_pricing failed for new profile ${newProfileId}`, pricingError)
       }
-      const pricing: PricingRow = (pricingRows && pricingRows[0]) || { tier: 'launch', amount_cents: 2900, founding_seats_remaining: 0, launch_expires_at: null }
+      const pricing: PricingRow = (pricingRows && pricingRows[0]) || { tier: 'standard', amount_cents: 2900, founding_seats_remaining: 0, launch_expires_at: null }
 
       // Same "set your password" email as create-free-account, sent
       // immediately rather than waiting on the Stripe webhook -- the

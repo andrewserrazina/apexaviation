@@ -256,17 +256,18 @@
     var signupSubmit = document.getElementById('signupSubmit');
 
     // ── Live Checkride Prep pricing: same RPC/pattern as checkride-prep.html/
-    // apex-advantage.html, so the "Get Instant Access" box never displays a
-    // stale $29 once Early Access ends or founding seats run out. Previously
-    // this page hardcoded $29 in the markup AND in the InitiateCheckout/
-    // checkout_started tracking calls below regardless of the real live
-    // tier -- harmless while Early Access is active (today's real price
-    // happens to be $29), but once it isn't, this page would keep
-    // advertising $29 while create-checkout-session actually charges the
-    // real live price server-side, and Meta/GA4 would keep recording the
-    // wrong checkout value. checkridePrepLivePrice feeds both the display
-    // and the tracking calls below once the RPC resolves; the literal 29
-    // in each stays only as the safety-net default if it never does. ──
+    // apex-advantage.html, so the "Get Instant Access" box reads the real
+    // price from get_checkride_prep_pricing() (a permanent $29 as of
+    // supabase-portal-schema-v158.sql) rather than a hardcoded literal in
+    // this page's markup. Previously this page hardcoded $29 in the markup
+    // AND in the InitiateCheckout/checkout_started tracking calls below
+    // regardless of the real live price -- harmless as long as the two
+    // stayed in sync, but a silent trap the moment they didn't (this page
+    // would keep advertising one number while create-checkout-session
+    // actually charges another, and Meta/GA4 would record the wrong
+    // checkout value). checkridePrepLivePrice feeds both the display and
+    // the tracking calls below once the RPC resolves; the literal 29 in
+    // each stays only as the safety-net default if it never does. ──
     var checkridePrepLivePrice = null;
     (function () {
       if (!window.apexSupabase) return;

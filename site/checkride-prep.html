@@ -209,11 +209,10 @@
       .btn--cta-primary:hover, .btn--outline-gold:hover { transform: none; }
     }
 
-    /* ─── Early Access announcement bar ───
+    /* ─── Announcement bar ───
        Sits above the sticky header and scrolls away with the page (the
        header itself stays sticky) -- a slim, factual strip, not a second
-       sticky banner competing with the header. Hidden entirely once
-       Early Access ends (data-cp-early-access), never re-shown. */
+       sticky banner competing with the header. */
     .cp-announce {
       background: #F4B400;
       color: #0B1F3A;
@@ -235,33 +234,10 @@
       font-weight: 800;
       letter-spacing: 0.03em;
     }
-    .cp-announce__countdown {
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-      font-variant-numeric: tabular-nums;
-      opacity: 0.85;
-    }
     @media (max-width: 480px) {
       .cp-announce { padding: 8px 12px; }
       .cp-announce__text { font-size: 11.5px; }
-      .cp-announce__countdown { font-size: 11px; }
     }
-
-    /* ─── Reusable countdown display ───
-       Used sparingly (announcement bar + final CTA only, per the
-       campaign brief) -- days/hours/minutes, no ticking seconds, so it
-       reads as a real deadline instead of a slot-machine. Populated by
-       JS from a fixed absolute timestamp on every render; the static
-       fallback text (visible until/unless JS runs) already states the
-       actual date, so the deadline is understandable with JS disabled. */
-    .cp-countdown {
-      display: inline-flex;
-      align-items: baseline;
-      gap: 6px;
-      font-family: 'Montserrat', sans-serif;
-    }
-    .cp-countdown[data-cp-countdown] { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
     /* ─── Hero ─── */
     /* Full-bleed aviation photo + dark navy overlay -- the same
@@ -480,10 +456,7 @@
       max-width: 560px;
     }
     .cp-hero__value-line { font-size: 12.5px; color: #E5E7EB; line-height: 1.4; margin: 0 0 6px; max-width: 480px; }
-    .cp-hero__price-top { display: block; font-size: 12px; font-weight: 800; color: #F4B400; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
     .cp-hero__price { font-size: clamp(3.2rem, 4.4vw, 3.8rem); font-weight: 800; color: #F4B400; line-height: 1; font-family: 'Montserrat', sans-serif; }
-    .cp-hero__price-regular { display: block; font-size: 14px; font-weight: 700; color: #E5E7EB; margin-top: 6px; }
-    .cp-hero__price-regular s { color: rgba(255,255,255,0.5); font-weight: 600; }
     .cp-hero__price-note { font-size: 12.5px; color: rgba(255,255,255,0.5); margin-top: 4px; }
     .cp-hero__cta-col { grid-area: cta; width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 14px; }
     .cp-hero__cta-row { display: flex; gap: 12px; width: 100%; }
@@ -700,7 +673,6 @@
     .cp-early-cta__title { font-size: 16px; font-weight: 800; color: #fff; margin: 0 0 12px; letter-spacing: 0.01em; }
     .cp-early-cta__price-row { display: flex; align-items: baseline; justify-content: center; gap: 10px; margin-bottom: 4px; }
     .cp-early-cta__price { font-size: 34px; font-weight: 800; color: #F4B400; font-family: 'Montserrat', sans-serif; }
-    .cp-early-cta__price-regular { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.5); }
     .cp-early-cta__note { font-size: 12.5px; color: rgba(255,255,255,0.5); margin-bottom: 4px; }
     .cp-early-cta__urgency { font-size: 12.5px; color: #F4B400; font-weight: 600; margin-bottom: 18px; }
     .cp-early-cta .btn--cta-primary { width: 100%; min-height: 52px; }
@@ -841,9 +813,7 @@
     .cp-offer-box__title { font-size: 20px; font-weight: 800; color: #fff; margin: 0 0 20px; }
     .cp-offer-price-row { display: flex; align-items: baseline; gap: 10px; justify-content: center; margin-bottom: 8px; }
     .cp-offer-price { font-size: 52px; font-weight: 800; color: #F4B400; line-height: 1; font-family: 'Montserrat', sans-serif; }
-    .cp-offer-price-regular { font-size: 20px; font-weight: 700; color: rgba(255,255,255,0.5); }
-    .cp-offer-note { font-size: 13px; color: rgba(255,255,255,0.55); margin-bottom: 6px; }
-    .cp-offer-urgency { font-size: 13px; font-weight: 700; color: #E5E7EB; letter-spacing: 0.02em; margin-bottom: 24px; }
+    .cp-offer-note { font-size: 13px; color: rgba(255,255,255,0.55); margin-bottom: 24px; }
     .cp-delivery-list { list-style: none; padding: 0; margin: 0 0 28px; display: flex; flex-direction: column; gap: 10px; text-align: left; }
     .cp-delivery-list li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #fff; }
     .cp-delivery-list li svg { flex-shrink: 0; }
@@ -872,9 +842,7 @@
     .cp-final h2 { font-size: clamp(1.5rem, 3.6vw, 2.2rem); font-weight: 800; color: #fff; line-height: 1.3; max-width: 720px; margin: 0 auto 18px; }
     .cp-final__desc { color: #E5E7EB; font-size: 15px; line-height: 1.75; max-width: 560px; margin: 0 auto 32px; }
     .cp-final__offer { font-size: 22px; font-weight: 800; color: #F4B400; margin-bottom: 4px; font-family: 'Montserrat', sans-serif; }
-    .cp-final__offer-regular { font-size: 14px; font-weight: 700; color: #E5E7EB; margin-bottom: 10px; }
-    .cp-final__offer-note { font-size: 13px; color: rgba(255,255,255,0.55); margin-bottom: 4px; }
-    .cp-final__countdown { justify-content: center; margin-bottom: 26px; color: #F4B400; font-size: 15px; font-weight: 700; }
+    .cp-final__offer-note { font-size: 13px; color: rgba(255,255,255,0.55); margin-bottom: 26px; }
     .cp-final .btn--cta-primary { max-width: 380px; margin: 0 auto; }
     .cp-final__reassurance { font-size: 13px; color: rgba(255,255,255,0.55); margin-top: 18px; }
     .cp-final__brandline { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-top: 28px; }
@@ -937,16 +905,14 @@
 </head>
 <body class="cp-page">
 
-  <!-- ═══ 0. EARLY ACCESS ANNOUNCEMENT BAR ═══
-       Scrolls away with the page (the header below stays sticky).
-       Hidden entirely once Early Access ends -- see the pricing script
-       near the end of the page, which is the single source of truth for
-       "is Early Access still on" (it reads the same RPC that sets the
-       real Stripe price). -->
-  <div class="cp-announce" data-cp-early-access>
+  <!-- ═══ 0. ANNOUNCEMENT BAR ═══
+       $29 is the permanent price (supabase-portal-schema-v158.sql) --
+       no more Early-Access-ends-soon framing, so this is a plain,
+       factual strip rather than a countdown banner. Scrolls away with
+       the page (the header below stays sticky). -->
+  <div class="cp-announce">
     <div class="cp-announce__inner">
-      <span class="cp-announce__text">EARLY ACCESS: <span data-cp-price>$29</span> THROUGH <span data-cp-deadline-label="upper">OCTOBER 10</span> &middot; REGULARLY $49</span>
-      <span class="cp-countdown cp-announce__countdown" data-cp-countdown aria-hidden="true">Ends August 31</span>
+      <span class="cp-announce__text"><span data-cp-price>$29</span> &middot; ONE-TIME UNLOCK &middot; NO SUBSCRIPTION</span>
     </div>
   </div>
 
@@ -1019,11 +985,8 @@
       </ul>
 
       <div class="cp-hero__offer">
-        <span class="cp-hero__price-top" data-cp-early-access>Early Access Pricing</span>
         <span class="cp-hero__price" data-cp-price>$29</span>
-        <span class="cp-hero__price-regular" data-cp-regular-price>Regular price <s>$49</s></span>
         <div class="cp-hero__price-note">One-time unlock &middot; No subscription.</div>
-        <div class="cp-hero__price-note" data-cp-early-access>Early Access pricing ends August 31.</div>
       </div>
 
       <div class="cp-hero__cta-col">
@@ -1140,8 +1103,7 @@
 
   <!-- ═══ 3F. EARLY REPEAT CTA — mobile CRO reorder. Same checkout link/
        data attributes as every other CTA on this page (data-cp-cta,
-       data-cp-cta-label, data-cp-price, data-cp-early-access,
-       data-cp-regular-price) so the live-pricing script, UTM
+       data-cp-cta-label, data-cp-price) so the live-pricing script, UTM
        passthrough, and click-tracking below all pick it up automatically
        with no JS changes — a new querySelectorAll('[data-cp-cta]') match,
        not a new code path. data-cp-location="early-repeat" distinguishes
@@ -1155,10 +1117,8 @@
         <div class="cp-early-cta__title">PRIVATE PILOT CHECKRIDE PREP</div>
         <div class="cp-early-cta__price-row">
           <span class="cp-early-cta__price" data-cp-price>$29</span>
-          <span class="cp-early-cta__price-regular" data-cp-regular-price>Regular price <s>$49</s></span>
         </div>
         <div class="cp-early-cta__note">One-time unlock &middot; No subscription</div>
-        <div class="cp-early-cta__urgency" data-cp-early-access>Early Access ends August 31</div>
         <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-cta-label data-cp-location="early-repeat">UNLOCK CHECKRIDE PREP &mdash; $29</a>
       </div>
     </div>
@@ -1438,14 +1398,12 @@
       <div class="cp-section__eyebrow">Get Access</div>
       <h2 class="cp-section__title">START PREPARING WITH THE APEX ADVANTAGE</h2>
       <div class="cp-offer-box">
-        <div class="cp-offer-box__eyebrow" data-cp-early-access>Early Access &mdash; Apex Advantage</div>
+        <div class="cp-offer-box__eyebrow">Apex Advantage</div>
         <h3 class="cp-offer-box__title">PRIVATE PILOT CHECKRIDE PREP</h3>
         <div class="cp-offer-price-row">
           <span class="cp-offer-price" data-cp-price>$29</span>
-          <span class="cp-offer-price-regular" data-cp-regular-price><s>$49</s></span>
         </div>
         <p class="cp-offer-note">One-time unlock &middot; No subscription</p>
-        <div class="cp-offer-urgency" data-cp-urgency>Early Access pricing ends August 31 — then $49</div>
 
         <ul class="cp-delivery-list">
           <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 300+ ACS-mapped DPE-style oral questions with model answers</li>
@@ -1534,10 +1492,10 @@
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
-            When does Early Access pricing end?
+            How much does Checkride Prep cost?
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div class="faq-item__answer"><p>Early Access pricing ($29) ends <span data-cp-deadline-label="full">October 10, 2026</span>, after which it moves to the standard rate of $49. There's also a limited number of founding spots at $29 that can run out before that date if enough pilots purchase &mdash; whichever comes first.</p></div>
+          <div class="faq-item__answer"><p>$29, one time. No subscription, no recurring charge &mdash; you keep access for as long as your Apex Advantage account exists.</p></div>
         </div>
         <div class="faq-item">
           <button class="faq-item__question">
@@ -1564,10 +1522,7 @@
       <h2>YOUR CHECKRIDE IS COMING.<br>FIND THE WEAK SPOTS BEFORE THE DPE DOES.</h2>
       <p class="cp-final__desc">Build the knowledge, scenario awareness, and communication skills you need to walk into your private pilot checkride prepared.</p>
       <div class="cp-final__offer" data-cp-price>$29</div>
-      <div class="cp-final__offer-regular" data-cp-regular-price>Regular price <s>$49</s></div>
       <div class="cp-final__offer-note">One-time unlock &middot; No subscription</div>
-      <div class="cp-final__offer-note" data-cp-early-access>Early Access ends August 31.</div>
-      <div class="cp-countdown cp-final__countdown" data-cp-countdown data-cp-early-access aria-hidden="true">Ends August 31</div>
       <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-cta-label data-cp-location="final">UNLOCK CHECKRIDE PREP &mdash; $29</a>
       <div class="cp-final__reassurance">Instant digital access &bull; Designed by flight instructors &bull; Built around the ACS</div>
       <div class="cp-final__brandline">Train Beyond the Checkride</div>
@@ -1593,7 +1548,7 @@
   <!-- Sticky mini-CTA — persistent bottom bar once past the hero, not a popup -->
   <div class="cp-sticky-cta" id="cpStickyCta">
     <div class="cp-sticky-cta__inner">
-      <div class="cp-sticky-cta__copy"><strong data-cp-price>$29</strong> <span data-cp-early-access>Early Access &mdash; ends <span data-cp-deadline-label="short">Oct 10</span></span></div>
+      <div class="cp-sticky-cta__copy"><strong data-cp-price>$29</strong></div>
       <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-cta-label data-cp-location="sticky">UNLOCK CHECKRIDE PREP &mdash; $29</a>
     </div>
   </div>
@@ -1647,20 +1602,6 @@
           gtag('event', 'checkride_prep_checkout_start', { location: el.dataset.cpLocation || 'unknown' });
         }
         if (window.apexTrack) apexTrack('checkout_started', { product: 'checkride_prep', checkout_step: 'cta_click', location: el.dataset.cpLocation || 'unknown' });
-        // Early Access-specific signal for the retargeting campaign,
-        // additive to checkout_started above (not a replacement) --
-        // window.cpEarlyAccessActive is set by the live-pricing script
-        // below from the same RPC that sets the real Stripe price, so
-        // this reports what the visitor actually saw, not an assumption.
-        if (window.apexTrack && window.cpEarlyAccessActive !== false) {
-          apexTrack('early_access_cta_click', {
-            product: 'private_pilot_checkride_prep',
-            promotional_price: 29,
-            regular_price: 49,
-            deadline: '2026-08-31T23:59:00-04:00',
-            location: el.dataset.cpLocation || 'unknown'
-          });
-        }
       });
     });
 
@@ -1695,115 +1636,31 @@
       document.querySelectorAll('[data-cp-cta]').forEach(function (a) { a.href = a.href + suffix; });
     })();
 
-    // ── Early Access countdown + live pricing ──────────────────────
-    // Real deadline: Oct 10, 2026, 11:59 PM America/New_York, written
-    // as its fixed UTC instant (EDT/UTC-4 is in effect on this date --
-    // 2026 DST runs Mar 8-Nov 1) so no browser ever has to parse a
-    // zone-name string. Recomputed fresh from this one constant on
-    // every check -- never stored, never derived from a first-visit
-    // timestamp, so refresh/cookies/return visits can't move it and it
-    // can't become visitor-specific.
-    //
-    // supabase-portal-schema-v122.sql's get_checkride_prep_pricing() is
-    // the actual source of truth (same RPC that sets Stripe's real
-    // price), and is authoritative here once it resolves. This
-    // constant exists for two display-only purposes: rendering the
-    // DAYS/HRS/MIN digits, and as a safety-net default (in case the RPC
-    // never resolves at all -- offline, ad blocker, apexSupabase not
-    // loaded) so this page can never show stale $29 Early Access
-    // messaging indefinitely just because a network call failed.
-    //
-    // The original v66 version of this page hardcoded "August 31" as a
-    // literal string in three places below (the banner, the FAQ answer,
-    // and the sticky CTA) -- so when the SQL deadline was later pushed
-    // out (supabase-portal-schema-v122.sql restarted the promo after
-    // the Aug 31 date passed), all three kept advertising the wrong,
-    // expired date even though the real price/tier were still correct
-    // via the RPC. Fixed the same way site/portal-stable.js's
-    // earlyAccessDeadlineLabel() already handles this for portal.html:
-    // every [data-cp-deadline-label] element is populated dynamically
-    // from the RPC's own launch_expires_at, so a future deadline change
-    // only ever requires updating the one SQL constant.
+    // ── Live pricing ─────────────────────────────────────────────
+    // $29 is the permanent price now (supabase-portal-schema-v158.sql
+    // replaced the old founding/launch/standard countdown logic in
+    // get_checkride_prep_pricing() with a flat return) -- this still
+    // reads the real price from that same RPC rather than hardcoding
+    // "$29" in JS, so a future price change still only needs to touch
+    // the one SQL function, but there's no more countdown/urgency state
+    // to render.
     (function () {
-      var DEADLINE = new Date('2026-10-11T03:59:00Z');
-      var rpcResolved = false;
-
-      function pad(n) { return n < 10 ? '0' + n : String(n); }
-
-      // Mirrors site/portal-stable.js's earlyAccessDeadlineLabel() --
-      // same RPC field, same America/New_York formatting -- just with
-      // three style variants for this page's three different copy
-      // contexts (all-caps banner, full "Month D, YYYY" FAQ answer,
-      // abbreviated sticky CTA).
-      function formatDeadlineLabel(expiresAt, style) {
-        var d = expiresAt ? new Date(expiresAt) : null;
-        if (!d || isNaN(d.getTime())) return style === 'upper' ? 'SOON' : 'soon';
-        var opts = { month: style === 'short' ? 'short' : 'long', day: 'numeric', timeZone: 'America/New_York' };
-        if (style === 'full') opts.year = 'numeric';
-        var label = d.toLocaleDateString('en-US', opts);
-        return style === 'upper' ? label.toUpperCase() : label;
-      }
-
-      function applyState(active, price, urgencyText, deadlineIso) {
-        window.cpEarlyAccessActive = active;
+      function applyPrice(amountCents) {
+        var price = '$' + Math.round(amountCents / 100);
         document.querySelectorAll('[data-cp-price]').forEach(function (el) { el.textContent = price; });
-        document.querySelectorAll('[data-cp-early-access]').forEach(function (el) { el.style.display = active ? '' : 'none'; });
-        document.querySelectorAll('[data-cp-regular-price]').forEach(function (el) { el.style.display = active ? '' : 'none'; });
-        document.querySelectorAll('[data-cp-urgency]').forEach(function (el) { el.textContent = urgencyText; });
         document.querySelectorAll('[data-cp-cta-label]').forEach(function (el) { el.textContent = 'UNLOCK CHECKRIDE PREP — ' + price; });
-        ['upper', 'full', 'short'].forEach(function (style) {
-          var label = formatDeadlineLabel(deadlineIso, style);
-          document.querySelectorAll('[data-cp-deadline-label="' + style + '"]').forEach(function (el) { el.textContent = label; });
-        });
       }
-
-      function renderCountdown() {
-        var remainingMs = DEADLINE.getTime() - Date.now();
-        var nodes = document.querySelectorAll('[data-cp-countdown]');
-        if (remainingMs <= 0) {
-          nodes.forEach(function (el) { el.textContent = 'Early Access has ended'; });
-          // Fallback only, for the visitor's own clock -- if the RPC
-          // below has already resolved (or resolves later, via its own
-          // 5-minute refresh), that result wins; this just prevents
-          // stale $29 copy from sitting indefinitely if the RPC call
-          // never completes at all.
-          if (!rpcResolved) applyState(false, '$49', 'Regular pricing — $49', null);
-          return;
-        }
-        var totalMinutes = Math.floor(remainingMs / 60000);
-        var days = Math.floor(totalMinutes / 1440);
-        var hours = Math.floor((totalMinutes % 1440) / 60);
-        var minutes = totalMinutes % 60;
-        nodes.forEach(function (el) { el.textContent = pad(days) + ' DAYS : ' + pad(hours) + ' HRS : ' + pad(minutes) + ' MIN'; });
-      }
-
-      renderCountdown();
-      setInterval(renderCountdown, 30000);
 
       function fetchPricing() {
         if (!window.apexSupabase) return;
         apexSupabase.rpc('get_checkride_prep_pricing', { p_profile_id: null }).then(function (res) {
           var row = res.data && res.data[0];
           if (res.error || !row) return;
-          rpcResolved = true;
-          var price = '$' + Math.round(row.amount_cents / 100);
-          var active = row.tier !== 'standard';
-          var deadlineShort = formatDeadlineLabel(row.launch_expires_at, 'short');
-          var urgency = row.tier === 'founding'
-            ? row.founding_seats_remaining + ' of 25 founding spots left at ' + price + ' — Early Access ends ' + deadlineShort
-            : row.tier === 'launch'
-              ? 'Early Access pricing ends ' + deadlineShort + ' — then $49'
-              : 'Regular pricing — $49';
-          applyState(active, price, urgency, row.launch_expires_at);
+          applyPrice(row.amount_cents);
         }).catch(function () {});
       }
 
       fetchPricing();
-      // Re-poll periodically (not just once on load) so a tab left open
-      // across the exact Early Access deadline transition still picks
-      // up the real server-side change instead of being stuck with
-      // whatever tier it saw on page load.
-      setInterval(fetchPricing, 300000);
     })();
 
     // ── FAQ accordion (kept local to this page instead of pulling in

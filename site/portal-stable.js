@@ -684,26 +684,13 @@
     });
   }
 
-  /* ── Live founding/standard price preview — the "$29 · Tap to unlock"
-     labels and the unlock modal's price both used to be static HTML that
-     kept advertising $29 forever, even after the 25 founding seats were
-     gone and every new member was actually being charged $49 at checkout.
-     get_checkride_prep_pricing() mirrors the same server-side rule
-     create-checkout-session uses to decide the real charge, so what a
-     member sees here always matches what they're about to pay. ──────── */
-  // Aug 31, 2026 Early Access campaign (supabase-portal-schema-v66.sql):
-  // get_checkride_prep_pricing() now returns the same real calendar
-  // deadline in launch_expires_at for both the founding and launch
-  // tiers (previously null for founding, since that tier used to be
-  // purely seat-capped) -- so both get one consistent date-based label
-  // here instead of the old "X founding spots left"/"X hours left"
-  // copy, which no longer matches how the deadline actually works.
-  function earlyAccessDeadlineLabel(expiresAt) {
-    var d = expiresAt ? new Date(expiresAt) : null;
-    if (!d || isNaN(d.getTime())) return 'soon';
-    return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'America/New_York' });
-  }
-
+  /* ── Live price preview — the "$29 · Tap to unlock" labels and the
+     unlock modal's price both read the real price from
+     get_checkride_prep_pricing() rather than a hardcoded string, so a
+     future price change still only needs to touch that one function. ── */
+  // $29 is now the permanent price (supabase-portal-schema-v158.sql) --
+  // no more founding-seat cap or launch-window deadline, so there's no
+  // more urgency/countdown copy to show here.
   function applyUnlockPricing() {
     if (member && member.checkridePrepUnlocked) return;
     apexSupabase.rpc('get_checkride_prep_pricing', { p_profile_id: member ? member.id : null }).then(function (res) {
@@ -716,17 +703,13 @@
       var modalPrice = document.getElementById('unlockModalPrice');
       var modalNote = document.getElementById('unlockModalPriceNote');
       if (modalPrice) modalPrice.textContent = priceLabel;
-      if (modalNote) {
-        modalNote.textContent = row.tier === 'standard'
-          ? 'Early Access pricing has ended — $49 for full access'
-          : 'Early Access pricing — ends ' + earlyAccessDeadlineLabel(row.launch_expires_at) + ', then $49';
-      }
+      if (modalNote) modalNote.textContent = 'One-time payment — unlocked for life';
       // Every "Unlock the Complete Prep Pack" CTA across the free guide
       // pages and the Free Resources hub (site/portal.html) mirrors the
-      // same live price/urgency rather than a static "$29" hardcoded per
-      // copy of the button.
+      // same live price rather than a static "$29" hardcoded per copy of
+      // the button.
       document.querySelectorAll('.portal-live-price').forEach(function (el) {
-        el.textContent = row.tier === 'standard' ? priceLabel : priceLabel + ' — Early Access';
+        el.textContent = priceLabel;
       });
     }).catch(function (e) { console.error('applyUnlockPricing failed', e); });
   }
