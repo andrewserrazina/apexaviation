@@ -32,7 +32,16 @@ async function requestTransactionInfo(
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!res.ok) {
-    throw new AppStoreServerApiError(`App Store Server API returned ${res.status} for transaction ${transactionId}`, res.status)
+    // Apple's error responses are small JSON bodies ({errorCode,
+    // errorMessage}) that never echo back credentials -- capturing this
+    // (bounded, in case of an unexpected non-JSON body from an
+    // intermediary) is the difference between "401" and actually
+    // knowing whether the Issuer ID, Key ID, or private key is wrong.
+    const bodyText = await res.text().catch(() => '')
+    throw new AppStoreServerApiError(
+      `App Store Server API returned ${res.status} for transaction ${transactionId}: ${bodyText.slice(0, 500)}`,
+      res.status
+    )
   }
   return res.json()
 }
