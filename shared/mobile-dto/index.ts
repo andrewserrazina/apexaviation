@@ -942,3 +942,50 @@ export interface MobileTrainingReportAggregates {
   review_queue_completed_count: number
   ai_dpe_recent_session: MobileDpeSessionSummary | null
 }
+
+// ---------------------------------------------------------------------
+// Mobile parity (Phase 5, item 1): DPE Question Library -- a searchable/
+// filterable browse of the full question bank, matching web's
+// renderDpeLibrary() (site/portal-stable.js). Unlike mobile-review-queue's
+// two-step reveal, this returns every question's full content (including
+// the answer fields) in one call, same as get-premium-content does for
+// web -- there's no spaced-repetition ownership check to enforce per
+// question here, just the one checkride_prep_unlocked gate on the whole
+// list, so a second round trip per question would add nothing but
+// latency. Favorite/studied/last-viewed state is returned as a side map
+// keyed by question id rather than merged onto MobileDpeQuestion, since
+// the client writes it directly to portal_question_progress afterward
+// (lib/api/dpeLibraryDirect.ts) and re-merges client-side.
+export interface MobileDpeCategory {
+  id: string
+  label: string
+  section_label: string | null
+  sort_order: number
+}
+
+export interface MobileDpeQuestion {
+  id: string
+  category: string
+  question: string
+  model_answer: string
+  common_mistakes: string | null
+  dpe_evaluating: string | null
+  real_world_application: string | null
+  acs_reference: string | null
+  sort_order: number
+}
+
+export interface MobileDpeQuestionProgress {
+  favorited: boolean
+  completed: boolean
+  last_viewed_at: string | null
+}
+
+export interface MobileDpeLibraryResponse {
+  categories: MobileDpeCategory[]
+  questions: MobileDpeQuestion[]
+  // Keyed by question id. A question with no row yet (never viewed/
+  // favorited/studied) has no entry here -- the client treats a missing
+  // key the same as { favorited: false, completed: false, last_viewed_at: null }.
+  progress: Record<string, MobileDpeQuestionProgress>
+}

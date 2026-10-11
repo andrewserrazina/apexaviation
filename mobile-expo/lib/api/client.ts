@@ -21,6 +21,7 @@ type EdgeFunctionName =
   | 'mobile-ground-school'
   | 'mobile-training-report'
   | 'mobile-iap-verify-purchase'
+  | 'mobile-dpe-library'
 
 export interface InvokeErrorLike {
   message?: string

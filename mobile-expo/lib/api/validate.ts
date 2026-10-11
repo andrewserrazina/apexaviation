@@ -796,3 +796,49 @@ export function isValidTrainingReportAggregates(value: unknown): boolean {
     isValidDpeSessionSummaryOrNull(value.ai_dpe_recent_session)
   )
 }
+
+function isValidDpeCategory(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    isNonEmptyString(value.id) &&
+    typeof value.label === 'string' &&
+    isNullableString(value.section_label) &&
+    typeof value.sort_order === 'number'
+  )
+}
+
+function isValidDpeLibraryQuestion(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    isNonEmptyString(value.id) &&
+    typeof value.category === 'string' &&
+    typeof value.question === 'string' &&
+    typeof value.model_answer === 'string' &&
+    isNullableString(value.common_mistakes) &&
+    isNullableString(value.dpe_evaluating) &&
+    isNullableString(value.real_world_application) &&
+    isNullableString(value.acs_reference) &&
+    typeof value.sort_order === 'number'
+  )
+}
+
+function isValidDpeQuestionProgress(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    typeof value.favorited === 'boolean' &&
+    typeof value.completed === 'boolean' &&
+    isNullableString(value.last_viewed_at)
+  )
+}
+
+export function isValidDpeLibraryResponse(value: unknown): boolean {
+  return (
+    isPlainObject(value) &&
+    Array.isArray(value.categories) &&
+    value.categories.every(isValidDpeCategory) &&
+    Array.isArray(value.questions) &&
+    value.questions.every(isValidDpeLibraryQuestion) &&
+    isPlainObject(value.progress) &&
+    Object.values(value.progress).every(isValidDpeQuestionProgress)
+  )
+}

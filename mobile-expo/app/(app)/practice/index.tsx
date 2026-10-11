@@ -306,6 +306,11 @@ export default function PracticeTabScreen() {
         )
       })()}
 
+      <Card accent="navy">
+        <SectionHeader title="DPE Question Library" subtitle="Search, filter, and study the full question bank" icon="library-outline" accent="navy" />
+        <Button label="Browse the Library" onPress={() => router.push('/(app)/practice/library')} variant="secondary" />
+      </Card>
+
       <View style={styles.section}>
         <SectionHeader title="On-Demand Practice" />
 
