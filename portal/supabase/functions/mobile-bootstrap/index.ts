@@ -6,9 +6,6 @@
 // every field below is resolved server-side, from the same tables the web
 // portal already uses, and reshaped into a stable external DTO.
 //
-// NOT YET DEPLOYED. Source-controlled only, per the Phase C stop gate --
-// see SPRINT_0_MOBILE_BACKEND_IMPLEMENTATION_REPORT.md.
-//
 // Explicitly excluded from this response (never queried, never returned):
 // staff-only profile fields (role, is_staff/is_admin), instructor pay
 // rates, admin flags, any Stripe session/payment-intent id, signup_utm_*/
