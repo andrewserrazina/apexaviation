@@ -7,7 +7,7 @@
 // via the context; useHomeDrill's entitlement-gating behavior is covered
 // separately in test/entitlementGating.test.tsx, which does NOT mock
 // these hooks).
-import { render, screen } from '@testing-library/react-native'
+import { render, screen, fireEvent } from '@testing-library/react-native'
 import type { MobileBootstrapDTO } from '../../shared/mobile-dto'
 import HomeScreen from '../app/(app)/index'
 
@@ -147,6 +147,21 @@ describe('HomeScreen', () => {
     expect(screen.getByText('Checkride Ready')).toBeTruthy()
     expect(screen.getByText('12d')).toBeTruthy()
     expect(screen.getByText('Best: 20d')).toBeTruthy()
+  })
+
+  // Mobile parity (Phase 5, item 6): a free-standing "Continue Studying"
+  // entry point into Training Report's own recommendation, rather than
+  // re-fetching readiness/aggregates a second time just to duplicate
+  // that engine on Home.
+  it('shows a Continue Studying card that navigates to Training Report', async () => {
+    mockUseBootstrapContext.mockReturnValue(bootstrapContextFixture())
+    mockUseHomeDrill.mockReturnValue(homeDrillFixture())
+
+    await render(<HomeScreen />)
+
+    expect(screen.getByText('Continue Studying')).toBeTruthy()
+    fireEvent.press(screen.getByRole('button', { name: 'View My Recommendation' }))
+    expect(require('expo-router').router.push).toHaveBeenCalledWith('/(app)/training-report')
   })
 
   // ACS task names request: Weak Areas used to show only the bare code

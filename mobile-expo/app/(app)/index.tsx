@@ -207,7 +207,25 @@ export default function HomeScreen() {
           </View>
         </Card>
       ) : null}
+
+      <ContinueStudyingCard />
     </Screen>
+  )
+}
+
+// Mobile parity (Phase 5, item 6): "Continue Studying" -- Home's
+// genuinely free-standing entry point into the Training Report's own
+// recommendedAction computation (buildTrainingReportView.ts), rather
+// than re-fetching readiness/aggregates data a second time on Home just
+// to duplicate that same engine here. Home already surfaces the two
+// loudest signals (Today's Drill, Weak Areas) directly above this; this
+// card is the bridge to the fuller, already-built recommendation.
+function ContinueStudyingCard() {
+  return (
+    <Card accent="navy">
+      <SectionHeader title="Continue Studying" subtitle="See your personalized next step" icon="compass-outline" accent="navy" />
+      <Button label="View My Recommendation" onPress={() => router.push('/(app)/training-report')} variant="secondary" />
+    </Card>
   )
 }
 
