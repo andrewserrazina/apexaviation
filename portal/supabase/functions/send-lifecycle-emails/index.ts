@@ -579,13 +579,31 @@ async function sendEmail(
   contentHtml: string,
   options?: { replyTo?: string; exemptFromGlobalCap?: boolean },
 ) {
-  const invoke = () => supabase.functions.invoke('send-email', {
-    body: { to, subject, html: template(contentHtml), ...(options?.replyTo ? { replyTo: options.replyTo } : {}) },
-  })
+  // Thrown exceptions (e.g. a network-level failure before any response
+  // is received) are caught HERE and converted to the same { error }
+  // shape a resolved failure already has. This matters beyond
+  // consistency: without it, a thrown exception would propagate straight
+  // out of sendEmail() and skip the `budget.failures++` below entirely --
+  // GLOBAL_SEND_FAILURE_CAP would never trip against a provider that
+  // fails by throwing instead of resolving with an error, defeating the
+  // "bound unbounded attempts against a dead provider" purpose this cap
+  // exists for. sendEmail() itself now never throws, for any options.
+  const invoke = async () => {
+    try {
+      return await supabase.functions.invoke('send-email', {
+        body: { to, subject, html: template(contentHtml), ...(options?.replyTo ? { replyTo: options.replyTo } : {}) },
+      })
+    } catch (err) {
+      return { error: err }
+    }
+  }
 
   if (options?.exemptFromGlobalCap) return await invoke()
 
   const budget = results.__sendBudget ?? (results.__sendBudget = { successes: 0, failures: 0 })
+  // Cap-reached responses return before touching `budget` at all, so a
+  // skip never itself counts as a failure (or a success) -- only a real
+  // attempt (whatever its outcome) updates the budget below.
   if (budget.successes >= GLOBAL_SEND_SUCCESS_CAP) {
     results.global_send_cap_skips = (results.global_send_cap_skips || 0) + 1
     return { error: { message: 'global send success cap reached this run (recovery safeguard, not a provider failure)', code: 'GLOBAL_SEND_CAP' } }

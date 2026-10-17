@@ -112,6 +112,90 @@ describe('sendEmail(): global cross-campaign send cap -- real execution', () => 
     expect(results.global_send_failure_cap_skips).toBe(1)
   })
 
+  function makeThrowingMockSupabase(errorFactory) {
+    const calls = []
+    return {
+      functions: {
+        invoke: async (_name, { body }) => {
+          calls.push(body)
+          throw errorFactory()
+        },
+      },
+      _calls: calls,
+    }
+  }
+
+  it('a THROWN exception (not a resolved {error}) is caught inside sendEmail() and counted against GLOBAL_SEND_FAILURE_CAP -- repeated thrown failures cannot exceed the failure-attempt budget', async () => {
+    const sendEmail = buildSendEmail({ successCap: 10, failureCap: 3 })
+    const supabase = makeThrowingMockSupabase(() => new Error('network unreachable'))
+    const results = {}
+
+    const outcomes = []
+    for (let n = 0; n < 6; n++) {
+      // Must never throw out of sendEmail() itself -- if it did, this
+      // loop would abort instead of producing 6 outcomes.
+      outcomes.push(await sendEmail(supabase, results, 'a@example.com', 's', 'h'))
+    }
+
+    expect(outcomes).toHaveLength(6)
+    expect(outcomes.every((r) => r?.error)).toBe(true)
+    // Only the first 3 (the failure budget) should have actually
+    // attempted the provider call -- the rest must be refused by the
+    // cap BEFORE reaching invoke(), which is the entire point: an
+    // always-throwing provider must not be hammered 6 times just
+    // because it never resolves normally.
+    expect(supabase._calls).toHaveLength(3)
+    expect(outcomes.slice(0, 3).every((r) => r.error.message === 'network unreachable')).toBe(true)
+    expect(outcomes.slice(3).every((r) => r.error?.code === 'GLOBAL_SEND_FAILURE_CAP')).toBe(true)
+    expect(results.__sendBudget.failures).toBe(3) // capped exactly at the budget, never exceeds it
+    expect(results.global_send_failure_cap_skips).toBe(3)
+  })
+
+  it('a mix of thrown exceptions and resolved {error} responses are tracked in the SAME failure budget, not two separate counters', async () => {
+    const sendEmail = buildSendEmail({ successCap: 10, failureCap: 3 })
+    let call = 0
+    const supabase = {
+      functions: {
+        invoke: async () => {
+          call++
+          if (call % 2 === 1) throw new Error('thrown failure')
+          return { error: { message: 'resolved failure' } }
+        },
+      },
+    }
+    const results = {}
+
+    const outcomes = []
+    for (let n = 0; n < 5; n++) outcomes.push(await sendEmail(supabase, results, 'a@example.com', 's', 'h'))
+
+    // Calls 1-3 alternate thrown/resolved and both count toward the same
+    // budget, tripping the cap exactly at 3 regardless of which kind of
+    // failure got it there; calls 4-5 never reach invoke() at all.
+    expect(call).toBe(3)
+    expect(outcomes[0].error.message).toBe('thrown failure')
+    expect(outcomes[1].error.message).toBe('resolved failure')
+    expect(outcomes[2].error.message).toBe('thrown failure')
+    expect(outcomes[3].error.code).toBe('GLOBAL_SEND_FAILURE_CAP')
+    expect(outcomes[4].error.code).toBe('GLOBAL_SEND_FAILURE_CAP')
+    expect(results.__sendBudget.failures).toBe(3)
+  })
+
+  it('cap-reached responses (success or failure cap) never themselves increment the budget they are refusing against', async () => {
+    const sendEmail = buildSendEmail({ successCap: 1, failureCap: 1 })
+    const supabase = makeMockSupabase([{ error: { message: 'boom' } }])
+    const results = {}
+
+    await sendEmail(supabase, results, 'a@example.com', 's', 'h') // 1 real failure -- trips the failure cap
+    expect(results.__sendBudget.failures).toBe(1)
+
+    // Every subsequent call is refused by the cap itself -- none of them
+    // should nudge failures (or successes) any further.
+    for (let n = 0; n < 5; n++) await sendEmail(supabase, results, 'a@example.com', 's', 'h')
+    expect(results.__sendBudget.failures).toBe(1)
+    expect(results.__sendBudget.successes).toBe(0)
+    expect(results.global_send_failure_cap_skips).toBe(5)
+  })
+
   it('the shared budget lives on `results` and persists across separate sendEmail() calls -- simulating different campaigns sharing one run', async () => {
     const sendEmail = buildSendEmail({ successCap: 2 })
     const supabase = makeMockSupabase([{ error: null }, { error: null }, { error: null }])
