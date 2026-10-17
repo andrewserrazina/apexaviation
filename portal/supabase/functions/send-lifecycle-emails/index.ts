@@ -82,9 +82,45 @@
 // Env vars required (Supabase Edge Function secrets):
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (both auto-provided)
 //   LIFECYCLE_CRON_SECRET (optional but recommended -- see
-//   RETENTION_SYSTEM.md; if set, the caller must send it as
-//   `Authorization: Bearer <secret>` or the request is rejected, so this
+//   RETENTION_SYSTEM.md; if set, the caller must send it in the
+//   `X-Lifecycle-Cron-Secret` header or the request is rejected, so this
 //   can't be triggered by anyone who finds the function's public URL)
+//
+// Auth-repair note (readiness-funnel instrumentation audit, Oct 2026):
+// this function has `verify_jwt = true` at the Supabase project level,
+// which means the API gateway itself requires `Authorization` to carry
+// a credential it accepts -- checked BEFORE this function's own code
+// ever runs. The cron job that calls this function used to send the
+// LIFECYCLE_CRON_SECRET value in `Authorization` instead, so it was
+// rejected at the gateway (confirmed live: `sb-error-code:
+// UNAUTHORIZED_INVALID_JWT_FORMAT`) no matter what the secret's value
+// was -- the app-level check below never executed. The fix keeps
+// `verify_jwt` ON (do not disable it as a shortcut) and puts the
+// project's LEGACY anon key in `Authorization` -- this project has two
+// kinds of public API key, and they are not interchangeable here:
+//   - the legacy anon key is an actual JWT (three dot-separated
+//     base64url segments, HS256-signed, starts with `eyJ...`). Sending
+//     it is the only choice confirmed live to go through the gateway's
+//     real JWT verification path -- its response carries `sb-jwt-alg`/
+//     `sb-jwt-iss` headers, proof the gateway parsed and verified it AS
+//     a JWT, and documented Supabase behavior guarantees this path
+//     keeps working wherever verify_jwt is enabled.
+//   - the newer `sb_publishable_...` key is NOT a JWT (it's an opaque
+//     token in a different, newer Supabase API-key format). It also
+//     happened to pass this same live probe (no sb-error-code, the
+//     function itself ran) -- but that response carried neither of
+//     those JWT-verification headers, meaning the gateway accepted it
+//     through a different, undocumented-for-this-purpose code path, not
+//     by verifying it as a JWT. Relying on that would mean trusting
+//     implicit, unconfirmed platform behavior instead of the documented
+//     contract verify_jwt is actually built on.
+// Either key is equally non-sensitive (both are meant to be public,
+// already shipped client-side) -- the choice here is about which one is
+// provably doing what `verify_jwt` is documented to check, not about
+// secrecy. This function always builds its own service-role client
+// below regardless of caller identity, so neither key grants it any
+// elevated access. The actual app-level secret moves to its own header
+// so it isn't competing with the gateway's own check.
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -198,6 +234,26 @@ const REACTIVATION_INACTIVE_THROTTLE_DAYS = 14
 // whichever nudge reaches the student first "owns" that stretch of
 // inactivity for this long before the other is allowed to also land.
 const INACTIVITY_COORDINATION_GAP_DAYS = 10
+// Bounded age window (operator-approved recovery safeguard, Oct 2026):
+// the lifecycle-email dry-run inventory found 287 profiles currently
+// eligible for reactivation_inactive and 230 for inactivity_7day -- but
+// checking the real age distribution showed 280 of those 287
+// reactivation_inactive candidates have had ZERO meaningful study
+// activity for over 180 days (many since signup -- they never engaged
+// at all), not a handful of days because of this ~3-week outage. A
+// profile dormant for months was never "swept up" by the outage --
+// re-sending a "pick up where you left off" nudge that far after the
+// fact reads as random, not timely, and risks training members to
+// ignore these emails going forward. 90 days is the line: long enough
+// that anyone who went quiet because of (or shortly before) the outage
+// is still covered -- checking inactivity_7day's own distribution,
+// 90 days excludes only 20 of 230 candidates, almost all of whom are
+// genuinely outage-adjacent -- short enough that a "come back" message
+// still plausibly reads as timely rather than a non-sequitur. A profile
+// past this ceiling is simply never nudged by either campaign again
+// until it has new activity to measure from -- not a retry-later skip,
+// since nothing about an already-dormant account changes on its own.
+const ENGAGEMENT_NUDGE_STALE_CEILING_DAYS = 90
 const WEEKLY_PROGRESS_THROTTLE_DAYS = 7
 const STUDY_SECONDS_TARGET = 5 * 3600
 // Checkride-timing-aware upsell cadence -- schedule (days since signup)
@@ -396,7 +452,16 @@ function lifecycleCtaUrl(campaign: string, content: string, hash: string = ''): 
 function isEligibleForActivationSequence(profile: any): boolean {
   if (!NEW_MEMBER_ACTIVATION_SINCE) return false
   const cutover = new Date(NEW_MEMBER_ACTIVATION_SINCE).getTime() - NEW_MEMBER_ACTIVATION_BACKFILL_DAYS * 86400000
-  return new Date(profile.created_at).getTime() >= cutover
+  if (new Date(profile.created_at).getTime() < cutover) return false
+  // Reuses ENGAGEMENT_NUDGE_STALE_CEILING_DAYS (recovery safeguard, Oct
+  // 2026) -- same reasoning as processReactivationInactive/
+  // processInactivity: a profile that signed up and never engaged for
+  // 90+ days isn't a "welcome, here's a good place to start" candidate
+  // anymore, regardless of which cron run first notices it. Checked
+  // here (the one shared gate both processActivationEmail1CatchUp and
+  // processNewMemberActivation call) rather than duplicated in both.
+  const daysSinceSignup = (Date.now() - new Date(profile.created_at).getTime()) / 86400000
+  return daysSinceSignup <= ENGAGEMENT_NUDGE_STALE_CEILING_DAYS
 }
 
 // Same table as CHECKRIDE_TIMING_CLAUSE in create-free-account/index.ts --
@@ -454,8 +519,104 @@ const CATEGORY_LABELS: Record<string, string> = {
   'airport-operations': 'Airport Operations',
 }
 
-async function sendEmail(supabase: any, to: string, subject: string, contentHtml: string) {
-  await supabase.functions.invoke('send-email', { body: { to, subject, html: template(contentHtml) } })
+// Global, cross-campaign circuit breaker (operator-approved recovery
+// safeguard, Oct 2026). The lifecycle-email dry-run inventory showed
+// hundreds of profiles simultaneously eligible across many different
+// campaigns after the ~3-week auth outage -- each campaign already
+// dedupes so no single PERSON gets the same email twice, but nothing
+// previously limited how many DIFFERENT people get emailed in one run.
+// GLOBAL_SEND_SUCCESS_CAP bounds the first recovery run(s) regardless of
+// which campaigns are eligible. GLOBAL_SEND_FAILURE_CAP is a SEPARATE
+// budget: if the email provider itself is down, every eligible profile
+// across every campaign would otherwise generate one failed attempt
+// each in the same run -- this stops a dead provider from being
+// hammered for the length of a full run. Both live in sendEmail()
+// itself (not any one campaign function) because an audit of every
+// `functions.invoke('send-email', ...)` call site found it is the
+// single place all of them funnel through -- two call sites
+// (processActivationEmail1CatchUp, processNewMemberActivation) used to
+// bypass it with their own inline invoke() call and have been unified
+// onto it below specifically so this cap cannot be silently bypassed by
+// a future third call site either.
+//
+// A profile skipped solely because either cap was hit remains eligible
+// and is simply picked up on a later run -- nothing about ITS
+// eligibility changes. Every campaign below has also been checked (and
+// where missing, fixed) to treat a cap-skip exactly like any other send
+// failure: never stamp a dedup column/claim as "sent" when sendEmail()
+// returns an error, whatever the reason. See each campaign's own
+// comments for campaigns where a claim/log commits BEFORE the send
+// attempt (first_question_completed, readiness_*, checkride_mode,
+// weak_area_*, abandoned-checkout recovery, mock-oral reminders) --
+// those explicitly revert the claim on failure so a capped-out send
+// still retries next run instead of being silently lost forever.
+const GLOBAL_SEND_SUCCESS_CAP = 10
+const GLOBAL_SEND_FAILURE_CAP = 10
+
+// Returns the invoke() result so callers that need to know whether the
+// send actually succeeded (readiness-funnel instrumentation audit --
+// processReadinessAssessmentFollowup below is the first one that checks
+// it) can do so. Every other call site in this file now also checks it,
+// since the global cap below needs every one of them to.
+//
+// `results` carries the run's shared send budget (results.__sendBudget)
+// so the cap is genuinely global -- one counter for the whole
+// invocation, never reset per campaign or per loop iteration, since every
+// campaign function already receives the same `results` object the
+// top-level serve() handler created once.
+//
+// `options.exemptFromGlobalCap` is for genuinely time-sensitive,
+// inherently small-volume sends (currently only the mock-oral
+// day-before reminder) where missing the message has a real-world cost
+// a generic marketing/engagement nudge doesn't carry -- see that call
+// site's own comment. Exempt sends neither consume nor are limited by
+// the shared budget.
+async function sendEmail(
+  supabase: any,
+  results: any,
+  to: string,
+  subject: string,
+  contentHtml: string,
+  options?: { replyTo?: string; exemptFromGlobalCap?: boolean },
+) {
+  // Thrown exceptions (e.g. a network-level failure before any response
+  // is received) are caught HERE and converted to the same { error }
+  // shape a resolved failure already has. This matters beyond
+  // consistency: without it, a thrown exception would propagate straight
+  // out of sendEmail() and skip the `budget.failures++` below entirely --
+  // GLOBAL_SEND_FAILURE_CAP would never trip against a provider that
+  // fails by throwing instead of resolving with an error, defeating the
+  // "bound unbounded attempts against a dead provider" purpose this cap
+  // exists for. sendEmail() itself now never throws, for any options.
+  const invoke = async () => {
+    try {
+      return await supabase.functions.invoke('send-email', {
+        body: { to, subject, html: template(contentHtml), ...(options?.replyTo ? { replyTo: options.replyTo } : {}) },
+      })
+    } catch (err) {
+      return { error: err }
+    }
+  }
+
+  if (options?.exemptFromGlobalCap) return await invoke()
+
+  const budget = results.__sendBudget ?? (results.__sendBudget = { successes: 0, failures: 0 })
+  // Cap-reached responses return before touching `budget` at all, so a
+  // skip never itself counts as a failure (or a success) -- only a real
+  // attempt (whatever its outcome) updates the budget below.
+  if (budget.successes >= GLOBAL_SEND_SUCCESS_CAP) {
+    results.global_send_cap_skips = (results.global_send_cap_skips || 0) + 1
+    return { error: { message: 'global send success cap reached this run (recovery safeguard, not a provider failure)', code: 'GLOBAL_SEND_CAP' } }
+  }
+  if (budget.failures >= GLOBAL_SEND_FAILURE_CAP) {
+    results.global_send_failure_cap_skips = (results.global_send_failure_cap_skips || 0) + 1
+    return { error: { message: 'global send failure cap reached this run -- provider may be down, halting further attempts', code: 'GLOBAL_SEND_FAILURE_CAP' } }
+  }
+
+  const res = await invoke()
+  if (res?.error) budget.failures++
+  else budget.successes++
+  return res
 }
 
 // Marks a one-time milestone as sent in BOTH portal_events (a passive
@@ -525,12 +686,17 @@ function emailTemplateReactivationInactive(firstName: string) {
 async function processReactivationInactive(supabase: any, profile: any, results: any) {
   const daysInactive = await daysSinceLastMeaningfulActivity(supabase, profile.id)
   if (daysInactive < REACTIVATION_INACTIVE_TRIGGER_DAYS) return
+  if (daysInactive > ENGAGEMENT_NUDGE_STALE_CEILING_DAYS) return
   if ((await daysSinceLastEmail(supabase, profile.id, 'reactivation_inactive')) < REACTIVATION_INACTIVE_THROTTLE_DAYS) return
   // Don't also send this if the generic 7-day login nudge already
   // reached this student recently -- see INACTIVITY_COORDINATION_GAP_DAYS.
   if ((await daysSinceLastEmail(supabase, profile.id, 'inactivity_7day')) < INACTIVITY_COORDINATION_GAP_DAYS) return
 
-  await sendEmail(supabase, profile.email, 'Pick up where you left off', emailTemplateReactivationInactive((profile.full_name || 'there').split(' ')[0]))
+  const res = await sendEmail(supabase, results, profile.email, 'Pick up where you left off', emailTemplateReactivationInactive((profile.full_name || 'there').split(' ')[0]))
+  if (res?.error) {
+    results.errors.push(`reactivation_inactive:${profile.id}: send-email failed: ${res.error.message ?? res.error}`)
+    return
+  }
   await supabase.from('portal_email_log').insert({ profile_id: profile.id, email_type: 'reactivation_inactive' })
   results.reactivation_inactive++
 }
@@ -585,7 +751,11 @@ async function processWeeklyProgress(supabase: any, profile: any, allQuestions: 
     }
   }
 
-  await sendEmail(supabase, profile.email, 'Your Apex Weekly Training Report', emailTemplateWeeklyProgress({ questions, days, scenarios, aiDpe, strongest, weakest }))
+  const res = await sendEmail(supabase, results, profile.email, 'Your Apex Weekly Training Report', emailTemplateWeeklyProgress({ questions, days, scenarios, aiDpe, strongest, weakest }))
+  if (res?.error) {
+    results.errors.push(`weekly_progress:${profile.id}: send-email failed: ${res.error.message ?? res.error}`)
+    return
+  }
   await supabase.from('portal_email_log').insert({ profile_id: profile.id, email_type: 'weekly_progress' })
   results.weekly_progress++
 }
@@ -862,13 +1032,18 @@ async function processInactivity(supabase: any, profile: any, results: any) {
   const lastActive = profile.portal_last_active_at || profile.created_at
   const daysInactive = (Date.now() - new Date(lastActive).getTime()) / 86400000
   if (daysInactive < INACTIVITY_TRIGGER_DAYS) return
+  if (daysInactive > ENGAGEMENT_NUDGE_STALE_CEILING_DAYS) return
   if ((await daysSinceLastEmail(supabase, profile.id, 'inactivity_7day')) < INACTIVITY_THROTTLE_DAYS) return
   // Don't also send this if the stronger, activity-based reactivation
   // nudge already reached this student recently -- see
   // INACTIVITY_COORDINATION_GAP_DAYS.
   if ((await daysSinceLastEmail(supabase, profile.id, 'reactivation_inactive')) < INACTIVITY_COORDINATION_GAP_DAYS) return
 
-  await sendEmail(supabase, profile.email, "We miss you at Apex Advantage", emailTemplateInactivity((profile.full_name || 'there').split(' ')[0]))
+  const res = await sendEmail(supabase, results, profile.email, "We miss you at Apex Advantage", emailTemplateInactivity((profile.full_name || 'there').split(' ')[0]))
+  if (res?.error) {
+    results.errors.push(`inactivity_7day:${profile.id}: send-email failed: ${res.error.message ?? res.error}`)
+    return
+  }
   await supabase.from('portal_email_log').insert({ profile_id: profile.id, email_type: 'inactivity_7day' })
   results.inactivity++
 }
@@ -913,7 +1088,17 @@ async function processFirstQuestionMilestone(supabase: any, profile: any, result
   if (!qProgress || !qProgress.length) return
   if (!(await claimMilestoneEmail(supabase, profile.id, 'first_question_completed'))) return
 
-  await sendEmail(supabase, profile.email, 'You completed your first question', emailTemplate1FirstQuestion())
+  const res = await sendEmail(supabase, results, profile.email, 'You completed your first question', emailTemplate1FirstQuestion())
+  if (res?.error) {
+    // The claim above already committed (claimMilestoneEmail runs before
+    // the send, by design). Undo it here so a capped/failed send doesn't
+    // permanently consume this one-time milestone -- safe to delete
+    // unconditionally, nothing else writes this row between the claim
+    // and here.
+    await supabase.from('portal_milestone_emails').delete().eq('profile_id', profile.id).eq('milestone_key', 'first_question_completed')
+    results.errors.push(`first_question_completed:${profile.id}: send-email failed: ${res.error.message ?? res.error}`)
+    return
+  }
   await markMilestoneSent(supabase, profile.id, 'first_question_completed')
   results.first_question++
 }
@@ -930,7 +1115,13 @@ async function processMilestones(supabase: any, profile: any, questions: Questio
     if (score < threshold) continue
     const key = 'readiness_' + threshold
     if (!(await claimMilestoneEmail(supabase, profile.id, key))) continue
-    await sendEmail(supabase, profile.email, `${score}% Checkride Ready`, emailTemplateMilestone(threshold))
+    const res = await sendEmail(supabase, results, profile.email, `${score}% Checkride Ready`, emailTemplateMilestone(threshold))
+    if (res?.error) {
+      // Same claim-already-committed revert as processFirstQuestionMilestone.
+      await supabase.from('portal_milestone_emails').delete().eq('profile_id', profile.id).eq('milestone_key', key)
+      results.errors.push(`${key}:${profile.id}: send-email failed: ${res.error.message ?? res.error}`)
+      break
+    }
     await markMilestoneSent(supabase, profile.id, key)
     results.readiness++
     break
@@ -940,9 +1131,15 @@ async function processMilestones(supabase: any, profile: any, questions: Questio
     .from('portal_practice_attempts')
     .select('id').eq('profile_id', profile.id).eq('mode', 'checkride').not('completed_at', 'is', null).limit(1)
   if (checkrideAttempts && checkrideAttempts.length && (await claimMilestoneEmail(supabase, profile.id, 'checkride_mode_completed_email'))) {
-    await sendEmail(supabase, profile.email, 'Checkride Mode: complete', emailTemplateCheckrideModeDone())
-    await markMilestoneSent(supabase, profile.id, 'checkride_mode_completed_email')
-    results.checkride_mode++
+    const res = await sendEmail(supabase, results, profile.email, 'Checkride Mode: complete', emailTemplateCheckrideModeDone())
+    if (res?.error) {
+      // Same claim-already-committed revert as processFirstQuestionMilestone.
+      await supabase.from('portal_milestone_emails').delete().eq('profile_id', profile.id).eq('milestone_key', 'checkride_mode_completed_email')
+      results.errors.push(`checkride_mode_completed_email:${profile.id}: send-email failed: ${res.error.message ?? res.error}`)
+    } else {
+      await markMilestoneSent(supabase, profile.id, 'checkride_mode_completed_email')
+      results.checkride_mode++
+    }
   }
 }
 
@@ -958,12 +1155,21 @@ async function processWeakArea(supabase: any, profile: any, questions: Question[
   const html = `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">${content.subject}</h2>` +
     `<p style="color:#1F2937;font-size:15px;line-height:1.7;">${content.body}</p>` +
     `<a href="${lifecycleCtaUrl('weak_area', 'weak_area_' + weakest.cat, '#dpe-library')}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Review ${CATEGORY_LABELS[weakest.cat] || weakest.cat} →</a>`
-  const { error: logError } = await supabase.from('portal_email_log').insert({ profile_id: profile.id, email_type: emailType })
+  const { data: logRow, error: logError } = await supabase.from('portal_email_log').insert({ profile_id: profile.id, email_type: emailType }).select('id').single()
   if (logError) {
     if (logError.code !== '23505') results.errors.push(`weak_area_log:${profile.id}:${logError.message}`)
     return
   }
-  await sendEmail(supabase, profile.email, content.subject, html)
+  const res = await sendEmail(supabase, results, profile.email, content.subject, html)
+  if (res?.error) {
+    // The log row above is inserted before the send (defends against a
+    // concurrent run double-sending) -- undo it here on failure so this
+    // doesn't silently consume the 14-day throttle window for an email
+    // that never went out.
+    if (logRow?.id) await supabase.from('portal_email_log').delete().eq('id', logRow.id)
+    results.errors.push(`weak_area:${profile.id}: send-email failed: ${res.error.message ?? res.error}`)
+    return
+  }
   results.weak_area++
 }
 
@@ -1012,7 +1218,11 @@ async function processCountdown(supabase: any, profile: any, results: any) {
     const emailType = 'checkride_countdown_' + threshold
     if (await hasMilestoneFired(supabase, profile.id, emailType)) continue
 
-    await sendEmail(supabase, profile.email, `${threshold} ${daysNoun(threshold)} until your checkride`, emailTemplateCountdown(threshold))
+    const res = await sendEmail(supabase, results, profile.email, `${threshold} ${daysNoun(threshold)} until your checkride`, emailTemplateCountdown(threshold))
+    if (res?.error) {
+      results.errors.push(`checkride_countdown_${threshold}:${profile.id}: send-email failed: ${res.error.message ?? res.error}`)
+      return
+    }
     await markMilestoneSent(supabase, profile.id, emailType)
     results.countdown++
     return
@@ -1090,7 +1300,11 @@ async function processCheckrideUpsell(supabase: any, profile: any, results: any)
     if (pricingError) throw new Error(`get_checkride_prep_pricing failed for profile ${profile.id}: ${pricingError.message}`)
     const pricing: PricingPreview = (pricingRows && pricingRows[0]) || { tier: 'standard', amount_cents: 4900, founding_seats_remaining: 0, launch_expires_at: null }
 
-    await sendEmail(supabase, profile.email, checkrideUpsellSubject(day, pricing), emailTemplateCheckrideUpsell(day, pricing, timingBucket))
+    const res = await sendEmail(supabase, results, profile.email, checkrideUpsellSubject(day, pricing), emailTemplateCheckrideUpsell(day, pricing, timingBucket))
+    if (res?.error) {
+      results.errors.push(`checkride_upsell_day${day}:${profile.id}: send-email failed: ${res.error.message ?? res.error}`)
+      return
+    }
     await markMilestoneSent(supabase, profile.id, emailType)
 
     // Firing the highest reached stage must exhaust the whole sequence up
@@ -1143,7 +1357,11 @@ async function processGroundSchoolFollowUps(supabase: any, results: any) {
       if (already && already.length) continue
 
       const sessionTitle = reg.session?.title || 'Ground School'
-      await sendEmail(supabase, reg.email, `Thanks for coming to ${sessionTitle}`, emailTemplateGroundSchoolFollowUp(sessionTitle))
+      const res = await sendEmail(supabase, results, reg.email, `Thanks for coming to ${sessionTitle}`, emailTemplateGroundSchoolFollowUp(sessionTitle))
+      if (res?.error) {
+        results.errors.push(`ground_followup:${reg.id}: send-email failed: ${res.error.message ?? res.error}`)
+        continue
+      }
       await supabase.from('portal_email_log').insert({ profile_id: reg.profile_id, email_type: emailType })
       results.ground_followup++
     } catch (err) {
@@ -1263,10 +1481,67 @@ function emailTemplateAssessmentDay6(firstName: string, timingLabel: string) {
 // specific lead-capture flow -- a real, honest gap, not an oversight to
 // paper over. If this needs one, it belongs on readiness_assessment_
 // leads itself, not on a table these people were never added to.
+// Backlog-safety repair (readiness-funnel instrumentation audit, Oct
+// 2026): the cron that calls this function was broken for ~3 weeks (see
+// the auth-repair note above `serve()`), so the first run after it's
+// fixed sees every lead at whatever age it's actually at, not a tidy
+// 1/3/6-day progression. The original `if daysOld>=1 / else if >=3 /
+// else if >=6` chain has no upper bound on any branch, so a lead that's
+// sat for two weeks hits the *first* true branch and gets "Your
+// Readiness Assessment result" copy framed as a same-day follow-up --
+// two weeks late -- then Day3 and Day6 fire back-to-back on the next
+// two daily runs. Windowing each stage fixes this going forward (not
+// just for today's backlog): a stage only fires inside its own window,
+// so a lead that's already aged past a stage by the time it's first
+// seen skips that stage forever and waits for the next one it still
+// qualifies for -- which is exactly "don't send a Day 1 email weeks
+// late," not a workaround specific to today's numbers.
+// READINESS_FOLLOWUP_STALE_CEILING_DAYS additionally stops the chain
+// from ever reaching back into a lead that's aged out of relevance
+// entirely (no one in production is past this today -- it's pure
+// future-proofing against the next outage, not a reaction to current
+// data). Set to 30, not an arbitrary round number: it matches
+// CHECKRIDE_TIMING_SCHEDULES' own longest-running touchpoint (the
+// not_scheduled bucket's day-30 "it'll be here whenever you're ready"
+// email above) -- this codebase's own existing answer to "how long is
+// too long to keep nurturing someone who hasn't converted," reused here
+// instead of inventing a second, different answer to the same question.
+const READINESS_FOLLOWUP_STALE_CEILING_DAYS = 30
+// Circuit breaker against any future backlog pileup (e.g. a much longer
+// outage than this one): caps real sends per run so a recovery run
+// can't become a mass blast. Leads skipped solely because of this cap
+// are simply picked up on the next run -- nothing about their
+// eligibility changes, so no suppression bookkeeping is needed for
+// them.
+const READINESS_FOLLOWUP_MAX_SENDS_PER_RUN = 25
+
+type ReadinessFollowupSentFlags = { day1: boolean; day3: boolean; day6: boolean }
+type ReadinessFollowupStage = 'day1' | 'day3' | 'day6' | null
+
+function readinessFollowupStage(daysOld: number, sent: ReadinessFollowupSentFlags): ReadinessFollowupStage {
+  if (daysOld > READINESS_FOLLOWUP_STALE_CEILING_DAYS) return null
+  if (daysOld >= 1 && daysOld < 3 && !sent.day1) return 'day1'
+  if (daysOld >= 3 && daysOld < 6 && !sent.day3) return 'day3'
+  if (daysOld >= 6 && !sent.day6) return 'day6'
+  return null
+}
+
+function readinessFollowupEmailContent(stage: 'day1' | 'day3' | 'day6', firstName: string, lead: any, weakCats: string[]) {
+  if (stage === 'day1') {
+    return { subject: `Your Readiness Assessment result: ${lead.score}%`, html: emailTemplateAssessmentDay1(firstName, lead.score, lead.readiness_level, weakCats) }
+  }
+  if (stage === 'day3') {
+    return { subject: 'Quick gut check before your checkride', html: emailTemplateAssessmentDay3(firstName, weakCats) }
+  }
+  return { subject: 'Last look at your Checkride Prep options', html: emailTemplateAssessmentDay6(firstName, RA_TIMING_LABELS[lead.checkride_timing] ?? 'coming up') }
+}
+
 async function processReadinessAssessmentFollowup(supabase: any, results: any) {
   const { data: leads } = await supabase
     .from('readiness_assessment_leads')
     .select('id, email, full_name, checkride_timing, score, readiness_level, category_results, created_at, email_day1_sent_at, email_day3_sent_at, email_day6_sent_at')
+
+  let sentThisRun = 0
 
   for (const lead of leads ?? []) {
     try {
@@ -1282,21 +1557,52 @@ async function processReadinessAssessmentFollowup(supabase: any, results: any) {
       if (existingProfile) continue
 
       const daysOld = (Date.now() - new Date(lead.created_at).getTime()) / 86400000
+      const stage = readinessFollowupStage(daysOld, { day1: !!lead.email_day1_sent_at, day3: !!lead.email_day3_sent_at, day6: !!lead.email_day6_sent_at })
+      if (!stage) continue
+
+      if (sentThisRun >= READINESS_FOLLOWUP_MAX_SENDS_PER_RUN) {
+        results.readiness_assessment_followup_capped_skips = (results.readiness_assessment_followup_capped_skips || 0) + 1
+        continue
+      }
+
       const firstName = (lead.full_name || 'there').split(' ')[0]
       const weakCats = raWeakCategories(lead.category_results)
+      const { subject, html } = readinessFollowupEmailContent(stage, firstName, lead, weakCats)
 
-      if (daysOld >= 1 && !lead.email_day1_sent_at) {
-        await sendEmail(supabase, lead.email, `Your Readiness Assessment result: ${lead.score}%`, emailTemplateAssessmentDay1(firstName, lead.score, lead.readiness_level, weakCats))
-        await supabase.from('readiness_assessment_leads').update({ email_day1_sent_at: new Date().toISOString() }).eq('id', lead.id)
-        results.readiness_assessment_followup++
-      } else if (daysOld >= 3 && !lead.email_day3_sent_at) {
-        await sendEmail(supabase, lead.email, 'Quick gut check before your checkride', emailTemplateAssessmentDay3(firstName, weakCats))
-        await supabase.from('readiness_assessment_leads').update({ email_day3_sent_at: new Date().toISOString() }).eq('id', lead.id)
-        results.readiness_assessment_followup++
-      } else if (daysOld >= 6 && !lead.email_day6_sent_at) {
-        await sendEmail(supabase, lead.email, 'Last look at your Checkride Prep options', emailTemplateAssessmentDay6(firstName, RA_TIMING_LABELS[lead.checkride_timing] ?? 'coming up'))
-        await supabase.from('readiness_assessment_leads').update({ email_day6_sent_at: new Date().toISOString() }).eq('id', lead.id)
-        results.readiness_assessment_followup++
+      // Readiness-funnel instrumentation audit: sendEmail() previously
+      // returned nothing, so a provider-side send failure (send-email
+      // invoke() resolving with an error rather than throwing, which is
+      // how supabase-js reports most edge-function-level failures) was
+      // indistinguishable from a real send -- email_dayN_sent_at got
+      // stamped either way, permanently skipping that lead on every future
+      // run. Checking res?.error means a failed send is both retried next
+      // run AND visible in results.errors, instead of silently recorded
+      // as "sent."
+      const res = await sendEmail(supabase, results, lead.email, subject, html)
+      if (res?.error) {
+        results.errors.push(`readiness_assessment_followup ${stage} ${lead.id}: send-email failed: ${res.error.message ?? res.error}`)
+        continue
+      }
+
+      sentThisRun++
+      results.readiness_assessment_followup++
+      // The send already happened by this point -- if this update fails,
+      // the lead's _sent_at column stays null and the next run will send
+      // this same stage again. That's a real, known at-least-once-delivery
+      // risk (documented, not engineered away): the cron runs once daily
+      // with no concurrent invocations, so the only way to hit it is two
+      // independent failures back to back (a successful send immediately
+      // followed by a DB write failure), which is low-likelihood and
+      // low-severity (one duplicate email, not a silent data-integrity
+      // problem) -- and it's strictly better than the prior behavior,
+      // where this exact failure mode was invisible. A full fix would mean
+      // a dedicated idempotency/dedup table (the pattern this file's own
+      // header comment already uses for weak_area_* emails via
+      // portal_email_log's unique index) -- out of scope for "log it so
+      // it's visible," which is what this repair set out to do.
+      const { error: updateErr } = await supabase.from('readiness_assessment_leads').update({ [`email_${stage}_sent_at`]: new Date().toISOString() }).eq('id', lead.id)
+      if (updateErr) {
+        results.errors.push(`readiness_assessment_followup ${stage} ${lead.id}: sent_at update failed after a successful send (next run may resend): ${updateErr.message ?? updateErr}`)
       }
     } catch (err) {
       results.errors.push(`readiness_assessment_followup ${lead.id}: ${err}`)
@@ -1347,20 +1653,35 @@ async function processMockOralReminders(supabase: any, results: any) {
         ? `<a href="${b.meeting_url}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">Join Instructions →</a>`
         : `<p style="color:#4B5563;font-size:13px;">Your join link will be available in your portal shortly before the session.</p>`
 
-      const { error: markError } = await supabase
+      const { data: claimed, error: markError } = await supabase
         .from('mock_oral_bookings')
         .update({ reminder_sent_at: new Date().toISOString() })
         .eq('id', b.id)
         .is('reminder_sent_at', null)
+        .select('id')
       if (markError) { results.errors.push(`mock_oral_reminder_mark:${b.id}:${markError.message}`); continue }
+      if (!claimed || !claimed.length) continue // lost the race to another concurrent execution
 
-      await sendEmail(supabase, b.email, 'Your Apex Mock Oral is tomorrow',
+      // exemptFromGlobalCap: a confirmed, paid booking's day-before
+      // service notice, not a marketing nudge -- missing it has a real
+      // cost (a student shows up unprepared or without a join link) a
+      // generic engagement email doesn't carry, and volume is inherently
+      // small and time-boxed to the next 24h. See the global cap's own
+      // header comment on sendEmail().
+      const res = await sendEmail(supabase, results, b.email, 'Your Apex Mock Oral is tomorrow',
         template(`
           <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">See you soon, ${b.full_name.split(' ')[0]}!</h2>
           <p style="color:#1F2937;font-size:15px;line-height:1.7;">Your Mock Oral is coming up: <strong style="color:#0B1F3A">${when} ${tz}</strong>.</p>
           ${joinLine}
           <p style="color:#4B5563;font-size:13px;line-height:1.7;margin-top:16px;">Have ready if applicable: your student pilot certificate and medical, your aircraft's POH/AFM, a current sectional or EFB, and your Knowledge Test Report.</p>
-        `))
+        `), { exemptFromGlobalCap: true })
+      if (res?.error) {
+        // The claim above already committed; undo it so this doesn't
+        // silently skip a time-sensitive reminder forever.
+        await supabase.from('mock_oral_bookings').update({ reminder_sent_at: null }).eq('id', b.id)
+        results.errors.push(`mock_oral_reminder:${b.id}: send-email failed: ${res.error.message ?? res.error}`)
+        continue
+      }
       results.mock_oral_reminder++
     } catch (err) {
       results.errors.push(`mock_oral_reminder:${b.id}: ${err}`)
@@ -1489,16 +1810,23 @@ async function processAbandonedCheckouts(supabase: any, results: any) {
         continue
       }
 
+      let res: any
       try {
-        await sendEmail(supabase, attempt.email!, subject, html)
+        res = await sendEmail(supabase, results, attempt.email!, subject, html)
       } catch (sendErr) {
-        // The claim above already committed, so this exact attempt will
-        // not be retried automatically -- same "mark before send" tradeoff
-        // already accepted elsewhere in this file (a rare skipped send on
-        // genuine failure, never a duplicate). Surfaced loudly rather than
-        // silently counted as a successful send.
+        res = { error: sendErr }
+      }
+      if (res?.error) {
+        // The claim above already committed. Previously this was an
+        // accepted "rare skipped send on genuine failure, never a
+        // duplicate" tradeoff -- but the global send cap (Oct 2026) makes
+        // a non-throwing error response the NORMAL path once the cap is
+        // hit, not a rare one, so it's reverted here instead: unclaim by
+        // clearing recovery_email_sent_at so this attempt is retried on a
+        // later run rather than silently never recovered.
+        await supabase.from('checkout_session_attempts').update({ recovery_email_sent_at: null }).eq('id', attempt.id)
         results.abandoned_checkout_send_failures = (results.abandoned_checkout_send_failures || 0) + 1
-        results.errors.push(`abandoned_checkout_send:${attempt.id}: ${sendErr}`)
+        results.errors.push(`abandoned_checkout_send:${attempt.id}: ${res.error.message ?? res.error}`)
         continue
       }
       results.abandoned_checkout++
@@ -1620,11 +1948,19 @@ async function processAbandonedCheckoutsFollowup(supabase: any, results: any) {
       }
       if (!claimed || !claimed.length) continue // lost the race to another concurrent execution
 
+      let res: any
       try {
-        await sendEmail(supabase, attempt.email, 'Still thinking it over?', emailTemplateAbandonedCheckridePrepFollowup(firstName, priceLabel, urgencyLine))
+        res = await sendEmail(supabase, results, attempt.email, 'Still thinking it over?', emailTemplateAbandonedCheckridePrepFollowup(firstName, priceLabel, urgencyLine))
       } catch (sendErr) {
+        res = { error: sendErr }
+      }
+      if (res?.error) {
+        // Same claim-already-committed revert as the first-touch
+        // function above -- clear recovery_email_2_sent_at so this is
+        // retried on a later run instead of lost.
+        await supabase.from('checkout_session_attempts').update({ recovery_email_2_sent_at: null }).eq('id', attempt.id)
         results.abandoned_checkout_send_failures = (results.abandoned_checkout_send_failures || 0) + 1
-        results.errors.push(`abandoned_checkout_followup_send:${attempt.id}: ${sendErr}`)
+        results.errors.push(`abandoned_checkout_followup_send:${attempt.id}: ${res.error.message ?? res.error}`)
         continue
       }
       results.abandoned_checkout_followup++
@@ -1668,7 +2004,11 @@ async function processRecoverySortieNotifications(supabase: any, results: any) {
       if (already && already.length) continue
 
       const firstName = (sortie.profile?.full_name || 'there').split(' ')[0]
-      await sendEmail(supabase, email, 'Your streak is on the line tonight', emailTemplateRecoverySortie(firstName))
+      const res = await sendEmail(supabase, results, email, 'Your streak is on the line tonight', emailTemplateRecoverySortie(firstName))
+      if (res?.error) {
+        results.errors.push(`recovery_sortie:${sortie.id}: send-email failed: ${res.error.message ?? res.error}`)
+        continue
+      }
       await supabase.from('portal_email_log').insert({ profile_id: sortie.profile_id, email_type: emailType })
       results.recovery_sortie_notified++
     } catch (err) {
@@ -1807,9 +2147,11 @@ async function processActivationEmail1CatchUp(supabase: any, profile: any, resul
     '<p style="color:#4B5563;font-size:13px;line-height:1.6;">If you get stuck on anything, reply to this email.</p>' +
     '<p style="color:#4B5563;font-size:13px;line-height:1.6;">Blue skies,<br>Andrew</p>'
 
-  const emailResult = await supabase.functions.invoke('send-email', {
-    body: { to: profile.email, subject: `A good place to start, ${firstName}`, html: template(html), replyTo: ACTIVATION_REPLY_TO },
-  })
+  // Unified onto sendEmail() (Oct 2026) -- this call site previously
+  // invoked the send-email function directly, bypassing sendEmail()'s
+  // global send cap entirely. sendEmail() applies template() itself, so
+  // the raw `html` is passed here, not template(html).
+  const emailResult = await sendEmail(supabase, results, profile.email, `A good place to start, ${firstName}`, html, { replyTo: ACTIVATION_REPLY_TO })
   if (emailResult.error) {
     results.errors.push(`activation_email_1_catchup:${profile.id}: ${emailResult.error?.message || emailResult.error}`)
     return false // stays eligible for the next run -- no milestone marked
@@ -1870,7 +2212,21 @@ async function processNewMemberActivation(supabase: any, profile: any, results: 
       html = emailTemplateActivationDay7(firstName, action, upsellSentence)
     }
 
-    await supabase.functions.invoke('send-email', { body: { to: profile.email, subject, html: template(html), ...(replyTo ? { replyTo } : {}) } })
+    // Bug fix + unification onto sendEmail() (Oct 2026 recovery
+    // safeguard audit): this call site previously invoked send-email
+    // directly, discarded the result entirely, and called
+    // markMilestoneSent() unconditionally -- so a provider-side failure
+    // here was ALREADY silently recorded as a successful send even
+    // before the global send cap existed (the cap just makes hitting
+    // this far more likely, since every capped-out attempt returns a
+    // non-throwing error the old code never looked at). sendEmail()
+    // applies template() itself, so raw `html` is passed, not
+    // template(html).
+    const res = await sendEmail(supabase, results, profile.email, subject, html, replyTo ? { replyTo } : undefined)
+    if (res?.error) {
+      results.errors.push(`${emailType}:${profile.id}: send-email failed: ${res.error.message ?? res.error}`)
+      return
+    }
     await markMilestoneSent(supabase, profile.id, emailType)
     await supabase.from('analytics_events').insert({
       event_name: `activation_email_${emailNumber}_sent`, profile_id: profile.id,
@@ -1906,8 +2262,8 @@ const ACTIVATION_REPLY_TO = 'info@apexaviationtx.com'
 
 serve(async (req) => {
   if (CRON_SECRET) {
-    const authHeader = req.headers.get('Authorization') || ''
-    if (authHeader !== `Bearer ${CRON_SECRET}`) {
+    const cronSecretHeader = req.headers.get('X-Lifecycle-Cron-Secret') || ''
+    if (cronSecretHeader !== CRON_SECRET) {
       return new Response('Unauthorized', { status: 401 })
     }
   }
@@ -1941,7 +2297,13 @@ serve(async (req) => {
     // flip which threshold "today" matches for a member near a day
     // boundary. Nullable; processCountdown falls back to UTC when unset,
     // same as every other profile in this query today.
-    supabase.from('profiles').select('id,email,full_name,checkride_prep_unlocked,created_at,portal_last_active_at,checkride_timing,training_stage,primary_focus_area,timezone,email_marketing_opt_out'),
+    // Explicit order (recovery safeguard, Oct 2026): the global send cap
+    // below means which profiles' sends actually go out in a capped run
+    // depends on iteration order. Without an explicit order this was
+    // whatever Postgres happened to return -- not guaranteed stable
+    // across runs. Ordering by id makes a capped run's outcome
+    // deterministic and reproducible rather than silently arbitrary.
+    supabase.from('profiles').select('id,email,full_name,checkride_prep_unlocked,created_at,portal_last_active_at,checkride_timing,training_stage,primary_focus_area,timezone,email_marketing_opt_out').order('id'),
   ])
 
   const categoryIds: string[] = (categories ?? []).map((c: any) => c.id)
