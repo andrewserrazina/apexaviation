@@ -82,9 +82,25 @@
 // Env vars required (Supabase Edge Function secrets):
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (both auto-provided)
 //   LIFECYCLE_CRON_SECRET (optional but recommended -- see
-//   RETENTION_SYSTEM.md; if set, the caller must send it as
-//   `Authorization: Bearer <secret>` or the request is rejected, so this
+//   RETENTION_SYSTEM.md; if set, the caller must send it in the
+//   `X-Lifecycle-Cron-Secret` header or the request is rejected, so this
 //   can't be triggered by anyone who finds the function's public URL)
+//
+// Auth-repair note (readiness-funnel instrumentation audit, Oct 2026):
+// this function has `verify_jwt = true` at the Supabase project level,
+// which means the API gateway itself requires `Authorization` to carry
+// a validly-signed Supabase JWT -- checked BEFORE this function's own
+// code ever runs. The cron job that calls this function used to send
+// the LIFECYCLE_CRON_SECRET value in `Authorization` instead of a JWT,
+// so it was rejected at the gateway (confirmed live: `sb-error-code:
+// UNAUTHORIZED_INVALID_JWT_FORMAT`) no matter what the secret's value
+// was -- the app-level check below never executed. The fix keeps
+// `verify_jwt` ON (do not disable it as a shortcut) and keeps
+// `Authorization` carrying a real JWT (the project's anon/publishable
+// key is sufficient -- it's already public, and this function always
+// builds its own service-role client below regardless of caller
+// identity); the actual app-level secret moves to its own header so it
+// isn't competing with the gateway's own check.
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -1268,10 +1284,62 @@ function emailTemplateAssessmentDay6(firstName: string, timingLabel: string) {
 // specific lead-capture flow -- a real, honest gap, not an oversight to
 // paper over. If this needs one, it belongs on readiness_assessment_
 // leads itself, not on a table these people were never added to.
+// Backlog-safety repair (readiness-funnel instrumentation audit, Oct
+// 2026): the cron that calls this function was broken for ~3 weeks (see
+// the auth-repair note above `serve()`), so the first run after it's
+// fixed sees every lead at whatever age it's actually at, not a tidy
+// 1/3/6-day progression. The original `if daysOld>=1 / else if >=3 /
+// else if >=6` chain has no upper bound on any branch, so a lead that's
+// sat for two weeks hits the *first* true branch and gets "Your
+// Readiness Assessment result" copy framed as a same-day follow-up --
+// two weeks late -- then Day3 and Day6 fire back-to-back on the next
+// two daily runs. Windowing each stage fixes this going forward (not
+// just for today's backlog): a stage only fires inside its own window,
+// so a lead that's already aged past a stage by the time it's first
+// seen skips that stage forever and waits for the next one it still
+// qualifies for -- which is exactly "don't send a Day 1 email weeks
+// late," not a workaround specific to today's numbers.
+// READINESS_FOLLOWUP_STALE_CEILING_DAYS additionally stops the chain
+// from ever reaching back into a lead that's aged out of relevance
+// entirely (no one in production is past this today -- it's pure
+// future-proofing against the next outage, not a reaction to current
+// data).
+const READINESS_FOLLOWUP_STALE_CEILING_DAYS = 45
+// Circuit breaker against any future backlog pileup (e.g. a much longer
+// outage than this one): caps real sends per run so a recovery run
+// can't become a mass blast. Leads skipped solely because of this cap
+// are simply picked up on the next run -- nothing about their
+// eligibility changes, so no suppression bookkeeping is needed for
+// them.
+const READINESS_FOLLOWUP_MAX_SENDS_PER_RUN = 25
+
+type ReadinessFollowupSentFlags = { day1: boolean; day3: boolean; day6: boolean }
+type ReadinessFollowupStage = 'day1' | 'day3' | 'day6' | null
+
+function readinessFollowupStage(daysOld: number, sent: ReadinessFollowupSentFlags): ReadinessFollowupStage {
+  if (daysOld > READINESS_FOLLOWUP_STALE_CEILING_DAYS) return null
+  if (daysOld >= 1 && daysOld < 3 && !sent.day1) return 'day1'
+  if (daysOld >= 3 && daysOld < 6 && !sent.day3) return 'day3'
+  if (daysOld >= 6 && !sent.day6) return 'day6'
+  return null
+}
+
+function readinessFollowupEmailContent(stage: 'day1' | 'day3' | 'day6', firstName: string, lead: any, weakCats: string[]) {
+  if (stage === 'day1') {
+    return { subject: `Your Readiness Assessment result: ${lead.score}%`, html: emailTemplateAssessmentDay1(firstName, lead.score, lead.readiness_level, weakCats) }
+  }
+  if (stage === 'day3') {
+    return { subject: 'Quick gut check before your checkride', html: emailTemplateAssessmentDay3(firstName, weakCats) }
+  }
+  return { subject: 'Last look at your Checkride Prep options', html: emailTemplateAssessmentDay6(firstName, RA_TIMING_LABELS[lead.checkride_timing] ?? 'coming up') }
+}
+
 async function processReadinessAssessmentFollowup(supabase: any, results: any) {
   const { data: leads } = await supabase
     .from('readiness_assessment_leads')
     .select('id, email, full_name, checkride_timing, score, readiness_level, category_results, created_at, email_day1_sent_at, email_day3_sent_at, email_day6_sent_at')
+
+  let sentThisRun = 0
 
   for (const lead of leads ?? []) {
     try {
@@ -1287,8 +1355,17 @@ async function processReadinessAssessmentFollowup(supabase: any, results: any) {
       if (existingProfile) continue
 
       const daysOld = (Date.now() - new Date(lead.created_at).getTime()) / 86400000
+      const stage = readinessFollowupStage(daysOld, { day1: !!lead.email_day1_sent_at, day3: !!lead.email_day3_sent_at, day6: !!lead.email_day6_sent_at })
+      if (!stage) continue
+
+      if (sentThisRun >= READINESS_FOLLOWUP_MAX_SENDS_PER_RUN) {
+        results.readiness_assessment_followup_capped_skips = (results.readiness_assessment_followup_capped_skips || 0) + 1
+        continue
+      }
+
       const firstName = (lead.full_name || 'there').split(' ')[0]
       const weakCats = raWeakCategories(lead.category_results)
+      const { subject, html } = readinessFollowupEmailContent(stage, firstName, lead, weakCats)
 
       // Readiness-funnel instrumentation audit: sendEmail() previously
       // returned nothing, so a provider-side send failure (send-email
@@ -1299,30 +1376,31 @@ async function processReadinessAssessmentFollowup(supabase: any, results: any) {
       // run. Checking res?.error means a failed send is both retried next
       // run AND visible in results.errors, instead of silently recorded
       // as "sent."
-      if (daysOld >= 1 && !lead.email_day1_sent_at) {
-        const res = await sendEmail(supabase, lead.email, `Your Readiness Assessment result: ${lead.score}%`, emailTemplateAssessmentDay1(firstName, lead.score, lead.readiness_level, weakCats))
-        if (res?.error) {
-          results.errors.push(`readiness_assessment_followup day1 ${lead.id}: send-email failed: ${res.error.message ?? res.error}`)
-        } else {
-          await supabase.from('readiness_assessment_leads').update({ email_day1_sent_at: new Date().toISOString() }).eq('id', lead.id)
-          results.readiness_assessment_followup++
-        }
-      } else if (daysOld >= 3 && !lead.email_day3_sent_at) {
-        const res = await sendEmail(supabase, lead.email, 'Quick gut check before your checkride', emailTemplateAssessmentDay3(firstName, weakCats))
-        if (res?.error) {
-          results.errors.push(`readiness_assessment_followup day3 ${lead.id}: send-email failed: ${res.error.message ?? res.error}`)
-        } else {
-          await supabase.from('readiness_assessment_leads').update({ email_day3_sent_at: new Date().toISOString() }).eq('id', lead.id)
-          results.readiness_assessment_followup++
-        }
-      } else if (daysOld >= 6 && !lead.email_day6_sent_at) {
-        const res = await sendEmail(supabase, lead.email, 'Last look at your Checkride Prep options', emailTemplateAssessmentDay6(firstName, RA_TIMING_LABELS[lead.checkride_timing] ?? 'coming up'))
-        if (res?.error) {
-          results.errors.push(`readiness_assessment_followup day6 ${lead.id}: send-email failed: ${res.error.message ?? res.error}`)
-        } else {
-          await supabase.from('readiness_assessment_leads').update({ email_day6_sent_at: new Date().toISOString() }).eq('id', lead.id)
-          results.readiness_assessment_followup++
-        }
+      const res = await sendEmail(supabase, lead.email, subject, html)
+      if (res?.error) {
+        results.errors.push(`readiness_assessment_followup ${stage} ${lead.id}: send-email failed: ${res.error.message ?? res.error}`)
+        continue
+      }
+
+      sentThisRun++
+      results.readiness_assessment_followup++
+      // The send already happened by this point -- if this update fails,
+      // the lead's _sent_at column stays null and the next run will send
+      // this same stage again. That's a real, known at-least-once-delivery
+      // risk (documented, not engineered away): the cron runs once daily
+      // with no concurrent invocations, so the only way to hit it is two
+      // independent failures back to back (a successful send immediately
+      // followed by a DB write failure), which is low-likelihood and
+      // low-severity (one duplicate email, not a silent data-integrity
+      // problem) -- and it's strictly better than the prior behavior,
+      // where this exact failure mode was invisible. A full fix would mean
+      // a dedicated idempotency/dedup table (the pattern this file's own
+      // header comment already uses for weak_area_* emails via
+      // portal_email_log's unique index) -- out of scope for "log it so
+      // it's visible," which is what this repair set out to do.
+      const { error: updateErr } = await supabase.from('readiness_assessment_leads').update({ [`email_${stage}_sent_at`]: new Date().toISOString() }).eq('id', lead.id)
+      if (updateErr) {
+        results.errors.push(`readiness_assessment_followup ${stage} ${lead.id}: sent_at update failed after a successful send (next run may resend): ${updateErr.message ?? updateErr}`)
       }
     } catch (err) {
       results.errors.push(`readiness_assessment_followup ${lead.id}: ${err}`)
@@ -1932,8 +2010,8 @@ const ACTIVATION_REPLY_TO = 'info@apexaviationtx.com'
 
 serve(async (req) => {
   if (CRON_SECRET) {
-    const authHeader = req.headers.get('Authorization') || ''
-    if (authHeader !== `Bearer ${CRON_SECRET}`) {
+    const cronSecretHeader = req.headers.get('X-Lifecycle-Cron-Secret') || ''
+    if (cronSecretHeader !== CRON_SECRET) {
       return new Response('Unauthorized', { status: 401 })
     }
   }

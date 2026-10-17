@@ -15,6 +15,22 @@
 -- cron.job); this version instead pulls it from Supabase Vault, matching
 -- the andrewos-metrics/schedule.sql pattern.
 --
+-- Auth-repair note (readiness-funnel instrumentation audit, Oct 2026):
+-- this function has `verify_jwt = true` at the project level, so the API
+-- gateway requires `Authorization` to carry a validly-signed Supabase
+-- JWT -- checked BEFORE the function's own LIFECYCLE_CRON_SECRET check
+-- ever runs. An earlier version of this script put the cron secret
+-- directly in `Authorization`, which the gateway always rejected
+-- (confirmed live: `sb-error-code: UNAUTHORIZED_INVALID_JWT_FORMAT`)
+-- regardless of whether the secret's value matched the function's env
+-- var -- the app-level check never executed. This version keeps
+-- `verify_jwt` ON (do not disable it as a shortcut) and sends a real JWT
+-- in `Authorization` -- the project's anon/publishable key, which is
+-- already public and carries no special privilege here (the function
+-- always builds its own service-role client internally) -- while the
+-- actual cron secret moves to its own `X-Lifecycle-Cron-Secret` header,
+-- matching send-lifecycle-emails/index.ts's own auth check.
+--
 -- Prerequisites (once per project):
 --   1. Enable the pg_cron and pg_net extensions:
 --        Dashboard -> Database -> Extensions -> enable "pg_cron" and "pg_net"
@@ -33,7 +49,10 @@
 --
 -- =============================================================================
 
--- Replace <project-ref> with your actual Supabase project ref before running.
+-- Replace <project-ref> with your actual Supabase project ref, and
+-- <anon-key> with the project's anon/publishable API key (Project
+-- Settings -> API -- this is the public key, safe to put in this file),
+-- before running.
 select cron.schedule(
   'send-lifecycle-emails-daily',
   '0 13 * * *', -- 13:00 UTC / 8am Central, per RETENTION_SYSTEM.md's recommended time
@@ -41,7 +60,8 @@ select cron.schedule(
   select net.http_post(
     url := 'https://<project-ref>.supabase.co/functions/v1/send-lifecycle-emails',
     headers := jsonb_build_object(
-      'Authorization', 'Bearer ' || (
+      'Authorization', 'Bearer <anon-key>',
+      'X-Lifecycle-Cron-Secret', (
         select decrypted_secret
         from vault.decrypted_secrets
         where name = 'lifecycle_cron_secret'
