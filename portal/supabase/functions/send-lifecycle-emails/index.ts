@@ -89,18 +89,38 @@
 // Auth-repair note (readiness-funnel instrumentation audit, Oct 2026):
 // this function has `verify_jwt = true` at the Supabase project level,
 // which means the API gateway itself requires `Authorization` to carry
-// a validly-signed Supabase JWT -- checked BEFORE this function's own
-// code ever runs. The cron job that calls this function used to send
-// the LIFECYCLE_CRON_SECRET value in `Authorization` instead of a JWT,
-// so it was rejected at the gateway (confirmed live: `sb-error-code:
+// a credential it accepts -- checked BEFORE this function's own code
+// ever runs. The cron job that calls this function used to send the
+// LIFECYCLE_CRON_SECRET value in `Authorization` instead, so it was
+// rejected at the gateway (confirmed live: `sb-error-code:
 // UNAUTHORIZED_INVALID_JWT_FORMAT`) no matter what the secret's value
 // was -- the app-level check below never executed. The fix keeps
-// `verify_jwt` ON (do not disable it as a shortcut) and keeps
-// `Authorization` carrying a real JWT (the project's anon/publishable
-// key is sufficient -- it's already public, and this function always
-// builds its own service-role client below regardless of caller
-// identity); the actual app-level secret moves to its own header so it
-// isn't competing with the gateway's own check.
+// `verify_jwt` ON (do not disable it as a shortcut) and puts the
+// project's LEGACY anon key in `Authorization` -- this project has two
+// kinds of public API key, and they are not interchangeable here:
+//   - the legacy anon key is an actual JWT (three dot-separated
+//     base64url segments, HS256-signed, starts with `eyJ...`). Sending
+//     it is the only choice confirmed live to go through the gateway's
+//     real JWT verification path -- its response carries `sb-jwt-alg`/
+//     `sb-jwt-iss` headers, proof the gateway parsed and verified it AS
+//     a JWT, and documented Supabase behavior guarantees this path
+//     keeps working wherever verify_jwt is enabled.
+//   - the newer `sb_publishable_...` key is NOT a JWT (it's an opaque
+//     token in a different, newer Supabase API-key format). It also
+//     happened to pass this same live probe (no sb-error-code, the
+//     function itself ran) -- but that response carried neither of
+//     those JWT-verification headers, meaning the gateway accepted it
+//     through a different, undocumented-for-this-purpose code path, not
+//     by verifying it as a JWT. Relying on that would mean trusting
+//     implicit, unconfirmed platform behavior instead of the documented
+//     contract verify_jwt is actually built on.
+// Either key is equally non-sensitive (both are meant to be public,
+// already shipped client-side) -- the choice here is about which one is
+// provably doing what `verify_jwt` is documented to check, not about
+// secrecy. This function always builds its own service-role client
+// below regardless of caller identity, so neither key grants it any
+// elevated access. The actual app-level secret moves to its own header
+// so it isn't competing with the gateway's own check.
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -1303,8 +1323,13 @@ function emailTemplateAssessmentDay6(firstName: string, timingLabel: string) {
 // from ever reaching back into a lead that's aged out of relevance
 // entirely (no one in production is past this today -- it's pure
 // future-proofing against the next outage, not a reaction to current
-// data).
-const READINESS_FOLLOWUP_STALE_CEILING_DAYS = 45
+// data). Set to 30, not an arbitrary round number: it matches
+// CHECKRIDE_TIMING_SCHEDULES' own longest-running touchpoint (the
+// not_scheduled bucket's day-30 "it'll be here whenever you're ready"
+// email above) -- this codebase's own existing answer to "how long is
+// too long to keep nurturing someone who hasn't converted," reused here
+// instead of inventing a second, different answer to the same question.
+const READINESS_FOLLOWUP_STALE_CEILING_DAYS = 30
 // Circuit breaker against any future backlog pileup (e.g. a much longer
 // outage than this one): caps real sends per run so a recovery run
 // can't become a mass blast. Leads skipped solely because of this cap
