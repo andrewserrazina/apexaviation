@@ -454,8 +454,13 @@ const CATEGORY_LABELS: Record<string, string> = {
   'airport-operations': 'Airport Operations',
 }
 
+// Returns the invoke() result so callers that need to know whether the
+// send actually succeeded (readiness-funnel instrumentation audit --
+// processReadinessAssessmentFollowup below is the first one that checks
+// it) can do so. Every other existing call site in this file ignores the
+// return value, so this is purely additive -- no behavior change for them.
 async function sendEmail(supabase: any, to: string, subject: string, contentHtml: string) {
-  await supabase.functions.invoke('send-email', { body: { to, subject, html: template(contentHtml) } })
+  return await supabase.functions.invoke('send-email', { body: { to, subject, html: template(contentHtml) } })
 }
 
 // Marks a one-time milestone as sent in BOTH portal_events (a passive
@@ -1285,18 +1290,39 @@ async function processReadinessAssessmentFollowup(supabase: any, results: any) {
       const firstName = (lead.full_name || 'there').split(' ')[0]
       const weakCats = raWeakCategories(lead.category_results)
 
+      // Readiness-funnel instrumentation audit: sendEmail() previously
+      // returned nothing, so a provider-side send failure (send-email
+      // invoke() resolving with an error rather than throwing, which is
+      // how supabase-js reports most edge-function-level failures) was
+      // indistinguishable from a real send -- email_dayN_sent_at got
+      // stamped either way, permanently skipping that lead on every future
+      // run. Checking res?.error means a failed send is both retried next
+      // run AND visible in results.errors, instead of silently recorded
+      // as "sent."
       if (daysOld >= 1 && !lead.email_day1_sent_at) {
-        await sendEmail(supabase, lead.email, `Your Readiness Assessment result: ${lead.score}%`, emailTemplateAssessmentDay1(firstName, lead.score, lead.readiness_level, weakCats))
-        await supabase.from('readiness_assessment_leads').update({ email_day1_sent_at: new Date().toISOString() }).eq('id', lead.id)
-        results.readiness_assessment_followup++
+        const res = await sendEmail(supabase, lead.email, `Your Readiness Assessment result: ${lead.score}%`, emailTemplateAssessmentDay1(firstName, lead.score, lead.readiness_level, weakCats))
+        if (res?.error) {
+          results.errors.push(`readiness_assessment_followup day1 ${lead.id}: send-email failed: ${res.error.message ?? res.error}`)
+        } else {
+          await supabase.from('readiness_assessment_leads').update({ email_day1_sent_at: new Date().toISOString() }).eq('id', lead.id)
+          results.readiness_assessment_followup++
+        }
       } else if (daysOld >= 3 && !lead.email_day3_sent_at) {
-        await sendEmail(supabase, lead.email, 'Quick gut check before your checkride', emailTemplateAssessmentDay3(firstName, weakCats))
-        await supabase.from('readiness_assessment_leads').update({ email_day3_sent_at: new Date().toISOString() }).eq('id', lead.id)
-        results.readiness_assessment_followup++
+        const res = await sendEmail(supabase, lead.email, 'Quick gut check before your checkride', emailTemplateAssessmentDay3(firstName, weakCats))
+        if (res?.error) {
+          results.errors.push(`readiness_assessment_followup day3 ${lead.id}: send-email failed: ${res.error.message ?? res.error}`)
+        } else {
+          await supabase.from('readiness_assessment_leads').update({ email_day3_sent_at: new Date().toISOString() }).eq('id', lead.id)
+          results.readiness_assessment_followup++
+        }
       } else if (daysOld >= 6 && !lead.email_day6_sent_at) {
-        await sendEmail(supabase, lead.email, 'Last look at your Checkride Prep options', emailTemplateAssessmentDay6(firstName, RA_TIMING_LABELS[lead.checkride_timing] ?? 'coming up'))
-        await supabase.from('readiness_assessment_leads').update({ email_day6_sent_at: new Date().toISOString() }).eq('id', lead.id)
-        results.readiness_assessment_followup++
+        const res = await sendEmail(supabase, lead.email, 'Last look at your Checkride Prep options', emailTemplateAssessmentDay6(firstName, RA_TIMING_LABELS[lead.checkride_timing] ?? 'coming up'))
+        if (res?.error) {
+          results.errors.push(`readiness_assessment_followup day6 ${lead.id}: send-email failed: ${res.error.message ?? res.error}`)
+        } else {
+          await supabase.from('readiness_assessment_leads').update({ email_day6_sent_at: new Date().toISOString() }).eq('id', lead.id)
+          results.readiness_assessment_followup++
+        }
       }
     } catch (err) {
       results.errors.push(`readiness_assessment_followup ${lead.id}: ${err}`)
