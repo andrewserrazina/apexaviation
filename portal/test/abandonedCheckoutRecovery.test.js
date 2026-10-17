@@ -191,15 +191,36 @@ describe('atomic claim pattern -- every terminal-state UPDATE checks what it act
     expect(processFirst).toMatch(/recovery_suppressed_at: new Date[\s\S]{0,200}\.select\('id'\)/)
   })
 
-  it('a failed send is caught separately from a failed claim, and does not increment the success counter', () => {
-    expect(processFirst).toMatch(/catch \(sendErr\)[\s\S]{0,500}abandoned_checkout_send_failures/)
-    expect(processFollowup).toMatch(/catch \(sendErr\)[\s\S]{0,500}abandoned_checkout_send_failures/)
-    // The success counter increment must be OUTSIDE/AFTER the send's own
-    // try/catch, not inside the try block before a possible throw point.
-    const sendTryIdx = processFirst.indexOf('try {\n        await sendEmail')
+  it('a failed send -- thrown OR resolved with an error -- is handled separately from a failed claim, and does not increment the success counter', () => {
+    // sendEmail() can fail two ways: throw (network-level) or resolve
+    // with `{ error }` (most provider-side failures, including the
+    // global send cap). Both must be caught: a thrown error is turned
+    // into the same `{ error }` shape inside the catch, then a single
+    // `if (res?.error)` handles both uniformly -- counts the failure and
+    // skips the success path, rather than only guarding against a throw.
+    for (const [fn, label] of [[processFirst, 'processFirst'], [processFollowup, 'processFollowup']]) {
+      const tryIdx = fn.indexOf('try {\n        res = await sendEmail')
+      expect(tryIdx, `${label}: try block not found`).toBeGreaterThan(-1)
+      const catchIdx = fn.indexOf('} catch (sendErr) {', tryIdx)
+      expect(catchIdx, `${label}: catch block not found`).toBeGreaterThan(tryIdx)
+      const errCheckIdx = fn.indexOf('if (res?.error)', catchIdx)
+      expect(errCheckIdx, `${label}: res?.error check not found after catch`).toBeGreaterThan(catchIdx)
+      const failuresIdx = fn.indexOf('abandoned_checkout_send_failures', errCheckIdx)
+      expect(failuresIdx, `${label}: failure counter not incremented inside the res?.error branch`).toBeGreaterThan(errCheckIdx)
+    }
+    // The success counter increment must be OUTSIDE/AFTER the error
+    // branch, not reachable when res?.error is truthy (continue exits
+    // the loop iteration before it).
+    const errCheckIdx = processFirst.indexOf('if (res?.error)')
+    const continueIdx = processFirst.indexOf('continue', errCheckIdx)
     const successIdx = processFirst.indexOf('results.abandoned_checkout++')
-    const catchIdx = processFirst.indexOf('} catch (sendErr) {', sendTryIdx)
-    expect(successIdx).toBeGreaterThan(catchIdx)
+    expect(continueIdx).toBeGreaterThan(errCheckIdx)
+    expect(successIdx).toBeGreaterThan(continueIdx)
+  })
+
+  it('reverts the claim (unclaims recovery_email_sent_at / recovery_email_2_sent_at) on a failed send, so it is retried on a later run instead of lost forever', () => {
+    expect(processFirst).toMatch(/if \(res\?\.error\)[\s\S]{0,600}recovery_email_sent_at: null/)
+    expect(processFollowup).toMatch(/if \(res\?\.error\)[\s\S]{0,600}recovery_email_2_sent_at: null/)
   })
 
   it('test 17: a thrown error from the entire per-attempt block is caught per-attempt, not per-run -- one bad row cannot stop the rest of the queue from being processed', () => {

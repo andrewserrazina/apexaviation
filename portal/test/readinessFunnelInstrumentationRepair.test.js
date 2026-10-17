@@ -83,12 +83,13 @@ describe('create-checkout-session/index.ts: server-side checkout-failure observa
 
 describe('send-lifecycle-emails/index.ts: readiness-assessment follow-up send-failure handling', () => {
   it('sendEmail() now returns the invoke() result instead of discarding it', () => {
-    const marker = 'async function sendEmail(supabase: any, to: string, subject: string, contentHtml: string) {'
+    const marker = 'async function sendEmail(\n  supabase: any,\n  results: any,\n  to: string,\n  subject: string,\n  contentHtml: string,'
     const startIdx = lifecycleSource.indexOf(marker)
     expect(startIdx).toBeGreaterThan(-1)
     const endIdx = lifecycleSource.indexOf('\n}', startIdx)
     const body = lifecycleSource.slice(startIdx, endIdx)
-    expect(body).toContain("return await supabase.functions.invoke('send-email'")
+    expect(body).toContain("supabase.functions.invoke('send-email'")
+    expect(body).toContain('return res')
   })
 
   function followupBody() {
@@ -107,7 +108,7 @@ describe('send-lifecycle-emails/index.ts: readiness-assessment follow-up send-fa
 
   it('checks res?.error immediately after sendEmail() and continues (skipping the stamp) on failure', () => {
     const body = followupBody()
-    const sendIdx = body.indexOf('const res = await sendEmail(supabase, lead.email, subject, html)')
+    const sendIdx = body.indexOf('const res = await sendEmail(supabase, results, lead.email, subject, html)')
     expect(sendIdx).toBeGreaterThan(-1)
     const errCheckIdx = body.indexOf('if (res?.error)', sendIdx)
     const continueIdx = body.indexOf('continue', errCheckIdx)
@@ -331,7 +332,7 @@ describe('send-lifecycle-emails/index.ts: processReadinessAssessmentFollowup() -
     const lead = makeLead({ daysOld: 13.7 })
     const supabase = makeSupabase({ leads: [lead] })
     const sent = []
-    const sendEmail = async (_sb, to, subject) => { sent.push({ to, subject }); return { error: null } }
+    const sendEmail = async (_sb, _results, to, subject) => { sent.push({ to, subject }); return { error: null } }
     const results = { readiness_assessment_followup: 0, errors: [] }
 
     await run(supabase, results, sendEmail)
