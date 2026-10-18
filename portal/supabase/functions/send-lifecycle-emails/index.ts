@@ -610,6 +610,25 @@ async function sendEmail(
 
   if (options?.exemptFromGlobalCap) return await invoke()
 
+  const budget = results.__sendBudget ?? (results.__sendBudget = { successes: 0, failures: 0 })
+  // Cap-reached responses return before touching `budget`, the
+  // recipient cooldown, or the provider at all, so a skip never itself
+  // counts as a failure/success and never reserves a recipient's
+  // cooldown slot either -- only a real attempt (whatever its outcome)
+  // does either of those. Checked BEFORE the recipient-cooldown claim
+  // below on purpose (Stage 5 review fix): claiming a recipient's slot
+  // when the global cap is already exhausted would reserve it for 24h
+  // even though no email was ever attempted, incorrectly suppressing
+  // that recipient on a later run for a send that never happened here.
+  if (budget.successes >= GLOBAL_SEND_SUCCESS_CAP) {
+    results.global_send_cap_skips = (results.global_send_cap_skips || 0) + 1
+    return { error: { message: 'global send success cap reached this run (recovery safeguard, not a provider failure)', code: 'GLOBAL_SEND_CAP' } }
+  }
+  if (budget.failures >= GLOBAL_SEND_FAILURE_CAP) {
+    results.global_send_failure_cap_skips = (results.global_send_failure_cap_skips || 0) + 1
+    return { error: { message: 'global send failure cap reached this run -- provider may be down, halting further attempts', code: 'GLOBAL_SEND_FAILURE_CAP' } }
+  }
+
   // Cross-campaign recipient suppression (Stage 5 incident fix, Oct
   // 2026): confirmed in production that one profile received three
   // separate marketing emails (inactivity, new-member activation,
@@ -622,12 +641,13 @@ async function sendEmail(
   // per-recipient row -- same reservation-before-send principle as
   // Stage 3's lifecycle_test_reserve_send(), so concurrent invocations
   // (or multiple campaigns racing within one invocation) can't both
-  // claim the same recipient's slot. Checked here, before the global
-  // budget below, so a suppressed send never consumes a global-cap
-  // slot either. Scoped by each call site passing this option --
-  // exactly the campaigns already gated by email_marketing_opt_out in
-  // serve(), the same existing marketing/transactional split this file
-  // already draws -- so transactional messages, relationship emails,
+  // claim the same recipient's slot. Claimed here, immediately before
+  // invoke() below -- after both global-cap checks above, so a capped
+  // call never reserves a slot for a send it was never going to make.
+  // Scoped by each call site passing this option -- exactly the
+  // campaigns already gated by email_marketing_opt_out in serve(), the
+  // same existing marketing/transactional split this file already
+  // draws -- so transactional messages, relationship emails,
   // abandoned-checkout recovery, Readiness Assessment follow-up, and
   // the exempt mock-oral reminder are all unaffected.
   if (options?.marketingRecipientCap) {
@@ -642,19 +662,6 @@ async function sendEmail(
       results.marketing_recipient_cap_skips = (results.marketing_recipient_cap_skips || 0) + 1
       return { error: { message: 'recipient already received a marketing email within the last 24 hours', code: 'MARKETING_RECIPIENT_CAP' } }
     }
-  }
-
-  const budget = results.__sendBudget ?? (results.__sendBudget = { successes: 0, failures: 0 })
-  // Cap-reached responses return before touching `budget` at all, so a
-  // skip never itself counts as a failure (or a success) -- only a real
-  // attempt (whatever its outcome) updates the budget below.
-  if (budget.successes >= GLOBAL_SEND_SUCCESS_CAP) {
-    results.global_send_cap_skips = (results.global_send_cap_skips || 0) + 1
-    return { error: { message: 'global send success cap reached this run (recovery safeguard, not a provider failure)', code: 'GLOBAL_SEND_CAP' } }
-  }
-  if (budget.failures >= GLOBAL_SEND_FAILURE_CAP) {
-    results.global_send_failure_cap_skips = (results.global_send_failure_cap_skips || 0) + 1
-    return { error: { message: 'global send failure cap reached this run -- provider may be down, halting further attempts', code: 'GLOBAL_SEND_FAILURE_CAP' } }
   }
 
   const res = await invoke()

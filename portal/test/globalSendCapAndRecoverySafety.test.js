@@ -279,10 +279,10 @@ describe('sendEmail(): cross-campaign marketing recipient cooldown -- real execu
   const sendEmailMarker = 'async function sendEmail(\n  supabase: any,\n  results: any,\n  to: string,\n  subject: string,\n  contentHtml: string,\n  options?: { replyTo?: string; exemptFromGlobalCap?: boolean; marketingRecipientCap?: boolean },\n) {'
   const sendEmailBody = extractFunctionBody(lifecycleSource, sendEmailMarker)
 
-  function buildSendEmail() {
+  function buildSendEmail({ successCap = 10, failureCap = 10 } = {}) {
     const preamble = `
-      const GLOBAL_SEND_SUCCESS_CAP = 10
-      const GLOBAL_SEND_FAILURE_CAP = 10
+      const GLOBAL_SEND_SUCCESS_CAP = ${successCap}
+      const GLOBAL_SEND_FAILURE_CAP = ${failureCap}
       const MARKETING_RECIPIENT_COOLDOWN_SECONDS = 86400
       function template(html) { return html }
     `
@@ -397,6 +397,44 @@ describe('sendEmail(): cross-campaign marketing recipient cooldown -- real execu
     expect(plain.error).toBeFalsy()
     expect(supabase._invokeCalls).toHaveLength(2)
   })
+
+  // Review fix: the cooldown RPC used to run BEFORE the global cap
+  // checks, so a call arriving after the cap was already exhausted
+  // would still claim the recipient's 24h slot even though no email was
+  // ever attempted -- incorrectly suppressing that recipient on a later
+  // run for a send that never happened. The cap checks must run first.
+  it('global success cap already exhausted -> GLOBAL_SEND_CAP, and the recipient cooldown is never even checked (no reservation made for a send that was never attempted)', async () => {
+    const sendEmail = buildSendEmail({ successCap: 0 }) // already exhausted from the very first call
+    const supabase = makeMockSupabaseWithCooldown()
+    const results = {}
+    const result = await sendEmail(supabase, results, 'student@example.com', 'inactivity', 'h', { marketingRecipientCap: true })
+    expect(result.error?.code).toBe('GLOBAL_SEND_CAP')
+    expect(supabase._rpcCalls).toHaveLength(0) // claim_marketing_recipient_slot was never called
+    expect(supabase._invokeCalls).toHaveLength(0)
+    expect(supabase._claimedEmails.size).toBe(0) // no reservation exists for this recipient
+  })
+
+  it('global failure cap already exhausted -> GLOBAL_SEND_FAILURE_CAP, and the recipient cooldown is never even checked', async () => {
+    const sendEmail = buildSendEmail({ failureCap: 0 }) // already exhausted
+    const supabase = makeMockSupabaseWithCooldown()
+    const results = {}
+    const result = await sendEmail(supabase, results, 'student@example.com', 'checkride upsell', 'h', { marketingRecipientCap: true })
+    expect(result.error?.code).toBe('GLOBAL_SEND_FAILURE_CAP')
+    expect(supabase._rpcCalls).toHaveLength(0)
+    expect(supabase._claimedEmails.size).toBe(0)
+  })
+
+  it('the cap becoming exhausted MID-RUN (by a prior send) also prevents any further recipient-cooldown reservation for a different recipient', async () => {
+    const sendEmail = buildSendEmail({ successCap: 1 })
+    const supabase = makeMockSupabaseWithCooldown()
+    const results = {}
+    const first = await sendEmail(supabase, results, 'studentA@example.com', 'inactivity', 'h', { marketingRecipientCap: true })
+    expect(first.error).toBeFalsy() // consumes the one success slot
+    const second = await sendEmail(supabase, results, 'studentB@example.com', 'checkride upsell', 'h', { marketingRecipientCap: true })
+    expect(second.error?.code).toBe('GLOBAL_SEND_CAP')
+    expect(supabase._claimedEmails.has('studenta@example.com')).toBe(true) // the real first send did reserve
+    expect(supabase._claimedEmails.has('studentb@example.com')).toBe(false) // the capped second send did not
+  })
 })
 
 describe('Stage 5: marketingRecipientCap scoping matches the existing email_marketing_opt_out split', () => {
@@ -430,6 +468,36 @@ describe('Stage 5: main per-profile loop stops once the global send budget is ex
     expect(nextChunk).toContain('const budget = results.__sendBudget')
     expect(nextChunk).toContain('budget.successes >= GLOBAL_SEND_SUCCESS_CAP || budget.failures >= GLOBAL_SEND_FAILURE_CAP')
     expect(nextChunk).toContain('break')
+  })
+
+  // Review fix: `break` exits the for-loop normally (not a `return`),
+  // so control falls through to whatever follows it. This locks in
+  // that run_streak_maintenance/processRecoverySortieNotifications/
+  // refresh_mission_progress -- and the final Response -- still appear
+  // AFTER the loop in source, i.e. still execute on every path out of
+  // the loop, including an early break.
+  it('post-loop maintenance (run_streak_maintenance, processRecoverySortieNotifications, refresh_mission_progress) and the final Response all still appear after the loop -- an early break still reaches them', () => {
+    const loopStart = lifecycleSource.indexOf('for (const profile of profiles ?? []) {')
+    const loopBodyStart = loopStart + 'for (const profile of profiles ?? []) {'.length
+    const loopEnd = findMatchingBrace(lifecycleSource, lifecycleSource.indexOf('{', loopBodyStart - 1))
+    const afterLoop = lifecycleSource.slice(loopEnd)
+    expect(afterLoop.indexOf("supabase.rpc('run_streak_maintenance')")).toBeGreaterThan(-1)
+    expect(afterLoop.indexOf('processRecoverySortieNotifications')).toBeGreaterThan(-1)
+    expect(afterLoop.indexOf("supabase.rpc('refresh_mission_progress')")).toBeGreaterThan(-1)
+    expect(afterLoop.indexOf('return new Response(JSON.stringify(results)')).toBeGreaterThan(-1)
+  })
+})
+
+describe('Stage 5 review fix: global caps are checked before the recipient-cooldown reservation', () => {
+  it('in source, both global-cap early-returns appear before the claim_marketing_recipient_slot RPC call', () => {
+    const successCapIdx = lifecycleSource.indexOf("code: 'GLOBAL_SEND_CAP' } }")
+    const failureCapIdx = lifecycleSource.indexOf("code: 'GLOBAL_SEND_FAILURE_CAP' } }")
+    const rpcCallIdx = lifecycleSource.indexOf("supabase.rpc('claim_marketing_recipient_slot'")
+    expect(successCapIdx).toBeGreaterThan(-1)
+    expect(failureCapIdx).toBeGreaterThan(-1)
+    expect(rpcCallIdx).toBeGreaterThan(-1)
+    expect(successCapIdx).toBeLessThan(rpcCallIdx)
+    expect(failureCapIdx).toBeLessThan(rpcCallIdx)
   })
 })
 
