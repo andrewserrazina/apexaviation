@@ -140,10 +140,12 @@ types regardless of which side actually sent it, closing Issue #5.
    send-lifecycle-emails` (run from inside `portal/`).
 4. **Set secrets**: `RESEND_API_KEY`/`FROM_EMAIL` are already required by
    `send-email` and reused here (this function calls `send-email`, it
-   doesn't call Resend directly). Optionally set
-   `LIFECYCLE_CRON_SECRET` to any random string — if set, the function
-   rejects any request whose `Authorization` header doesn't match, so the
-   function's public URL alone isn't enough to trigger a mass-email run.
+   doesn't call Resend directly). **Set `LIFECYCLE_CRON_SECRET`** to a
+   random string (required as of the Stage 2 auth hardening — the
+   function now refuses to run at all, 500, if this is unset, rather
+   than skipping the check) — the function rejects any request whose
+   `X-Lifecycle-Cron-Secret` header doesn't match it, so the function's
+   public URL alone isn't enough to trigger a mass-email run.
 5. **Schedule it to run daily.** Two ways to do this in Supabase, pick
    whichever this project's plan supports:
    - **Dashboard scheduled functions** (if available on the project's
@@ -157,14 +159,17 @@ types regardless of which side actually sent it, closing Issue #5.
        $$
        select net.http_post(
          url := 'https://<project-ref>.supabase.co/functions/v1/send-lifecycle-emails',
-         headers := jsonb_build_object('Authorization', 'Bearer <LIFECYCLE_CRON_SECRET value>'),
+         headers := jsonb_build_object('X-Lifecycle-Cron-Secret', '<LIFECYCLE_CRON_SECRET value>'),
          body := '{}'::jsonb
        );
        $$
      );
      ```
+     See `send-lifecycle-emails/schedule.sql` for the Vault-backed version
+     actually used in production (pulls the secret from `vault.decrypted_secrets`
+     rather than storing it in plaintext in `cron.job`).
 6. **Manually trigger one run** after deploying (`curl -X POST
-   .../functions/v1/send-lifecycle-emails -H "Authorization: Bearer
+   .../functions/v1/send-lifecycle-emails -H "X-Lifecycle-Cron-Secret:
    <secret>"`) against real data and check the JSON response's per-type
    counts and `errors` array before trusting the schedule.
 
@@ -541,7 +546,7 @@ Ordered by actual dependency, not "deploy normally":
    | `RESEND_API_KEY` | Required (pre-existing) | secret, not printed here | — |
    | `FROM_EMAIL` | Optional (pre-existing, defaults to `Apex Advantage <noreply@apexaviationtx.com>`) | `Name <email>` | — |
    | `SITE_ORIGIN` | Optional (pre-existing, defaults to `https://apexaviationtx.com`) | URL, no trailing slash | — |
-   | `LIFECYCLE_CRON_SECRET` | Recommended (pre-existing) | secret, not printed here | — |
+   | `LIFECYCLE_CRON_SECRET` | **Required** (fail-closed as of Stage 2 auth hardening) | secret, not printed here | — |
 
    `NEW_MEMBER_ACTIVATION_SINCE` unset means the sequence is **entirely
    disabled** for Emails #2-4 and the catch-up path (verified in code —
@@ -560,7 +565,8 @@ Ordered by actual dependency, not "deploy normally":
    actually wired up in the live project; this session has never had
    access to a live Supabase project to confirm the schedule is actually
    installed). Confirm the schedule invokes `send-lifecycle-emails` with
-   `Authorization: Bearer <LIFECYCLE_CRON_SECRET>` if that secret is set,
+   `X-Lifecycle-Cron-Secret: <LIFECYCLE_CRON_SECRET value>` (not
+   `Authorization` — this function doesn't check that header at all),
    and check the function's logs after the next scheduled run for the
    `new_member_activation`, `activation_email_1_catchup`, and
    `checkride_upsell` counters in its JSON response — a non-zero

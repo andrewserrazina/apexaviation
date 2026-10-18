@@ -15,43 +15,20 @@
 -- cron.job); this version instead pulls it from Supabase Vault, matching
 -- the andrewos-metrics/schedule.sql pattern.
 --
--- Auth-repair note (readiness-funnel instrumentation audit, Oct 2026):
--- this function has `verify_jwt = true` at the project level, so the API
--- gateway requires `Authorization` to carry a credential it accepts --
--- checked BEFORE the function's own LIFECYCLE_CRON_SECRET check ever
--- runs. An earlier version of this script put the cron secret directly
--- in `Authorization`, which the gateway always rejected (confirmed live:
--- `sb-error-code: UNAUTHORIZED_INVALID_JWT_FORMAT`) regardless of
--- whether the secret's value matched the function's env var -- the
--- app-level check never executed. This version keeps `verify_jwt` ON
--- (do not disable it as a shortcut) and sends the project's LEGACY anon
--- key in `Authorization`.
---
--- This project has two kinds of public API key, and only one of them is
--- confirmed to satisfy `verify_jwt` via its documented mechanism:
---   - the legacy anon key genuinely IS a JWT (HS256-signed, starts with
---     `eyJ...`, found at Project Settings -> API under "Legacy anon
---     key" or similar). A live, non-destructive probe against this
---     project confirmed the gateway verifies it as a JWT -- the
---     response carries `sb-jwt-alg`/`sb-jwt-iss` headers proving real
---     JWT verification occurred, and this is the path Supabase
---     documents verify_jwt as checking.
---   - the newer `sb_publishable_...` key (Project Settings -> API,
---     "Publishable key") is NOT a JWT -- it's an opaque token in a
---     different, newer key format. The same live probe showed it also
---     got past the gateway, but with neither of those JWT-verification
---     headers present, meaning it went through some other, undocumented
---     (for this purpose) acceptance path rather than being verified as
---     a JWT. Do not substitute it here on the assumption that "it also
---     worked once" -- use the legacy anon key specifically, because
---     it's the one provably doing what verify_jwt is documented to
---     require.
--- Both keys are equally non-sensitive either way (both are meant to be
--- public and are already shipped client-side) -- this isn't a secrecy
--- distinction, and this function always builds its own service-role
--- client internally regardless of which one is sent. The actual cron
--- secret moves to its own `X-Lifecycle-Cron-Secret` header, matching
--- send-lifecycle-emails/index.ts's own auth check.
+-- Auth contract (corrected, Stage 2 auth hardening, Oct 2026): this
+-- function is deployed with `verify_jwt = false` (portal/supabase/
+-- config.toml's `[functions.send-lifecycle-emails]` entry) -- that is
+-- the established, intended design. There is no Supabase session to
+-- verify here at all; pg_cron/pg_net calls this on a schedule with no
+-- signed-in caller. A prior revision of this note incorrectly claimed
+-- `verify_jwt = true` was required, and had this script send the
+-- project's legacy anon key in `Authorization` to satisfy it -- that was
+-- wrong and has been removed. `Authorization` is not checked by this
+-- function at all. The only credential that matters is
+-- `X-Lifecycle-Cron-Secret`, checked in send-lifecycle-emails/index.ts's
+-- `serve()` handler against LIFECYCLE_CRON_SECRET (fail-closed as of
+-- this same hardening pass: the function now refuses to run at all if
+-- that env var is unset, rather than skipping the check).
 --
 -- Prerequisites (once per project):
 --   1. Enable the pg_cron and pg_net extensions:
@@ -71,11 +48,7 @@
 --
 -- =============================================================================
 
--- Replace <project-ref> with your actual Supabase project ref, and
--- <legacy-anon-key> with the project's LEGACY anon key specifically --
--- NOT the newer `sb_publishable_...` key (see the note above for why).
--- Both are public/safe to put in this file; the legacy one is just the
--- one confirmed to satisfy verify_jwt's actual JWT check.
+-- Replace <project-ref> with your actual Supabase project ref.
 select cron.schedule(
   'send-lifecycle-emails-daily',
   '0 13 * * *', -- 13:00 UTC / 8am Central, per RETENTION_SYSTEM.md's recommended time
@@ -83,7 +56,6 @@ select cron.schedule(
   select net.http_post(
     url := 'https://<project-ref>.supabase.co/functions/v1/send-lifecycle-emails',
     headers := jsonb_build_object(
-      'Authorization', 'Bearer <legacy-anon-key>',
       'X-Lifecycle-Cron-Secret', (
         select decrypted_secret
         from vault.decrypted_secrets

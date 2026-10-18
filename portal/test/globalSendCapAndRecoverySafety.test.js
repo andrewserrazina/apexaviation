@@ -376,3 +376,107 @@ describe('Dry-run preview script stays read-only (dry_run_preview.sql)', () => {
     expect(sql).toMatch(/weak_area.*UPPER BOUND/)
   })
 })
+
+// Stage 2 auth hardening (Oct 2026): the serve() handler's auth guard
+// used to be `if (CRON_SECRET) { ... }` -- a missing/cleared env var
+// skipped the check entirely and let any caller trigger a real send
+// run. The fix is fail-closed: missing secret -> 500 (server
+// misconfiguration, no credential could ever fix it), present-but-wrong
+// header -> 401 (caller's fault, in principle correctable). These tests
+// execute the real extracted guard, not a reimplementation, same
+// convention as the sendEmail() cap tests above.
+describe('serve(): fail-closed auth guard -- real execution', () => {
+  const guardStartMarker = 'serve(async (req) => {'
+  const guardEndMarker = 'const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)'
+  const guardStartIdx = lifecycleSource.indexOf(guardStartMarker)
+  const guardBodyStart = guardStartIdx + guardStartMarker.length
+  const guardEndIdx = lifecycleSource.indexOf(guardEndMarker, guardBodyStart)
+  if (guardStartIdx === -1 || guardEndIdx === -1) {
+    throw new Error('serve() auth guard markers not found -- source may have changed shape')
+  }
+  const guardBody = lifecycleSource.slice(guardBodyStart, guardEndIdx)
+
+  function buildGuard() {
+    // Sentinel return value stands in for "the rest of serve() ran" --
+    // if any test sees this instead of a Response, the guard let a
+    // request through to (what would be) real DB/email processing.
+    return new AsyncFunction('req', 'CRON_SECRET', `${guardBody}\n  return 'PROCESSING_STARTED'`)
+  }
+
+  function makeReq(headers = {}) {
+    return { headers: { get: (k) => (k in headers ? headers[k] : null) } }
+  }
+
+  it('secret absent (undefined) -> 500, processing never starts', async () => {
+    const result = await buildGuard()(makeReq(), undefined)
+    expect(result).toBeInstanceOf(Response)
+    expect(result.status).toBe(500)
+  })
+
+  it('secret empty string -> 500 (falsy, same as absent), processing never starts', async () => {
+    const result = await buildGuard()(makeReq(), '')
+    expect(result.status).toBe(500)
+  })
+
+  it('secret configured, header absent -> 401, processing never starts', async () => {
+    const result = await buildGuard()(makeReq(), 'realsecret')
+    expect(result.status).toBe(401)
+  })
+
+  it('secret configured, header present but incorrect -> 401, processing never starts', async () => {
+    const result = await buildGuard()(makeReq({ 'X-Lifecycle-Cron-Secret': 'wrong' }), 'realsecret')
+    expect(result.status).toBe(401)
+  })
+
+  it('secret configured, header matches exactly -> guard passes, processing proceeds', async () => {
+    const result = await buildGuard()(makeReq({ 'X-Lifecycle-Cron-Secret': 'realsecret' }), 'realsecret')
+    expect(result).toBe('PROCESSING_STARTED')
+  })
+
+  it('misconfiguration (500) and bad credential (401) are distinguishable, and neither response body discloses the configured secret', async () => {
+    const misconfigured = await buildGuard()(makeReq(), '')
+    const unauthorized = await buildGuard()(makeReq({ 'X-Lifecycle-Cron-Secret': 'wrong' }), 'realsecret')
+    expect(misconfigured.status).not.toBe(unauthorized.status)
+    expect(await misconfigured.text()).not.toContain('realsecret')
+    expect(await unauthorized.text()).not.toContain('realsecret')
+  })
+
+  it('the guard body itself contains no database, service-role client, or email-dispatch call -- nothing privileged can execute before it resolves', () => {
+    expect(guardBody).not.toMatch(/supabase\.|functions\.invoke|createClient\(/)
+  })
+})
+
+describe('verify_jwt = false compatibility -- the Stage 2 hardening keeps auth in-code, not at the gateway', () => {
+  const CONFIG_TOML_PATH = path.join(REPO_ROOT, 'portal/supabase/config.toml')
+  const configSource = readFileSync(CONFIG_TOML_PATH, 'utf8')
+  const guardStartMarker = 'serve(async (req) => {'
+  const guardEndMarker = 'const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)'
+  const guardBody = lifecycleSource.slice(
+    lifecycleSource.indexOf(guardStartMarker) + guardStartMarker.length,
+    lifecycleSource.indexOf(guardEndMarker)
+  )
+
+  it('config.toml pins verify_jwt = false for send-lifecycle-emails', () => {
+    const section = configSource.match(/\[functions\.send-lifecycle-emails\][^[]*/)
+    expect(section).not.toBeNull()
+    expect(section[0]).toMatch(/verify_jwt\s*=\s*false/)
+  })
+
+  it('the auth guard checks X-Lifecycle-Cron-Secret, never Authorization -- so it works whether or not a gateway JWT is ever present', () => {
+    expect(guardBody).toContain("req.headers.get('X-Lifecycle-Cron-Secret')")
+    expect(guardBody).not.toMatch(/headers\.get\(['"]Authorization['"]\)/)
+  })
+})
+
+describe('Stage 2 regression: caps and the mock-oral exemption are untouched by the auth hardening', () => {
+  it('the mock-oral reminder send still carries exemptFromGlobalCap: true -- Stage 2 only edited the top of serve(), not sendEmail() or its call sites', () => {
+    const idx = lifecycleSource.indexOf('exemptFromGlobalCap: true')
+    expect(idx).toBeGreaterThan(-1)
+    expect(lifecycleSource.slice(idx - 400, idx)).toMatch(/Mock Oral/i)
+  })
+
+  it('GLOBAL_SEND_SUCCESS_CAP and GLOBAL_SEND_FAILURE_CAP are both still defined as 10', () => {
+    expect(lifecycleSource).toContain('const GLOBAL_SEND_SUCCESS_CAP = 10')
+    expect(lifecycleSource).toContain('const GLOBAL_SEND_FAILURE_CAP = 10')
+  })
+})

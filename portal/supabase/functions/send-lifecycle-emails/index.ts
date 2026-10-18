@@ -81,46 +81,31 @@
 //
 // Env vars required (Supabase Edge Function secrets):
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (both auto-provided)
-//   LIFECYCLE_CRON_SECRET (optional but recommended -- see
-//   RETENTION_SYSTEM.md; if set, the caller must send it in the
-//   `X-Lifecycle-Cron-Secret` header or the request is rejected, so this
-//   can't be triggered by anyone who finds the function's public URL)
+//   LIFECYCLE_CRON_SECRET (required -- see RETENTION_SYSTEM.md; the
+//   caller must send it in the `X-Lifecycle-Cron-Secret` header or the
+//   request is rejected. Fail-closed as of the Stage 2 auth hardening
+//   below: if this env var is itself unset, the function refuses to run
+//   at all (500) rather than skipping the check, so a misconfigured
+//   deploy can't become an open send-to-anyone endpoint.)
 //
-// Auth-repair note (readiness-funnel instrumentation audit, Oct 2026):
-// this function has `verify_jwt = true` at the Supabase project level,
-// which means the API gateway itself requires `Authorization` to carry
-// a credential it accepts -- checked BEFORE this function's own code
-// ever runs. The cron job that calls this function used to send the
-// LIFECYCLE_CRON_SECRET value in `Authorization` instead, so it was
-// rejected at the gateway (confirmed live: `sb-error-code:
-// UNAUTHORIZED_INVALID_JWT_FORMAT`) no matter what the secret's value
-// was -- the app-level check below never executed. The fix keeps
-// `verify_jwt` ON (do not disable it as a shortcut) and puts the
-// project's LEGACY anon key in `Authorization` -- this project has two
-// kinds of public API key, and they are not interchangeable here:
-//   - the legacy anon key is an actual JWT (three dot-separated
-//     base64url segments, HS256-signed, starts with `eyJ...`). Sending
-//     it is the only choice confirmed live to go through the gateway's
-//     real JWT verification path -- its response carries `sb-jwt-alg`/
-//     `sb-jwt-iss` headers, proof the gateway parsed and verified it AS
-//     a JWT, and documented Supabase behavior guarantees this path
-//     keeps working wherever verify_jwt is enabled.
-//   - the newer `sb_publishable_...` key is NOT a JWT (it's an opaque
-//     token in a different, newer Supabase API-key format). It also
-//     happened to pass this same live probe (no sb-error-code, the
-//     function itself ran) -- but that response carried neither of
-//     those JWT-verification headers, meaning the gateway accepted it
-//     through a different, undocumented-for-this-purpose code path, not
-//     by verifying it as a JWT. Relying on that would mean trusting
-//     implicit, unconfirmed platform behavior instead of the documented
-//     contract verify_jwt is actually built on.
-// Either key is equally non-sensitive (both are meant to be public,
-// already shipped client-side) -- the choice here is about which one is
-// provably doing what `verify_jwt` is documented to check, not about
-// secrecy. This function always builds its own service-role client
-// below regardless of caller identity, so neither key grants it any
-// elevated access. The actual app-level secret moves to its own header
-// so it isn't competing with the gateway's own check.
+// Auth contract (corrected, Stage 2 auth hardening, Oct 2026): this
+// function is deployed with `verify_jwt = false` (see
+// portal/supabase/config.toml's `[functions.send-lifecycle-emails]`
+// entry and its own comment) -- that is the established, intended
+// design, not a shortcut. This function has no signed-in caller to
+// verify a session JWT for in the first place: pg_cron/pg_net calls it
+// on a schedule with no Supabase session at all. Gateway-level JWT
+// verification was explored in an earlier pass of this audit and ruled
+// out, not adopted -- a prior revision of this comment incorrectly
+// claimed the opposite (that `verify_jwt = true` plus sending the
+// project's legacy anon key in `Authorization` was the fix) and that
+// was wrong; it's corrected here. `Authorization` is not used for
+// authentication by this function at all; the only credential that
+// matters is `X-Lifecycle-Cron-Secret`, checked below against
+// LIFECYCLE_CRON_SECRET. This function always builds its own
+// service-role client below regardless of what, if anything, is sent
+// in `Authorization`, so no caller identity there grants it any
+// elevated access.
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -2261,11 +2246,24 @@ async function processNewMemberActivation(supabase: any, profile: any, results: 
 const ACTIVATION_REPLY_TO = 'info@apexaviationtx.com'
 
 serve(async (req) => {
-  if (CRON_SECRET) {
-    const cronSecretHeader = req.headers.get('X-Lifecycle-Cron-Secret') || ''
-    if (cronSecretHeader !== CRON_SECRET) {
-      return new Response('Unauthorized', { status: 401 })
-    }
+  // Fail-closed (Stage 2 auth hardening, Oct 2026): the prior `if
+  // (CRON_SECRET)` guard skipped this check entirely whenever the env
+  // var was unset, so a misconfigured deploy (secret never set, or
+  // cleared) would process and send real lifecycle email to anyone who
+  // found this function's public URL, no credential required. 500 here
+  // (not 401) because this case is a server-side misconfiguration, not
+  // a bad request -- no credential the caller could supply would ever
+  // succeed, and retrying with different headers can't fix it. 401 is
+  // reserved for the normal case: a secret IS configured but the
+  // request's own credential is missing or wrong, which the caller
+  // could in principle correct.
+  if (!CRON_SECRET) {
+    console.error('LIFECYCLE_CRON_SECRET is not configured -- refusing to run lifecycle processing')
+    return new Response('Server misconfigured', { status: 500 })
+  }
+  const cronSecretHeader = req.headers.get('X-Lifecycle-Cron-Secret') || ''
+  if (cronSecretHeader !== CRON_SECRET) {
+    return new Response('Unauthorized', { status: 401 })
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
