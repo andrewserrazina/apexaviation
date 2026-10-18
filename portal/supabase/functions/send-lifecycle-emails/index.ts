@@ -2422,6 +2422,36 @@ serve(async (req) => {
   const categoryIds: string[] = (categories ?? []).map((c: any) => c.id)
   const allQuestions: Question[] = questions ?? []
 
+  // Reactivation priority fix (Stage 4 production-readiness audit, Oct
+  // 2026): these five calls used to run AFTER the big per-profile loop
+  // below. GLOBAL_SEND_SUCCESS_CAP/GLOBAL_SEND_FAILURE_CAP are shared
+  // across the whole run, and that per-profile loop alone has hundreds
+  // of candidates (checkride_upsell and new_member_activation each run
+  // into the hundreds as of this audit) competing for the same 10
+  // slots, in ascending profile.id order -- on a first run after any
+  // real backlog accumulates, the loop exhausts the entire cap long
+  // before reaching this block, so abandoned-checkout recovery and
+  // Readiness Assessment follow-up (commercially time-sensitive, and
+  // each a handful of candidates at most) would get zero sends while
+  // the cap went entirely to bulk engagement/upsell nudges. Moving this
+  // whole block earlier -- unchanged internally, same five calls in the
+  // same relative order -- means these candidates claim cap slots
+  // first. This is a permanent priority change, not just a first-run
+  // patch: once the backlog clears, a lead that just abandoned checkout
+  // or a Readiness Assessment that just went unclaimed should still
+  // outrank a generic weekly-progress nudge for a limited cap slot on
+  // any given day, same reasoning. ground_followup/mock_oral_reminder
+  // moved along with it since they were already grouped with these
+  // calls and reordering only two of five would have been a less
+  // auditable change for no behavioral benefit (mock_oral_reminder is
+  // exempt from the cap regardless of position; ground_followup has had
+  // zero eligible profiles throughout this audit).
+  await processGroundSchoolFollowUps(supabase, results)
+  await processMockOralReminders(supabase, results)
+  await processAbandonedCheckouts(supabase, results)
+  await processAbandonedCheckoutsFollowup(supabase, results)
+  await processReadinessAssessmentFollowup(supabase, results)
+
   for (const profile of profiles ?? []) {
     if (!profile.email) continue
     // Email-system audit follow-up: email_marketing_opt_out (see
@@ -2470,12 +2500,6 @@ serve(async (req) => {
       results.errors.push(`${profile.id}: ${err}`)
     }
   }
-
-  await processGroundSchoolFollowUps(supabase, results)
-  await processMockOralReminders(supabase, results)
-  await processAbandonedCheckouts(supabase, results)
-  await processAbandonedCheckoutsFollowup(supabase, results)
-  await processReadinessAssessmentFollowup(supabase, results)
 
   // Streak-protection maintenance (freeze earning/consumption, Recovery
   // Sortie offers) -- see run_streak_maintenance() in

@@ -347,6 +347,24 @@ describe('Deterministic cap allocation', () => {
       "supabase.from('profiles').select('id,email,full_name,checkride_prep_unlocked,created_at,portal_last_active_at,checkride_timing,training_stage,primary_focus_area,timezone,email_marketing_opt_out').order('id')"
     )
   })
+
+  // Stage 4 (Oct 2026): abandoned-checkout recovery and Readiness
+  // Assessment follow-up are commercially time-sensitive and typically
+  // have only a handful of candidates on any given day, but the bulk
+  // per-profile loop (inactivity/reactivation/activation/checkride-
+  // upsell -- hundreds of candidates at this audit) used to run first
+  // and could exhaust the whole shared GLOBAL_SEND_SUCCESS_CAP before
+  // these ever got a slot. This locks in that they now run first.
+  it('abandoned-checkout recovery and Readiness Assessment follow-up run BEFORE the bulk per-profile loop, so they claim cap slots first', () => {
+    const abandonedCheckoutIdx = lifecycleSource.indexOf('await processAbandonedCheckouts(supabase, results)')
+    const readinessFollowupIdx = lifecycleSource.indexOf('await processReadinessAssessmentFollowup(supabase, results)')
+    const mainLoopIdx = lifecycleSource.indexOf('for (const profile of profiles ?? [])')
+    expect(abandonedCheckoutIdx).toBeGreaterThan(-1)
+    expect(readinessFollowupIdx).toBeGreaterThan(-1)
+    expect(mainLoopIdx).toBeGreaterThan(-1)
+    expect(abandonedCheckoutIdx).toBeLessThan(mainLoopIdx)
+    expect(readinessFollowupIdx).toBeLessThan(mainLoopIdx)
+  })
 })
 
 describe('Dry-run preview script stays read-only (dry_run_preview.sql)', () => {
