@@ -516,15 +516,22 @@ describe('serve(): single-recipient test mode -- real execution', () => {
   const sendEmailBody = extractFunctionBody(lifecycleSource, sendEmailMarker)
   const sendEmailSource = `async function sendEmail(supabase, results, to, subject, contentHtml, options) {${sendEmailBody}}`
 
-  function makeMockCreateClient({ cooldownCount = 0, cooldownError = null, sendError = null, insertError = null } = {}) {
+  // reserved/reservationError control the single lifecycle_test_reserve_send
+  // RPC call directly -- no separate SELECT step exists anymore (that
+  // was the race). rpcCalls/invokeCalls/insertCalls each record what was
+  // actually called, so a test can assert the provider/log were (or
+  // weren't) reached.
+  function makeMockCreateClient({ reserved = true, reservationError = null, sendError = null, insertError = null } = {}) {
+    const rpcCalls = []
     const invokeCalls = []
     const insertCalls = []
     const client = {
+      rpc: async (fnName, args) => {
+        rpcCalls.push({ fnName, args })
+        return { data: reservationError ? null : reserved, error: reservationError }
+      },
       from(table) {
         return {
-          select() {
-            return { gte: async () => ({ count: cooldownCount, error: cooldownError }) }
-          },
           insert: async (row) => {
             insertCalls.push({ table, row })
             return { error: insertError }
@@ -539,6 +546,49 @@ describe('serve(): single-recipient test mode -- real execution', () => {
       },
     }
     const createClient = () => client
+    createClient._rpcCalls = rpcCalls
+    createClient._invokeCalls = invokeCalls
+    createClient._insertCalls = insertCalls
+    return createClient
+  }
+
+  // A second mock, used only for the concurrency test: its `rpc` does a
+  // synchronous check-and-set with no `await` between reading and
+  // writing `reservedAt`, modeling the atomicity a real single
+  // `UPDATE ... WHERE ... RETURNING` SQL statement gets for free from
+  // Postgres's row lock. This proves the CALLING code correctly treats
+  // the RPC's boolean result as the sole arbiter (it never does a
+  // second, separate check) -- true cross-connection atomicity is a
+  // property of the SQL statement itself (see v159's migration
+  // comment), not something a Node-only test can independently verify.
+  function makeAtomicMockCreateClient({ failFirstSend = false } = {}) {
+    let reservedAt = null
+    const cooldownMs = 300000
+    const rpcCalls = []
+    const invokeCalls = []
+    const insertCalls = []
+    const client = {
+      rpc: async (fnName, args) => {
+        rpcCalls.push({ fnName, args })
+        const now = Date.now()
+        if (reservedAt !== null && now - reservedAt < cooldownMs) {
+          return { data: false, error: null }
+        }
+        reservedAt = now
+        return { data: true, error: null }
+      },
+      from(table) {
+        return { insert: async (row) => { insertCalls.push({ table, row }); return { error: null } } }
+      },
+      functions: {
+        invoke: async (_name, { body }) => {
+          invokeCalls.push(body)
+          return failFirstSend ? { error: { message: 'ambiguous network failure' } } : { error: null }
+        },
+      },
+    }
+    const createClient = () => client
+    createClient._rpcCalls = rpcCalls
     createClient._invokeCalls = invokeCalls
     createClient._insertCalls = insertCalls
     return createClient
@@ -596,8 +646,8 @@ describe('serve(): single-recipient test mode -- real execution', () => {
     expect(createClient._invokeCalls).toHaveLength(0)
   })
 
-  it('allowlisted recipient, case-insensitive match, no recent send -> exactly one email sent to that one recipient, clearly marked as a test', async () => {
-    const createClient = makeMockCreateClient({ cooldownCount: 0 })
+  it('allowlisted recipient, case-insensitive match, reservation granted -> exactly one email sent to that one recipient, clearly marked as a test', async () => {
+    const createClient = makeMockCreateClient({ reserved: true })
     const handler = buildTestModeHandler(createClient)
     const result = await handler(
       makeReq({ 'X-Lifecycle-Test-Recipient': 'ops@apexaviationtx.com' }),
@@ -607,21 +657,33 @@ describe('serve(): single-recipient test mode -- real execution', () => {
     const body = await result.clone().json()
     expect(body.executed).toBe(true)
     expect(body.provider_accepted).toBe(true)
+    expect(createClient._rpcCalls).toHaveLength(1)
+    expect(createClient._rpcCalls[0].fnName).toBe('lifecycle_test_reserve_send')
+    expect(createClient._rpcCalls[0].args.p_cooldown_seconds).toBe(300) // 300000ms / 1000
     expect(createClient._invokeCalls).toHaveLength(1)
     expect(createClient._invokeCalls[0].to).toBe('ops@apexaviationtx.com')
     expect(createClient._invokeCalls[0].subject).toContain('[Apex Lifecycle Test]')
-    expect(createClient._insertCalls).toHaveLength(1) // the cooldown-stamp row
+    expect(createClient._insertCalls).toHaveLength(1) // the audit-log row, written after the send
   })
 
-  it('cooldown active (a recent test send already exists) -> 429, no new send attempted', async () => {
-    const createClient = makeMockCreateClient({ cooldownCount: 1 })
+  it('reservation refused (cooldown active) -> 429, provider never called, no audit row written', async () => {
+    const createClient = makeMockCreateClient({ reserved: false })
     const handler = buildTestModeHandler(createClient)
     const result = await handler(makeReq({ 'X-Lifecycle-Test-Recipient': 'allowed@apexaviationtx.com' }), true, 'allowed@apexaviationtx.com', 300000, 'url', 'key', createClient, noopConsole)
     expect(result.status).toBe(429)
     expect(createClient._invokeCalls).toHaveLength(0)
+    expect(createClient._insertCalls).toHaveLength(0)
   })
 
-  it('provider rejects the send -> reported as not accepted, but still stamped for cooldown purposes (an attempt either way)', async () => {
+  it('reservation RPC itself errors (database failure) -> 500, provider never called -- a DB failure prevents sending, not just a lost cooldown row', async () => {
+    const createClient = makeMockCreateClient({ reservationError: { message: 'connection reset' } })
+    const handler = buildTestModeHandler(createClient)
+    const result = await handler(makeReq({ 'X-Lifecycle-Test-Recipient': 'allowed@apexaviationtx.com' }), true, 'allowed@apexaviationtx.com', 300000, 'url', 'key', createClient, noopConsole)
+    expect(result.status).toBe(500)
+    expect(createClient._invokeCalls).toHaveLength(0)
+  })
+
+  it('provider rejects the send -> reported as not accepted, and still audit-logged (the reservation, not this log, is what guards against duplicate sends)', async () => {
     const createClient = makeMockCreateClient({ sendError: { message: 'provider down' } })
     const handler = buildTestModeHandler(createClient)
     const result = await handler(makeReq({ 'X-Lifecycle-Test-Recipient': 'allowed@apexaviationtx.com' }), true, 'allowed@apexaviationtx.com', 300000, 'url', 'key', createClient, noopConsole)
@@ -630,6 +692,46 @@ describe('serve(): single-recipient test mode -- real execution', () => {
     expect(body.provider_accepted).toBe(false)
     expect(body.provider_error).toContain('provider down')
     expect(createClient._insertCalls).toHaveLength(1)
+    expect(createClient._insertCalls[0].row.provider_accepted).toBe(false)
+  })
+
+  it('audit-log insert failure after a successful send does not change the reported outcome -- the send already happened, only the log write failed', async () => {
+    const createClient = makeMockCreateClient({ reserved: true, insertError: { message: 'log write failed' } })
+    const handler = buildTestModeHandler(createClient)
+    const result = await handler(makeReq({ 'X-Lifecycle-Test-Recipient': 'allowed@apexaviationtx.com' }), true, 'allowed@apexaviationtx.com', 300000, 'url', 'key', createClient, noopConsole)
+    const body = await result.clone().json()
+    expect(body.executed).toBe(true)
+    expect(body.provider_accepted).toBe(true)
+  })
+
+  it('two concurrent requests -- only one can reserve a send; the other is refused before ever calling the provider', async () => {
+    const createClient = makeAtomicMockCreateClient()
+    const handler = buildTestModeHandler(createClient)
+    const makeCall = () => handler(
+      makeReq({ 'X-Lifecycle-Test-Recipient': 'allowed@apexaviationtx.com' }),
+      true, 'allowed@apexaviationtx.com', 300000, 'url', 'key', createClient, noopConsole
+    )
+    const [a, b] = await Promise.all([makeCall(), makeCall()])
+    expect([a.status, b.status].sort()).toEqual([200, 429])
+    expect(createClient._invokeCalls).toHaveLength(1)
+    expect(createClient._rpcCalls).toHaveLength(2)
+  })
+
+  it('an ambiguous/failed provider outcome still leaves the cooldown reserved -- an immediate retry cannot double-send', async () => {
+    const createClient = makeAtomicMockCreateClient({ failFirstSend: true })
+    const handler = buildTestModeHandler(createClient)
+    const makeCall = () => handler(
+      makeReq({ 'X-Lifecycle-Test-Recipient': 'allowed@apexaviationtx.com' }),
+      true, 'allowed@apexaviationtx.com', 300000, 'url', 'key', createClient, noopConsole
+    )
+    const first = await makeCall()
+    const firstBody = await first.clone().json()
+    expect(firstBody.executed).toBe(true)
+    expect(firstBody.provider_accepted).toBe(false) // the ambiguous/failed outcome
+
+    const second = await makeCall()
+    expect(second.status).toBe(429) // still refused -- the reservation from the first call, taken before its failed send, is still active
+    expect(createClient._invokeCalls).toHaveLength(1) // the provider was only ever called once
   })
 
   it('neither disabled-mode nor wrong-recipient responses ever disclose the configured allowlisted address', async () => {
@@ -640,14 +742,14 @@ describe('serve(): single-recipient test mode -- real execution', () => {
     expect(await wrongRecipient.clone().text()).not.toContain('secret-allowed')
   })
 
-  it('every present-header path returns a Response and never reaches the real batch, across all four tested outcomes (disabled / unconfigured / wrong recipient / cooldown)', async () => {
-    const createClient = makeMockCreateClient({ cooldownCount: 1 })
+  it('every present-header path returns a Response and never reaches the real batch, across all four tested outcomes (disabled / unconfigured / wrong recipient / reservation refused)', async () => {
+    const createClient = makeMockCreateClient({ reserved: false })
     const h = (flags) => buildTestModeHandler(createClient)(makeReq({ 'X-Lifecycle-Test-Recipient': 'allowed@apexaviationtx.com' }), ...flags, createClient, noopConsole)
     const outcomes = await Promise.all([
       h([false, 'allowed@apexaviationtx.com', 300000, 'url', 'key']),
       h([true, undefined, 300000, 'url', 'key']),
       h([true, 'different@apexaviationtx.com', 300000, 'url', 'key']),
-      h([true, 'allowed@apexaviationtx.com', 300000, 'url', 'key']), // cooldown active in this mock
+      h([true, 'allowed@apexaviationtx.com', 300000, 'url', 'key']), // reservation refused in this mock
     ])
     for (const outcome of outcomes) expect(outcome).toBeInstanceOf(Response)
   })

@@ -2327,21 +2327,28 @@ serve(async (req) => {
     }
 
     const testSupabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
-    // Replay guard: lifecycle_test_sends (supabase-portal-schema-v159)
-    // is a dedicated table with no customer linkage at all -- not any
-    // table a real campaign dedups against, per Task 2's requirement
-    // that this mechanism never touch those. A single recent row
-    // blocks a second send within the cooldown window.
-    const { count: recentTestSends, error: cooldownCheckError } = await testSupabase
-      .from('lifecycle_test_sends')
-      .select('id', { count: 'exact', head: true })
-      .gte('sent_at', new Date(Date.now() - LIFECYCLE_TEST_SEND_COOLDOWN_MS).toISOString())
-    if (cooldownCheckError) {
-      console.error('lifecycle_test_sends cooldown check failed:', cooldownCheckError.message)
-      return new Response(JSON.stringify({ mode: 'test_single_recipient', authorized: true, executed: false, reason: 'cooldown check failed -- refusing to send' }), { status: 500, headers: { 'Content-Type': 'application/json' } })
+    // Atomic reservation (Stage 3 review fix -- the original version of
+    // this block did a plain SELECT-count cooldown check, then called
+    // the provider, then INSERTed a row: a check-then-act race across
+    // two round trips, where two concurrent requests could both pass
+    // the SELECT before either INSERTed. lifecycle_test_reserve_send()
+    // (supabase-portal-schema-v159) does the check-and-claim as ONE
+    // atomic `update ... where ... returning` against a singleton lock
+    // row -- Postgres's row lock on that single statement is what
+    // actually prevents two concurrent callers from both reserving.
+    // Called BEFORE the provider invocation below on purpose: that
+    // ordering is what guarantees an ambiguous provider outcome
+    // (timeout, thrown error) still leaves the cooldown claimed, so an
+    // immediate manual retry after a failure can't double-send either.
+    const { data: reserved, error: reservationError } = await testSupabase.rpc('lifecycle_test_reserve_send', {
+      p_cooldown_seconds: LIFECYCLE_TEST_SEND_COOLDOWN_MS / 1000,
+    })
+    if (reservationError) {
+      console.error('lifecycle_test_reserve_send failed:', reservationError.message)
+      return new Response(JSON.stringify({ mode: 'test_single_recipient', authorized: true, executed: false, reason: 'reservation check failed -- refusing to send' }), { status: 500, headers: { 'Content-Type': 'application/json' } })
     }
-    if ((recentTestSends ?? 0) > 0) {
-      return new Response(JSON.stringify({ mode: 'test_single_recipient', authorized: true, executed: false, reason: 'cooldown active -- a test send already happened recently' }), { status: 429, headers: { 'Content-Type': 'application/json' } })
+    if (!reserved) {
+      return new Response(JSON.stringify({ mode: 'test_single_recipient', authorized: true, executed: false, reason: 'cooldown active -- a test send was already reserved recently' }), { status: 429, headers: { 'Content-Type': 'application/json' } })
     }
 
     const testSendResult = await sendEmail(
@@ -2351,11 +2358,17 @@ serve(async (req) => {
         emailParagraph('This is an automated test message from the Apex Advantage lifecycle-email system. No action is needed -- it does not reflect your account, progress, or any real campaign activity.'),
       { exemptFromGlobalCap: true },
     )
-    // Logged (and stamped into lifecycle_test_sends) whether or not the
-    // provider accepted it -- an attempted test counts for cooldown
-    // purposes either way, and the log line gives an operator something
-    // to check without needing the JSON response.
-    await testSupabase.from('lifecycle_test_sends').insert({})
+    // Audit trail only at this point -- the reservation above (not this
+    // insert) is what actually prevents a duplicate send, so a failure
+    // here can't be undone by refusing anything; it's just logged
+    // loudly, since the send itself has already been attempted.
+    const { error: auditLogError } = await testSupabase.from('lifecycle_test_sends').insert({
+      provider_accepted: !testSendResult?.error,
+      provider_error: testSendResult?.error ? String(testSendResult.error.message ?? testSendResult.error) : null,
+    })
+    if (auditLogError) {
+      console.error('lifecycle_test_sends audit-log insert failed (send already attempted):', auditLogError.message)
+    }
     console.log('lifecycle test-mode send attempted:', { provider_accepted: !testSendResult?.error })
     // provider_accepted only means the send-email function/Resend
     // accepted the request -- never treat this as delivery proof. Real
