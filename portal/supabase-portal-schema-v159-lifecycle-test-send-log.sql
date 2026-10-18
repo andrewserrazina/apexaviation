@@ -48,6 +48,21 @@
 -- via explicit revoke/grant below, so it can't be called directly by
 -- an anon/authenticated API caller even as an RPC.
 --
+-- Correction (caught applying this migration): `revoke all ... from
+-- public` only revokes the PUBLIC pseudo-role's grant -- it does NOT
+-- remove the separate grants Supabase's default privileges give `anon`
+-- and `authenticated` on every new object in the `public` schema. A
+-- fresh table/function here comes back with those two roles already
+-- holding full privileges/EXECUTE regardless of the `from public`
+-- revoke, confirmed live via `pg_proc.proacl`/`pg_class.relacl` right
+-- after applying. RLS already blocks anon/authenticated from the two
+-- tables (zero policies -- see above), but that's not defense-in-depth
+-- against a future accidental `disable row level security`, and
+-- nothing blocks the function's EXECUTE grant the same way RLS blocks
+-- table access. The explicit `revoke ... from anon, authenticated`
+-- statements below close both gaps directly, rather than relying on
+-- `from public` to have covered them.
+--
 -- Run this in the Supabase SQL editor, after supabase-portal-schema-v158.
 
 create table public.lifecycle_test_send_lock (
@@ -88,3 +103,7 @@ $$;
 
 revoke all on function public.lifecycle_test_reserve_send(integer) from public;
 grant execute on function public.lifecycle_test_reserve_send(integer) to service_role;
+revoke execute on function public.lifecycle_test_reserve_send(integer) from anon, authenticated;
+
+revoke all on table public.lifecycle_test_send_lock from anon, authenticated;
+revoke all on table public.lifecycle_test_sends from anon, authenticated;
