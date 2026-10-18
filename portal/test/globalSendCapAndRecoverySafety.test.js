@@ -46,14 +46,15 @@ function extractFunctionSourceBlock(source, functionMarker) {
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor
 
 describe('sendEmail(): global cross-campaign send cap -- real execution', () => {
-  const sendEmailMarker = 'async function sendEmail(\n  supabase: any,\n  results: any,\n  to: string,\n  subject: string,\n  contentHtml: string,\n  options?: { replyTo?: string; exemptFromGlobalCap?: boolean },\n) {'
+  const sendEmailMarker = 'async function sendEmail(\n  supabase: any,\n  results: any,\n  to: string,\n  subject: string,\n  contentHtml: string,\n  options?: { replyTo?: string; exemptFromGlobalCap?: boolean; marketingRecipientCap?: boolean },\n) {'
   const sendEmailBody = extractFunctionBody(lifecycleSource, sendEmailMarker)
   expect(sendEmailBody.length).toBeGreaterThan(0)
 
-  function buildSendEmail({ successCap = 10, failureCap = 10 } = {}) {
+  function buildSendEmail({ successCap = 10, failureCap = 10, cooldownSeconds = 86400 } = {}) {
     const preamble = `
       const GLOBAL_SEND_SUCCESS_CAP = ${successCap}
       const GLOBAL_SEND_FAILURE_CAP = ${failureCap}
+      const MARKETING_RECIPIENT_COOLDOWN_SECONDS = ${cooldownSeconds}
       function template(html) { return html }
     `
     return new AsyncFunction('supabase', 'results', 'to', 'subject', 'contentHtml', 'options', `${preamble}\n${sendEmailBody}`)
@@ -72,6 +73,35 @@ describe('sendEmail(): global cross-campaign send cap -- real execution', () => 
         },
       },
       _calls: calls,
+    }
+  }
+
+  // Stage 5 incident fix: mocks the real RPC this depends on
+  // (claim_marketing_recipient_slot). claimedEmails is a shared Set so
+  // concurrency tests can observe cross-call state, same idea as the
+  // Stage 3 atomic-reservation mock.
+  function makeMockSupabaseWithCooldown({ sendError = null, rpcError = null } = {}) {
+    const claimedEmails = new Set()
+    const invokeCalls = []
+    const rpcCalls = []
+    return {
+      rpc: async (fnName, args) => {
+        rpcCalls.push({ fnName, args })
+        if (rpcError) return { data: null, error: rpcError }
+        const key = String(args.p_email).toLowerCase().trim()
+        if (claimedEmails.has(key)) return { data: false, error: null }
+        claimedEmails.add(key)
+        return { data: true, error: null }
+      },
+      functions: {
+        invoke: async (_name, { body }) => {
+          invokeCalls.push(body)
+          return sendError ? { error: sendError } : { error: null }
+        },
+      },
+      _invokeCalls: invokeCalls,
+      _rpcCalls: rpcCalls,
+      _claimedEmails: claimedEmails,
     }
   }
 
@@ -233,6 +263,173 @@ describe('sendEmail(): global cross-campaign send cap -- real execution', () => 
     expect(results.__sendBudget).toBeUndefined()
     expect(results.global_send_cap_skips).toBeUndefined()
     expect(results.global_send_failure_cap_skips).toBeUndefined()
+  })
+})
+
+// Stage 5 incident fix (Oct 2026): a real production run sent one
+// profile three separate marketing emails (inactivity, new-member
+// activation, checkride upsell) within about a second, and another
+// profile two (inactivity, checkride upsell) -- each campaign only
+// dedups against itself, so nothing stopped several independently-
+// eligible campaigns from firing for the same recipient in one run.
+// These tests execute the real, updated sendEmail(), including its new
+// marketingRecipientCap branch, against a mock of the real RPC it
+// calls (claim_marketing_recipient_slot) -- not a reimplementation.
+describe('sendEmail(): cross-campaign marketing recipient cooldown -- real execution', () => {
+  const sendEmailMarker = 'async function sendEmail(\n  supabase: any,\n  results: any,\n  to: string,\n  subject: string,\n  contentHtml: string,\n  options?: { replyTo?: string; exemptFromGlobalCap?: boolean; marketingRecipientCap?: boolean },\n) {'
+  const sendEmailBody = extractFunctionBody(lifecycleSource, sendEmailMarker)
+
+  function buildSendEmail() {
+    const preamble = `
+      const GLOBAL_SEND_SUCCESS_CAP = 10
+      const GLOBAL_SEND_FAILURE_CAP = 10
+      const MARKETING_RECIPIENT_COOLDOWN_SECONDS = 86400
+      function template(html) { return html }
+    `
+    return new AsyncFunction('supabase', 'results', 'to', 'subject', 'contentHtml', 'options', `${preamble}\n${sendEmailBody}`)
+  }
+
+  function makeMockSupabaseWithCooldown({ sendError = null, rpcError = null } = {}) {
+    const claimedEmails = new Set()
+    const invokeCalls = []
+    const rpcCalls = []
+    return {
+      rpc: async (fnName, args) => {
+        rpcCalls.push({ fnName, args })
+        if (rpcError) return { data: null, error: rpcError }
+        const key = String(args.p_email).toLowerCase().trim()
+        if (claimedEmails.has(key)) return { data: false, error: null }
+        claimedEmails.add(key)
+        return { data: true, error: null }
+      },
+      functions: {
+        invoke: async (_name, { body }) => {
+          invokeCalls.push(body)
+          return sendError ? { error: sendError } : { error: null }
+        },
+      },
+      _invokeCalls: invokeCalls,
+      _rpcCalls: rpcCalls,
+      _claimedEmails: claimedEmails,
+    }
+  }
+
+  it('two different marketing campaigns for the same recipient in the same run -- the second is suppressed, the first is not', async () => {
+    const sendEmail = buildSendEmail()
+    const supabase = makeMockSupabaseWithCooldown()
+    const results = {}
+    const first = await sendEmail(supabase, results, 'student@example.com', 'inactivity nudge', 'h', { marketingRecipientCap: true })
+    const second = await sendEmail(supabase, results, 'student@example.com', 'checkride upsell', 'h', { marketingRecipientCap: true })
+    expect(first.error).toBeFalsy()
+    expect(second.error?.code).toBe('MARKETING_RECIPIENT_CAP')
+    expect(supabase._invokeCalls).toHaveLength(1) // the provider was only ever called for the first campaign
+    expect(results.marketing_recipient_cap_skips).toBe(1)
+  })
+
+  it('a suppressed send never consumes the global success/failure budget', async () => {
+    const sendEmail = buildSendEmail()
+    const supabase = makeMockSupabaseWithCooldown()
+    const results = {}
+    await sendEmail(supabase, results, 'student@example.com', 'first', 'h', { marketingRecipientCap: true })
+    const suppressed = await sendEmail(supabase, results, 'student@example.com', 'second', 'h', { marketingRecipientCap: true })
+    expect(suppressed.error?.code).toBe('MARKETING_RECIPIENT_CAP')
+    expect(results.__sendBudget).toEqual({ successes: 1, failures: 0 }) // only the first (real) send touched the budget
+  })
+
+  it('different recipients are independent -- no cross-talk between unrelated students', async () => {
+    const sendEmail = buildSendEmail()
+    const supabase = makeMockSupabaseWithCooldown()
+    const results = {}
+    const a = await sendEmail(supabase, results, 'studentA@example.com', 'subj', 'h', { marketingRecipientCap: true })
+    const b = await sendEmail(supabase, results, 'studentB@example.com', 'subj', 'h', { marketingRecipientCap: true })
+    expect(a.error).toBeFalsy()
+    expect(b.error).toBeFalsy()
+    expect(supabase._invokeCalls).toHaveLength(2)
+  })
+
+  it('two concurrent sendEmail() calls for the SAME recipient -- only one can claim the slot, the other is refused before the provider is ever called', async () => {
+    const supabase = makeMockSupabaseWithCooldown()
+    const results = {}
+    const makeCall = () => buildSendEmail()(supabase, results, 'student@example.com', 'subj', 'h', { marketingRecipientCap: true })
+    const [a, b] = await Promise.all([makeCall(), makeCall()])
+    const errors = [a.error?.code, b.error?.code].filter(Boolean)
+    expect(errors).toEqual(['MARKETING_RECIPIENT_CAP'])
+    expect(supabase._invokeCalls).toHaveLength(1)
+  })
+
+  it('a provider failure after a successful claim is reported as an error, and the claim stays in effect -- an immediate retry to the same recipient is still refused', async () => {
+    const supabase = makeMockSupabaseWithCooldown({ sendError: { message: 'provider down' } })
+    const sendEmail = buildSendEmail()
+    const results = {}
+    const first = await sendEmail(supabase, results, 'student@example.com', 'subj', 'h', { marketingRecipientCap: true })
+    expect(first.error.message).toBe('provider down')
+    const retry = await sendEmail(supabase, results, 'student@example.com', 'subj (retry)', 'h', { marketingRecipientCap: true })
+    expect(retry.error?.code).toBe('MARKETING_RECIPIENT_CAP') // claimed before the failed send, so it's still claimed
+    expect(supabase._invokeCalls).toHaveLength(1) // the provider was never called a second time
+  })
+
+  it('the cooldown-claim RPC itself failing (a database error, not a normal "already claimed") is handled conservatively -- no send attempted', async () => {
+    const supabase = makeMockSupabaseWithCooldown({ rpcError: { message: 'connection reset' } })
+    const sendEmail = buildSendEmail()
+    const results = {}
+    const result = await sendEmail(supabase, results, 'student@example.com', 'subj', 'h', { marketingRecipientCap: true })
+    expect(result.error?.code).toBe('MARKETING_RECIPIENT_CAP_CHECK_FAILED')
+    expect(supabase._invokeCalls).toHaveLength(0)
+    expect(results.marketing_recipient_cap_check_failures).toBe(1)
+  })
+
+  it('exempt sends (e.g. the mock-oral reminder) never touch the recipient cooldown at all, even to the same address already capped for marketing', async () => {
+    const supabase = makeMockSupabaseWithCooldown()
+    const sendEmail = buildSendEmail()
+    const results = {}
+    await sendEmail(supabase, results, 'student@example.com', 'inactivity', 'h', { marketingRecipientCap: true })
+    const exempt = await sendEmail(supabase, results, 'student@example.com', 'mock oral reminder', 'h', { exemptFromGlobalCap: true })
+    expect(exempt.error).toBeFalsy()
+    expect(supabase._rpcCalls).toHaveLength(1) // only the marketing call touched the cooldown RPC at all
+  })
+
+  it('a plain non-marketing, non-exempt send (e.g. first_question_completed) is unaffected by another campaign\'s cooldown claim on the same recipient', async () => {
+    const supabase = makeMockSupabaseWithCooldown()
+    const sendEmail = buildSendEmail()
+    const results = {}
+    await sendEmail(supabase, results, 'student@example.com', 'inactivity', 'h', { marketingRecipientCap: true })
+    const plain = await sendEmail(supabase, results, 'student@example.com', 'first question completed', 'h')
+    expect(plain.error).toBeFalsy()
+    expect(supabase._invokeCalls).toHaveLength(2)
+  })
+})
+
+describe('Stage 5: marketingRecipientCap scoping matches the existing email_marketing_opt_out split', () => {
+  it('all seven marketing-campaign sendEmail() call sites pass marketingRecipientCap: true', () => {
+    const markers = [
+      "sendEmail(supabase, results, profile.email, 'Pick up where you left off', emailTemplateReactivationInactive((profile.full_name || 'there').split(' ')[0]), { marketingRecipientCap: true })",
+      "sendEmail(supabase, results, profile.email, 'Your Apex Weekly Training Report', emailTemplateWeeklyProgress({ questions, days, scenarios, aiDpe, strongest, weakest }), { marketingRecipientCap: true })",
+      'sendEmail(supabase, results, profile.email, "We miss you at Apex Advantage", emailTemplateInactivity((profile.full_name || \'there\').split(\' \')[0]), { marketingRecipientCap: true })',
+      'sendEmail(supabase, results, profile.email, content.subject, html, { marketingRecipientCap: true })',
+      'sendEmail(supabase, results, profile.email, checkrideUpsellSubject(day, pricing), emailTemplateCheckrideUpsell(day, pricing, timingBucket), { marketingRecipientCap: true })',
+      'sendEmail(supabase, results, profile.email, `A good place to start, ${firstName}`, html, { replyTo: ACTIVATION_REPLY_TO, marketingRecipientCap: true })',
+      'sendEmail(supabase, results, profile.email, subject, html, { ...(replyTo ? { replyTo } : {}), marketingRecipientCap: true })',
+    ]
+    for (const marker of markers) expect(lifecycleSource).toContain(marker)
+  })
+
+  it('the three non-marketing per-profile campaigns (first_question_completed, milestones, countdown) do NOT carry marketingRecipientCap', () => {
+    expect(lifecycleSource).toContain("sendEmail(supabase, results, profile.email, 'You completed your first question', emailTemplate1FirstQuestion())")
+    expect(lifecycleSource).toContain('sendEmail(supabase, results, profile.email, `${score}% Checkride Ready`, emailTemplateMilestone(threshold))')
+    expect(lifecycleSource).toContain("sendEmail(supabase, results, profile.email, 'Checkride Mode: complete', emailTemplateCheckrideModeDone())")
+    expect(lifecycleSource).toContain('sendEmail(supabase, results, profile.email, `${threshold} ${daysNoun(threshold)} until your checkride`, emailTemplateCountdown(threshold))')
+  })
+})
+
+describe('Stage 5: main per-profile loop stops once the global send budget is exhausted', () => {
+  it('the loop body checks __sendBudget against both caps and breaks before any per-profile work, right after the loop opens', () => {
+    const loopMarker = 'for (const profile of profiles ?? []) {'
+    const loopStart = lifecycleSource.indexOf(loopMarker)
+    expect(loopStart).toBeGreaterThan(-1)
+    const nextChunk = lifecycleSource.slice(loopStart, loopStart + 1200)
+    expect(nextChunk).toContain('const budget = results.__sendBudget')
+    expect(nextChunk).toContain('budget.successes >= GLOBAL_SEND_SUCCESS_CAP || budget.failures >= GLOBAL_SEND_FAILURE_CAP')
+    expect(nextChunk).toContain('break')
   })
 })
 
@@ -524,7 +721,7 @@ describe('serve(): single-recipient test mode -- real execution', () => {
   }
   const testModeBlock = lifecycleSource.slice(testModeStartIdx, realBatchIdx)
 
-  const sendEmailMarker = 'async function sendEmail(\n  supabase: any,\n  results: any,\n  to: string,\n  subject: string,\n  contentHtml: string,\n  options?: { replyTo?: string; exemptFromGlobalCap?: boolean },\n) {'
+  const sendEmailMarker = 'async function sendEmail(\n  supabase: any,\n  results: any,\n  to: string,\n  subject: string,\n  contentHtml: string,\n  options?: { replyTo?: string; exemptFromGlobalCap?: boolean; marketingRecipientCap?: boolean },\n) {'
   // extractFunctionBody (not extractFunctionSourceBlock): the real
   // signature has TypeScript parameter type annotations (`supabase:
   // any`, etc.), which the native Function/AsyncFunction constructor

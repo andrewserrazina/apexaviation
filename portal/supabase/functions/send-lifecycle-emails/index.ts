@@ -559,6 +559,9 @@ const CATEGORY_LABELS: Record<string, string> = {
 // still retries next run instead of being silently lost forever.
 const GLOBAL_SEND_SUCCESS_CAP = 10
 const GLOBAL_SEND_FAILURE_CAP = 10
+// Stage 5 incident fix, Oct 2026 -- see claim_marketing_recipient_slot()
+// (supabase-portal-schema-v160) for the atomic mechanism this backs.
+const MARKETING_RECIPIENT_COOLDOWN_SECONDS = 24 * 3600
 
 // Returns the invoke() result so callers that need to know whether the
 // send actually succeeded (readiness-funnel instrumentation audit --
@@ -584,7 +587,7 @@ async function sendEmail(
   to: string,
   subject: string,
   contentHtml: string,
-  options?: { replyTo?: string; exemptFromGlobalCap?: boolean },
+  options?: { replyTo?: string; exemptFromGlobalCap?: boolean; marketingRecipientCap?: boolean },
 ) {
   // Thrown exceptions (e.g. a network-level failure before any response
   // is received) are caught HERE and converted to the same { error }
@@ -606,6 +609,40 @@ async function sendEmail(
   }
 
   if (options?.exemptFromGlobalCap) return await invoke()
+
+  // Cross-campaign recipient suppression (Stage 5 incident fix, Oct
+  // 2026): confirmed in production that one profile received three
+  // separate marketing emails (inactivity, new-member activation,
+  // checkride upsell) within about a second of each other -- each
+  // campaign only dedups against ITSELF, so nothing stopped several
+  // independently-eligible campaigns from all firing for the same
+  // profile in the same run. claim_marketing_recipient_slot()
+  // (supabase-portal-schema-v160) is a single atomic
+  // `insert ... on conflict ... do update ... where` against a
+  // per-recipient row -- same reservation-before-send principle as
+  // Stage 3's lifecycle_test_reserve_send(), so concurrent invocations
+  // (or multiple campaigns racing within one invocation) can't both
+  // claim the same recipient's slot. Checked here, before the global
+  // budget below, so a suppressed send never consumes a global-cap
+  // slot either. Scoped by each call site passing this option --
+  // exactly the campaigns already gated by email_marketing_opt_out in
+  // serve(), the same existing marketing/transactional split this file
+  // already draws -- so transactional messages, relationship emails,
+  // abandoned-checkout recovery, Readiness Assessment follow-up, and
+  // the exempt mock-oral reminder are all unaffected.
+  if (options?.marketingRecipientCap) {
+    const { data: claimed, error: claimError } = await supabase.rpc('claim_marketing_recipient_slot', {
+      p_email: to, p_cooldown_seconds: MARKETING_RECIPIENT_COOLDOWN_SECONDS,
+    })
+    if (claimError) {
+      results.marketing_recipient_cap_check_failures = (results.marketing_recipient_cap_check_failures || 0) + 1
+      return { error: { message: `marketing recipient cooldown check failed: ${claimError.message}`, code: 'MARKETING_RECIPIENT_CAP_CHECK_FAILED' } }
+    }
+    if (!claimed) {
+      results.marketing_recipient_cap_skips = (results.marketing_recipient_cap_skips || 0) + 1
+      return { error: { message: 'recipient already received a marketing email within the last 24 hours', code: 'MARKETING_RECIPIENT_CAP' } }
+    }
+  }
 
   const budget = results.__sendBudget ?? (results.__sendBudget = { successes: 0, failures: 0 })
   // Cap-reached responses return before touching `budget` at all, so a
@@ -699,7 +736,7 @@ async function processReactivationInactive(supabase: any, profile: any, results:
   // reached this student recently -- see INACTIVITY_COORDINATION_GAP_DAYS.
   if ((await daysSinceLastEmail(supabase, profile.id, 'inactivity_7day')) < INACTIVITY_COORDINATION_GAP_DAYS) return
 
-  const res = await sendEmail(supabase, results, profile.email, 'Pick up where you left off', emailTemplateReactivationInactive((profile.full_name || 'there').split(' ')[0]))
+  const res = await sendEmail(supabase, results, profile.email, 'Pick up where you left off', emailTemplateReactivationInactive((profile.full_name || 'there').split(' ')[0]), { marketingRecipientCap: true })
   if (res?.error) {
     results.errors.push(`reactivation_inactive:${profile.id}: send-email failed: ${res.error.message ?? res.error}`)
     return
@@ -758,7 +795,7 @@ async function processWeeklyProgress(supabase: any, profile: any, allQuestions: 
     }
   }
 
-  const res = await sendEmail(supabase, results, profile.email, 'Your Apex Weekly Training Report', emailTemplateWeeklyProgress({ questions, days, scenarios, aiDpe, strongest, weakest }))
+  const res = await sendEmail(supabase, results, profile.email, 'Your Apex Weekly Training Report', emailTemplateWeeklyProgress({ questions, days, scenarios, aiDpe, strongest, weakest }), { marketingRecipientCap: true })
   if (res?.error) {
     results.errors.push(`weekly_progress:${profile.id}: send-email failed: ${res.error.message ?? res.error}`)
     return
@@ -1046,7 +1083,7 @@ async function processInactivity(supabase: any, profile: any, results: any) {
   // INACTIVITY_COORDINATION_GAP_DAYS.
   if ((await daysSinceLastEmail(supabase, profile.id, 'reactivation_inactive')) < INACTIVITY_COORDINATION_GAP_DAYS) return
 
-  const res = await sendEmail(supabase, results, profile.email, "We miss you at Apex Advantage", emailTemplateInactivity((profile.full_name || 'there').split(' ')[0]))
+  const res = await sendEmail(supabase, results, profile.email, "We miss you at Apex Advantage", emailTemplateInactivity((profile.full_name || 'there').split(' ')[0]), { marketingRecipientCap: true })
   if (res?.error) {
     results.errors.push(`inactivity_7day:${profile.id}: send-email failed: ${res.error.message ?? res.error}`)
     return
@@ -1167,7 +1204,7 @@ async function processWeakArea(supabase: any, profile: any, questions: Question[
     if (logError.code !== '23505') results.errors.push(`weak_area_log:${profile.id}:${logError.message}`)
     return
   }
-  const res = await sendEmail(supabase, results, profile.email, content.subject, html)
+  const res = await sendEmail(supabase, results, profile.email, content.subject, html, { marketingRecipientCap: true })
   if (res?.error) {
     // The log row above is inserted before the send (defends against a
     // concurrent run double-sending) -- undo it here on failure so this
@@ -1307,7 +1344,7 @@ async function processCheckrideUpsell(supabase: any, profile: any, results: any)
     if (pricingError) throw new Error(`get_checkride_prep_pricing failed for profile ${profile.id}: ${pricingError.message}`)
     const pricing: PricingPreview = (pricingRows && pricingRows[0]) || { tier: 'standard', amount_cents: 4900, founding_seats_remaining: 0, launch_expires_at: null }
 
-    const res = await sendEmail(supabase, results, profile.email, checkrideUpsellSubject(day, pricing), emailTemplateCheckrideUpsell(day, pricing, timingBucket))
+    const res = await sendEmail(supabase, results, profile.email, checkrideUpsellSubject(day, pricing), emailTemplateCheckrideUpsell(day, pricing, timingBucket), { marketingRecipientCap: true })
     if (res?.error) {
       results.errors.push(`checkride_upsell_day${day}:${profile.id}: send-email failed: ${res.error.message ?? res.error}`)
       return
@@ -2158,7 +2195,7 @@ async function processActivationEmail1CatchUp(supabase: any, profile: any, resul
   // invoked the send-email function directly, bypassing sendEmail()'s
   // global send cap entirely. sendEmail() applies template() itself, so
   // the raw `html` is passed here, not template(html).
-  const emailResult = await sendEmail(supabase, results, profile.email, `A good place to start, ${firstName}`, html, { replyTo: ACTIVATION_REPLY_TO })
+  const emailResult = await sendEmail(supabase, results, profile.email, `A good place to start, ${firstName}`, html, { replyTo: ACTIVATION_REPLY_TO, marketingRecipientCap: true })
   if (emailResult.error) {
     results.errors.push(`activation_email_1_catchup:${profile.id}: ${emailResult.error?.message || emailResult.error}`)
     return false // stays eligible for the next run -- no milestone marked
@@ -2229,7 +2266,7 @@ async function processNewMemberActivation(supabase: any, profile: any, results: 
     // non-throwing error the old code never looked at). sendEmail()
     // applies template() itself, so raw `html` is passed, not
     // template(html).
-    const res = await sendEmail(supabase, results, profile.email, subject, html, replyTo ? { replyTo } : undefined)
+    const res = await sendEmail(supabase, results, profile.email, subject, html, { ...(replyTo ? { replyTo } : {}), marketingRecipientCap: true })
     if (res?.error) {
       results.errors.push(`${emailType}:${profile.id}: send-email failed: ${res.error.message ?? res.error}`)
       return
@@ -2453,6 +2490,21 @@ serve(async (req) => {
   await processReadinessAssessmentFollowup(supabase, results)
 
   for (const profile of profiles ?? []) {
+    // Resource-limit fix (Stage 5, Oct 2026): once EITHER global send
+    // budget is exhausted, sendEmail() already refuses every further
+    // non-exempt call regardless of which campaign calls it (both caps
+    // are checked unconditionally, before the provider is ever
+    // invoked) -- so every remaining profile's processing below would
+    // only produce cap-skip results anyway. This loop used to keep
+    // querying and processing every remaining profile regardless, which
+    // is exactly what produced a real 52-second run that got killed by
+    // the platform's own resource limit (sb-error-code
+    // WORKER_RESOURCE_LIMIT, confirmed in production logs) before
+    // run_streak_maintenance/refresh_mission_progress below ever ran.
+    // Breaking here changes no send outcome -- nothing further could
+    // have sent anyway -- it only stops the wasted per-profile queries.
+    const budget = results.__sendBudget
+    if (budget && (budget.successes >= GLOBAL_SEND_SUCCESS_CAP || budget.failures >= GLOBAL_SEND_FAILURE_CAP)) break
     if (!profile.email) continue
     // Email-system audit follow-up: email_marketing_opt_out (see
     // email-preferences.html, self-updated by the member) gates every
