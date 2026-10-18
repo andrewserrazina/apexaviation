@@ -441,8 +441,16 @@ describe('serve(): fail-closed auth guard -- real execution', () => {
     expect(await unauthorized.text()).not.toContain('realsecret')
   })
 
-  it('the guard body itself contains no database, service-role client, or email-dispatch call -- nothing privileged can execute before it resolves', () => {
-    expect(guardBody).not.toMatch(/supabase\.|functions\.invoke|createClient\(/)
+  it('the CRON_SECRET check itself (before the Stage 3 test-mode branch even starts) contains no database, service-role client, or email-dispatch call -- nothing privileged can execute before auth resolves', () => {
+    // Narrower than guardBody on purpose: guardBody now also contains
+    // the Stage 3 single-recipient test-mode block, which legitimately
+    // does call createClient()/sendEmail() -- but only after its OWN
+    // independent checks pass. This test is specifically about the
+    // plain CRON_SECRET check having zero privileged calls, so it stops
+    // at the test-mode block's own start marker.
+    const cronCheckOnly = guardBody.slice(0, guardBody.indexOf("const testRecipientHeader = req.headers.get('X-Lifecycle-Test-Recipient')"))
+    expect(cronCheckOnly.length).toBeGreaterThan(0)
+    expect(cronCheckOnly).not.toMatch(/supabase\.|functions\.invoke|createClient\(/)
   })
 })
 
@@ -478,5 +486,187 @@ describe('Stage 2 regression: caps and the mock-oral exemption are untouched by 
   it('GLOBAL_SEND_SUCCESS_CAP and GLOBAL_SEND_FAILURE_CAP are both still defined as 10', () => {
     expect(lifecycleSource).toContain('const GLOBAL_SEND_SUCCESS_CAP = 10')
     expect(lifecycleSource).toContain('const GLOBAL_SEND_FAILURE_CAP = 10')
+  })
+})
+
+// Stage 3 (Oct 2026): a single-recipient test-mode branch, gated behind
+// its own independent flag + recipient allowlist (on top of the
+// existing LIFECYCLE_CRON_SECRET check), that must never touch the real
+// profiles table or any real campaign's dedup/log tables, and must
+// never fall through into the real batch below it. Real execution,
+// same convention as the rest of this file -- the test-mode block's
+// actual source is extracted and run, including the real sendEmail().
+describe('serve(): single-recipient test mode -- real execution', () => {
+  const testModeStartMarker = "const testRecipientHeader = req.headers.get('X-Lifecycle-Test-Recipient')"
+  const realBatchMarker = 'const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)'
+  const testModeStartIdx = lifecycleSource.indexOf(testModeStartMarker)
+  const realBatchIdx = lifecycleSource.indexOf(realBatchMarker, testModeStartIdx)
+  if (testModeStartIdx === -1 || realBatchIdx === -1) {
+    throw new Error('test-mode block markers not found -- source may have changed shape')
+  }
+  const testModeBlock = lifecycleSource.slice(testModeStartIdx, realBatchIdx)
+
+  const sendEmailMarker = 'async function sendEmail(\n  supabase: any,\n  results: any,\n  to: string,\n  subject: string,\n  contentHtml: string,\n  options?: { replyTo?: string; exemptFromGlobalCap?: boolean },\n) {'
+  // extractFunctionBody (not extractFunctionSourceBlock): the real
+  // signature has TypeScript parameter type annotations (`supabase:
+  // any`, etc.), which the native Function/AsyncFunction constructor
+  // can't parse as plain JS. Same fix the top-of-file sendEmail() tests
+  // already use -- reuse the real body text, rebuild an untyped
+  // signature around it.
+  const sendEmailBody = extractFunctionBody(lifecycleSource, sendEmailMarker)
+  const sendEmailSource = `async function sendEmail(supabase, results, to, subject, contentHtml, options) {${sendEmailBody}}`
+
+  function makeMockCreateClient({ cooldownCount = 0, cooldownError = null, sendError = null, insertError = null } = {}) {
+    const invokeCalls = []
+    const insertCalls = []
+    const client = {
+      from(table) {
+        return {
+          select() {
+            return { gte: async () => ({ count: cooldownCount, error: cooldownError }) }
+          },
+          insert: async (row) => {
+            insertCalls.push({ table, row })
+            return { error: insertError }
+          },
+        }
+      },
+      functions: {
+        invoke: async (_name, { body }) => {
+          invokeCalls.push(body)
+          return sendError ? { error: sendError } : { error: null }
+        },
+      },
+    }
+    const createClient = () => client
+    createClient._invokeCalls = invokeCalls
+    createClient._insertCalls = insertCalls
+    return createClient
+  }
+
+  function buildTestModeHandler(createClient) {
+    const preamble = `
+      function template(html) { return html }
+      function emailHeadline(t) { return '<h2>' + t + '</h2>' }
+      function emailParagraph(t) { return '<p>' + t + '</p>' }
+      ${sendEmailSource}
+    `
+    return new AsyncFunction(
+      'req', 'LIFECYCLE_TEST_MODE_ENABLED', 'LIFECYCLE_TEST_RECIPIENT_EMAIL', 'LIFECYCLE_TEST_SEND_COOLDOWN_MS',
+      'SUPABASE_URL', 'SERVICE_ROLE_KEY', 'createClient', 'console',
+      `${preamble}\n${testModeBlock}\n  return 'FELL_THROUGH_TO_REAL_BATCH'`
+    )
+  }
+
+  function makeReq(headers = {}) {
+    return { headers: { get: (k) => (k in headers ? headers[k] : null) } }
+  }
+
+  const noopConsole = { log: () => {}, error: () => {} }
+
+  it('no X-Lifecycle-Test-Recipient header -> falls through to real batch untouched (normal cron calls are unaffected)', async () => {
+    const createClient = makeMockCreateClient()
+    const handler = buildTestModeHandler(createClient)
+    const result = await handler(makeReq({}), true, 'allowed@apexaviationtx.com', 300000, 'url', 'key', createClient, noopConsole)
+    expect(result).toBe('FELL_THROUGH_TO_REAL_BATCH')
+    expect(createClient._invokeCalls).toHaveLength(0)
+  })
+
+  it('test mode disabled (flag false) -> 403, no send attempted, client never even constructed', async () => {
+    const throwingCreateClient = () => { throw new Error('createClient should never be called when test mode is disabled') }
+    const handler = buildTestModeHandler(throwingCreateClient)
+    const result = await handler(makeReq({ 'X-Lifecycle-Test-Recipient': 'allowed@apexaviationtx.com' }), false, 'allowed@apexaviationtx.com', 300000, 'url', 'key', throwingCreateClient, noopConsole)
+    expect(result).toBeInstanceOf(Response)
+    expect(result.status).toBe(403)
+    expect((await result.clone().json()).reason).toBe('test mode disabled')
+  })
+
+  it('test recipient allowlist not configured -> 500, no send attempted', async () => {
+    const throwingCreateClient = () => { throw new Error('should never be called') }
+    const handler = buildTestModeHandler(throwingCreateClient)
+    const result = await handler(makeReq({ 'X-Lifecycle-Test-Recipient': 'anyone@example.com' }), true, undefined, 300000, 'url', 'key', throwingCreateClient, noopConsole)
+    expect(result.status).toBe(500)
+  })
+
+  it('recipient not on the allowlist -> 403, no send attempted', async () => {
+    const createClient = makeMockCreateClient()
+    const handler = buildTestModeHandler(createClient)
+    const result = await handler(makeReq({ 'X-Lifecycle-Test-Recipient': 'someone-else@example.com' }), true, 'allowed@apexaviationtx.com', 300000, 'url', 'key', createClient, noopConsole)
+    expect(result.status).toBe(403)
+    expect(createClient._invokeCalls).toHaveLength(0)
+  })
+
+  it('allowlisted recipient, case-insensitive match, no recent send -> exactly one email sent to that one recipient, clearly marked as a test', async () => {
+    const createClient = makeMockCreateClient({ cooldownCount: 0 })
+    const handler = buildTestModeHandler(createClient)
+    const result = await handler(
+      makeReq({ 'X-Lifecycle-Test-Recipient': 'ops@apexaviationtx.com' }),
+      true, 'Ops@ApexAviationTX.com', 300000, 'url', 'key', createClient, noopConsole
+    )
+    expect(result.status).toBe(200)
+    const body = await result.clone().json()
+    expect(body.executed).toBe(true)
+    expect(body.provider_accepted).toBe(true)
+    expect(createClient._invokeCalls).toHaveLength(1)
+    expect(createClient._invokeCalls[0].to).toBe('ops@apexaviationtx.com')
+    expect(createClient._invokeCalls[0].subject).toContain('[Apex Lifecycle Test]')
+    expect(createClient._insertCalls).toHaveLength(1) // the cooldown-stamp row
+  })
+
+  it('cooldown active (a recent test send already exists) -> 429, no new send attempted', async () => {
+    const createClient = makeMockCreateClient({ cooldownCount: 1 })
+    const handler = buildTestModeHandler(createClient)
+    const result = await handler(makeReq({ 'X-Lifecycle-Test-Recipient': 'allowed@apexaviationtx.com' }), true, 'allowed@apexaviationtx.com', 300000, 'url', 'key', createClient, noopConsole)
+    expect(result.status).toBe(429)
+    expect(createClient._invokeCalls).toHaveLength(0)
+  })
+
+  it('provider rejects the send -> reported as not accepted, but still stamped for cooldown purposes (an attempt either way)', async () => {
+    const createClient = makeMockCreateClient({ sendError: { message: 'provider down' } })
+    const handler = buildTestModeHandler(createClient)
+    const result = await handler(makeReq({ 'X-Lifecycle-Test-Recipient': 'allowed@apexaviationtx.com' }), true, 'allowed@apexaviationtx.com', 300000, 'url', 'key', createClient, noopConsole)
+    const body = await result.clone().json()
+    expect(body.executed).toBe(true)
+    expect(body.provider_accepted).toBe(false)
+    expect(body.provider_error).toContain('provider down')
+    expect(createClient._insertCalls).toHaveLength(1)
+  })
+
+  it('neither disabled-mode nor wrong-recipient responses ever disclose the configured allowlisted address', async () => {
+    const createClient = makeMockCreateClient()
+    const disabled = await buildTestModeHandler(createClient)(makeReq({ 'X-Lifecycle-Test-Recipient': 'x@example.com' }), false, 'secret-allowed@apexaviationtx.com', 300000, 'url', 'key', createClient, noopConsole)
+    const wrongRecipient = await buildTestModeHandler(createClient)(makeReq({ 'X-Lifecycle-Test-Recipient': 'x@example.com' }), true, 'secret-allowed@apexaviationtx.com', 300000, 'url', 'key', createClient, noopConsole)
+    expect(await disabled.clone().text()).not.toContain('secret-allowed')
+    expect(await wrongRecipient.clone().text()).not.toContain('secret-allowed')
+  })
+
+  it('every present-header path returns a Response and never reaches the real batch, across all four tested outcomes (disabled / unconfigured / wrong recipient / cooldown)', async () => {
+    const createClient = makeMockCreateClient({ cooldownCount: 1 })
+    const h = (flags) => buildTestModeHandler(createClient)(makeReq({ 'X-Lifecycle-Test-Recipient': 'allowed@apexaviationtx.com' }), ...flags, createClient, noopConsole)
+    const outcomes = await Promise.all([
+      h([false, 'allowed@apexaviationtx.com', 300000, 'url', 'key']),
+      h([true, undefined, 300000, 'url', 'key']),
+      h([true, 'different@apexaviationtx.com', 300000, 'url', 'key']),
+      h([true, 'allowed@apexaviationtx.com', 300000, 'url', 'key']), // cooldown active in this mock
+    ])
+    for (const outcome of outcomes) expect(outcome).toBeInstanceOf(Response)
+  })
+
+  it('structurally: the test-mode block never references the real profiles table or any real campaign dedup/log table', () => {
+    expect(testModeBlock).not.toMatch(/from\(['"]profiles['"]\)/)
+    expect(testModeBlock).not.toContain('portal_email_log')
+    expect(testModeBlock).not.toContain('portal_milestone_emails')
+    expect(testModeBlock).not.toContain('markMilestoneSent')
+    expect(testModeBlock).toContain('lifecycle_test_sends')
+  })
+
+  it('structurally: exactly one sendEmail() call, addressed to a single header-derived string -- cannot be used to send to multiple recipients in one invocation', () => {
+    const calls = testModeBlock.match(/\bsendEmail\(/g) || []
+    expect(calls).toHaveLength(1)
+    expect(testModeBlock).toContain('sendEmail(\n      testSupabase, {}, testRecipientHeader,')
+  })
+
+  it('structurally: the test send is exempt from the global cap, so it can never consume or be blocked by the production send budget', () => {
+    expect(testModeBlock).toContain('{ exemptFromGlobalCap: true }')
   })
 })

@@ -87,6 +87,11 @@
 //   below: if this env var is itself unset, the function refuses to run
 //   at all (500) rather than skipping the check, so a misconfigured
 //   deploy can't become an open send-to-anyone endpoint.)
+//   LIFECYCLE_TEST_MODE_ENABLED / LIFECYCLE_TEST_RECIPIENT_EMAIL
+//   (Stage 3 single-recipient test mode, both optional and OFF by
+//   default -- see the `X-Lifecycle-Test-Recipient` branch in serve()
+//   below for the full design. Neither one alone can trigger a send:
+//   the request still needs the real LIFECYCLE_CRON_SECRET too.)
 //
 // Auth contract (corrected, Stage 2 auth hardening, Oct 2026): this
 // function is deployed with `verify_jwt = false` (see
@@ -180,6 +185,23 @@ const CRON_SECRET = Deno.env.get('LIFECYCLE_CRON_SECRET')
 // Same default as create-free-account/index.ts's own SITE_ORIGIN --
 // needed here only for processActivationEmail1CatchUp's generateLink call.
 const SITE_ORIGIN = Deno.env.get('SITE_ORIGIN') ?? 'https://apexaviationtx.com'
+
+// Single-recipient test mode (Stage 3 lifecycle-email recovery, Oct
+// 2026) -- see the serve() branch below for the full design. Both of
+// these are deliberately separate env vars from LIFECYCLE_CRON_SECRET:
+// knowing the cron secret alone must not be enough to trigger a test
+// send, and test mode must be off by default even if someone sets
+// LIFECYCLE_TEST_RECIPIENT_EMAIL but forgets this flag (or vice versa).
+// Exact-string 'true' (not just "truthy") so a stray empty string or
+// typo can't accidentally enable it.
+const LIFECYCLE_TEST_MODE_ENABLED = Deno.env.get('LIFECYCLE_TEST_MODE_ENABLED') === 'true'
+const LIFECYCLE_TEST_RECIPIENT_EMAIL = Deno.env.get('LIFECYCLE_TEST_RECIPIENT_EMAIL')
+// Replay guard: refuses a second test send within this window. See
+// lifecycle_test_sends (supabase-portal-schema-v159) for why this is
+// backed by its own dedicated, non-customer table rather than an
+// in-memory counter (which a cold start would silently reset) or any
+// real dedup/log table (which Task 2 forbids touching).
+const LIFECYCLE_TEST_SEND_COOLDOWN_MS = 5 * 60 * 1000
 
 const READINESS_THRESHOLDS = [25, 50, 75, 90]
 const COUNTDOWN_DAYS = [30, 14, 7, 3, 1]
@@ -2264,6 +2286,86 @@ serve(async (req) => {
   const cronSecretHeader = req.headers.get('X-Lifecycle-Cron-Secret') || ''
   if (cronSecretHeader !== CRON_SECRET) {
     return new Response('Unauthorized', { status: 401 })
+  }
+
+  // Single-recipient test mode (Stage 3 lifecycle-email recovery, Oct
+  // 2026). Deliberately placed here -- after the real cron secret check
+  // above (a test request still needs that same credential), but before
+  // anything below that reads the profiles table or writes to any
+  // dedup/log table. Every path through this block ends in `return`,
+  // so a request that takes it can NEVER fall through into the real
+  // batch that follows -- that is the single property this whole
+  // mechanism depends on, and it's covered by an execution-level test,
+  // not just this comment.
+  //
+  // Reuses sendEmail()/template()/emailHeadline()/emailParagraph() --
+  // the exact same reviewed send path real campaigns use (via
+  // exemptFromGlobalCap, the same mechanism the mock-oral reminder
+  // already relies on) -- rather than a second, hand-rolled invoke()
+  // call, so a passing test is actually evidence the real pipeline
+  // works, not evidence of a parallel implementation that happens to
+  // also work.
+  const testRecipientHeader = req.headers.get('X-Lifecycle-Test-Recipient')
+  if (testRecipientHeader !== null) {
+    // Independent of the cron secret on purpose: knowing that secret
+    // must not be enough on its own to trigger a send. Off by default
+    // -- an unset env var reads as the literal string undefined, which
+    // !== 'true'.
+    if (!LIFECYCLE_TEST_MODE_ENABLED) {
+      return new Response(JSON.stringify({ mode: 'test_single_recipient', authorized: false, reason: 'test mode disabled' }), { status: 403, headers: { 'Content-Type': 'application/json' } })
+    }
+    if (!LIFECYCLE_TEST_RECIPIENT_EMAIL) {
+      console.error('LIFECYCLE_TEST_RECIPIENT_EMAIL is not configured -- refusing test-mode request')
+      return new Response(JSON.stringify({ mode: 'test_single_recipient', authorized: false, reason: 'test recipient not configured' }), { status: 500, headers: { 'Content-Type': 'application/json' } })
+    }
+    // Case-insensitive, same convention as this file's other email
+    // comparisons (e.g. readiness_assessment_followup's `ilike`) --
+    // email addresses aren't meaningfully case-sensitive in practice,
+    // and an exact-case mismatch here would be a confusing way to fail.
+    if (testRecipientHeader.trim().toLowerCase() !== LIFECYCLE_TEST_RECIPIENT_EMAIL.trim().toLowerCase()) {
+      return new Response(JSON.stringify({ mode: 'test_single_recipient', authorized: false, reason: 'recipient not on allowlist' }), { status: 403, headers: { 'Content-Type': 'application/json' } })
+    }
+
+    const testSupabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+    // Replay guard: lifecycle_test_sends (supabase-portal-schema-v159)
+    // is a dedicated table with no customer linkage at all -- not any
+    // table a real campaign dedups against, per Task 2's requirement
+    // that this mechanism never touch those. A single recent row
+    // blocks a second send within the cooldown window.
+    const { count: recentTestSends, error: cooldownCheckError } = await testSupabase
+      .from('lifecycle_test_sends')
+      .select('id', { count: 'exact', head: true })
+      .gte('sent_at', new Date(Date.now() - LIFECYCLE_TEST_SEND_COOLDOWN_MS).toISOString())
+    if (cooldownCheckError) {
+      console.error('lifecycle_test_sends cooldown check failed:', cooldownCheckError.message)
+      return new Response(JSON.stringify({ mode: 'test_single_recipient', authorized: true, executed: false, reason: 'cooldown check failed -- refusing to send' }), { status: 500, headers: { 'Content-Type': 'application/json' } })
+    }
+    if ((recentTestSends ?? 0) > 0) {
+      return new Response(JSON.stringify({ mode: 'test_single_recipient', authorized: true, executed: false, reason: 'cooldown active -- a test send already happened recently' }), { status: 429, headers: { 'Content-Type': 'application/json' } })
+    }
+
+    const testSendResult = await sendEmail(
+      testSupabase, {}, testRecipientHeader,
+      '[Apex Lifecycle Test] This is an automated system test',
+      emailHeadline('Lifecycle system test') +
+        emailParagraph('This is an automated test message from the Apex Advantage lifecycle-email system. No action is needed -- it does not reflect your account, progress, or any real campaign activity.'),
+      { exemptFromGlobalCap: true },
+    )
+    // Logged (and stamped into lifecycle_test_sends) whether or not the
+    // provider accepted it -- an attempted test counts for cooldown
+    // purposes either way, and the log line gives an operator something
+    // to check without needing the JSON response.
+    await testSupabase.from('lifecycle_test_sends').insert({})
+    console.log('lifecycle test-mode send attempted:', { provider_accepted: !testSendResult?.error })
+    // provider_accepted only means the send-email function/Resend
+    // accepted the request -- never treat this as delivery proof. Real
+    // delivery confirmation needs the Resend dashboard or the test
+    // inbox itself.
+    return new Response(JSON.stringify({
+      mode: 'test_single_recipient', authorized: true, executed: true,
+      provider_accepted: !testSendResult?.error,
+      provider_error: testSendResult?.error ? String(testSendResult.error.message ?? testSendResult.error) : null,
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } })
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
