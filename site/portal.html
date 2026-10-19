@@ -138,6 +138,10 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M8 10h8M8 14h5M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4-.83L3 20l1.05-3.16A7.86 7.86 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Book a Mock Oral
         </button>
+        <button class="portal-nav__item" data-section="private-instruction">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Private Instruction
+        </button>
         <button class="portal-nav__item" data-section="study-packs">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 006.5 22H20V4a2 2 0 00-2-2H6.5A2.5 2.5 0 004 4.5v15z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Study Packs
@@ -516,6 +520,12 @@
             <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Think you're ready for your checkride?</h3>
             <p style="color:rgba(255,255,255,0.55);font-size:14px;line-height:1.6;margin-bottom:16px">Find out before your DPE does. Up to 2-hour Private Pilot Mock Oral — $129.</p>
             <button class="btn btn--primary" data-goto="mock-oral">Book Now</button>
+          </div>
+          <div class="portal-card portal-mockoral" id="privateInstructionDashboardCard">
+            <div class="portal-header__eyebrow" style="margin-bottom:8px">1-on-1 Time With Andrew</div>
+            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:8px">Need help with something specific?</h3>
+            <p style="color:rgba(255,255,255,0.55);font-size:14px;line-height:1.6;margin-bottom:16px">Private Instruction — ground school, checkride prep, oral prep, or whatever you need. $55/hour, all certificate levels.</p>
+            <button class="btn btn--primary" data-goto="private-instruction">Book Now</button>
           </div>
         </div>
 
@@ -1564,6 +1574,27 @@
 
         <!-- Report view -->
         <div id="mockOralReportView" hidden></div>
+      </section>
+
+      <section class="portal-section" id="section-private-instruction">
+        <div class="portal-header">
+          <div class="portal-header__eyebrow">Apex Advantage Private Instruction</div>
+          <h1>1-on-1 time with Andrew.</h1>
+          <p>Ground school content, checkride prep, oral prep, or whatever you need that hour — $55/hour, live 1:1, every certificate level.</p>
+        </div>
+
+        <!-- Existing confirmed booking(s) -- rendered by renderPrivateInstructionSection() -->
+        <div id="privateInstructionBookings"></div>
+
+        <!-- Scheduling -- hidden once at least one confirmed, non-canceled
+             booking exists (a student books one hour at a time; more
+             hours means booking another separate slot). -->
+        <div id="privateInstructionBookingFlow">
+          <h3 style="color:#fff;font-size:16px;font-weight:700;margin:8px 0 4px">Choose a time</h3>
+          <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:16px">1 hour, $55. All times shown in your own local time zone.</p>
+          <div id="privateInstructionSlots" class="mo-slot-list"></div>
+          <p id="privateInstructionError" class="portal-modal__error"></p>
+        </div>
       </section>
 
       <!-- ═══ STUDY PACKS ═══

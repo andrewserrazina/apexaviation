@@ -1439,6 +1439,142 @@
     el.addEventListener('click', function () { if (window.apexTrack) apexTrack('mock_oral_page_view', {}); });
   });
 
+  /* ── APEX ADVANTAGE PRIVATE INSTRUCTION ($55/hour, flat rate, all
+     certificate levels) ── replaces the discontinued $25/class group
+     Ground School. Deliberately much simpler than Mock Oral above: no
+     product tiers (one flat rate), no intake form, no assessment/report
+     -- it's flexible 1-on-1 time, not a fixed curriculum to evaluate
+     against. Real slot-based scheduling (get_private_instruction_
+     availability), server-verified checkout (book-private-instruction,
+     stripe-webhook). See supabase-portal-schema-v161-private-
+     instruction.sql for the full data model. */
+  var piBookings = [];
+
+  function piFmtDateTime(row) {
+    var start = zonedWallClockToUtc(row.class_date, row.start_time, row.timezone);
+    var date = start.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+    var time = start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
+    return date + ' · ' + time;
+  }
+
+  function loadPrivateInstructionBookings() {
+    return apexSupabase.rpc('get_my_private_instruction_bookings').then(function (res) {
+      piBookings = res.data || [];
+    });
+  }
+  function refreshPrivateInstruction() {
+    return loadPrivateInstructionBookings().then(renderPrivateInstructionSection);
+  }
+
+  function loadPrivateInstructionSlots() {
+    var slotsEl = document.getElementById('privateInstructionSlots');
+    var errorEl = document.getElementById('privateInstructionError');
+    errorEl.textContent = ''; errorEl.classList.remove('show');
+    slotsEl.innerHTML = '<p style="color:rgba(255,255,255,0.4)">Loading available times…</p>';
+    apexSupabase.rpc('get_private_instruction_availability').then(function (res) {
+      var slots = res.data || [];
+      if (!slots.length) {
+        slotsEl.innerHTML = '<p style="color:rgba(255,255,255,0.5)">No upcoming times are open right now — check back soon, or <a href="contact.html" style="color:var(--gold)">contact us</a>.</p>';
+        return;
+      }
+      slotsEl.innerHTML = slots.map(function (s) {
+        return '<button type="button" class="mo-slot" data-pi-slot="' + s.id + '">' + piFmtDateTime(s) + '</button>';
+      }).join('');
+      slotsEl.querySelectorAll('[data-pi-slot]').forEach(function (btn) {
+        btn.addEventListener('click', function () { bookPrivateInstructionSlot(btn.dataset.piSlot); });
+      });
+    });
+  }
+
+  function bookPrivateInstructionSlot(slotId) {
+    var errorEl = document.getElementById('privateInstructionError');
+    var slotsEl = document.getElementById('privateInstructionSlots');
+    errorEl.textContent = ''; errorEl.classList.remove('show');
+    slotsEl.querySelectorAll('.mo-slot').forEach(function (b) { b.disabled = true; });
+    if (window.apexTrack) apexTrack('private_instruction_booking_started', { price: 55 });
+    apexSupabase.functions.invoke('create-checkout-session', {
+      body: { purpose: 'book-private-instruction', availabilityId: slotId, origin: window.location.origin, utm: window.apexGetUtm ? apexGetUtm() : undefined },
+      headers: { Authorization: 'Bearer ' + accessToken }
+    }).then(function (res) {
+      if (res.error || !res.data || !res.data.url) {
+        return extractInvokeError(res).then(function (msg) {
+          errorEl.textContent = msg;
+          errorEl.classList.add('show');
+          loadPrivateInstructionSlots();
+        });
+      }
+      if (window.apexTrackStandard) apexTrackStandard('InitiateCheckout', { content_name: 'Apex Advantage Private Instruction', value: 55, currency: 'USD' });
+      window.location.href = res.data.url;
+    }).catch(function () {
+      errorEl.textContent = 'Could not start checkout. Please try again.';
+      errorEl.classList.add('show');
+      loadPrivateInstructionSlots();
+    });
+  }
+
+  function cancelPrivateInstructionBooking(bookingId) {
+    if (!window.confirm('Cancel this Private Instruction booking? This cannot be undone from the portal.')) return;
+    apexSupabase.rpc('cancel_private_instruction_booking', { p_booking_id: bookingId }).then(function (res) {
+      if (res.error) { toast('Could not cancel. Please try again.'); return; }
+      toast('Your Private Instruction booking has been canceled.');
+      refreshPrivateInstruction();
+    });
+  }
+
+  function wirePrivateInstructionBookingActions() {
+    document.querySelectorAll('#privateInstructionBookings [data-pi-action]').forEach(function (btn) {
+      var bookingId = btn.dataset.booking;
+      btn.addEventListener('click', function () {
+        if (btn.dataset.piAction === 'cancel') cancelPrivateInstructionBooking(bookingId);
+      });
+    });
+  }
+
+  function renderPrivateInstructionSection() {
+    var bookingsEl = document.getElementById('privateInstructionBookings');
+    var flowEl = document.getElementById('privateInstructionBookingFlow');
+    if (!bookingsEl || !flowEl) return;
+
+    // Most recent non-canceled booking (rows are already ordered
+    // newest-first by get_my_private_instruction_bookings). A canceled
+    // booking is never shown as "your booking" -- the student falls
+    // back to the slot picker, same as never having booked at all.
+    var active = piBookings.find(function (b) { return b.status !== 'canceled'; });
+
+    if (!active) {
+      bookingsEl.innerHTML = '';
+      flowEl.hidden = false;
+      loadPrivateInstructionSlots();
+      return;
+    }
+
+    flowEl.hidden = true;
+
+    var start = zonedWallClockToUtc(active.class_date, active.start_time, active.timezone);
+    var end = zonedWallClockToUtc(active.class_date, active.end_time, active.timezone);
+    var now = new Date();
+    var joinWindowStart = new Date(start.getTime() - 15 * 60000);
+    var canJoin = active.meeting_url && active.status === 'confirmed' && now >= joinWindowStart && now <= end;
+    var isPast = now > end;
+    var statusLabel = active.status === 'completed' ? 'COMPLETED' : (isPast ? 'AWAITING FOLLOW-UP' : 'CONFIRMED');
+
+    bookingsEl.innerHTML =
+      '<div class="portal-card mo-booking-card">' +
+      '<div class="portal-header__eyebrow" style="margin-bottom:8px">Your Private Instruction Session</div>' +
+      '<h3 style="color:#fff;font-size:19px;font-weight:800;margin-bottom:4px">' + piFmtDateTime(active) + '</h3>' +
+      '<p style="color:rgba(255,255,255,0.55);font-size:14px;margin-bottom:4px">1 hour · Instructor: ' + (active.instructor_name || 'TBD') + '</p>' +
+      '<p style="color:var(--gold);font-size:12px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:18px">' + statusLabel + '</p>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:10px">' +
+      (canJoin ? '<a class="btn btn--primary" href="' + active.meeting_url + '" target="_blank" rel="noopener">Join Session</a>' : '') +
+      (!isPast ? '<button type="button" class="btn btn--ghost" data-pi-action="cancel" data-booking="' + active.id + '">Cancel</button>' : '') +
+      '</div></div>';
+    wirePrivateInstructionBookingActions();
+  }
+
+  document.querySelectorAll('[data-section="private-instruction"], [data-goto="private-instruction"]').forEach(function (el) {
+    el.addEventListener('click', function () { if (window.apexTrack) apexTrack('private_instruction_page_viewed', {}); });
+  });
+
   /* ── AI DPE Practice (simulated oral exam) ─────────────────────
      Chat client for the dpe-chat Edge Function. The function itself
      owns all exam logic (question sequencing, follow-ups, the
@@ -2322,6 +2458,28 @@
       apexTrack('mock_oral_purchase_completed', { price: 129, session_id: mo2SessionId || undefined });
       apexTrack('mock_oral_booking_completed', { certificate_type: 'private_pilot' });
       if (mo2FunnelDedupeKey) localStorage.setItem(mo2FunnelDedupeKey, '1');
+    }
+  }
+  // Apex Advantage Private Instruction ($55/hour flat rate) -- same
+  // three-way GA4/Meta/apexTrack dedup-by-session_id pattern as every
+  // other product on this page.
+  if (urlParams.get('privateinstruction') === '1') {
+    toast('Payment received! Your Private Instruction session is booked.');
+    var piSessionId = urlParams.get('session_id');
+    fireGa4Purchase(piSessionId, 'apex_ga4_purchase_pi_', {
+      currency: 'USD', value: 55,
+      items: [{ item_name: 'Apex Advantage Private Instruction', price: 55, quantity: 1 }]
+    });
+    var piFbqDedupeKey = piSessionId ? 'apex_fbq_purchase_pi_' + piSessionId : null;
+    if (window.fbq && (!piFbqDedupeKey || !localStorage.getItem(piFbqDedupeKey))) {
+      fbq('track', 'Purchase', { value: 55, currency: 'USD', content_name: 'Apex Advantage Private Instruction' });
+      if (piFbqDedupeKey) localStorage.setItem(piFbqDedupeKey, '1');
+    }
+    var piFunnelDedupeKey = piSessionId ? 'apex_funnel_purchase_pi_' + piSessionId : null;
+    if (window.apexTrack && (!piFunnelDedupeKey || !localStorage.getItem(piFunnelDedupeKey))) {
+      apexTrack('purchase_completed', { product: 'private_instruction', price: 55, session_id: piSessionId || undefined });
+      apexTrack('private_instruction_booking_purchased', { price: 55, session_id: piSessionId || undefined });
+      if (piFunnelDedupeKey) localStorage.setItem(piFunnelDedupeKey, '1');
     }
   }
   if (urlParams.get('groundschoolpack') === '1') {
@@ -9743,6 +9901,7 @@
       renderGroundSchoolRecordings();
       renderGroundSchoolRegistrationSuccess();
       refreshMockOral();
+      refreshPrivateInstruction();
       renderAchievements();
       loadAchievementRarity();
       renderStudyHeatmap();
