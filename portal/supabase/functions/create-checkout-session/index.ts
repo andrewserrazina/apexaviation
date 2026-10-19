@@ -372,11 +372,23 @@ async function logCheckoutAttempt(supabase: any, args: { stripeSessionId: string
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
+  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+  // Readiness-funnel instrumentation audit: a Stripe API failure (network
+  // error, invalid params, a Stripe-side outage) inside any purpose branch
+  // below previously left ZERO trace anywhere server-side -- the only
+  // signal was the client's own best-effort checkout_session_create_failed
+  // event (site/portal-stable.js), which depends on the browser actually
+  // reaching window.apexSupabase after the fetch has already failed.
+  // checkoutFailurePurpose is captured here (not deeper inside a branch) so
+  // the catch block below can log *something* identifying even if the
+  // request body itself failed to parse.
+  let checkoutFailurePurpose: string | undefined
+
   try {
     const body = await req.json()
     const purpose = body.purpose
+    checkoutFailurePurpose = typeof purpose === 'string' ? purpose : undefined
     const siteOrigin = body.origin || 'https://apexaviationtx.com'
-    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
     if (purpose === 'unlock-checkride-prep') {
       const authHeader = req.headers.get('Authorization') || ''
@@ -1219,6 +1231,21 @@ serve(async (req) => {
 
     return jsonError(`Unknown purpose: ${purpose}`, 400)
   } catch (err) {
+    // Server-side record of a checkout-session-creation failure (see the
+    // header comment above) -- best-effort and wrapped in its own
+    // try/catch so a logging problem can never replace or mask the real
+    // error response below. Identity (profile_id/email) is deliberately
+    // not attempted here: it's only known inside individual purpose
+    // branches above, and reaching into each one would widen this fix far
+    // past "log that a failure happened" for marginal benefit.
+    try {
+      await supabase.from('analytics_events').insert({
+        event_name: 'checkout_session_create_failed',
+        properties: { purpose: checkoutFailurePurpose ?? null, reason: String(err), origin: 'server' },
+      })
+    } catch (logErr) {
+      console.error('create-checkout-session: failed to log checkout_session_create_failed', logErr)
+    }
     return jsonError(String(err), 500)
   }
 })

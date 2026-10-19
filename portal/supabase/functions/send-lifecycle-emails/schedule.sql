@@ -15,6 +15,21 @@
 -- cron.job); this version instead pulls it from Supabase Vault, matching
 -- the andrewos-metrics/schedule.sql pattern.
 --
+-- Auth contract (corrected, Stage 2 auth hardening, Oct 2026): this
+-- function is deployed with `verify_jwt = false` (portal/supabase/
+-- config.toml's `[functions.send-lifecycle-emails]` entry) -- that is
+-- the established, intended design. There is no Supabase session to
+-- verify here at all; pg_cron/pg_net calls this on a schedule with no
+-- signed-in caller. A prior revision of this note incorrectly claimed
+-- `verify_jwt = true` was required, and had this script send the
+-- project's legacy anon key in `Authorization` to satisfy it -- that was
+-- wrong and has been removed. `Authorization` is not checked by this
+-- function at all. The only credential that matters is
+-- `X-Lifecycle-Cron-Secret`, checked in send-lifecycle-emails/index.ts's
+-- `serve()` handler against LIFECYCLE_CRON_SECRET (fail-closed as of
+-- this same hardening pass: the function now refuses to run at all if
+-- that env var is unset, rather than skipping the check).
+--
 -- Prerequisites (once per project):
 --   1. Enable the pg_cron and pg_net extensions:
 --        Dashboard -> Database -> Extensions -> enable "pg_cron" and "pg_net"
@@ -33,7 +48,7 @@
 --
 -- =============================================================================
 
--- Replace <project-ref> with your actual Supabase project ref before running.
+-- Replace <project-ref> with your actual Supabase project ref.
 select cron.schedule(
   'send-lifecycle-emails-daily',
   '0 13 * * *', -- 13:00 UTC / 8am Central, per RETENTION_SYSTEM.md's recommended time
@@ -41,7 +56,7 @@ select cron.schedule(
   select net.http_post(
     url := 'https://<project-ref>.supabase.co/functions/v1/send-lifecycle-emails',
     headers := jsonb_build_object(
-      'Authorization', 'Bearer ' || (
+      'X-Lifecycle-Cron-Secret', (
         select decrypted_secret
         from vault.decrypted_secrets
         where name = 'lifecycle_cron_secret'
