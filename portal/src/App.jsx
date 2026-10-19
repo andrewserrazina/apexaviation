@@ -34,6 +34,8 @@ const MockOralRequests = lazy(() => import('./pages/MockOralRequests'))
 const MockOralDashboard = lazy(() => import('./pages/MockOralDashboard'))
 const MockOralAvailability = lazy(() => import('./pages/MockOralAvailability'))
 const MockOralAssessment = lazy(() => import('./pages/MockOralAssessment'))
+const PrivateInstructionDashboard = lazy(() => import('./pages/PrivateInstructionDashboard'))
+const PrivateInstructionAvailability = lazy(() => import('./pages/PrivateInstructionAvailability'))
 const InstructorHub = lazy(() => import('./pages/InstructorHub'))
 const OperationsDashboard = lazy(() => import('./pages/operations/OperationsDashboard'))
 const OperationsSchedule = lazy(() => import('./pages/operations/OperationsSchedule'))
@@ -92,6 +94,8 @@ export default function App() {
               <Route path="/mock-orals" element={<ProtectedRoute roles={['admin', 'instructor']}><MockOralDashboard /></ProtectedRoute>} />
               <Route path="/mock-oral-availability" element={<ProtectedRoute roles={['admin', 'instructor']}><MockOralAvailability /></ProtectedRoute>} />
               <Route path="/mock-orals/:bookingId" element={<ProtectedRoute roles={['admin', 'instructor']}><MockOralAssessment /></ProtectedRoute>} />
+              <Route path="/private-instruction" element={<ProtectedRoute roles={['admin', 'instructor']}><PrivateInstructionDashboard /></ProtectedRoute>} />
+              <Route path="/private-instruction-availability" element={<ProtectedRoute roles={['admin', 'instructor']}><PrivateInstructionAvailability /></ProtectedRoute>} />
               <Route path="/instructor-hub"  element={<ProtectedRoute><InstructorHub /></ProtectedRoute>} />
               <Route path="/xp-ledger"       element={<ProtectedRoute adminOnly><XpLedger /></ProtectedRoute>} />
               <Route path="/missions"        element={<ProtectedRoute adminOnly><Missions /></ProtectedRoute>} />

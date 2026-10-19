@@ -26,6 +26,13 @@
 //     the student told plainly, same tone as Ground School hitting
 //     capacity. See supabase-portal-schema-v97.sql.
 //
+//   'book-private-instruction' — Apex Advantage Private Instruction (flat
+//     $55/hour 1-on-1 time, open to every certificate level, replaces
+//     the discontinued group Ground School product). Same atomic-claim
+//     double-booking safeguard as book-mock-oral-v2, against
+//     private_instruction_availability/_bookings -- see
+//     supabase-portal-schema-v161-private-instruction.sql.
+//
 //   'unlock-study-pack' — Apex Advantage Study Packs (generic engine,
 //     Airspace Mastery is Pack #1, $19 lifetime). Inserts a
 //     study_pack_entitlements row -- the sole grant path. See
@@ -1001,6 +1008,115 @@ async function handleMockOralBookingV2(supabase: any, session: Stripe.Checkout.S
     template(`<p style="color:#1F2937;font-size:15px;line-height:1.7;"><strong style="color:#0B1F3A">${fullName}</strong> (${email}) booked a Mock Oral for ${when} ${tzAbbr}. ${claimedSlot.instructor_id ? 'Instructor already assigned.' : 'No instructor assigned to this slot yet — assign one from the Mock Oral admin dashboard.'}</p>`))
 }
 
+// purpose: 'book-private-instruction' (also reached by signup-and-book-
+// private-instruction -- see create-checkout-session's comment on why
+// that one-step signup variant keeps the same metadata.purpose). Same
+// atomic-claim/refund-on-failure structure as handleMockOralBookingV2,
+// minus product_id (Private Instruction is a single flat rate, not a
+// catalog).
+async function handlePrivateInstructionBooking(supabase: any, session: Stripe.Checkout.Session) {
+  const profileId = (session.metadata?.profile_id as string) || null
+  const availabilityId = session.metadata?.availability_id as string
+  const fullName = (session.metadata?.full_name as string) || 'Student'
+  const email = (session.metadata?.email as string) || session.customer_details?.email || session.customer_email
+  const amountCents = session.amount_total ?? 0
+
+  if (!email) throw new Error('No email on checkout session')
+  if (!profileId || !availabilityId) throw new Error('Missing private instruction metadata on checkout session')
+
+  // Same idempotency-on-retry guard as handleMockOralBookingV2 -- without
+  // this, a retried delivery of an already-successful run would find the
+  // slot no longer 'open' and wrongly refund an already-booked customer.
+  const { data: existingBooking } = await supabase.from('private_instruction_bookings').select('id').eq('stripe_session_id', session.id).maybeSingle()
+  if (existingBooking) return
+
+  async function refundAndNotifyFull() {
+    if (session.payment_intent) {
+      try {
+        await stripe.refunds.create({ payment_intent: session.payment_intent as string })
+      } catch (refundErr) {
+        console.error('stripe-webhook: refund failed after private instruction slot claim loss', refundErr)
+      }
+    }
+    await sendEmail(supabase, email, 'That time slot was just taken — you have been refunded',
+      template(`
+        <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Sorry, ${fullName.split(' ')[0]} — that time was just booked</h2>
+        <p style="color:#1F2937;font-size:15px;line-height:1.7;">Someone booked that exact time right as your payment came through. You have not been booked, and your payment has been fully refunded. Head back to the Private Instruction page to pick another time.</p>
+      `))
+  }
+
+  // The single atomic operation this whole flow depends on -- identical
+  // reasoning to handleMockOralBookingV2.
+  const { data: claimedSlot, error: claimError } = await supabase
+    .from('private_instruction_availability')
+    .update({ status: 'booked', updated_at: new Date().toISOString() })
+    .eq('id', availabilityId)
+    .eq('status', 'open')
+    .select('id, instructor_id, class_date, start_time, timezone')
+    .maybeSingle()
+
+  if (claimError) {
+    if (session.payment_intent) {
+      try { await stripe.refunds.create({ payment_intent: session.payment_intent as string }) } catch (e) { console.error('stripe-webhook: refund failed after private instruction claim error', e) }
+    }
+    await sendEmail(supabase, ADMIN_NOTIFICATION_EMAIL, 'ACTION NEEDED: Private Instruction slot claim failed after payment',
+      template(`<p style="color:#1F2937;font-size:15px;line-height:1.7;">${email} paid for a Private Instruction slot ${availabilityId}, but claiming the slot errored: ${claimError.message}. Refund attempted automatically. Check private_instruction_availability manually.</p>`))
+    throw claimError
+  }
+
+  if (!claimedSlot) {
+    await refundAndNotifyFull()
+    return
+  }
+
+  const { data: profile } = await supabase.from('profiles').select('phone').eq('id', profileId).maybeSingle()
+  const { error: bookingError } = await supabase.from('private_instruction_bookings').insert({
+    profile_id: profileId,
+    instructor_id: claimedSlot.instructor_id,
+    availability_id: claimedSlot.id,
+    full_name: fullName,
+    email,
+    phone: profile?.phone || null,
+    stripe_session_id: session.id,
+    amount_cents: amountCents,
+  })
+
+  if (bookingError) {
+    await supabase.from('private_instruction_availability').update({ status: 'open', updated_at: new Date().toISOString() }).eq('id', claimedSlot.id)
+    if (session.payment_intent) {
+      try { await stripe.refunds.create({ payment_intent: session.payment_intent as string }) } catch (e) { console.error('stripe-webhook: refund failed after private instruction booking insert error', e) }
+    }
+    await sendEmail(supabase, ADMIN_NOTIFICATION_EMAIL, 'ACTION NEEDED: Private Instruction booking failed after payment',
+      template(`<p style="color:#1F2937;font-size:15px;line-height:1.7;">${email} paid for a Private Instruction slot, but the booking record failed to save: ${bookingError.message}. The slot has been released and a refund attempted automatically. Check manually and follow up with the customer.</p>`))
+    throw bookingError
+  }
+
+  await supabase.from('invoices').insert({
+    student_id: profileId,
+    description: 'Apex Advantage Private Instruction (1 hour)',
+    amount_cents: amountCents,
+    status: 'paid',
+    product: 'private_instruction',
+    stripe_session_id: session.id,
+  })
+
+  const when = new Date(`${claimedSlot.class_date}T${claimedSlot.start_time}`).toLocaleString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit',
+  })
+  const tzAbbr = ({ 'America/Chicago': 'CT', 'America/New_York': 'ET', 'America/Denver': 'MT', 'America/Los_Angeles': 'PT', 'UTC': 'UTC' } as Record<string, string>)[claimedSlot.timezone] || claimedSlot.timezone
+
+  await sendEmail(supabase, email, 'Your Apex Advantage Private Instruction Is Booked',
+    template(`
+      <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">You're booked, ${fullName.split(' ')[0]}!</h2>
+      <p style="color:#1F2937;font-size:15px;line-height:1.7;">Your 1-on-1 Private Instruction session is confirmed for <strong style="color:#0B1F3A">${when} ${tzAbbr}</strong>.</p>
+      <p style="color:#1F2937;font-size:15px;line-height:1.7;">Come with whatever you want to work on — ground school content, checkride or oral prep, a specific weak area, or anything else.</p>
+      <a href="${purchaseCtaUrl('private_instruction_booking', '#private-instruction')}" style="display:inline-block;margin-top:8px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:12px 22px;text-decoration:none;font-weight:700;font-size:14px;">View My Booking →</a>
+    `))
+
+  await sendEmail(supabase, ADMIN_NOTIFICATION_EMAIL, `New Private Instruction booking — ${fullName}`,
+    template(`<p style="color:#1F2937;font-size:15px;line-height:1.7;"><strong style="color:#0B1F3A">${fullName}</strong> (${email}) booked Private Instruction for ${when} ${tzAbbr}. ${claimedSlot.instructor_id ? 'Instructor already assigned.' : 'No instructor assigned to this slot yet — assign one from the Private Instruction admin dashboard.'}</p>`))
+}
+
 // Stripe's real subscription statuses don't map 1:1 onto
 // member_subscriptions.status's CHECK constraint (active, trialing,
 // past_due, canceled, incomplete) -- every value Stripe can actually
@@ -1255,6 +1371,8 @@ serve(async (req) => {
         await handleMockOralBooking(supabase, session)
       } else if (purpose === 'book-mock-oral-v2') {
         await handleMockOralBookingV2(supabase, session)
+      } else if (purpose === 'book-private-instruction') {
+        await handlePrivateInstructionBooking(supabase, session)
       } else if (purpose === 'unlock-study-pack') {
         await handleUnlockStudyPack(supabase, session)
       } else if (purpose === 'join-membership') {

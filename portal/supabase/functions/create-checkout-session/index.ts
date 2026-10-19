@@ -69,6 +69,23 @@
 //     metadata.purpose is still 'book-mock-oral-v2' -- stripe-webhook
 //     doesn't need to know or care whether the account existed already.
 //
+//   purpose: 'book-private-instruction'
+//     Apex Advantage Private Instruction -- flat $55/hour 1-on-1 time
+//     with an instructor (ground school content, checkride prep, oral
+//     prep, whatever the student needs that hour), open to every
+//     certificate level. Requires the caller's access token and an OPEN
+//     private_instruction_availability slot (availabilityId) -- no
+//     productId, since there's a single flat rate (PRIVATE_INSTRUCTION_
+//     RATE_CENTS), not a catalog. Same "non-atomic early UX check here,
+//     the real atomic claim happens in stripe-webhook" pattern as
+//     book-mock-oral-v2.
+//
+//   purpose: 'signup-and-book-private-instruction'
+//     One-step version of 'book-private-instruction' for a visitor with
+//     no Apex Advantage account, mirroring signup-and-book-mock-oral-v2
+//     exactly. The resulting Stripe session's metadata.purpose is still
+//     'book-private-instruction'.
+//
 //   purpose: 'unlock-study-pack'
 //     Apex Advantage Study Packs -- generic engine, Airspace Mastery
 //     ($19, lifetime) is Pack #1. Requires the caller's access token;
@@ -166,6 +183,7 @@ const stripe = new Stripe(STRIPE_SECRET_KEY, {
 const GROUND_SCHOOL_PRICE_CENTS = 2500 // $25 per session
 const GROUND_SCHOOL_PACK_PRICE_CENTS = 40000 // $400 flat, unlimited Private Pilot classes
 const MOCK_ORAL_PRICE_CENTS = 9900 // $99 per 60-minute mock oral
+const PRIVATE_INSTRUCTION_RATE_CENTS = 5500 // $55 per 1-hour Private Instruction slot (flat rate, all certificate levels)
 
 // Apex Advantage Membership pricing -- $19/mo or $190/yr (roughly two
 // months free annually), no trial. Built as inline recurring price_data
@@ -1170,6 +1188,149 @@ serve(async (req) => {
       await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'signup-and-book-mock-oral-v2', email, profileId: newProfileId, amountCents: product.price_cents, utm: body.utm, referrer: body.referrer, clickIds: body.click_ids })
 
       return new Response(JSON.stringify({ url: session.url, amount: product.price_cents }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (purpose === 'book-private-instruction') {
+      const authHeader = req.headers.get('Authorization') || ''
+      const token = authHeader.replace('Bearer ', '').trim()
+      if (!token) return jsonError('Missing Authorization header', 401)
+
+      const { data: userData, error: userErr } = await supabase.auth.getUser(token)
+      if (userErr || !userData?.user) return jsonError('Invalid or expired session', 401)
+
+      const profileId = userData.user.id
+      const email = userData.user.email
+      const availabilityId = body.availabilityId as string
+      if (!availabilityId) return jsonError('Missing availabilityId', 400)
+
+      const { data: slot } = await supabase
+        .from('private_instruction_availability')
+        .select('id, status, class_date, start_time, timezone')
+        .eq('id', availabilityId)
+        .maybeSingle()
+      if (!slot) return jsonError('That time slot no longer exists', 404)
+      if (slot.status !== 'open') return jsonError('That time slot was just booked by someone else. Please choose another.', 409)
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, phone')
+        .eq('id', profileId)
+        .maybeSingle()
+
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        customer_email: email,
+        line_items: [{
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: 'Apex Advantage Private Instruction',
+              description: '1 hour of 1-on-1 instruction time.',
+            },
+            unit_amount: PRIVATE_INSTRUCTION_RATE_CENTS,
+          },
+          quantity: 1,
+        }],
+        metadata: {
+          purpose: 'book-private-instruction',
+          profile_id: profileId,
+          availability_id: slot.id,
+          full_name: profile?.full_name || '',
+          email: email || '',
+        },
+        success_url: `${siteOrigin}/portal.html?privateinstruction=1&session_id={CHECKOUT_SESSION_ID}#private-instruction`,
+        cancel_url: `${siteOrigin}/apex-advantage-private-instruction.html#schedule`,
+      })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'book-private-instruction', email, profileId, amountCents: PRIVATE_INSTRUCTION_RATE_CENTS, utm: body.utm, referrer: body.referrer, clickIds: body.click_ids })
+
+      return new Response(JSON.stringify({ url: session.url, amount: PRIVATE_INSTRUCTION_RATE_CENTS }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (purpose === 'signup-and-book-private-instruction') {
+      const { name, email, availabilityId, utm_first, first_touch_landing, click_ids_first, referrer_first, first_touch_anon_id, signup_touch } = body
+      if (!name || !email) return jsonError('Missing required fields: name, email', 400)
+      if (!availabilityId) return jsonError('Missing availabilityId', 400)
+
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .ilike('email', escapeIlike(email))
+        .maybeSingle()
+      if (existingProfile) {
+        return jsonError('An account with this email already exists. Sign in and book from your dashboard instead.', 409)
+      }
+
+      const { data: slot } = await supabase
+        .from('private_instruction_availability')
+        .select('id, status, class_date, start_time, timezone')
+        .eq('id', availabilityId)
+        .maybeSingle()
+      if (!slot) return jsonError('That time slot no longer exists', 404)
+      if (slot.status !== 'open') return jsonError('That time slot was just booked by someone else. Please choose another.', 409)
+
+      const { data: created, error: createErr } = await supabase.auth.admin.createUser({
+        email,
+        email_confirm: true,
+        password: crypto.randomUUID(),
+        user_metadata: { full_name: name },
+      })
+      if (createErr) return jsonError(String(createErr), 500)
+      const newProfileId = created.user.id
+      await applySignupAttribution(supabase, newProfileId, utm_first, first_touch_landing, referrer_first, click_ids_first, first_touch_anon_id, signup_touch)
+
+      const redirectTo = `${SITE_ORIGIN}/portal-reset-password.html?dest=private-instruction`
+      const { data: linkData } = await supabase.auth.admin.generateLink({
+        type: 'recovery',
+        email,
+        options: { redirectTo },
+      })
+      const actionLink = linkData?.properties?.action_link
+      if (actionLink) {
+        await supabase.functions.invoke('send-email', {
+          body: {
+            to: email,
+            subject: 'Welcome to Apex Advantage — set your password',
+            html: emailTemplate(`
+              <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Welcome to Apex Advantage, ${name.split(' ')[0]}!</h2>
+              <p style="color:#1F2937;font-size:15px;line-height:1.7;">Your account is ready and your Private Instruction booking is being processed. Set your password to get in:</p>
+              <a href="${actionLink}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Set Your Password →</a>
+              <p style="color:#4B5563;font-size:13px;line-height:1.6;">Once that's done, sign in any time at apexaviationtx.com/portal-login.html — your Private Instruction booking will be waiting in your dashboard.</p>
+            `),
+          },
+        })
+      }
+
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        customer_email: email,
+        line_items: [{
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: 'Apex Advantage Private Instruction',
+              description: '1 hour of 1-on-1 instruction time.',
+            },
+            unit_amount: PRIVATE_INSTRUCTION_RATE_CENTS,
+          },
+          quantity: 1,
+        }],
+        metadata: {
+          purpose: 'book-private-instruction',
+          profile_id: newProfileId,
+          availability_id: slot.id,
+          full_name: name,
+          email,
+        },
+        success_url: `${siteOrigin}/portal-login.html?view=signup-success&paid=1&product=private_instruction&amount_cents=${PRIVATE_INSTRUCTION_RATE_CENTS}&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${siteOrigin}/apex-advantage-private-instruction.html#pricing`,
+      })
+      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'signup-and-book-private-instruction', email, profileId: newProfileId, amountCents: PRIVATE_INSTRUCTION_RATE_CENTS, utm: body.utm, referrer: body.referrer, clickIds: body.click_ids })
+
+      return new Response(JSON.stringify({ url: session.url, amount: PRIVATE_INSTRUCTION_RATE_CENTS }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }

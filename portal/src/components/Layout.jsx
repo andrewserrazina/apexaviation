@@ -25,7 +25,14 @@ const navGroups = [
       { to: '/schedule',        label: 'Schedule',        roles: ['admin', 'instructor', 'student'] },
       { to: '/logbook',         label: 'Logbook',         roles: ['admin', 'instructor', 'student'] },
       { to: '/endorsements',    label: 'Endorsements',    roles: ['admin', 'instructor', 'student'] },
-      { to: '/ground-schedule', label: 'Ground School',   roles: ['admin', 'instructor', 'student'] },
+      // Group Ground School ($25/class) is discontinued and no longer
+      // advertised anywhere -- there's nothing left for a student to
+      // book here, so the nav entry is hidden for that role. Left
+      // visible for admin/instructor, who may still need it for
+      // historical schedule data; GroundSchedule.jsx itself is
+      // untouched (not deleted), consistent with this being an
+      // advertising change, not a backend decommission.
+      { to: '/ground-schedule', label: 'Ground School',   roles: ['admin', 'instructor'] },
       { to: '/admin/ground-school-schedule', label: 'Class Scheduler', roles: ['admin', 'office_manager'] },
       { to: '/ground-school-bidding', label: 'Ground School Bidding', roles: ['admin', 'instructor'] },
       { to: '/instructor-hub',  label: 'Instructor Hub',  roles: ['admin', 'instructor'] },
@@ -42,6 +49,8 @@ const navGroups = [
       { to: '/mock-orals', label: 'Mock Orals', roles: ['admin', 'instructor'] },
       { to: '/mock-oral-availability', label: 'Mock Oral Availability', roles: ['admin', 'instructor'] },
       { to: '/mock-oral-requests', label: 'Mock Oral Requests (Legacy $99)', roles: ['admin', 'instructor'] },
+      { to: '/private-instruction', label: 'Private Instruction', roles: ['admin', 'instructor'] },
+      { to: '/private-instruction-availability', label: 'Private Instruction Availability', roles: ['admin', 'instructor'] },
     ],
   },
   {

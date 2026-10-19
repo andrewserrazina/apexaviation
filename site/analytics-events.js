@@ -112,6 +112,16 @@
     // availability loaded or a slot was chosen -- these two close that gap
     // without duplicating it.
     'mock_oral_availability_viewed', 'mock_oral_slot_selected',
+    // Apex Advantage Private Instruction ($55/hour flat rate, every
+    // certificate level -- replaces the discontinued group Ground
+    // School product. site/apex-advantage-private-instruction.html,
+    // portal.html's #private-instruction section). Same shape as the
+    // Mock Oral events above (page view, availability/slot-selection
+    // visibility, booking start/purchase); ground_school_* names above
+    // are kept as-is for historical data continuity, not repurposed.
+    'private_instruction_page_viewed', 'private_instruction_availability_viewed',
+    'private_instruction_slot_selected', 'private_instruction_booking_started',
+    'private_instruction_booking_purchased', 'private_instruction_cta_click',
     // Checkride Binder Builder landing page (site/apex-advantage-
     // checkride-binder.html) -- a feature spotlight for the digital
     // binder bundled into Checkride Prep, not a separate product. Its
