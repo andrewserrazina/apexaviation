@@ -1416,6 +1416,17 @@
         <a href="portal-login.html?view=signup&amp;dest=checkride-prep" class="btn--cta-primary" data-cp-cta data-cp-cta-label data-cp-location="pricing">UNLOCK CHECKRIDE PREP &mdash; $29</a>
         <p class="cp-offer-box__microcopy">Secure checkout. Instant digital access. &middot; 7-day money-back guarantee.</p>
       </div>
+
+      <!-- Mock Oral cross-sell -- Checkride Prep builds the question bank;
+           this is the live, 1-on-1 rehearsal of actually being questioned
+           by an examiner, which the self-paced product can't replicate.
+           Restrained callout, not a second hero -- same pattern used
+           elsewhere on the site for a complementary (not competing) offer. -->
+      <div style="max-width:560px;margin:28px auto 0;background:rgba(244,180,0,0.06);border:1px solid rgba(244,180,0,0.25);border-radius:16px;padding:28px 32px;text-align:center">
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#F4B400;margin-bottom:10px">Don&rsquo;t Let Checkride Day Be Your First Mock Oral</div>
+        <p style="color:rgba(255,255,255,0.65);font-size:14px;line-height:1.7;margin:0 0 18px">Checkride Prep builds the question bank in your head. A live Mock Oral with Andrew is where you find out how it holds up under real, DPE-style questioning &mdash; before your actual examiner asks.</p>
+        <a href="apex-advantage-mock-oral.html" class="btn btn--outline" style="display:inline-block" data-cp-mock-oral-crosssell>Book a Mock Oral &mdash; $129</a>
+      </div>
     </div>
   </section>
 
@@ -1611,6 +1622,16 @@
       el.addEventListener('click', function () {
         if (!window.gtag) return;
         gtag('event', 'checkride_prep_secondary_cta_click', { location: el.dataset.cpLocation || 'unknown' });
+      });
+    });
+
+    // ── Mock Oral cross-sell click (navigates away to a different
+    // product's page, not a checkride-prep checkout start — must not
+    // use data-cp-cta, which fires checkout_started for this product) ──
+    document.querySelectorAll('[data-cp-mock-oral-crosssell]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        if (!window.gtag) return;
+        gtag('event', 'checkride_prep_mock_oral_crosssell_click', { location: 'pricing' });
       });
     });
 

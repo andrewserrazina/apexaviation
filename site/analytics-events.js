@@ -112,6 +112,12 @@
     // availability loaded or a slot was chosen -- these two close that gap
     // without duplicating it.
     'mock_oral_availability_viewed', 'mock_oral_slot_selected',
+    // Conversion pass -- checkride-prep.html's checkout section now
+    // cross-sells the Mock Oral ($129) to Checkride Prep buyers, since
+    // the two products are complementary (question bank vs. live
+    // rehearsal) rather than competing. checkride_prep_mock_oral_
+    // crosssell_click (plain gtag, like mock_oral_cta_click above) just
+    // confirms the cross-sell CTA was clicked.
     // Apex Advantage Private Instruction ($55/hour flat rate, every
     // certificate level -- replaces the discontinued group Ground
     // School product. site/apex-advantage-private-instruction.html,
