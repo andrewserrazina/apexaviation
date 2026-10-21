@@ -37,7 +37,7 @@ Deno.serve(async req=>{
  if(ip)body.set('remoteip',ip);
  let verified:any;
  try{const res=await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify',{method:'POST',body});verified=await res.json();}catch{return respond(503,{error:'Verification unavailable. Try again later.'});}
- if(!verified.success || verified.hostname!=='apexaviationtx.com' || (verified.action && verified.action!=='mock_oral_giveaway'))return respond(400,{error:'Verification failed. Please retry.'});
+ if(!verified.success || verified.hostname!=='apexaviationtx.com' || verified.action!=='mock_oral_giveaway')return respond(400,{error:'Verification failed. Please retry.'});
  const supabase=createClient(url,service,{auth:{persistSession:false}});
  // Bound repeated submissions to the same address using a keyed digest. This is not an IP/WAF limiter:
  // deploy an edge/network-level limiter separately before opening this giveaway.
