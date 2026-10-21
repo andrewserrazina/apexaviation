@@ -10,6 +10,7 @@ const respond=(status:number,data:unknown)=>new Response(JSON.stringify(data),{s
 Deno.serve(async req=>{
  if(req.method==='OPTIONS')return new Response('',{headers});
  if(req.method!=='POST')return respond(405,{error:'Method not allowed'});
+ if(Deno.env.get('MOCK_ORAL_GIVEAWAY_ENABLED')!=='true')return respond(503,{error:'Giveaway entries are not open yet'});
  if(req.headers.get('origin')!==ORIGIN)return respond(403,{error:'Invalid origin'});
  const now=Date.now();
  if(now<START || now>=END_EXCLUSIVE)return respond(403,{error:'The giveaway is not open for entries'});
@@ -20,8 +21,8 @@ Deno.serve(async req=>{
  let input:any;
  try { if(Number(req.headers.get('content-length')||0)>8192)return respond(413,{error:'Payload too large'});input=await req.json();} catch{return respond(400,{error:'Invalid request'});}
  if(!input || typeof input!=='object')return respond(400,{error:'Invalid request'});
- const name=String(input.first_name||'').trim();
- const email=String(input.email||'').trim().toLowerCase();
+ const name=typeof input.first_name==='string'?input.first_name.trim():'';
+ const email=typeof input.email==='string'?input.email.trim().toLowerCase():'';
  const timing=String(input.checkride_timing||'');
  // A URL parameter is not evidence of assessment completion. Until signed server-side
  // assessment proof exists, ALL entries are treated as equal direct entries.
@@ -29,14 +30,14 @@ Deno.serve(async req=>{
  if(name.length<1||name.length>80||email.length>254||! /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !['within_14_days','within_30_days','within_90_days','not_scheduled'].includes(timing)||input.rules_accepted!==true)return respond(400,{error:'Please complete all required fields and accept the rules'});
  // Both methods get exactly one entry. The assessment method is self-reported pending
  // verified assessment-session proof integration; DO NOT describe as verified completion.
- const captcha=String(input.turnstile_token||'');
+ const captcha=typeof input.turnstile_token==='string'?input.turnstile_token:'';
  if(!captcha || captcha.length>2048)return respond(400,{error:'Please complete the verification'});
  const body=new URLSearchParams({secret,response:captcha});
  const ip=req.headers.get('cf-connecting-ip');
  if(ip)body.set('remoteip',ip);
  let verified:any;
  try{const res=await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify',{method:'POST',body});verified=await res.json();}catch{return respond(503,{error:'Verification unavailable. Try again later.'});}
- if(!verified.success || verified.hostname!=='apexaviationtx.com')return respond(400,{error:'Verification failed. Please retry.'});
+ if(!verified.success || verified.hostname!=='apexaviationtx.com' || (verified.action && verified.action!=='mock_oral_giveaway'))return respond(400,{error:'Verification failed. Please retry.'});
  const supabase=createClient(url,service,{auth:{persistSession:false}});
  const {error}=await supabase.from('mock_oral_giveaway_entries').insert({
  campaign_id:'mock_oral_2026_oct',first_name:name,email,checkride_timing:timing,entry_method:method,
