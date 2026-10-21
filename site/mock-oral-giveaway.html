@@ -5,8 +5,8 @@
 <div class="eyebrow">APEX ADVANTAGE • FREE GIVEAWAY</div><h1>Win a Private Pilot Mock Oral</h1>
 <p>Complete our free 20-question Checkride Readiness Assessment, then enter for a chance to win an online one-on-one Private Pilot Mock Oral (up to two hours; $129 value).</p>
 <p><strong>Entries close November 1, 2026 at 11:59 PM Eastern.</strong></p>
-<p class="small">No purchase necessary. Taking the assessment is optional and does not improve your odds; you may enter directly below. Completing an assessment alone is not an entry. Limit one entry per person. Eligibility and restrictions apply.</p>
-<section class="panel"><h2>Enter the giveaway</h2><p class="small">The form is unavailable until our Official Rules and secure entry system are approved. Please check back when the giveaway opens.</p>
+<p class="small">No purchase necessary. You may <a href="/readiness-assessment.html">take the free assessment first</a> or use this exact same entry form without taking it. Both routes have equal odds; your score never affects selection. Completing the quiz alone does not submit an entry. Limit one entry per person. Eligibility and restrictions apply.</p>
+<section class="panel"><h2>Enter the giveaway</h2><p id="entryRouteDescription" class="small">Please use the form below to submit your free entry. A confirmation is shown only after the entry service records it.</p><p class="small">The form is unavailable until our Official Rules and secure entry system are approved. Please check back when the giveaway opens.</p>
 <form id="entryForm" hidden><label for="name">First name</label><input id="name" name="first_name" required maxlength="80" autocomplete="given-name">
 <label for="email">Email</label><input id="email" name="email" type="email" required maxlength="254" autocomplete="email">
 <label for="when">When is your Private Pilot checkride?</label><select id="when" name="checkride_timing" required>
@@ -22,6 +22,7 @@
 // Set on an approved launch commit only.
 const GIVEAWAY_LIVE=false, SUPABASE_PROJECT_URL='', TURNSTILE_SITE_KEY='';
 const form=document.getElementById('entryForm');
+if(new URLSearchParams(location.search).get('assessment_finished')==='1')document.getElementById('entryRouteDescription').textContent='You have reached the entry form from the assessment. Great! Complete this separate form to enter; your assessment score does not affect the draw. Quiz completion is not independently verified for giveaway purposes.';
 if(GIVEAWAY_LIVE && SUPABASE_PROJECT_URL && TURNSTILE_SITE_KEY){
  form.hidden=false;
  const script=document.createElement('script');script.src='https://challenges.cloudflare.com/turnstile/v0/api.js';script.async=true;script.defer=true;
