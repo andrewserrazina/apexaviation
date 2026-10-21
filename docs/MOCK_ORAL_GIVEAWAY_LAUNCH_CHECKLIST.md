@@ -51,3 +51,8 @@
 - Backend deployed as Edge Function v5, still launch-disabled unless MOCK_ORAL_GIVEAWAY_ENABLED explicitly equals `true`.
 - Direct HTTP smoke test from execution runtime could not complete because the Supabase hostname could not resolve; this is *not* an end-to-end pass.
 - Older references in this historical checklist to CAPTCHA and pepper secrets document superseded implementation phases, not current launch requirements.
+
+## Oct 21 rules and runtime follow-up
+- Added draft retention (12 months after drawing, subject to legal hold), fraud review, Instagram release, dispute and governing-law proposals to markdown + HTML preview. These are sponsor/counsel approval items, NOT final or legally approved rules.
+- Tested outbound POST to deployed function using the runtime HTTP client; network DNS resolution failed for the Supabase host. This is NOT a function failure or a passing end-to-end test; no entry was made.
+- 10/10 source-level coherence checks passed, including OFF launch switches, valid rules path, removed CAPTCHA dependency, dedupe handling and dates. Browser regression and checkout tests were NOT run.
