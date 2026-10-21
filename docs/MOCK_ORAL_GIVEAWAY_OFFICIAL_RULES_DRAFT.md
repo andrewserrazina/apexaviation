@@ -4,7 +4,7 @@
 
 1. **Sponsor.** Apex Aviation Training Group LLC, 5900 Balcones Dr, Austin, TX 78731.
 2. **Entry period.** Begins October 21, 2026, at 12:00 PM Eastern Time and ends November 1, 2026, at 11:59 PM Eastern Time. Sponsor's server timestamp controls.
-3. **Eligibility.** [Confirm eligible jurisdictions, minimum age, and exclusions]. Void where prohibited. Sponsor personnel and their immediate households are ineligible.
+3. **Eligibility.** Open to legal residents of the 50 United States and the District of Columbia who are 18 years of age or older at the time of entry. Void where prohibited. Employees, officers, and directors of Apex Aviation Training Group LLC and members of their immediate households are ineligible.
 4. **No purchase necessary.** No purchase or payment is required to enter or win, and a purchase does not improve the odds.
 5. **Entry.** One eligible entry per natural person using either route: (a) take the free 20-question Apex Checkride Readiness Assessment and submit the linked giveaway entry form; or (b) use the equally available free direct-entry form without taking the assessment. Both routes collect the same required information and carry exactly the same odds. Completion of the assessment alone is not a giveaway entry. Multiple email addresses do not permit multiple entries.
 6. **Prize.** One virtual Private Pilot Mock Oral instructional session, up to two hours, approximate retail value $129. Nontransferable; no cash alternative except as required by law. [Confirm availability, time zone, instructor, scheduling/redemption deadline, substitutions.]
