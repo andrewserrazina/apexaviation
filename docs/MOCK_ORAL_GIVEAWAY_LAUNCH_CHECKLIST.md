@@ -26,3 +26,9 @@
 10. Do not send entry confirmation/marketing emails unless appropriate consent and sending configuration are verified. Retention/deletion policy for entrants needs review.
 
 **The code in this PR is a staged foundation, not an operational giveaway. Do not merge/deploy as a giveaway launch.**
+
+## October 21 follow-on hardening
+- Added atomic, account/email-level throttling: up to 5 verified submission attempts per normalized email per UTC hour, tracked by one-way SHA-256 digest in an RLS-protected table. The server responds 429 on excess attempts.
+- Both new rate-limit schema/RPC and the invocation are still draft code, NOT deployed or end-to-end tested.
+- This does NOT limit an attacker rotating emails or IPs. A trusted-edge rate limit and bot review remain mandatory; Turnstile alone is not equivalent to rate limiting.
+- Trusted assessment completion proof is still not implemented. All entrants have equal chance through the direct-entry route, and taking the assessment does not register a person automatically.
