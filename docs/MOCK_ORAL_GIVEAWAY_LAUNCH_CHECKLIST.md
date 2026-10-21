@@ -39,3 +39,8 @@
 - All submissions are server-recorded as `direct` until a defensible, independently verifiable quiz completion signal exists. This is intentional and NOT a completed implementation of verified assessment completion.
 - The per-email throttle digest now incorporates required secret `GIVEAWAY_RATE_LIMIT_PEPPER` (at least 32 characters). Configure privately; rotating it resets effective per-email throttling, so coordinate changes. This does not replace network-based abuse protection.
 - Ten static source consistency assertions passed; no staging/browser test run.
+
+## October 21 decision: No Turnstile
+- Sponsor elected not to require CAPTCHA. Removed from entry page and Supabase submission function; Edge Function v4 deployed with public entry switch still OFF.
+- Residual risk: email-level throttling and unique email constraints do not stop automated entries rotating identities. This is an accepted architectural tradeoff, but network/IP abuse protection and manual eligibility checks remain recommended before public launch.
+- No Turnstile keys or related secrets are required. GIVEAWAY_RATE_LIMIT_PEPPER remains necessary.
