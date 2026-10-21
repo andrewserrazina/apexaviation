@@ -39,9 +39,11 @@ Deno.serve(async req=>{
  try{const res=await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify',{method:'POST',body});verified=await res.json();}catch{return respond(503,{error:'Verification unavailable. Try again later.'});}
  if(!verified.success || verified.hostname!=='apexaviationtx.com' || (verified.action && verified.action!=='mock_oral_giveaway'))return respond(400,{error:'Verification failed. Please retry.'});
  const supabase=createClient(url,service,{auth:{persistSession:false}});
- // Bound repeated submissions to the same address. This is not an IP/WAF limiter:
+ // Bound repeated submissions to the same address using a keyed digest. This is not an IP/WAF limiter:
  // deploy an edge/network-level limiter separately before opening this giveaway.
- const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(email));
+ const throttlePepper=Deno.env.get('GIVEAWAY_RATE_LIMIT_PEPPER');
+ if(!throttlePepper || throttlePepper.length<32)return respond(503,{error:'Entry service not configured'});
+ const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(throttlePepper+':'+email));
  const emailHash=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
  const hourBucket=new Date(Math.floor(now/3600000)*3600000).toISOString();
  const {data:allowed,error:limitError}=await supabase.rpc('mock_oral_giveaway_take_rate_limit',{
