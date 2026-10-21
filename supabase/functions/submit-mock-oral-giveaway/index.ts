@@ -14,10 +14,9 @@ Deno.serve(async req=>{
  if(req.headers.get('origin')!==ORIGIN)return respond(403,{error:'Invalid origin'});
  const now=Date.now();
  if(now<START || now>=END_EXCLUSIVE)return respond(403,{error:'The giveaway is not open for entries'});
- const secret=Deno.env.get('TURNSTILE_SECRET_KEY');
  const service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
  const url=Deno.env.get('SUPABASE_URL');
- if(!secret||!service||!url)return respond(503,{error:'Entry service not configured'});
+ if(!service||!url)return respond(503,{error:'Entry service not configured'});
  let input:any;
  try { if(Number(req.headers.get('content-length')||0)>8192)return respond(413,{error:'Payload too large'});input=await req.json();} catch{return respond(400,{error:'Invalid request'});}
  if(!input || typeof input!=='object')return respond(400,{error:'Invalid request'});
@@ -31,11 +30,10 @@ Deno.serve(async req=>{
  // Both methods get exactly one entry. The assessment method is self-reported pending
  // verified assessment-session proof integration; DO NOT describe as verified completion.
  const supabase=createClient(url,service,{auth:{persistSession:false}});
- // Bound repeated submissions to the same address using a keyed digest.
+ // Bound repeated submissions using HMAC-SHA256 keyed with the existing service role secret.
  // This does NOT prevent rotating-email bot submissions; add provider/network rate controls separately.
- const throttlePepper=Deno.env.get('GIVEAWAY_RATE_LIMIT_PEPPER');
- if(!throttlePepper || throttlePepper.length<32)return respond(503,{error:'Entry service not configured'});
- const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(throttlePepper+':'+email));
+ const hmacKey=await crypto.subtle.importKey('raw',new TextEncoder().encode(service),'HMAC',{name:'HMAC',hash:'SHA-256'},false,['sign']);
+ const digest=await crypto.subtle.sign('HMAC',hmacKey,new TextEncoder().encode('mock_oral_2026_oct:'+email));
  const emailHash=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
  const hourBucket=new Date(Math.floor(now/3600000)*3600000).toISOString();
  const {data:allowed,error:limitError}=await supabase.rpc('mock_oral_giveaway_take_rate_limit',{
