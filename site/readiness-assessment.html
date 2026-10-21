@@ -298,7 +298,7 @@
         <h2 style="font-size:clamp(19px,3vw,27px);color:#fff;margin:0 0 12px">Take your readiness assessment for a chance to win a free Mock Oral!</h2>
         <p style="color:#E5E7EB;line-height:1.6;margin:0 0 10px">Complete the free 20-question Checkride Readiness Assessment, then submit your giveaway entry. One eligible winner receives an online Private Pilot Mock Oral (up to 2 hours; $129 value).</p>
         <p style="color:#fff;font-weight:700;margin:0 0 8px">Entries close November 1, 2026 at 11:59 PM ET.</p>
-        <p style="margin:12px 0"><a href="/mock-oral-giveaway.html?from=assessment" style="font-weight:800;color:#F4B400;text-decoration:underline">Submit your free giveaway entry →</a></p>
+        <p style="margin:12px 0"><a href="/mock-oral-giveaway.html?from=assessment&assessment_finished=1" style="font-weight:800;color:#F4B400;text-decoration:underline">Submit your free giveaway entry →</a></p>
         <p style="color:#D1D5DB;font-size:13px;line-height:1.5;margin:0">No purchase necessary. An equally available free direct-entry option must be provided; assessment completion is not required to enter and does not improve odds. One entry per person. See Official Rules for eligibility and details. Not sponsored or endorsed by Instagram.</p>
       </aside>
       <div class="ra-eyebrow">Free Private Pilot Checkride Assessment</div>
@@ -671,6 +671,7 @@
     }
 
     function handleComplete() {
+      // Quiz completion does not automatically constitute giveaway entry.
       results = computeResults();
       if (window.apexTrack) {
         apexTrack('readiness_assessment_completed', {
@@ -714,7 +715,7 @@
       document.getElementById('raResultsContainer').innerHTML =
         '<div class="ra-results__score-row"><span class="ra-results__score">' + results.overallScore + '%</span><span class="ra-results__level">' + escapeHtml(results.band) + '</span></div>' +
         '<p class="ra-results__disclaimer">Your Apex Readiness Score is a study diagnostic, not a prediction or guarantee of checkride performance.</p>' +
-        (window.APEX_MOCK_ORAL_GIVEAWAY_LIVE ? '<div style="text-align:center;margin:14px 0;padding:16px;border:1px solid #F4B400;border-radius:10px"><strong style="color:#F4B400">Mock Oral Giveaway</strong><p style="color:#fff;margin:8px 0">You finished the assessment! Submit a free entry for a chance to win a Private Pilot Mock Oral. Taking the assessment does not improve your odds.</p><a href="mock-oral-giveaway.html?from=assessment" style="color:#F4B400;font-weight:700">Submit giveaway entry →</a></div>' : '') +
+        (window.APEX_MOCK_ORAL_GIVEAWAY_LIVE ? '<div style="text-align:center;margin:14px 0;padding:16px;border:1px solid #F4B400;border-radius:10px"><strong style="color:#F4B400">Mock Oral Giveaway</strong><p style="color:#fff;margin:8px 0">You finished the assessment! Submit a free entry for a chance to win a Private Pilot Mock Oral. Taking the assessment does not improve your odds.</p><a href="mock-oral-giveaway.html?from=assessment&assessment_finished=1" style="color:#F4B400;font-weight:700">Submit giveaway entry →</a></div>' : '') +
         '<div class="ra-gate">' +
           '<h3>Unlock Your Full Report</h3>' +
           '<p>Create your free Apex Advantage account to unlock your full breakdown, strongest area, weakest areas, and personalized study recommendations.</p>' +
@@ -965,7 +966,7 @@
         highlightHtml +
         '<div class="ra-cat-scores">' + catScoresHtml + '</div>' +
         '<div class="ra-recommend"><h3>Where to Focus Next</h3>' + (recommendHtml || '<p>You covered every area solidly -- keep your skills sharp with regular review.</p>') + '<p>' + escapeHtml(timingRecommendation(results.timing, results.overallScore)) + '</p></div>' +
-        (window.APEX_MOCK_ORAL_GIVEAWAY_LIVE ? '<div style="text-align:center;margin:16px 0;padding:16px;border:1px solid #F4B400;border-radius:10px"><strong style="color:#F4B400">Mock Oral Giveaway</strong><p style="color:#fff;margin:8px 0">You completed the assessment. Enter for a chance to win a Private Pilot Mock Oral.</p><a href="mock-oral-giveaway.html?from=assessment" style="color:#F4B400;font-weight:700">Submit giveaway entry →</a></div>' : '') +
+        (window.APEX_MOCK_ORAL_GIVEAWAY_LIVE ? '<div style="text-align:center;margin:16px 0;padding:16px;border:1px solid #F4B400;border-radius:10px"><strong style="color:#F4B400">Mock Oral Giveaway</strong><p style="color:#fff;margin:8px 0">You completed the assessment. Enter for a chance to win a Private Pilot Mock Oral.</p><a href="mock-oral-giveaway.html?from=assessment&assessment_finished=1" style="color:#F4B400;font-weight:700">Submit giveaway entry →</a></div>' : '') +
         '<div class="ra-convert">' +
           '<h3>Your Score Tells You Where to Focus. Apex Helps You Fix It.</h3>' +
           '<p>Continue practicing with DPE-style questions, scenario-based oral prep, ACS coverage tracking, and targeted weak-area review inside Apex Advantage Checkride Prep.</p>' +
