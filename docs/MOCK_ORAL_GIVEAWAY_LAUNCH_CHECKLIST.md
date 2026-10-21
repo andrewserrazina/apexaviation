@@ -32,3 +32,10 @@
 - Both new rate-limit schema/RPC and the invocation are still draft code, NOT deployed or end-to-end tested.
 - This does NOT limit an attacker rotating emails or IPs. A trusted-edge rate limit and bot review remain mandatory; Turnstile alone is not equivalent to rate limiting.
 - Trusted assessment completion proof is still not implemented. All entrants have equal chance through the direct-entry route, and taking the assessment does not register a person automatically.
+
+## Assessment-led entry clarification (October 21)
+- Both gated and full results have a distinct giveaway-entry CTA behind the launch flag. Entering requires separate confirmation on the giveaway form; finishing quiz questions does not itself register an entry.
+- The standalone form describes equal free entry without assessment. Any `assessment_finished=1` URL parameter changes explanatory copy only, NEVER entry verification or drawing odds.
+- All submissions are server-recorded as `direct` until a defensible, independently verifiable quiz completion signal exists. This is intentional and NOT a completed implementation of verified assessment completion.
+- The per-email throttle digest now incorporates required secret `GIVEAWAY_RATE_LIMIT_PEPPER` (at least 32 characters). Configure privately; rotating it resets effective per-email throttling, so coordinate changes. This does not replace network-based abuse protection.
+- Ten static source consistency assertions passed; no staging/browser test run.
