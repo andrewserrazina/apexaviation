@@ -39,6 +39,16 @@ Deno.serve(async req=>{
  try{const res=await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify',{method:'POST',body});verified=await res.json();}catch{return respond(503,{error:'Verification unavailable. Try again later.'});}
  if(!verified.success || verified.hostname!=='apexaviationtx.com' || (verified.action && verified.action!=='mock_oral_giveaway'))return respond(400,{error:'Verification failed. Please retry.'});
  const supabase=createClient(url,service,{auth:{persistSession:false}});
+ // Bound repeated submissions to the same address. This is not an IP/WAF limiter:
+ // deploy an edge/network-level limiter separately before opening this giveaway.
+ const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(email));
+ const emailHash=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
+ const hourBucket=new Date(Math.floor(now/3600000)*3600000).toISOString();
+ const {data:allowed,error:limitError}=await supabase.rpc('mock_oral_giveaway_take_rate_limit',{
+   p_campaign:'mock_oral_2026_oct',p_email_hash:emailHash,p_bucket:hourBucket
+ });
+ if(limitError)return respond(503,{error:'Entry verification is unavailable. Please try again later.'});
+ if(allowed!==true)return respond(429,{error:'Too many attempts. Please retry later.'});
  const {error}=await supabase.from('mock_oral_giveaway_entries').insert({
  campaign_id:'mock_oral_2026_oct',first_name:name,email,checkride_timing:timing,entry_method:method,
  assessment_completed:false,marketing_opt_in:input.marketing_opt_in===true,
