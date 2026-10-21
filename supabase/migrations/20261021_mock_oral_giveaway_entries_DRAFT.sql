@@ -9,6 +9,10 @@ create table if not exists public.mock_oral_giveaway_entries (
  entry_method text not null check (entry_method in ('assessment','direct')),
  assessment_completed boolean not null default false,
  marketing_opt_in boolean not null default false,
+ eligibility_status text not null default 'pending' check (eligibility_status in ('pending','eligible','ineligible')),
+ eligibility_reviewed_at timestamptz,
+ eligibility_review_note text,
+ eligibility_reviewed_by text,
  rules_accepted_at timestamptz not null,
  created_at timestamptz not null default now(),
  constraint giveaway_unique_email_per_campaign unique(campaign_id,email_normalized)
@@ -16,4 +20,5 @@ create table if not exists public.mock_oral_giveaway_entries (
 alter table public.mock_oral_giveaway_entries enable row level security;
 revoke all on public.mock_oral_giveaway_entries from anon,authenticated;
 -- Service role only, through verified server function. Never expose entrant rows to public clients.
+create index if not exists idx_giveaway_entries_eligibility on public.mock_oral_giveaway_entries(campaign_id,eligibility_status);
 create index if not exists idx_giveaway_entries_created on public.mock_oral_giveaway_entries(campaign_id,created_at);
