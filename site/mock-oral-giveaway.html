@@ -13,24 +13,22 @@
 <option value="">Select an option</option><option value="within_14_days">Within 14 days</option><option value="within_30_days">Within 30 days</option><option value="within_90_days">Within 90 days</option><option value="not_scheduled">Not scheduled</option></select>
 <div class="check"><input id="marketing" name="marketing_opt_in" type="checkbox"><label for="marketing">I also want occasional checkride tips and Apex offers by email (optional).</label></div>
 <div class="check"><input id="rules" name="rules_accepted" type="checkbox" required><label for="rules">I agree to the <a href="/mock-oral-giveaway-rules.html">Official Rules</a> and have read the <a href="/privacy.html">Privacy Policy</a>.</label></div>
-<div id="turnstileSlot"></div><button type="submit">Submit my free entry</button><p id="status" role="status" aria-live="polite"></p>
+<button type="submit">Submit my free entry</button><p id="status" role="status" aria-live="polite"></p>
 </form></section>
 <p class="small">This promotion is not sponsored, endorsed, administered by, or associated with Instagram or TikTok.</p></main>
 <script>
 // Launch configuration intentionally disabled. Never enable without a published rules page,
-// valid Turnstile site key, deployed function, eligibility approval, and end-to-end test.
+// deployed function, eligibility approval, and end-to-end test.
 // Set on an approved launch commit only.
-const GIVEAWAY_LIVE=false, SUPABASE_PROJECT_URL='', TURNSTILE_SITE_KEY='';
+const GIVEAWAY_LIVE=false, SUPABASE_PROJECT_URL='';
 const form=document.getElementById('entryForm');
 if(new URLSearchParams(location.search).get('assessment_finished')==='1')document.getElementById('entryRouteDescription').textContent='You have reached the entry form from the assessment. Great! Complete this separate form to enter; your assessment score does not affect the draw. Quiz completion is not independently verified for giveaway purposes.';
-if(GIVEAWAY_LIVE && SUPABASE_PROJECT_URL && TURNSTILE_SITE_KEY){
+if(GIVEAWAY_LIVE && SUPABASE_PROJECT_URL){
  form.hidden=false;
- const script=document.createElement('script');script.src='https://challenges.cloudflare.com/turnstile/v0/api.js';script.async=true;script.defer=true;
- script.onload=()=>{window.turnstile.render('#turnstileSlot',{sitekey:TURNSTILE_SITE_KEY,action:'mock_oral_giveaway',callback:t=>form.dataset.token=t,'expired-callback':()=>{delete form.dataset.token},'error-callback':()=>{delete form.dataset.token;document.getElementById('status').textContent='Verification could not load. Please retry.'}})};document.head.appendChild(script);
  form.addEventListener('submit',async e=>{e.preventDefault();const btn=form.querySelector('button');btn.disabled=true;document.getElementById('status').textContent='Submitting…';
- const p=Object.fromEntries(new FormData(form));p.rules_accepted=document.getElementById('rules').checked;p.marketing_opt_in=document.getElementById('marketing').checked;p.entry_method='direct';p.turnstile_token=form.dataset.token||'';
- try{const res=await fetch(SUPABASE_PROJECT_URL+'/functions/v1/submit-mock-oral-giveaway',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});const body=await res.json();document.getElementById('status').textContent=body.message||body.error||'Unable to submit';if(body.ok){form.reset();delete form.dataset.token;form.querySelector('button').disabled=true;return}}catch{document.getElementById('status').textContent='Network error. Please try again.'}
- btn.disabled=false;delete form.dataset.token;window.turnstile?.reset();
+ const p=Object.fromEntries(new FormData(form));p.rules_accepted=document.getElementById('rules').checked;p.marketing_opt_in=document.getElementById('marketing').checked;p.entry_method='direct';
+ try{const res=await fetch(SUPABASE_PROJECT_URL+'/functions/v1/submit-mock-oral-giveaway',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});const body=await res.json();document.getElementById('status').textContent=body.message||body.error||'Unable to submit';if(body.ok){form.reset();form.querySelector('button').disabled=true;return}}catch{document.getElementById('status').textContent='Network error. Please try again.'}
+ btn.disabled=false;delete form.dataset.token;
  });
 }
 </script></body></html>
