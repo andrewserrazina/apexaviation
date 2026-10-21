@@ -3,7 +3,7 @@
 // verify_jwt=false so nonmembers can use the equal free direct-entry method.
 import { createClient } from 'npm:@supabase/supabase-js@2.57.0';
 const ORIGIN='https://apexaviationtx.com';
-const START=Date.parse('2026-10-22T16:00:00Z');
+const START=Date.parse('2026-10-21T16:00:00Z');
 const END_EXCLUSIVE=Date.parse('2026-11-02T05:00:00Z'); // Nov 2, 00:00 EST.
 const headers={ 'Access-Control-Allow-Origin':ORIGIN,'Access-Control-Allow-Headers':'content-type,authorization,apikey','Access-Control-Allow-Methods':'POST,OPTIONS','Content-Type':'application/json' };
 const respond=(status:number,data:unknown)=>new Response(JSON.stringify(data),{status,headers});
