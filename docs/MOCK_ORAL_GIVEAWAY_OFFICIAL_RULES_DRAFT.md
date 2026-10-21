@@ -2,7 +2,7 @@
 
 **NOT APPROVED OR VALID FOR PUBLIC LAUNCH.** Sponsor must confirm all bracketed fields and obtain an applicable legal/compliance review.
 
-1. **Sponsor.** Apex Aviation Training Group LLC, [complete business mailing address].
+1. **Sponsor.** Apex Aviation Training Group LLC, 5900 Balcones Rd, Austin, TX [ZIP TO CONFIRM].
 2. **Entry period.** Begins October 21, 2026, at 12:00 PM Eastern Time and ends November 1, 2026, at 11:59 PM Eastern Time. Sponsor's server timestamp controls.
 3. **Eligibility.** [Confirm eligible jurisdictions, minimum age, and exclusions]. Void where prohibited. Sponsor personnel and their immediate households are ineligible.
 4. **No purchase necessary.** No purchase or payment is required to enter or win, and a purchase does not improve the odds.
