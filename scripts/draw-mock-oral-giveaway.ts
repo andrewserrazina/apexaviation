@@ -7,6 +7,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.57.0';
 const url=Deno.env.get('SUPABASE_URL'),key=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 if(!url||!key)throw Error('Missing private Supabase environment variables');
 if(Date.now()<Date.parse('2026-11-02T05:00:00Z'))throw Error('Drawing must take place after entries close');
+if(Deno.env.get('GIVEAWAY_ELIGIBILITY_REVIEW_COMPLETE')!=='yes')throw Error('A documented eligibility review is required before drawing');
 const client=createClient(url,key,{auth:{persistSession:false}});
 type Entry={id:string;email:string;created_at:string;campaign_id:string};
 const entrants:Entry[]=[];
@@ -24,6 +25,9 @@ for(let offset=0;;offset+=PAGE_SIZE){
  if(!data||data.length<PAGE_SIZE)break;
 }
 if(entrants.length===0)throw Error('No eligible-timestamp entries. No winner drawn.');
+// STOP: review must confirm disqualifications were excluded from the population.
+// The entries table does not yet support status/eligibility filtering, so fail closed.
+throw Error('Drawing disabled until approved entrant eligibility status is persisted and filtered server-side');
 // IMPORTANT: complete manual eligibility/identity review must occur BEFORE running
 // this drawing, or filter exclusions through an approved auditable record.
 // No purchases or assessment scores used in selection.
