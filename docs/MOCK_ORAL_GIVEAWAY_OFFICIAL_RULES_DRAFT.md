@@ -3,7 +3,7 @@
 **NOT APPROVED OR VALID FOR PUBLIC LAUNCH.** Sponsor must confirm all bracketed fields and obtain an applicable legal/compliance review.
 
 1. **Sponsor.** Apex Aviation Training Group LLC, [complete business mailing address].
-2. **Entry period.** Begins October 22, 2026, at 12:00 PM Eastern Time and ends November 1, 2026, at 11:59 PM Eastern Time. Sponsor's server timestamp controls.
+2. **Entry period.** Begins October 21, 2026, at 12:00 PM Eastern Time and ends November 1, 2026, at 11:59 PM Eastern Time. Sponsor's server timestamp controls.
 3. **Eligibility.** [Confirm eligible jurisdictions, minimum age, and exclusions]. Void where prohibited. Sponsor personnel and their immediate households are ineligible.
 4. **No purchase necessary.** No purchase or payment is required to enter or win, and a purchase does not improve the odds.
 5. **Entry.** One eligible entry per natural person using either route: (a) take the free 20-question Apex Checkride Readiness Assessment and submit the linked giveaway entry form; or (b) use the equally available free direct-entry form without taking the assessment. Both routes collect the same required information and carry exactly the same odds. Completion of the assessment alone is not a giveaway entry. Multiple email addresses do not permit multiple entries.
