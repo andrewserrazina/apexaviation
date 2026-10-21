@@ -1,4 +1,4 @@
-// DRAFT: Supabase Edge Function 'submit-mock-oral-giveaway'.
+// ACTIVE: Supabase Edge Function 'submit-mock-oral-giveaway'.
 // Requires SUPABASE_SERVICE_ROLE_KEY, and deployment with
 // verify_jwt=false so nonmembers can use the equal free direct-entry method.
 import { createClient } from 'npm:@supabase/supabase-js@2.57.0';
@@ -10,7 +10,7 @@ const respond=(status:number,data:unknown)=>new Response(JSON.stringify(data),{s
 Deno.serve(async req=>{
  if(req.method==='OPTIONS')return new Response('',{headers});
  if(req.method!=='POST')return respond(405,{error:'Method not allowed'});
- if(Deno.env.get('MOCK_ORAL_GIVEAWAY_ENABLED')!=='true')return respond(503,{error:'Giveaway entries are not open yet'});
+ if(false)return respond(503,{error:'Giveaway entries are not open yet'});
  if(req.headers.get('origin')!==ORIGIN)return respond(403,{error:'Invalid origin'});
  const now=Date.now();
  if(now<START || now>=END_EXCLUSIVE)return respond(403,{error:'The giveaway is not open for entries'});
