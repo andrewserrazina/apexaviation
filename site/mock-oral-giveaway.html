@@ -25,11 +25,11 @@ const form=document.getElementById('entryForm');
 if(GIVEAWAY_LIVE && SUPABASE_PROJECT_URL && TURNSTILE_SITE_KEY){
  form.hidden=false;
  const script=document.createElement('script');script.src='https://challenges.cloudflare.com/turnstile/v0/api.js';script.async=true;script.defer=true;
- script.onload=()=>{window.turnstile.render('#turnstileSlot',{sitekey:TURNSTILE_SITE_KEY,callback:t=>form.dataset.token=t})};document.head.appendChild(script);
+ script.onload=()=>{window.turnstile.render('#turnstileSlot',{sitekey:TURNSTILE_SITE_KEY,action:'mock_oral_giveaway',callback:t=>form.dataset.token=t,'expired-callback':()=>{delete form.dataset.token},'error-callback':()=>{delete form.dataset.token;document.getElementById('status').textContent='Verification could not load. Please retry.'}})};document.head.appendChild(script);
  form.addEventListener('submit',async e=>{e.preventDefault();const btn=form.querySelector('button');btn.disabled=true;document.getElementById('status').textContent='Submitting…';
- const p=Object.fromEntries(new FormData(form));p.rules_accepted=document.getElementById('rules').checked;p.marketing_opt_in=document.getElementById('marketing').checked;p.entry_method=new URLSearchParams(location.search).get('from')==='assessment'?'assessment':'direct';p.turnstile_token=form.dataset.token||'';
- try{const res=await fetch(SUPABASE_PROJECT_URL+'/functions/v1/submit-mock-oral-giveaway',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});const body=await res.json();document.getElementById('status').textContent=body.message||body.error||'Unable to submit';if(body.ok){form.reset();form.querySelector('button').disabled=true;return}}catch{document.getElementById('status').textContent='Network error. Please try again.'}
- btn.disabled=false;window.turnstile?.reset();
+ const p=Object.fromEntries(new FormData(form));p.rules_accepted=document.getElementById('rules').checked;p.marketing_opt_in=document.getElementById('marketing').checked;p.entry_method='direct';p.turnstile_token=form.dataset.token||'';
+ try{const res=await fetch(SUPABASE_PROJECT_URL+'/functions/v1/submit-mock-oral-giveaway',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});const body=await res.json();document.getElementById('status').textContent=body.message||body.error||'Unable to submit';if(body.ok){form.reset();delete form.dataset.token;form.querySelector('button').disabled=true;return}}catch{document.getElementById('status').textContent='Network error. Please try again.'}
+ btn.disabled=false;delete form.dataset.token;window.turnstile?.reset();
  });
 }
 </script></body></html>
