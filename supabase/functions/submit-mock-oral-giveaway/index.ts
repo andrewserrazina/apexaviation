@@ -10,7 +10,6 @@ const respond=(status:number,data:unknown)=>new Response(JSON.stringify(data),{s
 Deno.serve(async req=>{
  if(req.method==='OPTIONS')return new Response('',{headers});
  if(req.method!=='POST')return respond(405,{error:'Method not allowed'});
- if(false)return respond(503,{error:'Giveaway entries are not open yet'});
  if(req.headers.get('origin')!==ORIGIN)return respond(403,{error:'Invalid origin'});
  const now=Date.now();
  if(now<START || now>=END_EXCLUSIVE)return respond(403,{error:'The giveaway is not open for entries'});
