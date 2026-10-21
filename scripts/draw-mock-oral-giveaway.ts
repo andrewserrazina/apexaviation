@@ -14,8 +14,9 @@ const entrants:Entry[]=[];
 const PAGE_SIZE=1000;
 for(let offset=0;;offset+=PAGE_SIZE){
  const {data,error}=await client.from('mock_oral_giveaway_entries')
-   .select('id,email,created_at,campaign_id')
+   .select('id,email,created_at,campaign_id,eligibility_status')
    .eq('campaign_id','mock_oral_2026_oct')
+   .eq('eligibility_status','eligible')
    .gte('created_at','2026-10-22T16:00:00.000Z')
    .lt('created_at','2026-11-02T05:00:00.000Z')
    .order('id',{ascending:true})
@@ -25,9 +26,7 @@ for(let offset=0;;offset+=PAGE_SIZE){
  if(!data||data.length<PAGE_SIZE)break;
 }
 if(entrants.length===0)throw Error('No eligible-timestamp entries. No winner drawn.');
-// STOP: review must confirm disqualifications were excluded from the population.
-// The entries table does not yet support status/eligibility filtering, so fail closed.
-throw Error('Drawing disabled until approved entrant eligibility status is persisted and filtered server-side');
+// Only admin-reviewed eligible entries are returned. Keep audit of manual review separate.
 // IMPORTANT: complete manual eligibility/identity review must occur BEFORE running
 // this drawing, or filter exclusions through an approved auditable record.
 // No purchases or assessment scores used in selection.
