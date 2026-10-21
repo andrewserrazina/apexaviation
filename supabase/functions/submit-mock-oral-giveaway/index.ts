@@ -1,5 +1,5 @@
 // DRAFT: Supabase Edge Function 'submit-mock-oral-giveaway'.
-// Requires TURNSTILE_SECRET_KEY and SUPABASE_SERVICE_ROLE_KEY, and deployment with
+// Requires SUPABASE_SERVICE_ROLE_KEY, and deployment with
 // verify_jwt=false so nonmembers can use the equal free direct-entry method.
 import { createClient } from 'npm:@supabase/supabase-js@2.57.0';
 const ORIGIN='https://apexaviationtx.com';
@@ -30,17 +30,9 @@ Deno.serve(async req=>{
  if(name.length<1||name.length>80||email.length>254||! /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !['within_14_days','within_30_days','within_90_days','not_scheduled'].includes(timing)||input.rules_accepted!==true)return respond(400,{error:'Please complete all required fields and accept the rules'});
  // Both methods get exactly one entry. The assessment method is self-reported pending
  // verified assessment-session proof integration; DO NOT describe as verified completion.
- const captcha=typeof input.turnstile_token==='string'?input.turnstile_token:'';
- if(!captcha || captcha.length>2048)return respond(400,{error:'Please complete the verification'});
- const body=new URLSearchParams({secret,response:captcha});
- const ip=req.headers.get('cf-connecting-ip');
- if(ip)body.set('remoteip',ip);
- let verified:any;
- try{const res=await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify',{method:'POST',body});verified=await res.json();}catch{return respond(503,{error:'Verification unavailable. Try again later.'});}
- if(!verified.success || verified.hostname!=='apexaviationtx.com' || verified.action!=='mock_oral_giveaway')return respond(400,{error:'Verification failed. Please retry.'});
  const supabase=createClient(url,service,{auth:{persistSession:false}});
- // Bound repeated submissions to the same address using a keyed digest. This is not an IP/WAF limiter:
- // deploy an edge/network-level limiter separately before opening this giveaway.
+ // Bound repeated submissions to the same address using a keyed digest.
+ // This does NOT prevent rotating-email bot submissions; add provider/network rate controls separately.
  const throttlePepper=Deno.env.get('GIVEAWAY_RATE_LIMIT_PEPPER');
  if(!throttlePepper || throttlePepper.length<32)return respond(503,{error:'Entry service not configured'});
  const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(throttlePepper+':'+email));
