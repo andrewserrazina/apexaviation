@@ -1,12 +1,12 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mock Oral Giveaway | Apex Advantage</title>
-<meta name="robots" content="noindex,nofollow"><style>
+<meta name="robots" content="index,follow"><style>
 :root{font-family:Montserrat,Arial,sans-serif;color:#fff;background:#0B1F3A}*{box-sizing:border-box}body{margin:0}.wrap{max-width:700px;margin:auto;padding:48px 20px}header{margin-bottom:36px}header a{color:#F4B400;text-decoration:none}.eyebrow{color:#F4B400;font-size:13px;font-weight:800;letter-spacing:.08em}h1{font-size:clamp(30px,6vw,49px);line-height:1.08}p{color:#d3dae5;line-height:1.6}.panel{background:#122b4c;padding:28px;border-radius:14px;border:1px solid #3f546f}label{display:block;margin:16px 0 7px;font-weight:650}input,select{width:100%;padding:13px;border-radius:7px;border:1px solid #79869a;background:#fff;color:#152238;font:inherit}.check{display:flex;gap:10px;align-items:flex-start;margin-top:18px}.check input{width:auto;margin-top:4px}.check label{margin:0;font-size:14px;line-height:1.5}.check a,a{color:#F4B400}button{background:#F4B400;color:#0B1F3A;border:0;border-radius:8px;padding:16px 22px;font-weight:800;width:100%;margin-top:20px;font:inherit;cursor:pointer}button:disabled{opacity:.55;cursor:not-allowed}.small{font-size:13px}#status{min-height:25px}a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #F4B400;outline-offset:2px}</style></head>
 <body><main class="wrap"><header><a href="/readiness-assessment.html">← Apex Advantage Readiness Assessment</a></header>
 <div class="eyebrow">APEX ADVANTAGE • FREE GIVEAWAY</div><h1>Win a Private Pilot Mock Oral</h1>
 <p>Complete our free 20-question Checkride Readiness Assessment, then enter for a chance to win an online one-on-one Private Pilot Mock Oral (up to two hours; $129 value).</p>
 <p><strong>Entries close November 1, 2026 at 11:59 PM Eastern.</strong></p>
 <p class="small">No purchase necessary. You may <a href="/readiness-assessment.html">take the free assessment first</a> or use this exact same entry form without taking it. Both routes have equal odds; your score never affects selection. Completing the quiz alone does not submit an entry. Limit one entry per person. Eligibility and restrictions apply.</p>
-<section class="panel"><h2>Enter the giveaway</h2><p id="entryRouteDescription" class="small">Please use the form below to submit your free entry. A confirmation is shown only after the entry service records it.</p><p class="small">The form is unavailable until our Official Rules and secure entry system are approved. Please check back when the giveaway opens.</p>
+<section class="panel"><h2>Enter the giveaway</h2><p id="entryRouteDescription" class="small">Please use the form below to submit your free entry. A confirmation is shown only after the entry service records it.</p>
 <form id="entryForm" hidden><label for="name">First name</label><input id="name" name="first_name" required maxlength="80" autocomplete="given-name">
 <label for="email">Email</label><input id="email" name="email" type="email" required maxlength="254" autocomplete="email">
 <label for="when">When is your Private Pilot checkride?</label><select id="when" name="checkride_timing" required>
@@ -20,7 +20,7 @@
 // Launch configuration intentionally disabled. Never enable without a published rules page,
 // deployed function, eligibility approval, and end-to-end test.
 // Set on an approved launch commit only.
-const GIVEAWAY_LIVE=false, SUPABASE_PROJECT_URL='';
+const GIVEAWAY_LIVE=true, SUPABASE_PROJECT_URL='https://wqzfhcjsfzwrimvsudxy.supabase.co';
 const form=document.getElementById('entryForm');
 if(new URLSearchParams(location.search).get('assessment_finished')==='1')document.getElementById('entryRouteDescription').textContent='You have reached the entry form from the assessment. Great! Complete this separate form to enter; your assessment score does not affect the draw. Quiz completion is not independently verified for giveaway purposes.';
 if(GIVEAWAY_LIVE && SUPABASE_PROJECT_URL){
