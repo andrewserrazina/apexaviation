@@ -10,6 +10,11 @@ if(Date.now()<Date.parse('2026-11-02T05:00:00Z'))throw Error('Drawing must take 
 if(Deno.env.get('GIVEAWAY_ELIGIBILITY_REVIEW_COMPLETE')!=='yes')throw Error('A documented eligibility review is required before drawing');
 const client=createClient(url,key,{auth:{persistSession:false}});
 type Entry={id:string;email:string;created_at:string;campaign_id:string;eligibility_status:string};
+// Never draw while any entry in the campaign still awaits eligibility review.
+const {count:pendingCount,error:pendingError}=await client.from('mock_oral_giveaway_entries')
+ .select('id',{count:'exact',head:true}).eq('campaign_id','mock_oral_2026_oct').eq('eligibility_status','pending');
+if(pendingError)throw Error('Unable to verify outstanding eligibility reviews');
+if(pendingCount===null || pendingCount>0)throw Error('Drawing blocked: entries still awaiting eligibility review');
 const entrants:Entry[]=[];
 const PAGE_SIZE=1000;
 for(let offset=0;;offset+=PAGE_SIZE){
