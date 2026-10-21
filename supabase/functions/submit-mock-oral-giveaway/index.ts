@@ -4,7 +4,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.0';
 const ORIGIN='https://apexaviationtx.com';
 const START=Date.parse('2026-10-22T16:00:00Z');
-const END=Date.parse('2026-11-02T04:59:59Z'); // Nov 1 23:59:59 ET (EST).
+const END_EXCLUSIVE=Date.parse('2026-11-02T05:00:00Z'); // Nov 2, 00:00 EST.
 const headers={ 'Access-Control-Allow-Origin':ORIGIN,'Access-Control-Allow-Headers':'content-type,authorization,apikey','Access-Control-Allow-Methods':'POST,OPTIONS','Content-Type':'application/json' };
 const respond=(status:number,data:unknown)=>new Response(JSON.stringify(data),{status,headers});
 Deno.serve(async req=>{
@@ -12,7 +12,7 @@ Deno.serve(async req=>{
  if(req.method!=='POST')return respond(405,{error:'Method not allowed'});
  if(req.headers.get('origin')!==ORIGIN)return respond(403,{error:'Invalid origin'});
  const now=Date.now();
- if(now<START || now>END)return respond(403,{error:'The giveaway is not open for entries'});
+ if(now<START || now>=END_EXCLUSIVE)return respond(403,{error:'The giveaway is not open for entries'});
  const secret=Deno.env.get('TURNSTILE_SECRET_KEY');
  const service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
  const url=Deno.env.get('SUPABASE_URL');
@@ -23,18 +23,20 @@ Deno.serve(async req=>{
  const name=String(input.first_name||'').trim();
  const email=String(input.email||'').trim().toLowerCase();
  const timing=String(input.checkride_timing||'');
- const method=String(input.entry_method||'');
- if(name.length<1||name.length>80||email.length>254||! /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !['within_14_days','within_30_days','within_90_days','not_scheduled'].includes(timing)||!['assessment','direct'].includes(method)||input.rules_accepted!==true)return respond(400,{error:'Please complete all required fields and accept the rules'});
+ // A URL parameter is not evidence of assessment completion. Until signed server-side
+ // assessment proof exists, ALL entries are treated as equal direct entries.
+ const method='direct';
+ if(name.length<1||name.length>80||email.length>254||! /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !['within_14_days','within_30_days','within_90_days','not_scheduled'].includes(timing)||input.rules_accepted!==true)return respond(400,{error:'Please complete all required fields and accept the rules'});
  // Both methods get exactly one entry. The assessment method is self-reported pending
  // verified assessment-session proof integration; DO NOT describe as verified completion.
  const captcha=String(input.turnstile_token||'');
- if(!captcha)return respond(400,{error:'Please complete the verification'});
+ if(!captcha || captcha.length>2048)return respond(400,{error:'Please complete the verification'});
  const body=new URLSearchParams({secret,response:captcha});
  const ip=req.headers.get('cf-connecting-ip');
  if(ip)body.set('remoteip',ip);
  let verified:any;
  try{const res=await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify',{method:'POST',body});verified=await res.json();}catch{return respond(503,{error:'Verification unavailable. Try again later.'});}
- if(!verified.success)return respond(400,{error:'Verification failed. Please retry.'});
+ if(!verified.success || verified.hostname!=='apexaviationtx.com')return respond(400,{error:'Verification failed. Please retry.'});
  const supabase=createClient(url,service,{auth:{persistSession:false}});
  const {error}=await supabase.from('mock_oral_giveaway_entries').insert({
  campaign_id:'mock_oral_2026_oct',first_name:name,email,checkride_timing:timing,entry_method:method,
