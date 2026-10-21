@@ -9,7 +9,7 @@ if(!url||!key)throw Error('Missing private Supabase environment variables');
 if(Date.now()<Date.parse('2026-11-02T05:00:00Z'))throw Error('Drawing must take place after entries close');
 if(Deno.env.get('GIVEAWAY_ELIGIBILITY_REVIEW_COMPLETE')!=='yes')throw Error('A documented eligibility review is required before drawing');
 const client=createClient(url,key,{auth:{persistSession:false}});
-type Entry={id:string;email:string;created_at:string;campaign_id:string};
+type Entry={id:string;email:string;created_at:string;campaign_id:string;eligibility_status:string};
 const entrants:Entry[]=[];
 const PAGE_SIZE=1000;
 for(let offset=0;;offset+=PAGE_SIZE){
