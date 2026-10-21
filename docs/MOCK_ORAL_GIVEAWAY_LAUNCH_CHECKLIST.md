@@ -44,3 +44,10 @@
 - Sponsor elected not to require CAPTCHA. Removed from entry page and Supabase submission function; Edge Function v4 deployed with public entry switch still OFF.
 - Residual risk: email-level throttling and unique email constraints do not stop automated entries rotating identities. This is an accepted architectural tradeoff, but network/IP abuse protection and manual eligibility checks remain recommended before public launch.
 - No Turnstile keys or related secrets are required. GIVEAWAY_RATE_LIMIT_PEPPER remains necessary.
+
+## October 21 backend correction (v5)
+- Removed an overlooked TURNSTILE_SECRET_KEY runtime requirement that was still blocking no-CAPTCHA submissions.
+- No separate GIVEAWAY_RATE_LIMIT_PEPPER configuration is needed: rate-limit email HMAC now uses the existing server-only SUPABASE_SERVICE_ROLE_KEY. The key itself is never sent to the browser or saved in the rate-limit database. Key rotation resets rate-limit buckets.
+- Backend deployed as Edge Function v5, still launch-disabled unless MOCK_ORAL_GIVEAWAY_ENABLED explicitly equals `true`.
+- Direct HTTP smoke test from execution runtime could not complete because the Supabase hostname could not resolve; this is *not* an end-to-end pass.
+- Older references in this historical checklist to CAPTCHA and pepper secrets document superseded implementation phases, not current launch requirements.
