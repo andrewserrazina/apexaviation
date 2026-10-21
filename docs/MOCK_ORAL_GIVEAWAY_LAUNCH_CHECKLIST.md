@@ -1,7 +1,7 @@
 # Private Pilot Mock Oral Giveaway — launch gate (DRAFT)
 
 ## Campaign proposed dates
-- Opens: October 22, 2026, noon America/New_York (16:00 UTC)
+- Opens: October 21, 2026, noon America/New_York (16:00 UTC)
 - Closes: November 1, 2026, 11:59 PM America/New_York (November 2, 04:59 UTC)
 - One $129-value online Private Pilot Mock Oral (up to two hours)
 - One equal-chance entry per person; assessment and direct routes, no purchase necessary.
