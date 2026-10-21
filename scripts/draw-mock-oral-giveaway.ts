@@ -22,7 +22,7 @@ for(let offset=0;;offset+=PAGE_SIZE){
    .select('id,email,created_at,campaign_id,eligibility_status')
    .eq('campaign_id','mock_oral_2026_oct')
    .eq('eligibility_status','eligible')
-   .gte('created_at','2026-10-22T16:00:00.000Z')
+   .gte('created_at','2026-10-21T16:00:00.000Z')
    .lt('created_at','2026-11-02T05:00:00.000Z')
    .order('id',{ascending:true})
    .range(offset,offset+PAGE_SIZE-1);
