@@ -2,10 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
-
-function fmtDate(dateStr) {
-  return dateStr ? new Date(dateStr + 'T00:00:00').toLocaleDateString() : '—'
-}
+import { formatDateOnly as fmtDate } from '../lib/date'
 
 // Members can always log their own milestones as 'self_reported' -- only an
 // admin or instructor acting on someone ELSE's row can move a milestone to
