@@ -145,8 +145,8 @@
       <!-- ─── SIGN UP (FREE) ─── -->
       <div data-view="signup">
         <h1 id="signupHeadline">Join Apex Advantage.</h1>
-        <div class="signup-price-badge" id="signupBadge">✓ Free to join — register for live ground school sessions right away</div>
-        <p class="sub" id="signupSub">Create your free member portal account to book live ground school sessions ($25/session). Unlock the full Checkride Prep System — DPE Question Library, Scenario Training Center, and more — any time after you sign up.</p>
+        <div class="signup-price-badge" id="signupBadge">✓ Free to join — book Private Instruction right away</div>
+        <p class="sub" id="signupSub">Create your free member portal account to book Private Instruction ($55/hour, 1-on-1 with an instructor). Unlock the full Checkride Prep System — DPE Question Library, Scenario Training Center, and more — any time after you sign up.</p>
 
         <div class="login-error" id="signupError"></div>
 
@@ -202,7 +202,7 @@
       <!-- ─── SIGN UP SUCCESS ─── -->
       <div data-view="signup-success">
         <h1 id="signupSuccessHeading">Check your email.</h1>
-        <p class="sub" id="signupSuccessSub">We sent you a link to set your password. Once that's done, sign in and you're ready to book ground school sessions — or unlock the Checkride Prep System whenever you're ready.</p>
+        <p class="sub" id="signupSuccessSub">We sent you a link to set your password. Once that's done, sign in and you're ready to book Private Instruction — or unlock the Checkride Prep System whenever you're ready.</p>
         <button type="button" id="signupSuccessResetBtn" class="btn btn--primary" style="display:none;width:100%;margin-bottom:14px">Reset Password Now</button>
         <div class="login-forgot">
           <button type="button" id="backToSignInFromSuccess">← Back to Sign In</button>
@@ -357,22 +357,22 @@
       'dpe-questions': {
         badge: '✓ Free to join — get your DPE Questions guide instantly',
         headline: 'Get your free guide.',
-        sub: "Create your free member portal account to unlock the 10 Questions DPEs Love to Ask guide right now — plus book live ground school sessions ($25/session) and unlock the full Checkride Prep System any time after you sign up.",
+        sub: "Create your free member portal account to unlock the 10 Questions DPEs Love to Ask guide right now — plus book Private Instruction and unlock the full Checkride Prep System any time after you sign up.",
       },
       'radio-calls': {
         badge: '✓ Free to join — get Radio Calls Made Simple instantly',
         headline: 'Get your free guide.',
-        sub: "Create your free member portal account to unlock Radio Calls Made Simple right now — plus book live ground school sessions ($25/session) and unlock the full Checkride Prep System any time after you sign up.",
+        sub: "Create your free member portal account to unlock Radio Calls Made Simple right now — plus book Private Instruction and unlock the full Checkride Prep System any time after you sign up.",
       },
       'spin-awareness': {
         badge: '✓ Free to join — get the Spin Awareness guide instantly',
         headline: 'Get your free guide.',
-        sub: "Create your free member portal account to unlock the Spin Awareness guide right now — plus book live ground school sessions ($25/session) and unlock the full Checkride Prep System any time after you sign up.",
+        sub: "Create your free member portal account to unlock the Spin Awareness guide right now — plus book Private Instruction and unlock the full Checkride Prep System any time after you sign up.",
       },
       'weight-balance': {
         badge: '✓ Free to join — get the Weight & Balance Calculator instantly',
         headline: 'Get your free calculator.',
-        sub: "Create your free member portal account to unlock the interactive Weight & Balance Calculator right now — plus book live ground school sessions ($25/session) and unlock the full Checkride Prep System any time after you sign up.",
+        sub: "Create your free member portal account to unlock the interactive Weight & Balance Calculator right now — plus book Private Instruction and unlock the full Checkride Prep System any time after you sign up.",
       },
     };
     var signupDest = (new URLSearchParams(window.location.search)).get('dest') || '';
@@ -730,7 +730,7 @@
           document.getElementById('signupSuccessHeading').textContent = 'Check your email.';
           document.getElementById('signupSuccessSub').textContent = wasGsRegistration
             ? "We sent you a link to set your password. Once that's done, sign in and your class will be waiting for you — plus your daily DPE question and free training resources."
-            : "We sent you a link to set your password. Once that's done, sign in and you're ready to book ground school sessions — or unlock the Checkride Prep System whenever you're ready.";
+            : "We sent you a link to set your password. Once that's done, sign in and you're ready to book Private Instruction — or unlock the Checkride Prep System whenever you're ready.";
           resetBtn.style.display = 'none';
         }
         showView('signup-success');

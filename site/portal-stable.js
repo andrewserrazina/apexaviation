@@ -566,6 +566,12 @@
     // same case on first page load, before member data is known yet. Real
     // enforcement is still server-side -- see requireModuleAccess().
     if (id === 'guided-notes' && member && !hasAnyModuleAccess()) id = 'dashboard';
+    // Group Ground School is fully discontinued -- no new registration is
+    // offered anywhere, so a member with no existing history has nothing
+    // to do here. The other half of this guard is enforceGroundSchoolAccess(),
+    // which catches a bookmarked/typed #ground-school hash on first page
+    // load, before member data is known yet.
+    if (id === 'ground-school' && member && !hasGroundSchoolHistory()) id = 'dashboard';
     // Apex Advantage Membership isn't public yet -- admin-only preview.
     if (id === 'ask-andrew' && member && member.role !== 'admin') id = 'dashboard';
     sections.forEach(function (s) { s.classList.toggle('active', s.id === 'section-' + id); });
@@ -5773,6 +5779,35 @@
     if (activeId === 'guided-notes' && !hasAnyModuleAccess()) showSection('dashboard');
   }
 
+  // Group Ground School is fully discontinued -- no new registration is
+  // offered anywhere (see section-ground-school in portal.html). This is
+  // broader than hasAnyModuleAccess() (paid/pack scheduled enrollments
+  // only): a member with just a legacy registration or just a paid
+  // recording, and nothing else, still has real existing access to show.
+  function hasGroundSchoolHistory() {
+    if (!member) return false;
+    if (member.groundSchoolPackUnlocked) return true;
+    if (myScheduledEnrollments.length > 0) return true;
+    if (myGroundRegistrations.length > 0) return true;
+    if (myGroundSchoolRecordings.length > 0) return true;
+    return false;
+  }
+
+  // Same unhide-only-if-applicable pattern as renderModuleWorkbookNavIfApplicable()
+  // above, inverted: the nav item starts hidden and only ever unhides, for
+  // a member with real existing ground-school history to manage -- never
+  // for a brand-new member, who has nothing left to register for.
+  function renderGroundSchoolNavIfApplicable() {
+    if (!hasGroundSchoolHistory()) return;
+    document.getElementById('groundSchoolNavItem').hidden = false;
+  }
+
+  // Same bookmarked-direct-hash guard as enforceGuidedNotesAccess() above.
+  function enforceGroundSchoolAccess() {
+    var activeId = (window.location.hash || '#dashboard').replace('#', '');
+    if (activeId === 'ground-school' && !hasGroundSchoolHistory()) showSection('dashboard');
+  }
+
   // Same admin-only-preview boundary as enforceGuidedNotesAccess() above,
   // for Ask Andrew -- Apex Advantage Membership isn't public yet. Real
   // enforcement is still server-side: ai-cfi-chat's requireCapability()
@@ -7745,10 +7780,17 @@
 
     availableReferralRewards = referrals.filter(function (r) { return r.status === 'rewarded' && !r.redeemed_at; }).length;
 
+    // Ground School registration (what this reward was redeemed against)
+    // is closed -- a member who earned a reward before that happened
+    // still has a real, legitimately-earned credit, just no self-serve
+    // way to spend it anymore (redeem_referral_reward() would need a
+    // product change to repoint it, out of scope here). Tell them to
+    // reach out rather than pointing at a "register and choose Use a
+    // Free Referral Reward" flow that no longer exists in the UI.
     var banner = document.getElementById('referralRewardBanner');
     if (availableReferralRewards > 0) {
       banner.style.display = 'block';
-      banner.textContent = '🎁 You have ' + availableReferralRewards + ' free ground school session' + (availableReferralRewards === 1 ? '' : 's') + ' to use — register for any session and choose "Use a Free Referral Reward" instead of paying.';
+      banner.textContent = '🎁 You have ' + availableReferralRewards + ' earned referral reward' + (availableReferralRewards === 1 ? '' : 's') + ' — email info@apexaviationtx.com to use ' + (availableReferralRewards === 1 ? 'it' : 'them') + '.';
     } else {
       banner.style.display = 'none';
     }
@@ -7794,16 +7836,18 @@
   // just below, so a member who sees the banner once this session isn't
   // double/triple-counted as three "views."
   var referralPromoViewTrackedThisSession = false;
+  // The reward this banner advertised ("a free Ground School session")
+  // is redeemed via redeem_referral_reward(), which only ever spent
+  // against the legacy ground_sessions path -- now unreachable (the
+  // browse-and-register UI it depends on is permanently hidden, see
+  // section-ground-school above). Rather than keep promoting a reward
+  // that can no longer be redeemed, this banner stays hidden until the
+  // reward is repointed at a real product (needs a redeem_referral_
+  // reward() change, not just copy -- out of scope here).
   function renderReferralPromoBanner() {
     var banner = document.getElementById('referralPromoBanner');
     if (!banner) return;
-    var dismissed = false;
-    try { dismissed = localStorage.getItem(referralPromoDismissKey) === '1'; } catch (e) {}
-    banner.hidden = dismissed || !referralCode || referrals.length > 0;
-    if (!banner.hidden && !referralPromoViewTrackedThisSession) {
-      referralPromoViewTrackedThisSession = true;
-      if (window.apexTrack) apexTrack('referral_promo_banner_viewed', { profile_id: member.id });
-    }
+    banner.hidden = true;
   }
   var referralPromoCopyBtn = document.getElementById('referralPromoCopyBtn');
   if (referralPromoCopyBtn) referralPromoCopyBtn.addEventListener('click', function () { copyReferralLink('dashboard_banner'); });
@@ -8642,19 +8686,19 @@
       };
     } else if (state === 'repeat_class_student') {
       content = {
-        eyebrow: 'Complete the Full Ground School',
+        eyebrow: 'Keep Going',
         title: "You've Already Started Training With Apex Advantage",
-        body: 'Enroll in the complete Private Pilot Ground School for access to the full 20-module program — $400, no per-class charge after.',
-        cta: 'View Full Ground School',
-        go: function () { showSection('ground-school'); }
+        body: 'Group Ground School has been replaced by Private Instruction — flexible, 1-on-1 time with an instructor, $55 per hour, any certificate level.',
+        cta: 'Explore Private Instruction',
+        go: function () { window.location.href = 'apex-advantage-private-instruction.html'; }
       };
     } else if (state === 'individual_class_student') {
       content = {
         eyebrow: 'Keep Going',
         title: 'Continue Building Your Private Pilot Knowledge',
-        body: 'Register for the next Apex Advantage Ground School class in the series.',
-        cta: 'View Next Class',
-        go: function () { showSection('ground-school'); }
+        body: 'Group Ground School has been replaced by Private Instruction — book 1-on-1 time with an instructor whenever you need it.',
+        cta: 'Explore Private Instruction',
+        go: function () { window.location.href = 'apex-advantage-private-instruction.html'; }
       };
     } else if (state === 'checkride_soon') {
       content = {
@@ -8667,18 +8711,18 @@
     } else if (state === 'ground_school_interested') {
       content = {
         eyebrow: 'Join Us Live',
-        title: 'Apex Advantage Ground School Is Live',
-        body: 'Instructor-led, scenario-based training built to help you understand the material — not just memorize it. Classes are $25 individually.',
-        cta: 'View Upcoming Classes',
-        go: function () { showSection('ground-school'); }
+        title: 'Apex Advantage Private Instruction Is Live',
+        body: '1-on-1 time with an instructor, built around what you actually need — not a fixed curriculum. $55 per hour.',
+        cta: 'Explore Private Instruction',
+        go: function () { window.location.href = 'apex-advantage-private-instruction.html'; }
       };
     } else if (state === 'active_free_member') {
       content = {
         eyebrow: 'Keep Exploring',
         title: 'Round Out Your Free Account',
-        body: "You've started studying — Apex Advantage Ground School classes are live if you'd rather train with an instructor in real time.",
-        cta: 'View Upcoming Classes',
-        go: function () { showSection('ground-school'); }
+        body: "You've started studying — Apex Advantage Private Instruction is live if you'd rather train with an instructor in real time.",
+        cta: 'Explore Private Instruction',
+        go: function () { window.location.href = 'apex-advantage-private-instruction.html'; }
       };
     } else {
       // Explicitly an upsell card (eyebrow "Get Started"), unlike the
@@ -9008,18 +9052,15 @@
     // Paid CTA: never shown for a product the member already owns
     // (Test 7) -- an unlocked member is routed straight into that owned
     // content (their DPE library for Active Prep, a real Mock Oral
-    // booking for Imminent) instead of a purchase pitch. Ground School
-    // (Foundation's paid path) is a SEPARATE product from Checkride
-    // Prep -- gated on member.groundSchoolPackUnlocked, not the
-    // `unlocked` (checkridePrepUnlocked) flag used everywhere else here,
-    // since a Checkride-Prep member who never bought Ground School still
-    // needs to see this CTA, and a Ground-School-only member routed here
-    // shouldn't see a purchase pitch for a class pack they already own.
+    // booking for Imminent) instead of a purchase pitch. Foundation's
+    // paid path used to pitch the Ground School pack ($400, gated on
+    // member.groundSchoolPackUnlocked); that product is fully
+    // discontinued, so this now points at Private Instruction instead
+    // (not gated on any prior purchase -- there's no "already owns an
+    // hour of 1-on-1 time" state the way a one-time pack unlock works).
     var paidCta;
     if (route === 'foundation') {
-      paidCta = member.groundSchoolPackUnlocked
-        ? null
-        : { product: 'ground_school', label: 'VIEW GROUND SCHOOL OPTIONS', go: function () { showSection('ground-school'); } };
+      paidCta = { product: 'private_instruction', label: 'EXPLORE PRIVATE INSTRUCTION', go: function () { window.location.href = 'apex-advantage-private-instruction.html'; } };
     } else if (route === 'imminent') {
       // product: 'mock_oral' -- the canonical analytics product identifier
       // (matches mock_oral_page_view/mock_oral_checkout_started/etc. in
@@ -9242,12 +9283,14 @@
       // read as "only for people already scheduled." training_stage is
       // real, self-reported data (the onboarding survey at line ~4380),
       // not a guess -- when it says the member is early, the second task
-      // points at something free and actually useful for that stage
-      // (Ground School) instead of a second unlock pitch.
+      // points at something actually useful for that stage instead of a
+      // second unlock pitch. Previously pointed at Ground School
+      // ($25/session); that product is fully discontinued, so this now
+      // points at Private Instruction, its direct replacement.
       var earlyStage = member && (member.trainingStage === 'just_starting' || member.trainingStage === 'pre_solo');
       tasks.push({ label: 'Unlock the Checkride Prep System', done: false, go: function () { openUnlockModal(); } });
       if (earlyStage) {
-        tasks.push({ label: 'Browse upcoming Ground School classes', done: false, go: function () { showSection('ground-school'); } });
+        tasks.push({ label: 'Explore 1-on-1 Private Instruction', done: false, go: function () { window.location.href = 'apex-advantage-private-instruction.html'; } });
       } else {
         tasks.push({ label: 'Try your first training scenario', done: false, go: function () { openUnlockModal(); } });
       }
@@ -9255,7 +9298,7 @@
         unlocked: false, checkrideDays: checkrideDays, readinessPct: 0, primaryFocus: null,
         nextClass: next, classImminent: classImminent, tasks: tasks,
         whyText: classImminent ? null : (earlyStage
-          ? "You're early in training — Ground School and free daily questions are the best use of Apex Advantage right now."
+          ? "You're early in training — Private Instruction and free daily questions are the best use of Apex Advantage right now."
           : "You haven't unlocked Checkride Prep yet — every recommendation below depends on real study data, so start there.")
       };
     }
@@ -9552,35 +9595,15 @@
       preclassEl.hidden = true;
     }
 
-    // Growth Sprint section 12 -- "Want help with this live?" cross-sell,
-    // real scheduled-class data only. Skipped if the same class is already
-    // the imminent-class banner above, or if the member has no weak area
-    // yet (locked, or already 100% across the board).
+    // Growth Sprint section 12's "Want help with this live?" cross-sell
+    // promoted a new $25/session Ground School registration -- Group
+    // Ground School is fully discontinued (Private Instruction replaces
+    // it), so this always stays hidden now. findGsClassForWeakArea() is
+    // left in place (still used to compute gsMatch here previously) but
+    // no longer called, since nothing should surface an open class to
+    // register for anymore.
     var crossSellEl = document.getElementById('trainingPlanGsCrossSell');
-    if (crossSellEl) {
-      var gsMatch = plan.unlocked && plan.primaryFocus ? findGsClassForWeakArea(plan.primaryFocus.label) : null;
-      if (gsMatch && !(plan.classImminent && plan.nextClass && String(plan.nextClass.id) === String(gsMatch.id))) {
-        crossSellEl.hidden = false;
-        var gsWhen = new Date(gsMatch.scheduled_at);
-        var gsPriceLabel = gsMatch.packCovers ? 'Included in Your Pack' : '$25';
-        crossSellEl.innerHTML =
-          '<div><div class="portal-header__eyebrow">Want Help With This Live?</div><h3>' + escapeHtmlSafe(gsMatch.title) + '</h3><p>' +
-          gsWhen.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' · ' + gsPriceLabel +
-          (typeof gsMatch.spotsLeft === 'number' ? ' · ' + Math.max(gsMatch.spotsLeft, 0) + ' seat' + (gsMatch.spotsLeft === 1 ? '' : 's') + ' left' : '') +
-          '</p></div>' +
-          '<div class="portal-my-training__preclass-actions">' +
-          '<button type="button" class="btn btn--primary" id="trainingPlanGsCrossSellBtn">View Live Class →</button>' +
-          '</div>';
-        var crossSellBtn = document.getElementById('trainingPlanGsCrossSellBtn');
-        if (crossSellBtn) crossSellBtn.addEventListener('click', function () {
-          apexSupabase.from('portal_events').insert({ profile_id: member.id, event_type: 'gs_cross_sell_clicked', metadata: { category: plan.primaryFocus.cat, class_id: gsMatch.id } });
-          showSection('ground-school');
-        });
-        logEventOnce('gs_cross_sell_shown', { category: plan.primaryFocus.cat, class_id: gsMatch.id });
-      } else {
-        crossSellEl.hidden = true;
-      }
-    }
+    if (crossSellEl) crossSellEl.hidden = true;
 
     var checkrideEl = document.getElementById('trainingPlanCheckride');
     checkrideEl.querySelector('h3').textContent = plan.checkrideDays === null ? 'Not set'
@@ -9912,6 +9935,8 @@
       renderAdminIfApplicable();
       renderModuleWorkbookNavIfApplicable();
       enforceGuidedNotesAccess();
+      renderGroundSchoolNavIfApplicable();
+      enforceGroundSchoolAccess();
       enforceAskAndrewAccess();
       enforceUpgradeDeepLink();
       enforceTopicDeepLink();

@@ -81,7 +81,13 @@
         </button>
 
         <div class="portal-nav__section-label">Learn</div>
-        <button class="portal-nav__item" data-section="ground-school">
+        <!-- Group Ground School is fully discontinued -- no new
+             registration is offered anywhere. This stays hidden by
+             default and only unhides for a member with real existing
+             access (a registration, a recording, or the full pack) via
+             renderGroundSchoolNavIfApplicable() in portal-stable.js, same
+             pattern as guidedNotesNavItem below. -->
+        <button class="portal-nav__item" data-section="ground-school" id="groundSchoolNavItem" hidden>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422A12.083 12.083 0 0112 20.055 12.083 12.083 0 015.84 10.578L12 14z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Ground School
         </button>
@@ -196,7 +202,7 @@
         </button>
       </nav>
       <div class="portal-sidebar__footer">
-        <p>Apex Advantage<br/>Live Instructor-Led Ground School</p>
+        <p>Apex Advantage<br/>Live 1-on-1 Private Instruction</p>
       </div>
     </aside>
 
@@ -212,11 +218,13 @@
           </div>
         </div>
 
-        <!-- Refer-a-Friend promo -- surfaces the existing reward (a free
-             Ground School session per referral) on the page every member
-             actually visits, instead of only on the Account page. Shown
-             only to members who haven't referred anyone yet; see
-             renderReferralPromoBanner() in portal-stable.js. -->
+        <!-- Refer-a-Friend promo -- permanently hidden now (see
+             renderReferralPromoBanner() in portal-stable.js). Its reward
+             was "a free Ground School session," redeemed against a
+             registration flow that's now closed (Group Ground School is
+             discontinued); the inner copy is left as historical record,
+             not shown to anyone, pending a product decision on whether
+             to repoint the reward at Private Instruction. -->
         <div class="portal-card" id="referralPromoBanner" hidden style="margin-bottom:24px;border-color:rgba(244,180,0,0.25);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
           <div>
             <h3 style="color:#fff;font-size:15px;font-weight:800;margin-bottom:4px">🎁 Give a Friend a Free Ground School Class</h3>
@@ -1400,24 +1408,31 @@
         </div>
       </section>
 
-      <!-- ─────────── GROUND SCHOOL SCHEDULING ─────────── -->
+      <!-- ─────────── GROUND SCHOOL (EXISTING-ACCESS ONLY) ───────────
+           Group Ground School is fully discontinued -- no new $25/session
+           or $400/pack registration is offered anywhere anymore (see
+           Private Instruction instead). This section now only shows a
+           member's own existing access: confirmations already made,
+           recordings already paid for, and progress on what they already
+           registered for. It's unreachable in the nav for a member with
+           no such history (see groundSchoolNavItem/renderGroundSchoolNavIfApplicable()
+           + enforceGroundSchoolAccess() in portal-stable.js) -- real
+           enforcement is still server-side via RLS, this just stops the
+           UI from offering a purchase it won't fulfill. -->
       <section class="portal-section" id="section-ground-school">
         <div class="portal-header">
-          <div class="portal-header__eyebrow">Live Ground School · $25 per session</div>
-          <h1>Register for a session.</h1>
-          <p>Live instructor-led ground school, taught by Andrew. Pick any upcoming session below — pay online and you're confirmed instantly.</p>
+          <div class="portal-header__eyebrow">Ground School · Registration Closed</div>
+          <h1>Your Ground School access.</h1>
+          <p>New Ground School registration is closed — <a href="apex-advantage-private-instruction.html" style="color:var(--gold)">Private Instruction</a> is now how to book 1-on-1 time with Andrew. Below is what you've already registered for, your recordings, and your progress.</p>
         </div>
 
-        <!-- $25-class registration confirmation -- shown once, right
-             after a successful ?registered=1 redirect. Confirmation is
-             the dominant purpose of this card; the Full Ground School
-             mention below it is a single secondary line, not a second
-             sales pitch. -->
+        <!-- Shown once, right after a successful ?registered=1 redirect
+             (an already-completed purchase from before registration
+             closed). Confirmation only -- no new-sale pitch below it. -->
         <div class="portal-card" id="groundSchoolRegistrationSuccessCard" hidden style="margin-bottom:20px;border-color:rgba(244,180,0,0.3)"></div>
 
-        <!-- Full Ground School students: a progress card replaces the
-             sales pitch entirely (see renderGroundSchoolProgress() in
-             portal-stable.js) -- real enrollment/attendance data only. -->
+        <!-- Full Ground School students: real enrollment/attendance data
+             only. See renderGroundSchoolProgress() in portal-stable.js. -->
         <div class="portal-card" id="groundSchoolProgressCard" hidden style="margin-bottom:20px"></div>
 
         <!-- Class recordings -- hidden entirely for a member with no
@@ -1426,32 +1441,37 @@
              portal-stable.js and get_my_ground_school_recordings (v96). -->
         <div class="portal-card" id="groundSchoolRecordingsCard" hidden style="margin-bottom:20px"></div>
 
-        <!-- Full-course pack -- an alternative to $25/session, not a
-             replacement for it. Hidden once unlocked (see
-             renderGroundSchoolPackCard() in portal-stable.js); the
-             per-session $25 registration flow below is completely
-             unaffected either way. -->
-        <div class="portal-card" id="groundSchoolPackCard" style="margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;background:rgba(244,180,0,0.06);border:1px solid rgba(244,180,0,0.2)">
-          <div>
-            <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:4px">Unlock the Full Private Pilot Ground School</h3>
-            <p style="color:rgba(255,255,255,0.55);font-size:13px;margin:0">One payment of $400 covers every class in the series — no $25 charge per session.</p>
+        <!-- Permanently hidden -- registration is closed, so none of this
+             browse-and-buy UI is ever shown to anyone. Left in the DOM
+             (not deleted) purely so loadGroundSchool()/renderGroundSchool
+             Cards()/Calendar()/Week() and groundSchoolPackUnlockBtn's
+             click handler in portal-stable.js still find real elements
+             instead of throwing on a removed id -- those functions are
+             unchanged and still power findGsClassForWeakArea() internally,
+             they just never render to a visible container anymore. -->
+        <div hidden>
+          <div class="portal-card" id="groundSchoolPackCard" style="margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;background:rgba(244,180,0,0.06);border:1px solid rgba(244,180,0,0.2)">
+            <div>
+              <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:4px">Unlock the Full Private Pilot Ground School</h3>
+              <p style="color:rgba(255,255,255,0.55);font-size:13px;margin:0">One payment of $400 covers every class in the series — no $25 charge per session.</p>
+            </div>
+            <button class="btn btn--primary" id="groundSchoolPackUnlockBtn" style="white-space:nowrap">Unlock for $400</button>
           </div>
-          <button class="btn btn--primary" id="groundSchoolPackUnlockBtn" style="white-space:nowrap">Unlock for $400</button>
-        </div>
-        <p class="portal-modal__error" id="groundSchoolPackError" style="margin:-10px 0 20px"></p>
+          <p class="portal-modal__error" id="groundSchoolPackError" style="margin:-10px 0 20px"></p>
 
-        <div class="portal-tabs" id="groundSchoolViewTabs">
-          <button class="portal-tab active" data-gs-view="cards">Cards</button>
-          <button class="portal-tab" data-gs-view="calendar">Calendar</button>
-          <button class="portal-tab" data-gs-view="week">This Week</button>
-        </div>
+          <div class="portal-tabs" id="groundSchoolViewTabs">
+            <button class="portal-tab active" data-gs-view="cards">Cards</button>
+            <button class="portal-tab" data-gs-view="calendar">Calendar</button>
+            <button class="portal-tab" data-gs-view="week">This Week</button>
+          </div>
 
-        <div id="groundSchoolList"><p style="color:rgba(255,255,255,0.4);font-size:14px">Loading sessions…</p></div>
-        <div id="groundSchoolCalendar" style="display:none"></div>
-        <div id="groundSchoolWeek" style="display:none"></div>
-        <div id="groundSchoolEmpty" style="display:none">
-          <div class="portal-card" style="text-align:center;padding:48px 32px">
-            <p style="color:rgba(255,255,255,0.5);font-size:14px;margin:0">No upcoming sessions scheduled right now — check back soon, or <a href="contact.html" style="color:var(--gold)">contact us</a> to ask about the next one.</p>
+          <div id="groundSchoolList"><p style="color:rgba(255,255,255,0.4);font-size:14px">Loading sessions…</p></div>
+          <div id="groundSchoolCalendar" style="display:none"></div>
+          <div id="groundSchoolWeek" style="display:none"></div>
+          <div id="groundSchoolEmpty" style="display:none">
+            <div class="portal-card" style="text-align:center;padding:48px 32px">
+              <p style="color:rgba(255,255,255,0.5);font-size:14px;margin:0">No upcoming sessions scheduled right now — check back soon, or <a href="contact.html" style="color:var(--gold)">contact us</a> to ask about the next one.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -1898,8 +1918,8 @@
               <span id="memberSince">—</span>
             </div>
             <div class="portal-membership-row">
-              <strong>Ground School</strong>
-              <span>$25 / session, pay at the door</span>
+              <strong>Private Instruction</strong>
+              <span>$55 / hour, booked online</span>
             </div>
             <div class="portal-membership-row">
               <strong>Support</strong>
@@ -1935,7 +1955,7 @@
 
           <div class="portal-card">
             <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">Refer a Friend</h3>
-            <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:16px">Get a free Apex Advantage ground school session for every friend who enrolls.</p>
+            <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:16px">Share your link with a friend who's training for their checkride.</p>
             <div id="referralRewardBanner" style="display:none;margin-bottom:14px;padding:12px 14px;background:rgba(244,180,0,0.1);border:1px solid rgba(244,180,0,0.35);border-radius:8px;font-size:13px;color:#fff"></div>
             <div class="portal-referral-code">
               <code id="referralCode">—</code>
@@ -1963,7 +1983,7 @@
           <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">My Ground School Sessions</h3>
           <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:16px">Sessions you've registered for, waitlisted on, or attended.</p>
           <div id="mySessionsList"></div>
-          <p id="mySessionsEmpty" style="color:rgba(255,255,255,0.4);font-size:13px">No ground school sessions yet — <a href="#ground-school" data-goto="ground-school" style="color:var(--gold)">browse upcoming sessions</a>.</p>
+          <p id="mySessionsEmpty" style="color:rgba(255,255,255,0.4);font-size:13px">No ground school sessions on file — Group Ground School has been replaced by <a href="apex-advantage-private-instruction.html" style="color:var(--gold)">Private Instruction</a>.</p>
         </div>
 
         <div class="portal-card" style="margin-top:20px">
