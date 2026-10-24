@@ -68,15 +68,22 @@ describe('create-checkout-session/index.ts: server-side checkout-failure observa
     expect(innerCatchIdx).toBeLessThan(returnIdx)
   })
 
-  it('does not touch any purpose branch -- no pricing/amount_cents/stripe.checkout.sessions.create call sites changed', () => {
+  it('every remaining purpose branch\'s Stripe call still has a matching logCheckoutAttempt() call', () => {
     // Every purpose branch's Stripe call + logCheckoutAttempt() call
-    // should still appear exactly as many times as before this repair --
-    // this is a coarse guard against the repair having accidentally
-    // touched branch logic instead of only the shared top/catch.
+    // should still appear exactly as many times as each other -- this is
+    // a coarse guard against a change having accidentally touched one
+    // half of a branch's pair without the other, not a guard against the
+    // total count itself changing. The count legitimately dropped from
+    // 14 to 9 in the Oct 2026 follow-up deploy, which deleted five
+    // call sites outright (ground-school-registration's two branches,
+    // plus unlock/upgrade/signup-and-unlock-ground-school-pack) as part
+    // of closing Group Ground School's discontinued purchase paths --
+    // not a case of this repair's own shared top/catch code touching
+    // branch logic it shouldn't have.
     const stripeCallCount = (checkoutSource.match(/stripe\.checkout\.sessions\.create\(/g) || []).length
     const logAttemptCount = (checkoutSource.match(/await logCheckoutAttempt\(/g) || []).length
-    expect(stripeCallCount).toBeGreaterThanOrEqual(10)
-    expect(logAttemptCount).toBeGreaterThanOrEqual(10)
+    expect(stripeCallCount).toBeGreaterThanOrEqual(9)
+    expect(logAttemptCount).toBeGreaterThanOrEqual(9)
     expect(stripeCallCount).toBe(logAttemptCount)
   })
 })

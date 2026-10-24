@@ -234,32 +234,52 @@ describe('Public signup page (portal-login.html): no live $25/session Ground Sch
   })
 })
 
-describe('KNOWN GAP (not fixed by this pass): server-side purchase/redemption enforcement', () => {
-  // This test intentionally documents reality rather than asserting a
-  // fix that doesn't exist. create-checkout-session's 'ground-school-
-  // registration' purpose and stripe-webhook's handleGroundSchoolRegistration
-  // have no closed-for-new-sales check -- a direct API call (bypassing
-  // every UI change in this repo) can still create a real Stripe
-  // Checkout session and, on completion, a real enrollment via
-  // confirm_scheduled_ground_class_enrollment(). Likewise,
-  // redeem_referral_reward() has no such check either. See the
-  // verification-pass report for remediation options. This test fails
-  // loudly (not silently skips) if someone adds a gate later without
-  // updating this test -- at which point it should be rewritten to
-  // assert the gate exists, not deleted.
-  it('confirms the gap still exists (update this test, do not delete it, once a gate is added)', () => {
-    const purposeIdx = checkoutSource.indexOf("if (purpose === 'ground-school-registration') {")
-    expect(purposeIdx).toBeGreaterThan(-1)
-    const handlerEnd = checkoutSource.indexOf('\n    }\n\n    if (purpose ===', purposeIdx)
-    const handler = checkoutSource.slice(purposeIdx, handlerEnd === -1 ? purposeIdx + 2000 : handlerEnd)
-    // No "registration closed" / "no longer available" / feature-flag
-    // check of any kind exists in this handler today.
-    expect(handler).not.toMatch(/no longer (available|offered)/i)
-    expect(handler).not.toMatch(/registration (is )?closed/i)
-    expect(handler).not.toMatch(/GROUND_SCHOOL_(REGISTRATION_)?(CLOSED|DISABLED)/)
+describe('Server-side purchase enforcement (fixed: Oct 2026 follow-up deploy)', () => {
+  // Previously a KNOWN GAP documented here rather than asserted away:
+  // create-checkout-session had no closed-for-new-sales check on any of
+  // the four purposes that used to sell Group Ground School, and two of
+  // them required no auth at all. Fixed by returning 410 immediately for
+  // all four, before any DB/Stripe call, and deleting the now-truly-dead
+  // registration/purchase logic each used to run (it can never execute
+  // again) rather than leaving it as unreachable dead code.
+  it('all four discontinued purposes return 410 before doing anything else', () => {
+    ['ground-school-registration', 'unlock-ground-school-pack', 'upgrade-ground-school-pack', 'signup-and-unlock-ground-school-pack'].forEach((purpose) => {
+      const idx = checkoutSource.indexOf(`purpose === '${purpose}'`)
+      expect(idx, `${purpose} not referenced`).toBeGreaterThan(-1)
+      const returnIdx = checkoutSource.indexOf('return jsonError(', idx)
+      expect(returnIdx, `${purpose}: no jsonError return found nearby`).toBeGreaterThan(-1)
+      expect(returnIdx - idx, `${purpose}: jsonError return is too far from the purpose check to be its immediate guard`).toBeLessThan(1200)
+      const nearby = checkoutSource.slice(idx, returnIdx + 200)
+      expect(nearby).toMatch(/registration is closed/i)
+      expect(nearby).toMatch(/,\s*410\)/)
+    })
+  })
 
+  it('the dead registration/purchase logic was removed, not left unreachable', () => {
+    // These were real side effects (Stripe session creation, new account
+    // creation, welcome emails) inside the old branches -- confirms none
+    // of that code is still sitting there, now permanently unreachable.
+    expect(checkoutSource).not.toMatch(/scheduled_ground_class_enrollments/)
+    expect(checkoutSource).not.toMatch(/Apex Advantage Private Pilot Ground School — Full Course/)
+    expect(checkoutSource).not.toMatch(/GROUND_SCHOOL_(PACK_)?PRICE_CENTS/)
+  })
+
+  it('stripe-webhook is deliberately untouched, so an already-created pre-fix session still completes correctly', () => {
     expect(webhookSource).toContain('async function handleGroundSchoolRegistration(')
+    expect(webhookSource).toContain('async function handleUnlockGroundSchoolPack(')
+    expect(webhookSource).toContain('async function handleUpgradeGroundSchoolPack(')
     expect(webhookSource).toContain('confirm_scheduled_ground_class_enrollment')
+  })
+
+  it('redeem_referral_reward itself is untouched server-side (existing earned rewards stay redeemable, per the owner\'s explicit instruction not to change this RPC)', () => {
+    // This repo's RPC source isn't readable from a static .ts file the
+    // way the Edge Functions are -- this just re-asserts the documented
+    // decision from the verification-pass report: the client-side
+    // redemption UI is hidden (covered above), but the RPC was
+    // deliberately left alone pending a replacement-reward policy
+    // decision, not touched as part of this fix.
+    expect(checkoutSource).not.toMatch(/redeem_referral_reward/)
+    expect(webhookSource).not.toMatch(/redeem_referral_reward/)
   })
 })
 

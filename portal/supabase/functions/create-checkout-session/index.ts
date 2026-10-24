@@ -34,9 +34,14 @@
 //     result, not from a client-supplied value.
 //
 //   purpose: 'ground-school-registration'
-//     Registering (and paying $25) for a specific live ground school
-//     session. Anonymous-friendly -- no login required, same as the old
-//     cash-at-door flow, just paid online now.
+//     CLOSED (Oct 2026) -- Group Ground School is fully discontinued,
+//     replaced by Private Instruction (see 'book-private-instruction'
+//     below). This purpose now always returns a 410; the registration
+//     logic it used to run was removed rather than left dead, since it
+//     can never execute again. stripe-webhook's handleGroundSchoolRegistration
+//     is deliberately left in place to finish processing any checkout
+//     session created in the brief window before this closed, up to
+//     Stripe's ~24h session expiry.
 //
 //   purpose: 'book-mock-oral'
 //     An already-signed-in member booking a $99 60-minute Mock Oral.
@@ -94,15 +99,14 @@
 //     the entitlement/content-versioning model and
 //     get-study-pack-content for the protected-content read path.
 //
-//   purpose: 'unlock-ground-school-pack' / 'signup-and-unlock-ground-school-pack'
-//     $400 flat one-time purchase granting unlimited free registration to
-//     every Private Pilot ground school class (scheduled_ground_classes
-//     where course_id = 'PPL'), instead of paying $25/session via
-//     'ground-school-registration' above -- an alternative, not a
-//     replacement; a member can still pay per-class if they don't want
-//     the full pack. Same already-signed-in vs. one-step-signup split as
-//     the Checkride Prep purposes above. No pricing tiers (flat $400), so
-//     no pricing RPC involved.
+//   purpose: 'unlock-ground-school-pack' / 'upgrade-ground-school-pack' /
+//   'signup-and-unlock-ground-school-pack'
+//     CLOSED (Oct 2026), same as 'ground-school-registration' above --
+//     all three $400-pack variants (direct unlock, credited upgrade from
+//     prior per-class payments, and one-step guest signup) always return
+//     a 410 now. stripe-webhook's handleUnlockGroundSchoolPack/
+//     handleUpgradeGroundSchoolPack are deliberately left in place for
+//     the same already-in-flight-session reason noted above.
 //
 // Env vars required (set as Supabase Edge Function secrets):
 //   STRIPE_SECRET_KEY
@@ -180,8 +184,6 @@ const stripe = new Stripe(STRIPE_SECRET_KEY, {
   httpClient: Stripe.createFetchHttpClient(),
 })
 
-const GROUND_SCHOOL_PRICE_CENTS = 2500 // $25 per session
-const GROUND_SCHOOL_PACK_PRICE_CENTS = 40000 // $400 flat, unlimited Private Pilot classes
 const MOCK_ORAL_PRICE_CENTS = 9900 // $99 per 60-minute mock oral
 const PRIVATE_INSTRUCTION_RATE_CENTS = 5500 // $55 per 1-hour Private Instruction slot (flat rate, all certificate levels)
 
@@ -650,208 +652,21 @@ serve(async (req) => {
       })
     }
 
-    if (purpose === 'unlock-ground-school-pack') {
-      const authHeader = req.headers.get('Authorization') || ''
-      const token = authHeader.replace('Bearer ', '').trim()
-      if (!token) return jsonError('Missing Authorization header', 401)
-
-      const { data: userData, error: userErr } = await supabase.auth.getUser(token)
-      if (userErr || !userData?.user) return jsonError('Invalid or expired session', 401)
-
-      const profileId = userData.user.id
-      const email = userData.user.email
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('private_pilot_ground_school_pack_unlocked')
-        .eq('id', profileId)
-        .maybeSingle()
-
-      if (profile?.private_pilot_ground_school_pack_unlocked) {
-        return jsonError('The Private Pilot Ground School pack is already unlocked on this account', 400)
-      }
-
-      const session = await stripe.checkout.sessions.create({
-        mode: 'payment',
-        customer_email: email,
-        line_items: [{
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: 'Apex Advantage Private Pilot Ground School — Full Course',
-              description: 'Unlimited registration for every Private Pilot ground school class — no per-session charge.',
-            },
-            unit_amount: GROUND_SCHOOL_PACK_PRICE_CENTS,
-          },
-          quantity: 1,
-        }],
-        metadata: { purpose: 'unlock-ground-school-pack', profile_id: profileId },
-        success_url: `${siteOrigin}/portal.html?groundschoolpack=1&amount_cents=${GROUND_SCHOOL_PACK_PRICE_CENTS}&session_id={CHECKOUT_SESSION_ID}#ground-school`,
-        cancel_url: `${siteOrigin}/portal.html#ground-school`,
-      })
-      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'unlock-ground-school-pack', email, profileId, amountCents: GROUND_SCHOOL_PACK_PRICE_CENTS, utm: body.utm, referrer: body.referrer, clickIds: body.click_ids })
-
-      return new Response(JSON.stringify({ url: session.url, amount: GROUND_SCHOOL_PACK_PRICE_CENTS }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    // Post-purchase upgrade: a member who already paid for one or more
-    // individual $25 classes wants the $400 complete pack, crediting
-    // what they already paid. The credited amount is computed here from
-    // the caller's own real paid enrollment rows -- never a client-
-    // supplied "I already paid $X" claim, which is what would make this
-    // exploitable. Scoped to scheduled_ground_class_enrollments (the
-    // modern system this landing page sells through), not the legacy
-    // ground_registrations table.
-    if (purpose === 'upgrade-ground-school-pack') {
-      const authHeader = req.headers.get('Authorization') || ''
-      const token = authHeader.replace('Bearer ', '').trim()
-      if (!token) return jsonError('Missing Authorization header', 401)
-
-      const { data: userData, error: userErr } = await supabase.auth.getUser(token)
-      if (userErr || !userData?.user) return jsonError('Invalid or expired session', 401)
-
-      const profileId = userData.user.id
-      const email = userData.user.email
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('private_pilot_ground_school_pack_unlocked')
-        .eq('id', profileId)
-        .maybeSingle()
-      if (profile?.private_pilot_ground_school_pack_unlocked) {
-        return jsonError('The Private Pilot Ground School pack is already unlocked on this account', 400)
-      }
-
-      // enroll_in_ground_school_via_pack() (v57.sql) only ever unlocks the
-      // PPL pack for a PPL class -- this credit calculation has to match
-      // that same PPL-only scope, or a paid enrollment in a future
-      // non-PPL course (Commercial/Instrument) would count as credit
-      // toward a pack that has nothing to do with it.
-      const { data: paidEnrollments } = await supabase
-        .from('scheduled_ground_class_enrollments')
-        .select('amount_cents, scheduled_ground_class:scheduled_ground_classes(course_id)')
-        .eq('profile_id', profileId)
-        .eq('payment_status', 'paid')
-
-      const creditedCents = (paidEnrollments || [])
-        .filter((row: any) => row.scheduled_ground_class?.course_id === 'PPL')
-        .reduce((sum: number, row: any) => sum + (row.amount_cents || 0), 0)
-      if (creditedCents <= 0) {
-        return jsonError('No prior paid Ground School class found on this account to credit toward the upgrade', 400)
-      }
-
-      const upgradeAmountCents = Math.max(GROUND_SCHOOL_PACK_PRICE_CENTS - creditedCents, 0)
-      if (upgradeAmountCents === 0) {
-        return jsonError('Your prior payments already cover the full program price — contact info@apexaviationtx.com to unlock directly', 400)
-      }
-
-      const session = await stripe.checkout.sessions.create({
-        mode: 'payment',
-        customer_email: email,
-        line_items: [{
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: 'Apex Advantage Private Pilot Ground School — Upgrade to Full Course',
-              description: `Credits $${(creditedCents / 100).toFixed(2)} already paid toward the $400 complete program.`,
-            },
-            unit_amount: upgradeAmountCents,
-          },
-          quantity: 1,
-        }],
-        metadata: { purpose: 'upgrade-ground-school-pack', profile_id: profileId, credited_cents: String(creditedCents) },
-        success_url: `${siteOrigin}/portal.html?groundschoolpack=1&amount_cents=${upgradeAmountCents}&session_id={CHECKOUT_SESSION_ID}#ground-school`,
-        cancel_url: `${siteOrigin}/portal.html#ground-school`,
-      })
-      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'upgrade-ground-school-pack', email, profileId, amountCents: upgradeAmountCents, utm: body.utm, referrer: body.referrer, clickIds: body.click_ids })
-
-      return new Response(JSON.stringify({ url: session.url, amount: upgradeAmountCents, creditedCents }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    if (purpose === 'signup-and-unlock-ground-school-pack') {
-      const { name, email, dest, utm_first, first_touch_landing, click_ids_first, referrer_first, first_touch_anon_id, signup_touch } = body
-      if (!name || !email) return jsonError('Missing required fields: name, email', 400)
-
-      // Case-insensitive on purpose (bug sweep, Oct 2026) -- see
-      // escapeIlike()'s own comment above.
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .ilike('email', escapeIlike(email))
-        .maybeSingle()
-      if (existingProfile) {
-        return jsonError('An account with this email already exists. Sign in and unlock from your dashboard instead.', 409)
-      }
-
-      const { data: created, error: createErr } = await supabase.auth.admin.createUser({
-        email,
-        email_confirm: true,
-        password: crypto.randomUUID(),
-        user_metadata: { full_name: name },
-      })
-      if (createErr) return jsonError(String(createErr), 500)
-      const newProfileId = created.user.id
-      await applySignupAttribution(supabase, newProfileId, utm_first, first_touch_landing, referrer_first, click_ids_first, first_touch_anon_id, signup_touch)
-
-      // Same "set your password" email pattern as
-      // signup-and-unlock-checkride-prep -- the account is real and
-      // usable the moment it's created, independent of whether this
-      // checkout is ever completed.
-      const safeDest = typeof dest === 'string' && /^[a-z0-9-]{1,60}$/.test(dest) ? dest : ''
-      const redirectTo = `${SITE_ORIGIN}/portal-reset-password.html${safeDest ? `?dest=${safeDest}` : ''}`
-      const { data: linkData } = await supabase.auth.admin.generateLink({
-        type: 'recovery',
-        email,
-        options: { redirectTo },
-      })
-      const actionLink = linkData?.properties?.action_link
-      if (actionLink) {
-        await supabase.functions.invoke('send-email', {
-          body: {
-            to: email,
-            subject: 'Welcome to Apex Advantage — set your password',
-            html: emailTemplate(`
-              <h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Welcome to Apex Advantage, ${name.split(' ')[0]}!</h2>
-              <p style="color:#1F2937;font-size:15px;line-height:1.7;">Your account is ready and your Private Pilot Ground School purchase is being processed. Set your password to get in:</p>
-              <a href="${actionLink}" style="display:inline-block;margin:12px 0 20px;background:#F4B400;color:#0B1F3A;border-radius:0;padding:13px 24px;text-decoration:none;font-weight:700;font-size:14px;">Set Your Password →</a>
-              <p style="color:#4B5563;font-size:13px;line-height:1.6;">Once that's done, sign in any time at apexaviationtx.com/portal-login.html — every Private Pilot ground school class will already be unlocked, no per-session charge.</p>
-            `),
-          },
-        })
-      }
-
-      const session = await stripe.checkout.sessions.create({
-        mode: 'payment',
-        customer_email: email,
-        line_items: [{
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: 'Apex Advantage Private Pilot Ground School — Full Course',
-              description: 'Unlimited registration for every Private Pilot ground school class — no per-session charge.',
-            },
-            unit_amount: GROUND_SCHOOL_PACK_PRICE_CENTS,
-          },
-          quantity: 1,
-        }],
-        metadata: { purpose: 'unlock-ground-school-pack', profile_id: newProfileId },
-        success_url: `${siteOrigin}/portal-login.html?view=signup-success&paid=1&product=ground_school_pack&amount_cents=${GROUND_SCHOOL_PACK_PRICE_CENTS}&session_id={CHECKOUT_SESSION_ID}`,
-        // checkout_cancelled=1 (bug sweep, Oct 2026) -- missing here while
-        // present on the sibling signup-and-unlock-checkride-prep purpose's
-        // own cancel_url above, so portal-login.html's checkout_cancelled
-        // IIFE never fired for this purpose and the funnel silently
-        // undercounted cancellations for this one checkout path.
-        cancel_url: `${siteOrigin}/portal-login.html?view=signup-success&checkout_cancelled=1&product=ground_school_pack`,
-      })
-      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'signup-and-unlock-ground-school-pack', email, profileId: newProfileId, amountCents: GROUND_SCHOOL_PACK_PRICE_CENTS, utm: body.utm, referrer: body.referrer, clickIds: body.click_ids })
-
-      return new Response(JSON.stringify({ url: session.url, amount: GROUND_SCHOOL_PACK_PRICE_CENTS }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+    // Group Ground School (per-session $25, and the $400 full-pack unlock/
+    // upgrade/guest-signup variants below) is fully discontinued --
+    // replaced by Private Instruction. All four purposes that used to
+    // sell it are closed here, at the actual enforcement point, rather
+    // than relying on portal.html's UI being hidden (which a direct API
+    // call bypasses entirely -- confirmed exploitable in the Oct 2026
+    // verification pass: none of these four had any "still available"
+    // check, and two require no auth at all). stripe-webhook's matching
+    // handlers are deliberately left in place, untouched -- a checkout
+    // session created in the brief window before this deploy ships can
+    // still complete and be processed correctly for up to the session's
+    // ~24h Stripe expiry, rather than erroring out on a legitimately
+    // already-paid customer.
+    if (purpose === 'unlock-ground-school-pack' || purpose === 'upgrade-ground-school-pack' || purpose === 'signup-and-unlock-ground-school-pack') {
+      return jsonError('Group Ground School registration is closed. Private Instruction has replaced it.', 410)
     }
 
     if (purpose === 'book-mock-oral') {
@@ -906,119 +721,18 @@ serve(async (req) => {
     }
 
     if (purpose === 'ground-school-registration') {
-      const { sessionId, scheduledClassId, name, email } = body
-      if ((!sessionId && !scheduledClassId) || !name || !email) {
-        return jsonError('Missing required fields: scheduledClassId/sessionId, name, email', 400)
-      }
-
-      if (scheduledClassId) {
-        const today = new Date().toISOString().slice(0, 10)
-        const { data: scheduledClass, error: classErr } = await supabase
-          .from('scheduled_ground_classes')
-          .select('id, title, lesson_title, class_date, start_time, timezone, capacity, enrolled_count, status')
-          .eq('id', scheduledClassId)
-          .eq('status', 'published')
-          .gte('class_date', today)
-          .maybeSingle()
-
-        if (classErr || !scheduledClass) return jsonError('Ground school class not found or not open for registration', 404)
-        if ((scheduledClass.enrolled_count ?? 0) >= scheduledClass.capacity) return jsonError('Ground school class is full', 409)
-
-        const { data: existingEnrollment } = await supabase
-          .from('scheduled_ground_class_enrollments')
-          .select('id')
-          .eq('scheduled_ground_class_id', scheduledClassId)
-          .ilike('email', escapeIlike(email))
-          .eq('payment_status', 'paid')
-          .maybeSingle()
-        if (existingEnrollment) return jsonError('This email is already registered for this class', 409)
-
-        const when = new Date(`${scheduledClass.class_date}T${scheduledClass.start_time}`).toLocaleString('en-US', {
-          weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-        })
-
-        const session = await stripe.checkout.sessions.create({
-          mode: 'payment',
-          customer_email: email,
-          line_items: [{
-            price_data: {
-              currency: 'usd',
-              product_data: {
-                name: `Ground School — ${scheduledClass.title}`,
-                description: `${when} · ${scheduledClass.lesson_title}`,
-              },
-              unit_amount: GROUND_SCHOOL_PRICE_CENTS,
-            },
-            quantity: 1,
-          }],
-          metadata: { purpose: 'ground-school-registration', scheduled_class_id: scheduledClassId, full_name: name, email },
-          // GS -> Portal Growth Funnel, section 3 -- class_title/class_when/
-          // email/name ride along on success_url so the post-purchase
-          // portal-activation screen can show real "You're booked for X on
-          // Y" copy and prefill the signup form, even for a purchaser with
-          // no session at all (checkout never requires an account). All
-          // four are already known here server-side -- no new lookup, and
-          // nothing sensitive: this is the same class title/time already
-          // shown publicly on the landing page.
-          success_url: `${siteOrigin}/portal.html?registered=1&amount_cents=${GROUND_SCHOOL_PRICE_CENTS}&session_id={CHECKOUT_SESSION_ID}&class_title=${encodeURIComponent(scheduledClass.title)}&class_when=${encodeURIComponent(when)}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}#ground-school`,
-          cancel_url: `${siteOrigin}/portal.html#ground-school`,
-        })
-        await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'ground-school-registration', email, amountCents: GROUND_SCHOOL_PRICE_CENTS, utm: body.utm, referrer: body.referrer, clickIds: body.click_ids })
-
-        return new Response(JSON.stringify({ url: session.url, amount: GROUND_SCHOOL_PRICE_CENTS }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
-      }
-
-      const { data: groundSession, error: gsErr } = await supabase
-        .from('ground_sessions')
-        .select('id, title, scheduled_at')
-        .eq('id', sessionId)
-        .single()
-      if (gsErr || !groundSession) return jsonError('Ground school session not found', 404)
-
-      // Mirrors the scheduledClassId branch's pre-check above -- this legacy
-      // path never had one, so a member who already paid could reopen
-      // Ground School and get charged a second time before the webhook's
-      // own dedup guard (confirm_legacy_ground_registration, v63) ever ran.
-      const { data: existingRegistration } = await supabase
-        .from('ground_registrations')
-        .select('id')
-        .eq('session_id', sessionId)
-        .ilike('email', escapeIlike(email))
-        .eq('payment_status', 'paid')
-        .maybeSingle()
-      if (existingRegistration) return jsonError('This email is already registered for this session', 409)
-
-      const when = new Date(groundSession.scheduled_at).toLocaleString('en-US', {
-        weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-      })
-
-      const session = await stripe.checkout.sessions.create({
-        mode: 'payment',
-        customer_email: email,
-        line_items: [{
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: `Ground School — ${groundSession.title}`,
-              description: when,
-            },
-            unit_amount: GROUND_SCHOOL_PRICE_CENTS,
-          },
-          quantity: 1,
-        }],
-        metadata: { purpose: 'ground-school-registration', session_id: sessionId, full_name: name, email },
-        success_url: `${siteOrigin}/portal.html?registered=1&amount_cents=${GROUND_SCHOOL_PRICE_CENTS}&session_id={CHECKOUT_SESSION_ID}&class_title=${encodeURIComponent(groundSession.title)}&class_when=${encodeURIComponent(when)}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}#ground-school`,
-        cancel_url: `${siteOrigin}/portal.html#ground-school`,
-      })
-      await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'ground-school-registration', email, amountCents: GROUND_SCHOOL_PRICE_CENTS, utm: body.utm, referrer: body.referrer, clickIds: body.click_ids })
-
-      return new Response(JSON.stringify({ url: session.url, amount: GROUND_SCHOOL_PRICE_CENTS }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      // Group Ground School is fully discontinued, replaced by Private
+      // Instruction. Closed here, at the single real enforcement point,
+      // rather than relying on the public site's UI being hidden (which
+      // a direct API call bypasses entirely -- confirmed exploitable in
+      // the Oct 2026 verification pass: this endpoint had no auth
+      // requirement and no closed check, and scheduled_ground_classes/
+      // ground_sessions remained enumerable by an authenticated member
+      // or, for the legacy table, anyone). The registration logic this
+      // purpose used to run was deleted, not left dead -- it can never
+      // execute again now that this check is first.
+      return jsonError('Group Ground School registration is closed. Private Instruction has replaced it.', 410)
     }
-
     if (purpose === 'book-mock-oral-v2') {
       const authHeader = req.headers.get('Authorization') || ''
       const token = authHeader.replace('Bearer ', '').trim()
