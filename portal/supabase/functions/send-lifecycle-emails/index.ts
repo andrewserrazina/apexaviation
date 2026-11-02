@@ -896,7 +896,7 @@ type PricingPreview = { tier: 'founding' | 'launch' | 'standard'; amount_cents: 
 // distinct from processMilestones/processWeakArea/processCountdown above,
 // which all require checkride_prep_unlocked (they're about studying
 // content the member already paid for). This one's job is the opposite:
-// nudge a free-portal member toward paying $29/$49 to unlock it, using
+// nudge a free-portal member toward paying $29 to unlock it, using
 // the exact same dedup/one-time-per-stage machinery as the milestone
 // emails (hasMilestoneFired/markMilestoneSent), keyed off days since
 // profile.created_at instead of a study-progress trigger.
@@ -916,23 +916,20 @@ const CHECKRIDE_TIMING_URGENCY: Record<string, string> = {
 }
 
 function checkrideUpsellSubject(day: number, pricing: PricingPreview): string {
-  const price = '$' + Math.round(pricing.amount_cents / 100)
   if (day === 1) return "Here's what's waiting in your Checkride Prep System"
   if (day === 3) return 'A question DPEs love to ask'
   if (day === 6) return 'Checkride oral prep, minus the guesswork'
-  if (day === 7) return pricing.tier === 'founding' ? `${pricing.founding_seats_remaining} founding spots left at ${price}` : 'Still thinking about the Checkride Prep System?'
+  if (day === 7) return 'Still thinking about the Checkride Prep System?'
   if (day === 12) return 'What actually happens in the oral'
   if (day === 14) return 'Last look: the Checkride Prep System'
   if (day === 21) return 'Start before you have to cram'
   return "It'll be here whenever you're ready" // day 30
 }
 
-// If the member is still inside their founding/launch discount window
-// when this fires, day1 pushes real urgency (exact price, exact hours
-// left) instead of a generic "here's what's waiting" pitch -- day1 is
-// the most likely email to still land inside the 48-hour launch window,
-// so it's worth being specific here even though later days mostly can't
-// be anymore.
+// $29 is the permanent price (get_checkride_prep_pricing(), v158) -- the
+// founding/launch discount-window urgency this sequence used to carry on
+// day 1 and day 7 no longer applies and was removed; `pricing` is kept as
+// a parameter only to compute the real, current price shown in each CTA.
 function emailTemplateCheckrideUpsell(day: number, pricing: PricingPreview, timingBucket: string): string {
   const price = '$' + Math.round(pricing.amount_cents / 100)
   const urgencyLine = CHECKRIDE_TIMING_URGENCY[timingBucket] || ''
@@ -941,12 +938,6 @@ function emailTemplateCheckrideUpsell(day: number, pricing: PricingPreview, timi
 
   if (day === 1) {
     const intro = '<p style="color:#1F2937;font-size:15px;line-height:1.7;">Your free portal account already includes the "10 Questions DPEs Love to Ask" guide. The full Checkride Prep System adds a 300+ question DPE-style bank covering every ACS area of operation — each with a model answer, the common mistakes examiners watch for, and real-world context — plus scenario training, the Checkride Binder Builder, and progress tracking.</p>'
-    if (pricing.tier === 'founding' || pricing.tier === 'launch') {
-      const tierUrgency = pricing.tier === 'founding'
-        ? `${pricing.founding_seats_remaining} founding spot${pricing.founding_seats_remaining === 1 ? '' : 's'} left at ${price}, then $49`
-        : `${price} new-member pricing is still active on your account for a limited time, then $49`
-      return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">${tierUrgency}</h2>` + intro + urgencyParagraph + cta(`Unlock for ${price} →`)
-    }
     return '<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">Here\'s what\'s waiting for you</h2>' + intro + urgencyParagraph + cta('See What\'s Inside →')
   }
 
@@ -964,18 +955,8 @@ function emailTemplateCheckrideUpsell(day: number, pricing: PricingPreview, timi
   }
 
   if (day === 7) {
-    let heading: string
-    let body: string
-    if (pricing.tier === 'founding') {
-      heading = `${pricing.founding_seats_remaining} founding spot${pricing.founding_seats_remaining === 1 ? '' : 's'} left at ${price}`
-      body = `Founding pricing (${price}, versus $49 after the first 25 members) won't last much longer. The full system is 300+ DPE-style questions, model answers, scenario training, the Checkride Binder Builder, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation.`
-    } else if (pricing.tier === 'launch') {
-      heading = `Your ${price} new-member price is still active`
-      body = `You're still inside your new-member pricing window — ${price} instead of the usual $49. The full system is 300+ DPE-style questions, model answers, scenario training, the Checkride Binder Builder, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation.`
-    } else {
-      heading = 'Still thinking about the Checkride Prep System?'
-      body = `300+ DPE-style questions, model answers, scenario training, the Checkride Binder Builder, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation. Unlock it whenever you're ready.`
-    }
+    const heading = 'Still thinking about the Checkride Prep System?'
+    const body = `300+ DPE-style questions, model answers, scenario training, the Checkride Binder Builder, and progress tracking — built to make oral exam day feel like a conversation, not an interrogation. Unlock it whenever you're ready.`
     return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">${heading}</h2>` +
       `<p style="color:#1F2937;font-size:15px;line-height:1.7;">${body}</p>` +
       urgencyParagraph + cta(`Unlock for ${price} →`)
@@ -1349,7 +1330,7 @@ async function processCheckrideUpsell(supabase: any, profile: any, results: any)
     // retried next run instead of going out with the wrong price.
     const { data: pricingRows, error: pricingError } = await supabase.rpc('get_checkride_prep_pricing', { p_profile_id: profile.id })
     if (pricingError) throw new Error(`get_checkride_prep_pricing failed for profile ${profile.id}: ${pricingError.message}`)
-    const pricing: PricingPreview = (pricingRows && pricingRows[0]) || { tier: 'standard', amount_cents: 4900, founding_seats_remaining: 0, launch_expires_at: null }
+    const pricing: PricingPreview = (pricingRows && pricingRows[0]) || { tier: 'standard', amount_cents: 2900, founding_seats_remaining: 0, launch_expires_at: null }
 
     const res = await sendEmail(supabase, results, profile.email, checkrideUpsellSubject(day, pricing), emailTemplateCheckrideUpsell(day, pricing, timingBucket), { marketingRecipientCap: true })
     if (res?.error) {
@@ -1437,10 +1418,13 @@ function emailTemplateAbandonedCheckridePrep(firstName: string) {
 // Second touch, Checkride-Prep-only -- sent ~48 hours after the first
 // (see ABANDONED_CHECKOUT_FOLLOWUP_HOURS below) if checkout is still
 // incomplete. Unlike the first email (a bare "still want in?" nudge),
-// this one carries genuine reasons to act now: real Early Access pricing
-// urgency (when it's actually active — never a fabricated deadline) and
-// the 7-day guarantee, which directly answers "what if I'm not sure this
-// is worth it" for anyone still on the fence two days later.
+// this one carries a genuine reason to act now: the 7-day refund
+// guarantee, which directly answers "what if I'm not sure this is worth
+// it" for anyone still on the fence two days later. urgencyLine is always
+// null from this file's one real caller -- $29 has been the permanent
+// price since v158, so there's no founding/launch tier left to create
+// pricing urgency around -- but the parameter stays so the function's
+// own null-safe rendering is still independently testable.
 function emailTemplateAbandonedCheckridePrepFollowup(firstName: string, priceLabel: string, urgencyLine: string | null) {
   return `<h2 style="color:#0B1F3A;margin:0 0 12px;font-size:22px;line-height:1.3;">One more thing, ${firstName}</h2>` +
     `<p style="color:#1F2937;font-size:15px;line-height:1.7;">Your Checkride Prep unlock (${priceLabel}) is still waiting — nothing was charged, and it only takes a minute to finish.</p>` +
@@ -1962,18 +1946,16 @@ async function processAbandonedCheckoutsFollowup(supabase: any, results: any) {
       }
 
       // Live pricing, not the quoted amount_cents on the original attempt
-      // -- a founding/launch tier could have changed (or Early Access
-      // could have ended entirely) in the ~2 days since the first email,
-      // and this second touch's whole point is to reference the real,
+      // -- a price promo could in principle apply (Stripe's own
+      // allow_promotion_codes) in the ~2 days since the first email, and
+      // this second touch's whole point is to reference the real,
       // current state, not a stale snapshot.
       const { data: pricingRows } = await supabase.rpc('get_checkride_prep_pricing', { p_profile_id: attempt.profile_id || null })
       const pricing = (pricingRows && pricingRows[0]) || null
       const priceLabel = pricing ? `$${Math.round(pricing.amount_cents / 100)}` : (attempt.amount_cents ? `$${Math.round(attempt.amount_cents / 100)}` : '$29')
-      const urgencyLine = pricing && pricing.tier === 'founding'
-        ? `Only ${pricing.founding_seats_remaining} founding spots left at ${priceLabel}.`
-        : pricing && pricing.tier === 'launch'
-          ? `Early Access pricing (${priceLabel}) won't last — regular price is $49.`
-          : null
+      // $29 is the permanent price (get_checkride_prep_pricing(), v158) --
+      // there is no founding/launch tier left to create urgency around.
+      const urgencyLine: string | null = null
 
       // Final re-check immediately before claiming, same reasoning as
       // processAbandonedCheckouts' own send-time guard.

@@ -350,13 +350,18 @@ describe('growth-plan follow-up: pre-purchase upsell drip mentions the Checkride
     return upsellSource.slice(startIdx, endIdx === -1 ? upsellSource.length : endIdx)
   }
 
-  it('mentions it on day 1 (both the generic and the founding/launch-urgency variants share one intro)', () => {
+  it('mentions it on day 1', () => {
     expect(daySlice(1, 3)).toContain('Checkride Binder Builder')
   })
 
-  it('mentions it on day 7 across all three pricing tiers', () => {
+  // Prep Pack Conversion sprint: v158 made $29 the permanent price, so
+  // emailTemplateCheckrideUpsell's day-7 founding/launch-tier branches
+  // (each with their own copy of this phrase) were dead code and removed
+  // -- there's only the one standard-tier copy left now, mentioning the
+  // phrase once, not three times.
+  it('mentions it on day 7', () => {
     const day7 = daySlice(7, 12)
-    expect((day7.match(/Checkride Binder Builder/g) || []).length).toBeGreaterThanOrEqual(3)
+    expect((day7.match(/Checkride Binder Builder/g) || []).length).toBeGreaterThanOrEqual(1)
   })
 
   it('mentions it on the terminal days (14, 21, 30)', () => {
