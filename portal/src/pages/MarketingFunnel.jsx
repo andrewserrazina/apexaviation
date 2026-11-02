@@ -357,6 +357,11 @@ export default function MarketingFunnel() {
                 <p className="stat-card__value">{readiness.prep_free_action_clicked}</p>
                 <p className="stat-card__sub">took the free oral-exam-question off-ramp instead of purchasing immediately — expected to stay well below Prep Offer Personalized</p>
               </div>
+              <div className="stat-card">
+                <p className="stat-card__label">Recovery-Assisted Purchases</p>
+                <p className="stat-card__value">{readiness.recovery_assisted_purchased}</p>
+                <p className="stat-card__sub">of Checkride Prep Purchased above, how many completed via an abandoned-checkout recovery email (checkout_recovered) rather than the first checkout attempt</p>
+              </div>
             </div>
           )}
 

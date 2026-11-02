@@ -689,6 +689,19 @@
       }).catch(function () { return null; });
     }
 
+    // Conversion pass: a member who already owns Checkride Prep (e.g.
+    // retaking the assessment) must never see a "buy it" CTA for a
+    // product they've already paid for. Fails open to "not unlocked" on
+    // any error -- same defensive pattern as saveLead()/apexTrack() on
+    // this page -- so a lookup hiccup degrades to today's existing CTA
+    // rather than breaking the page.
+    function fetchCheckridePrepUnlocked(profileId) {
+      if (!window.apexSupabase || !profileId) return Promise.resolve(false);
+      return window.apexSupabase.from('profiles').select('checkride_prep_unlocked').eq('id', profileId).maybeSingle()
+        .then(function (res) { return !!(res && res.data && res.data.checkride_prep_unlocked); })
+        .catch(function () { return false; });
+    }
+
     function renderTeaser() {
       quizSection.hidden = true;
       resultsSection.hidden = false;
@@ -700,7 +713,7 @@
           savedLeadEmail = session.user.email;
           saveLead(session.user.id);
           if (window.apexTrack) apexTrack('readiness_score_viewed', { score: results.overallScore, readiness_band: results.band, gated: false });
-          renderFullResults();
+          fetchCheckridePrepUnlocked(session.user.id).then(function (isUnlocked) { renderFullResults(isUnlocked); });
           return;
         }
         renderGatedTeaser();
@@ -790,7 +803,7 @@
           var loginAnon = window.apexGetAnonId();
           if (loginAnon) window.apexSupabase.rpc('link_analytics_identity', { p_anon_id: loginAnon }).catch(function () {});
         }
-        renderFullResults();
+        fetchCheckridePrepUnlocked(res.data.user.id).then(function (isUnlocked) { renderFullResults(isUnlocked); });
       });
     }
 
@@ -925,7 +938,16 @@
     }
 
     // ── Full results (member, either already logged in or just authenticated inline) ──
-    function renderFullResults() {
+    // isUnlocked: true when this member's profile already has
+    // checkride_prep_unlocked -- never show a "buy it" CTA for a product
+    // they already own (e.g. retaking the assessment later). Defaults to
+    // false (today's existing behavior) when omitted or when the
+    // entitlement lookup failed, which is the safe direction to fail in:
+    // worst case an already-unlocked member sees one extra, harmless
+    // purchase CTA next to the real one already in their sidebar/nav,
+    // never the inverse (a non-owner being told to "open" something they
+    // haven't bought).
+    function renderFullResults(isUnlocked) {
       quizSection.hidden = true;
       resultsSection.hidden = false;
 
@@ -964,34 +986,46 @@
         '<div class="ra-cat-scores">' + catScoresHtml + '</div>' +
         '<div class="ra-recommend"><h3>Where to Focus Next</h3>' + (recommendHtml || '<p>You covered every area solidly -- keep your skills sharp with regular review.</p>') + '<p>' + escapeHtml(timingRecommendation(results.timing, results.overallScore)) + '</p></div>' +
         (window.APEX_MOCK_ORAL_GIVEAWAY_LIVE ? '<div style="text-align:center;margin:16px 0;padding:16px;border:1px solid #F4B400;border-radius:10px"><strong style="color:#F4B400">Mock Oral Giveaway</strong><p style="color:#fff;margin:8px 0">You completed the assessment. Enter for a chance to win a Private Pilot Mock Oral.</p><a href="mock-oral-giveaway.html?from=assessment&assessment_finished=1" style="color:#F4B400;font-weight:700">Submit giveaway entry →</a></div>' : '') +
-        '<div class="ra-convert">' +
-          '<h3>Your Score Tells You Where to Focus. Apex Helps You Fix It.</h3>' +
-          '<p>Continue practicing with DPE-style questions, scenario-based oral prep, ACS coverage tracking, and targeted weak-area review inside Apex Advantage Checkride Prep.</p>' +
-          '<ul class="ra-convert__features">' +
-            '<li>' + REAL_QUESTION_BANK_SIZE + '+ DPE-style questions</li>' +
-            '<li>Checkride Mode</li>' +
-            '<li>DPE Rapid Fire</li>' +
-            '<li>ACS Coverage tracking</li>' +
-            '<li>Weak-area detection</li>' +
-            '<li>Readiness tracking</li>' +
-            '<li>Favorites</li>' +
-            '<li>Scenario-based practice</li>' +
-          '</ul>' +
-          '<div class="ra-convert__ctas">' +
-            '<a href="portal-login.html?view=signup&dest=checkride-prep" class="btn--cta-primary" id="raCheckridePrepCta">Unlock Checkride Prep</a>' +
-            '<a href="portal-login.html" class="btn--outline-gold">Continue in Free Apex Advantage</a>' +
-          '</div>' +
-          '<p style="text-align:center;margin-top:14px;font-size:12.5px"><a href="portal-login.html?view=signup&dest=study-packs&source=readiness_assessment" id="raLowCommitCta" style="color:rgba(255,255,255,0.45);text-decoration:underline">Not ready for the full system? Try Airspace Mastery for $19 first &rarr;</a></p>' +
-        '</div>' +
+        (isUnlocked ?
+          '<div class="ra-convert">' +
+            '<h3>You Already Have Full Access.</h3>' +
+            '<p>Use this result to decide what to practice next inside Apex Advantage Checkride Prep — DPE-style questions, scenario-based oral prep, ACS coverage tracking, and weak-area review are all already unlocked on your account.</p>' +
+            '<div class="ra-convert__ctas">' +
+              '<a href="portal-login.html?dest=checkride-prep" class="btn--cta-primary" id="raCheckridePrepCta">Open Checkride Prep</a>' +
+            '</div>' +
+          '</div>'
+        :
+          '<div class="ra-convert">' +
+            '<h3>Your Score Tells You Where to Focus. Apex Helps You Fix It.</h3>' +
+            '<p>Continue practicing with DPE-style questions, scenario-based oral prep, ACS coverage tracking, and targeted weak-area review inside Apex Advantage Checkride Prep.</p>' +
+            '<ul class="ra-convert__features">' +
+              '<li>' + REAL_QUESTION_BANK_SIZE + '+ DPE-style questions</li>' +
+              '<li>Checkride Mode</li>' +
+              '<li>DPE Rapid Fire</li>' +
+              '<li>ACS Coverage tracking</li>' +
+              '<li>Weak-area detection</li>' +
+              '<li>Readiness tracking</li>' +
+              '<li>Favorites</li>' +
+              '<li>Scenario-based practice</li>' +
+            '</ul>' +
+            '<div class="ra-convert__ctas">' +
+              '<a href="portal-login.html?view=signup&dest=checkride-prep" class="btn--cta-primary" id="raCheckridePrepCta">Unlock Checkride Prep</a>' +
+              '<a href="portal-login.html" class="btn--outline-gold">Continue in Free Apex Advantage</a>' +
+            '</div>' +
+            '<p style="text-align:center;margin-top:14px;font-size:12.5px"><a href="portal-login.html?view=signup&dest=study-packs&source=readiness_assessment" id="raLowCommitCta" style="color:rgba(255,255,255,0.45);text-decoration:underline">Not ready for the full system? Try Airspace Mastery for $19 first &rarr;</a></p>' +
+          '</div>'
+        ) +
         '<div class="ra-share"><button type="button" class="btn--outline-gold" id="raShareBtn">Share My Score</button></div>';
 
-      document.getElementById('raCheckridePrepCta').addEventListener('click', function () {
-        if (window.apexTrack) apexTrack('readiness_checkride_prep_clicked', { score: results.overallScore, readiness_band: results.band });
-      });
-      var raLowCommitCta = document.getElementById('raLowCommitCta');
-      if (raLowCommitCta) raLowCommitCta.addEventListener('click', function () {
-        if (window.apexTrack) apexTrack('readiness_low_commitment_clicked', { score: results.overallScore, readiness_band: results.band, product: 'study_pack_airspace_mastery', source: 'readiness_assessment' });
-      });
+      if (!isUnlocked) {
+        document.getElementById('raCheckridePrepCta').addEventListener('click', function () {
+          if (window.apexTrack) apexTrack('readiness_checkride_prep_clicked', { score: results.overallScore, readiness_band: results.band });
+        });
+        var raLowCommitCta = document.getElementById('raLowCommitCta');
+        if (raLowCommitCta) raLowCommitCta.addEventListener('click', function () {
+          if (window.apexTrack) apexTrack('readiness_low_commitment_clicked', { score: results.overallScore, readiness_band: results.band, product: 'study_pack_airspace_mastery', source: 'readiness_assessment' });
+        });
+      }
       var shareBtn = document.getElementById('raShareBtn');
       if (shareBtn) shareBtn.addEventListener('click', function () { handleShare(results); });
 
