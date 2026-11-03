@@ -113,3 +113,38 @@ it('calling refresh() while the initial mount fetch is still in flight is a no-o
   await waitFor(() => expect(result.current.loading).toBe(false))
   expect(result.current.data).not.toBeNull()
 })
+
+// Bug sweep (Nov 2026): the old `inFlight` guard was plain React state,
+// read-but-not-yet-committed by a second caller in the same tick -- two
+// screens sharing one BootstrapContext instance could each trigger a
+// refresh in the same tick (e.g. a save-callback refresh racing a
+// pull-to-refresh) and both would see inFlight===false and both fetch,
+// with whichever response RESOLVED last winning regardless of which
+// request started last. Fixed via a ref-based guard that rejects a
+// second call synchronously, before either fetch's promise even starts.
+it('two refresh() calls fired back-to-back in the same tick only trigger one fetch', async () => {
+  mockFetchBootstrap.mockResolvedValueOnce(dto({ access: { checkride_prep: false, ground_school_pack: false, study_pack_entitlements: [] } }))
+  const { result } = await renderHook(() => useBootstrap())
+  await waitFor(() => expect(result.current.loading).toBe(false))
+  mockFetchBootstrap.mockClear()
+
+  let resolveSecond: (() => void) | undefined
+  mockFetchBootstrap.mockReturnValueOnce(
+    new Promise((resolve) => {
+      resolveSecond = () => resolve(dto({ access: { checkride_prep: true, ground_school_pack: false, study_pack_entitlements: [] } }))
+    })
+  )
+
+  await act(async () => {
+    // Fired without awaiting between them -- both calls run before
+    // either promise settles, simulating two different consumers of the
+    // same shared hook instance triggering a refresh in the same tick.
+    const p1 = result.current.refresh()
+    const p2 = result.current.refresh()
+    resolveSecond?.()
+    await Promise.all([p1, p2])
+  })
+
+  expect(mockFetchBootstrap).toHaveBeenCalledTimes(1)
+  expect(result.current.data?.access.checkride_prep).toBe(true)
+})
