@@ -78,7 +78,7 @@ export default function App() {
               <Route path="/schedule"    element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
               <Route path="/logbook"     element={<ProtectedRoute><Logbook /></ProtectedRoute>} />
               <Route path="/billing"     element={<ProtectedRoute><Billing /></ProtectedRoute>} />
-              <Route path="/ground-schedule" element={<GroundSchedule />} />
+              <Route path="/ground-schedule" element={<ProtectedRoute><GroundSchedule /></ProtectedRoute>} />
               <Route path="/attend/:type/:token" element={<Attend />} />
               <Route path="/documents"       element={<ProtectedRoute><Documents /></ProtectedRoute>} />
               <Route path="/crm"             element={<ProtectedRoute><CRM /></ProtectedRoute>} />
