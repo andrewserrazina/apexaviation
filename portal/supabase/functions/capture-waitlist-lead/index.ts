@@ -23,6 +23,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Escapes ilike's own wildcard characters so the dedup check below only
+// ever matches the literal email -- same helper and reasoning as
+// create-checkout-session/index.ts's own escapeIlike(), duplicated here
+// since these functions share no module today. Without this, an email
+// containing a literal % or _ (rare but RFC-valid) is treated as a
+// wildcard and can false-positive match an unrelated lead, silently
+// dropping this submission as a "duplicate" that was never inserted.
+function escapeIlike(value: string): string {
+  return value.replace(/[\\%_]/g, (c) => '\\' + c)
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
@@ -53,7 +64,7 @@ serve(async (req) => {
     const { data: existing } = await supabase
       .from('leads')
       .select('id')
-      .ilike('email', email)
+      .ilike('email', escapeIlike(email))
       .maybeSingle()
 
     if (existing) {
