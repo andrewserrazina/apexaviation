@@ -3,7 +3,8 @@
 // test/useAdHocPracticeSession.test.tsx's renderHook approach and
 // mocking shape.
 import { act, renderHook, waitFor } from '@testing-library/react-native'
-import { useDpeSession } from '../hooks/useDpeSession'
+import { dpeFriendlyError, useDpeSession } from '../hooks/useDpeSession'
+import { ApiError } from '../lib/api/errors'
 
 const mockResumeDpeSession = jest.fn()
 const mockSendDpeMessage = jest.fn()
@@ -202,5 +203,109 @@ describe('useDpeSession', () => {
     })
 
     expect(mockEndDpeSession).not.toHaveBeenCalled()
+  })
+
+  // Nov 2026 incident: start/message/end can now fail with a classified
+  // ai_dpe_* code on a 502/503 ApiError (see dpeChatCore.ts). sendError
+  // and endError must surface the specific, already-vetted-safe message
+  // for a known code -- never the raw provider/billing text, and never an
+  // indefinite loading state or an unrecognizable crash.
+  it('sendMessage surfaces the specific insufficient-credits message instead of the generic server one', async () => {
+    mockResumeDpeSession.mockResolvedValue(resumeFixture())
+    mockSendDpeMessage.mockRejectedValue(
+      new ApiError({ kind: 'server', userMessage: 'Something went wrong on our end. Please try again in a moment.', status: 503, code: 'ai_dpe_insufficient_credits' })
+    )
+
+    const { result } = await renderHook(() => useDpeSession('session-1', { enabled: true, userId: 'u1' }))
+    await waitFor(() => expect(result.current.resuming).toBe(false))
+
+    await act(async () => {
+      await result.current.sendMessage('My answer.')
+    })
+
+    expect(result.current.sendError?.userMessage).toBe('Oral Practice is temporarily unavailable. Please try again in a little while.')
+    expect(result.current.sendError?.code).toBe('ai_dpe_insufficient_credits')
+  })
+
+  it('sendMessage surfaces the specific rate-limited message', async () => {
+    mockResumeDpeSession.mockResolvedValue(resumeFixture())
+    mockSendDpeMessage.mockRejectedValue(
+      new ApiError({ kind: 'server', userMessage: 'Something went wrong on our end. Please try again in a moment.', status: 503, code: 'ai_dpe_rate_limited' })
+    )
+
+    const { result } = await renderHook(() => useDpeSession('session-1', { enabled: true, userId: 'u1' }))
+    await waitFor(() => expect(result.current.resuming).toBe(false))
+
+    await act(async () => {
+      await result.current.sendMessage('My answer.')
+    })
+
+    expect(result.current.sendError?.userMessage).toBe('Oral Practice is experiencing high demand right now. Please wait a moment and try again.')
+  })
+
+  it('sendMessage leaves an unrecognized server error with its original generic message', async () => {
+    mockResumeDpeSession.mockResolvedValue(resumeFixture())
+    mockSendDpeMessage.mockRejectedValue(
+      new ApiError({ kind: 'server', userMessage: 'Something went wrong on our end. Please try again in a moment.', status: 500, code: null })
+    )
+
+    const { result } = await renderHook(() => useDpeSession('session-1', { enabled: true, userId: 'u1' }))
+    await waitFor(() => expect(result.current.resuming).toBe(false))
+
+    await act(async () => {
+      await result.current.sendMessage('My answer.')
+    })
+
+    expect(result.current.sendError?.userMessage).toBe('Something went wrong on our end. Please try again in a moment.')
+  })
+
+  it('endSession surfaces the specific provider-outage message instead of the generic server one', async () => {
+    mockResumeDpeSession.mockResolvedValue(resumeFixture())
+    mockEndDpeSession.mockRejectedValue(
+      new ApiError({ kind: 'server', userMessage: 'Something went wrong on our end. Please try again in a moment.', status: 503, code: 'ai_dpe_provider_unavailable' })
+    )
+
+    const { result } = await renderHook(() => useDpeSession('session-1', { enabled: true, userId: 'u1' }))
+    await waitFor(() => expect(result.current.resuming).toBe(false))
+
+    await act(async () => {
+      await result.current.endSession()
+    })
+
+    expect(result.current.endError?.userMessage).toBe('Oral Practice is temporarily unavailable. Please try again in a little while.')
+  })
+})
+
+describe('dpeFriendlyError', () => {
+  it.each([
+    ['ai_dpe_insufficient_credits', 'Oral Practice is temporarily unavailable. Please try again in a little while.'],
+    ['ai_dpe_provider_unavailable', 'Oral Practice is temporarily unavailable. Please try again in a little while.'],
+    ['ai_dpe_auth_config_error', 'Oral Practice is temporarily unavailable. Please try again in a little while.'],
+    ['ai_dpe_rate_limited', 'Oral Practice is experiencing high demand right now. Please wait a moment and try again.'],
+    ['ai_dpe_malformed_response', 'The examiner had trouble responding. Please try again.'],
+  ])('maps %s to its specific, safe message', (code, expectedMessage) => {
+    const error = new ApiError({ kind: 'server', userMessage: 'Something went wrong on our end. Please try again in a moment.', status: 503, code })
+    expect(dpeFriendlyError(error).userMessage).toBe(expectedMessage)
+  })
+
+  it('leaves an unknown code unchanged', () => {
+    const error = new ApiError({ kind: 'server', userMessage: 'Something went wrong on our end. Please try again in a moment.', status: 500, code: 'some_other_code' })
+    expect(dpeFriendlyError(error)).toBe(error)
+  })
+
+  it('leaves a missing code unchanged', () => {
+    const error = new ApiError({ kind: 'server', userMessage: 'Something went wrong on our end. Please try again in a moment.', status: 500 })
+    expect(dpeFriendlyError(error)).toBe(error)
+  })
+
+  it('never produces a message containing billing, credit, key, or provider-name text', () => {
+    const forbidden = ['credit', 'balance', 'billing', 'api key', 'anthropic']
+    for (const code of ['ai_dpe_insufficient_credits', 'ai_dpe_rate_limited', 'ai_dpe_provider_unavailable', 'ai_dpe_auth_config_error', 'ai_dpe_malformed_response']) {
+      const error = new ApiError({ kind: 'server', userMessage: 'generic', status: 503, code })
+      const message = dpeFriendlyError(error).userMessage.toLowerCase()
+      for (const word of forbidden) {
+        expect(message).not.toContain(word)
+      }
+    }
   })
 })

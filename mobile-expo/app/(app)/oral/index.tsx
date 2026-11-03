@@ -10,6 +10,7 @@ import { ErrorState, LoadingState, LockedState } from '../../../components/State
 import { dpeVerdictLabel } from '../../../components/oral/DebriefView'
 import { useBootstrapContext } from '../../../contexts/BootstrapContext'
 import { useDpeHistory } from '../../../hooks/useDpeHistory'
+import { dpeFriendlyError } from '../../../hooks/useDpeSession'
 import { startDpeSession } from '../../../lib/api/dpe'
 import { ApiError, logDevError } from '../../../lib/api/errors'
 import { loadActiveOralSession, saveActiveOralSession, type ActiveOralSession } from '../../../lib/activeOralSessionStorage'
@@ -124,7 +125,7 @@ export default function OralTabScreen() {
     } catch (err) {
       logDevError('Oral.handleStart', err)
       const apiErr = err instanceof ApiError ? err : new ApiError({ kind: 'server', userMessage: 'We couldn’t start an oral practice session.' })
-      setStartError(apiErr.userMessage)
+      setStartError(dpeFriendlyError(apiErr).userMessage)
     } finally {
       setStarting(false)
       startInFlight.current = false

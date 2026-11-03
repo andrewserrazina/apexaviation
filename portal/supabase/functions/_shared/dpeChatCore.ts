@@ -14,6 +14,79 @@
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!
 const ANTHROPIC_MODEL = 'claude-sonnet-5'
 
+// Nov 2026 incident (App Store rejection of 1.1 (14)): production logs
+// showed Oral Practice failing with a bare HTTP 500 whenever the
+// Anthropic account ran out of credit (a 400 invalid_request_error,
+// "Your credit balance is too low to access the Anthropic API"), with
+// no way for either platform's own catch block, or the student, to tell
+// that apart from a rate limit, an outage, or a real bug on our side.
+// DpeProviderError classifies every way callClaude can fail into one of
+// five kinds up front, right where the raw Anthropic response/network
+// failure is read -- dpe-chat/index.ts and mobile-dpe/index.ts then map
+// `kind` to an HTTP status + machine-readable `code` + a safe, non-
+// technical message via dpeProviderErrorResponse() below, so both
+// platforms stay identical and neither has to re-derive this
+// classification or risk re-surfacing the raw Anthropic error body
+// (which can contain account/billing text) to a student.
+export type DpeProviderErrorKind =
+  | 'insufficient_credits'
+  | 'rate_limited'
+  | 'provider_unavailable'
+  | 'auth_config_error'
+  | 'malformed_response'
+
+export class DpeProviderError extends Error {
+  kind: DpeProviderErrorKind
+  constructor(kind: DpeProviderErrorKind, message: string) {
+    super(message)
+    this.name = 'DpeProviderError'
+    this.kind = kind
+  }
+}
+
+// Classifies a non-2xx Anthropic response. `errText` (the raw response
+// body) is only ever used HERE, for classification, and in the
+// server-side console.error at the call site below -- it must never be
+// threaded into the DpeProviderError's own message or anywhere a caller
+// could accidentally return it to a client, since a real insufficient-
+// credits body is Anthropic's own account/billing text.
+export function classifyAnthropicFailure(status: number, errText: string): DpeProviderError {
+  let errorType: string | null = null
+  try {
+    const parsed = JSON.parse(errText)
+    errorType = typeof parsed?.error?.type === 'string' ? parsed.error.type : null
+  } catch {
+    // Non-JSON body -- fine, errorType stays null and status alone drives
+    // classification below.
+  }
+
+  if (status === 429) {
+    return new DpeProviderError('rate_limited', 'Anthropic API rate limited the request')
+  }
+  if (status === 401 || status === 403) {
+    return new DpeProviderError('auth_config_error', `Anthropic API rejected credentials (HTTP ${status})`)
+  }
+  // Anthropic returns insufficient-credit as a 400 invalid_request_error
+  // with "credit balance" in the message text -- the one place this
+  // specific substring is checked, since a 400 invalid_request_error is
+  // also the generic shape for an actually-malformed request (which is
+  // a real bug on our side, not a billing problem, and must not be
+  // misreported as one).
+  if (status === 400 && /credit balance/i.test(errText)) {
+    return new DpeProviderError('insufficient_credits', 'Anthropic API account has insufficient credits')
+  }
+  if (status === 500 || status === 502 || status === 503 || status === 529) {
+    // 529 is Anthropic's own "Overloaded" status.
+    return new DpeProviderError('provider_unavailable', `Anthropic API unavailable (HTTP ${status})`)
+  }
+  // Any other 4xx (a bad model name, a malformed payload, etc.) is a
+  // real integration bug on our side, not something a retry or a wait
+  // fixes -- grouped with auth_config_error rather than invented as a
+  // sixth category, since both mean "this needs an engineer, not the
+  // student, to resolve."
+  return new DpeProviderError('auth_config_error', `Anthropic API request error (HTTP ${status})${errorType ? `: ${errorType}` : ''}`)
+}
+
 export const MAX_QUESTIONS = 9
 export const CONTROL_END_NOTE =
   '[SYSTEM: The candidate has requested to end the exam now. Do not ask another ' +
@@ -112,26 +185,41 @@ async function callClaudeOnce(
   systemPrompt: string,
   messages: { role: 'user' | 'assistant'; content: string }[]
 ): Promise<DpeTurn | null> {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      // 700 was tight enough that a full debrief payload (summary +
-      // strengths/weaknesses + a note per ACS domain covered) could get
-      // truncated mid-JSON, which read as a parse failure below.
-      model: ANTHROPIC_MODEL,
-      max_tokens: 1536,
-      system: systemPrompt,
-      messages,
-    }),
-  })
+  let res: Response
+  try {
+    res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        // 700 was tight enough that a full debrief payload (summary +
+        // strengths/weaknesses + a note per ACS domain covered) could get
+        // truncated mid-JSON, which read as a parse failure below.
+        model: ANTHROPIC_MODEL,
+        max_tokens: 1536,
+        system: systemPrompt,
+        messages,
+      }),
+    })
+  } catch (networkErr) {
+    // DNS failure, connection reset, timeout -- never reached Anthropic
+    // at all. Logged in full server-side; callers only ever see the
+    // classified kind.
+    console.error('dpeChatCore: network error calling Anthropic API', networkErr)
+    throw new DpeProviderError('provider_unavailable', 'Network error calling Anthropic API')
+  }
   if (!res.ok) {
     const errText = await res.text()
-    throw new Error(`Anthropic API error ${res.status}: ${errText}`)
+    // Full status + body logged server-side ONLY -- this is the one
+    // place Anthropic's raw response (which can contain account/billing
+    // text, e.g. the Nov 2026 "credit balance is too low" incident) is
+    // allowed to appear in a log. classifyAnthropicFailure() below never
+    // echoes errText back into a message a caller could return as-is.
+    console.error(`dpeChatCore: Anthropic API error ${res.status}`, errText)
+    throw classifyAnthropicFailure(res.status, errText)
   }
   const data = await res.json()
   const text = (data.content || []).map((block: { text?: string }) => block.text || '').join('')
@@ -148,12 +236,43 @@ export async function callClaude(
   systemPrompt: string,
   messages: { role: 'user' | 'assistant'; content: string }[]
 ): Promise<DpeTurn> {
+  // A DpeProviderError from the first attempt (insufficient credits,
+  // rate limited, provider down, auth/config) propagates immediately --
+  // none of those are a "genuine model hiccup," and retrying immediately
+  // would just fail again (or make a rate limit worse) for no benefit.
+  // Only a genuinely malformed/empty response gets the one retry.
   const first = await callClaudeOnce(systemPrompt, messages)
   if (first) return first
   console.error('dpeChatCore: malformed response from Claude, retrying once')
   const retry = await callClaudeOnce(systemPrompt, messages)
   if (retry) return retry
-  throw new Error('The examiner had trouble responding. Please try again.')
+  throw new DpeProviderError('malformed_response', 'The examiner had trouble responding. Please try again.')
+}
+
+// Maps a DpeProviderError's kind to exactly what dpe-chat/index.ts and
+// mobile-dpe/index.ts should send back: an HTTP status, a machine-
+// readable `code` (never shown to the student -- see errors.ts on the
+// mobile client, which documents the same contract), and a safe,
+// non-technical, actionable message. insufficient_credits/
+// provider_unavailable/auth_config_error all show the SAME message to
+// the student (there is nothing different for them to do about any of
+// the three), but keep distinct `code`s so logs/alerts can still tell a
+// billing problem apart from an outage apart from a real config bug --
+// see this sprint's report for which of those needs an operational fix
+// vs. an application-code fix.
+export function dpeProviderErrorResponse(err: DpeProviderError): { status: number; code: string; message: string } {
+  switch (err.kind) {
+    case 'insufficient_credits':
+      return { status: 503, code: 'ai_dpe_insufficient_credits', message: 'Oral Practice is temporarily unavailable. Please try again in a little while.' }
+    case 'rate_limited':
+      return { status: 503, code: 'ai_dpe_rate_limited', message: 'Oral Practice is experiencing high demand right now. Please wait a moment and try again.' }
+    case 'provider_unavailable':
+      return { status: 503, code: 'ai_dpe_provider_unavailable', message: 'Oral Practice is temporarily unavailable. Please try again in a little while.' }
+    case 'auth_config_error':
+      return { status: 503, code: 'ai_dpe_auth_config_error', message: 'Oral Practice is temporarily unavailable. Please try again in a little while.' }
+    case 'malformed_response':
+      return { status: 502, code: 'ai_dpe_malformed_response', message: 'The examiner had trouble responding. Please try again.' }
+  }
 }
 
 export function toClaudeMessages(transcript: TranscriptTurn[]): { role: 'user' | 'assistant'; content: string }[] {
