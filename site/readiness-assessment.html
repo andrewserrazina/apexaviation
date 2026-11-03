@@ -978,13 +978,14 @@
         return '<p><strong style="color:#fff">' + escapeHtml(CATEGORIES[w.cat]) + ':</strong> ' + escapeHtml(REVIEW_RECOMMENDATIONS[w.cat]) + '</p>';
       }).join('');
 
-      document.getElementById('raResultsContainer').innerHTML =
+      // A focused live oral is most relevant for near-term checkrides.\n      // Keep this supplemental to the existing Checkride Prep purchase flow.\n      var mockOralAreas = results.weakest.filter(function (w) { return w && w.score < 100; }).slice(0, 2).map(function (w) { return CATEGORIES[w.cat]; });\n      var mockOralFocus = mockOralAreas.length ? 'We can practice ' + mockOralAreas.map(escapeHtml).join(' and ') + ' through realistic DPE-style follow-up questions.' : 'We can practice explaining your decisions out loud with realistic DPE-style follow-up questions.';\n      var mockOralTiming = (results.timing === 'within_14_days' || results.timing === 'within_30_days') ? 'With your checkride approaching, a realistic practice oral can help identify what to review next.' : 'When you want to test your oral-exam explanations, a live practice session can help.';\n      var mockOralHtml = '<div class="ra-convert" aria-label="Personalized Mock Oral recommendation">' +\n        '<h3>Put Your Readiness Score to the Test</h3>' +\n        '<p>' + escapeHtml(mockOralTiming) + '</p>' +\n        '<p>' + mockOralFocus + '</p>' +\n        '<p><strong style="color:#fff">Private Pilot Mock Oral — $129</strong> · Up to two hours of one-on-one ACS-based practice, plus a written performance report.</p>' +\n        '<div class="ra-convert__ctas"><a href="/apex-advantage-mock-oral?utm_source=readiness_assessment&amp;utm_medium=results&amp;utm_campaign=personalized_mock_oral" class="btn--cta-primary" id="raMockOralCta">View Mock Oral Availability</a></div>' +\n        '</div>';\n\n      document.getElementById('raResultsContainer').innerHTML =
         '<div class="ra-results__score-row"><span class="ra-results__score">' + results.overallScore + '%</span><span class="ra-results__level">' + escapeHtml(results.band) + '</span></div>' +
         '<p class="ra-results__sub">Your Checkride Readiness Score, based on this 20-question sample across all 9 real ACS oral-exam areas.</p>' +
         '<p class="ra-results__disclaimer">The Apex Checkride Readiness Score is a study diagnostic and does not predict or guarantee practical test performance.</p>' +
         highlightHtml +
         '<div class="ra-cat-scores">' + catScoresHtml + '</div>' +
         '<div class="ra-recommend"><h3>Where to Focus Next</h3>' + (recommendHtml || '<p>You covered every area solidly -- keep your skills sharp with regular review.</p>') + '<p>' + escapeHtml(timingRecommendation(results.timing, results.overallScore)) + '</p></div>' +
+        mockOralHtml +
         (window.APEX_MOCK_ORAL_GIVEAWAY_LIVE ? '<div style="text-align:center;margin:16px 0;padding:16px;border:1px solid #F4B400;border-radius:10px"><strong style="color:#F4B400">Mock Oral Giveaway</strong><p style="color:#fff;margin:8px 0">You completed the assessment. Enter for a chance to win a Private Pilot Mock Oral.</p><a href="mock-oral-giveaway.html?from=assessment&assessment_finished=1" style="color:#F4B400;font-weight:700">Submit giveaway entry →</a></div>' : '') +
         (isUnlocked ?
           '<div class="ra-convert">' +
@@ -1026,7 +1027,7 @@
           if (window.apexTrack) apexTrack('readiness_low_commitment_clicked', { score: results.overallScore, readiness_band: results.band, product: 'study_pack_airspace_mastery', source: 'readiness_assessment' });
         });
       }
-      var shareBtn = document.getElementById('raShareBtn');
+      var mockOralCta = document.getElementById('raMockOralCta');\n      if (mockOralCta) mockOralCta.addEventListener('click', function () {\n        if (window.apexTrack) apexTrack('readiness_mock_oral_clicked', { score: results.overallScore, readiness_band: results.band, checkride_timing: results.timing, weakest_category: results.weakest[0] ? results.weakest[0].cat : null, source: 'readiness_assessment' });\n      });\n      var shareBtn = document.getElementById('raShareBtn');
       if (shareBtn) shareBtn.addEventListener('click', function () { handleShare(results); });
 
       window.scrollTo({ top: resultsSection.offsetTop - 20, behavior: 'smooth' });
