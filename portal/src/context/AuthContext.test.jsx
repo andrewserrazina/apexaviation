@@ -36,10 +36,10 @@ vi.mock('../lib/supabase', () => ({
 }))
 
 function TestConsumer() {
-  const { user, profile, loading } = useAuth()
+  const { user, profile, profileError, loading } = useAuth()
   return (
     <div data-testid="state">
-      {JSON.stringify({ userId: user?.id ?? null, profileId: profile?.id ?? null, loading })}
+      {JSON.stringify({ userId: user?.id ?? null, profileId: profile?.id ?? null, profileErrorMessage: profileError?.message ?? null, loading })}
     </div>
   )
 }
@@ -231,5 +231,21 @@ describe('AuthContext initialization', () => {
     })
     expect(readState().profileId).toBe('user-new')
     expect(readState().loading).toBe(false)
+  })
+
+  // Bug sweep: fetchProfile() used to destructure only `data` from the
+  // profiles query, discarding `error` entirely -- a failed fetch (RLS
+  // hiccup, transient network error) set profile to null under a
+  // "loading: false" flag exactly as if the user genuinely had no profile
+  // row, with no way for a consumer to tell the two apart.
+  it('J: a failed profile fetch surfaces a distinct profileError instead of silently resolving to a null profile', async () => {
+    getSessionMock.mockResolvedValue({ data: { session: { user: { id: 'user-5' } } }, error: null })
+    singleMock.mockResolvedValue({ data: null, error: { message: 'RLS denied this read' } })
+
+    render(<AuthProvider><TestConsumer /></AuthProvider>)
+
+    await waitFor(() => expect(readState().loading).toBe(false))
+    expect(readState().profileId).toBe(null)
+    expect(readState().profileErrorMessage).toBe('RLS denied this read')
   })
 })
