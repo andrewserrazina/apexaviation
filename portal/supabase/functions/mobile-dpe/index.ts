@@ -36,6 +36,8 @@ import {
   callClaude,
   toClaudeMessages,
   CONTROL_END_NOTE,
+  DpeProviderError,
+  dpeProviderErrorResponse,
   type TranscriptTurn,
 } from '../_shared/dpeChatCore.ts'
 
@@ -251,10 +253,16 @@ serve(async (req) => {
     if (err instanceof PremiumAccessError) {
       return json({ error: err.message }, err.status)
     }
-    console.error('mobile-dpe error', err)
-    if (err instanceof Error && err.message === 'The examiner had trouble responding. Please try again.') {
-      return json({ error: err.message }, 502)
+    // Nov 2026 incident: see dpe-chat/index.ts's identical catch branch
+    // and dpeChatCore.ts for the full classification -- kept byte-
+    // identical between the two platforms on purpose, same reasoning as
+    // every other piece of logic this function mirrors from dpe-chat.
+    if (err instanceof DpeProviderError) {
+      console.error('mobile-dpe error', err.kind, err.message)
+      const { status, code, message } = dpeProviderErrorResponse(err)
+      return json({ error: message, code }, status)
     }
+    console.error('mobile-dpe error', err)
     return json({ error: 'Internal error' }, 500)
   }
 })

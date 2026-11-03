@@ -27,6 +27,34 @@ function turnsFromResume(turns: MobileDpeResumeTurn[]): DpeChatTurn[] {
   return turns.map((t) => ({ role: t.role, message: t.message, at: t.at }))
 }
 
+// Nov 2026 incident: start/message/end are the only three mobile-dpe
+// actions that make a live Claude call (resume only re-reads the already-
+// persisted transcript, so it can never carry one of these), and
+// dpeChatCore.ts now classifies every way that call can fail into a
+// `code` on the 502/503 response -- insufficient credits, rate limited,
+// provider outage, auth/config, or a malformed model reply. client.ts's
+// serverError() already forces a generic, safe message onto every 5xx
+// ApiError (by design -- a raw server message is never trusted), but it
+// keeps `code`, so this picks a more specific, already-vetted-safe
+// message for the few causes worth telling a student apart -- never one
+// that names the provider, billing, or any backend diagnostic (see
+// dpeChatCore.ts's own FORBIDDEN_SUBSTRINGS-checked test). Any `code` not
+// in this table (or no code at all) falls through unchanged to the
+// generic message errors.ts already produced.
+const DPE_PROVIDER_MESSAGES: Record<string, string> = {
+  ai_dpe_insufficient_credits: 'Oral Practice is temporarily unavailable. Please try again in a little while.',
+  ai_dpe_rate_limited: 'Oral Practice is experiencing high demand right now. Please wait a moment and try again.',
+  ai_dpe_provider_unavailable: 'Oral Practice is temporarily unavailable. Please try again in a little while.',
+  ai_dpe_auth_config_error: 'Oral Practice is temporarily unavailable. Please try again in a little while.',
+  ai_dpe_malformed_response: 'The examiner had trouble responding. Please try again.',
+}
+
+export function dpeFriendlyError(error: ApiError): ApiError {
+  const friendly = error.code ? DPE_PROVIDER_MESSAGES[error.code] : undefined
+  if (!friendly || friendly === error.userMessage) return error
+  return new ApiError({ kind: error.kind, userMessage: friendly, status: error.status, code: error.code, raw: error.raw })
+}
+
 // The Resume -> chat (send/receive) -> End -> Debrief controller for one
 // AI DPE oral-practice session. Mirrors useAdHocPracticeSession.ts's
 // resume/act/complete shape, simplified: there's no reveal/self-rate
@@ -120,7 +148,8 @@ export function useDpeSession(sessionId: string, options: UseDpeSessionOptions) 
         // responsible for keeping the student's typed text available to
         // retry (this hook doesn't own the input field).
         setTurns((prev) => prev.filter((t) => !(t.role === 'student' && t.at === optimisticAt && t.pending)))
-        setSendError(err instanceof ApiError ? err : new ApiError({ kind: 'server', userMessage: 'We couldn’t send that. Please try again.' }))
+        const apiErr = err instanceof ApiError ? err : new ApiError({ kind: 'server', userMessage: 'We couldn’t send that. Please try again.' })
+        setSendError(dpeFriendlyError(apiErr))
       } finally {
         setSending(false)
         sendInFlight.current = false
@@ -142,7 +171,8 @@ export function useDpeSession(sessionId: string, options: UseDpeSessionOptions) 
       if (options.userId) await clearActiveOralSessionIfMatches(options.userId, sessionId)
     } catch (err) {
       logDevError('useDpeSession.endSession', err)
-      setEndError(err instanceof ApiError ? err : new ApiError({ kind: 'server', userMessage: 'We couldn’t end the session. Please try again.' }))
+      const apiErr = err instanceof ApiError ? err : new ApiError({ kind: 'server', userMessage: 'We couldn’t end the session. Please try again.' })
+      setEndError(dpeFriendlyError(apiErr))
     } finally {
       setEnding(false)
     }

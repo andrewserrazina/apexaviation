@@ -25,6 +25,8 @@ import {
   callClaude,
   toClaudeMessages,
   CONTROL_END_NOTE,
+  DpeProviderError,
+  dpeProviderErrorResponse,
   type TranscriptTurn,
 } from '../_shared/dpeChatCore.ts'
 
@@ -157,14 +159,19 @@ serve(async (req) => {
     if (err instanceof PremiumAccessError) {
       return json({ error: err.message }, err.status)
     }
-    console.error('dpe-chat error', err)
-    // A retried-and-still-malformed Claude response (callClaude above) is
-    // a real, if uncommon, upstream hiccup -- worth a clearer message and
-    // a 502 (bad upstream response) instead of the generic 500, since the
-    // frontend surfaces this message directly to the student.
-    if (err instanceof Error && err.message === 'The examiner had trouble responding. Please try again.') {
-      return json({ error: err.message }, 502)
+    // Nov 2026 incident: classifies every way callClaude can fail
+    // (insufficient credits, rate limited, provider outage, auth/config,
+    // malformed response) into a safe status/code/message via
+    // dpeProviderErrorResponse() -- see dpeChatCore.ts for the full
+    // classification and why the Anthropic account/billing text itself
+    // never reaches this response (it's logged server-side only, at the
+    // point callClaudeOnce() actually reads it).
+    if (err instanceof DpeProviderError) {
+      console.error('dpe-chat error', err.kind, err.message)
+      const { status, code, message } = dpeProviderErrorResponse(err)
+      return json({ error: message, code }, status)
     }
+    console.error('dpe-chat error', err)
     return json({ error: 'Internal error' }, 500)
   }
 })
