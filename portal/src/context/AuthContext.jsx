@@ -7,6 +7,7 @@ const AuthContext = createContext(null)
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
+  const [profileError, setProfileError] = useState(null)
   const [loading, setLoading] = useState(true)
   // Guards against two fetchProfile() calls resolving out of order (e.g. a
   // sign-out immediately followed by a sign-in on a shared device, or the
@@ -83,11 +84,25 @@ export function AuthProvider({ children }) {
 
   async function fetchProfile(userId) {
     latestUserIdRef.current = userId
-    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single()
     // A later fetchProfile() call for a different user may have already
     // superseded this one by the time it resolves -- discard this result
     // rather than let whichever request happens to finish last win.
     if (latestUserIdRef.current !== userId) return
+    // Bug sweep: this used to discard `error` entirely, so a failed fetch
+    // (RLS hiccup, transient network error, a just-created profile row not
+    // yet visible) set `profile` to null under a "not loading" flag,
+    // indistinguishable from a real user who genuinely has no profile row.
+    // Downstream role-gating (e.g. PortalSelector) couldn't tell "we don't
+    // know yet" apart from "this user has no role" -- exposing the error
+    // here lets a consumer make that distinction; it does not by itself
+    // change what any existing consumer does with it.
+    if (error) {
+      setProfileError(error)
+      setLoading(false)
+      return
+    }
+    setProfileError(null)
     setProfile(data)
     setLoading(false)
   }
@@ -101,7 +116,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, profile, profileError, loading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   )

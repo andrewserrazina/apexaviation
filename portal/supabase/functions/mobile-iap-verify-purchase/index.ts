@@ -30,7 +30,8 @@
 //   APPLE_IAP_BUNDLE_ID       -- must equal app.json's ios.bundleIdentifier
 //   APPLE_IAP_PRODUCT_ID      -- the non-consumable product id registered in App Store Connect
 //
-// NOT YET DEPLOYED -- see this project's Apple IAP implementation report.
+// Deployed and active (confirmed live, version 17+) -- see this
+// project's Apple IAP implementation report for the original design.
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'

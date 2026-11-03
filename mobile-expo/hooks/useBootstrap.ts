@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MobileBootstrapDTO } from '../../shared/mobile-dto'
 import { fetchBootstrap } from '../lib/api/bootstrap'
 import { ApiError, logDevError } from '../lib/api/errors'
@@ -19,25 +19,40 @@ export function useBootstrap(): UseBootstrapResult {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<ApiError | null>(null)
-  const [inFlight, setInFlight] = useState(false)
+  // Refs, not state: several screens share one bootstrap via
+  // BootstrapContext and can each call load()/refresh() in the same
+  // render tick (e.g. a save-callback refresh racing a pull-to-refresh).
+  // A plain `inFlight` state read is stale until the next render commits,
+  // so two calls in the same tick both see inFlight===false and both
+  // fetch. requestIdRef additionally guards the *resolution* order: if a
+  // newer request has started by the time an older one resolves, the
+  // older response is discarded instead of overwriting fresher data with
+  // stale data (e.g. a purchase-triggered refresh resolving after a
+  // slower earlier refresh would otherwise flip `entitled` back to false).
+  const inFlightRef = useRef(false)
+  const requestIdRef = useRef(0)
 
   const load = useCallback(async (isRefresh: boolean) => {
-    if (inFlight) return
-    setInFlight(true)
+    if (inFlightRef.current) return
+    inFlightRef.current = true
+    const requestId = ++requestIdRef.current
     isRefresh ? setRefreshing(true) : setLoading(true)
     setError(null)
     try {
       const result = await fetchBootstrap()
+      if (requestId !== requestIdRef.current) return
       setData(result)
     } catch (err) {
+      if (requestId !== requestIdRef.current) return
       logDevError('useBootstrap', err)
       setError(err instanceof ApiError ? err : new ApiError({ kind: 'server', userMessage: 'Something went wrong. Please try again.' }))
     } finally {
-      isRefresh ? setRefreshing(false) : setLoading(false)
-      setInFlight(false)
+      if (requestId === requestIdRef.current) {
+        isRefresh ? setRefreshing(false) : setLoading(false)
+      }
+      inFlightRef.current = false
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inFlight])
+  }, [])
 
   useEffect(() => {
     load(false)

@@ -641,8 +641,16 @@
       forgotSubmit.textContent = 'Sending…';
 
       var email = document.getElementById('forgotEmail').value.trim();
+      // Carries this page's own ?dest= through to the reset-password
+      // redirect, same as the primary welcome-email path (create-free-
+      // account's redirectTo) -- without this, a member who signed up via
+      // ?dest=checkride-prep, hit a welcome-email failure, and used this
+      // fallback instead would land on the generic dashboard rather than
+      // the Checkride Prep unlock offer they actually signed up for.
+      var forgotDest = (new URLSearchParams(window.location.search)).get('dest') || '';
+      var safeForgotDest = /^[a-z0-9-]{1,60}$/.test(forgotDest) ? forgotDest : '';
       apexSupabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + '/portal-reset-password.html'
+        redirectTo: window.location.origin + '/portal-reset-password.html' + (safeForgotDest ? '?dest=' + safeForgotDest : '')
       }).then(function (res) {
         forgotSubmit.disabled = false;
         forgotSubmit.textContent = 'Send Reset Link';
