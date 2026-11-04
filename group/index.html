@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Apex Aviation Training Group | Corporate Overview</title>
-  <meta name="description" content="Apex Aviation Training Group LLC develops Apex Advantage, a premium aviation education platform combining live instruction, a self-paced portal, and simulator-based training. Corporate overview for partners and investors." />
+  <meta name="description" content="Apex Aviation Training Group LLC provides online ground instruction, mock orals, and digital checkride preparation through Apex Advantage, with an Austin-area Part 61 flight school in development. Explore aircraft and operating partnerships." />
   <meta property="og:title" content="Apex Aviation Training Group | Corporate Overview" />
-  <meta property="og:description" content="What Apex Aviation Training Group LLC is, what we do, and where the company is headed." />
+  <meta property="og:description" content="Online pilot instruction today. An Austin-area flight school in development. Aircraft leasing and operating partnership opportunities." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://apexaviationgroup.com/" />
   <meta property="og:site_name" content="Apex Aviation Training Group" />
@@ -36,7 +36,8 @@
       --border: rgba(11,31,58,0.1);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
+    html { scroll-behavior: smooth; scroll-padding-top: 100px; }
+    a:focus-visible { outline: 3px solid var(--gold); outline-offset: 4px; }
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       color: var(--dark-gray);
@@ -83,8 +84,15 @@
       padding: 10px 20px; text-decoration: none; white-space: nowrap;
     }
     .nav__cta:hover { background: #ffc933; }
-    @media (max-width: 720px) {
-      .nav__links a:not(.nav__cta) { display: none; }
+    @media (max-width: 1000px) {
+      .nav__inner { flex-wrap: wrap; gap: 12px; }
+      .nav__brand span { font-size: 11px; }
+      .nav__links { width: 100%; flex-wrap: wrap; gap: 12px 18px; }
+      .nav__links a { font-size: 12px; }
+      .nav__cta { padding: 6px 12px; }
+      html { scroll-padding-top: 160px; }
+      .contact-box { padding: 32px 20px; }
+      .btn-primary { padding: 14px 20px; font-size: 14px; max-width: 100%; }
     }
 
     /* ─── Hero ─── */
@@ -214,7 +222,8 @@
       </a>
       <nav class="nav__links">
         <a href="#overview">Overview</a>
-        <a href="#timeline">Timeline</a>
+        <a href="#timeline">Development</a>
+        <a href="#aircraft">Aircraft Partners</a>
         <a href="#market">Market</a>
         <a href="#leadership">Leadership</a>
         <a href="#contact" class="nav__cta">Contact</a>
@@ -229,7 +238,7 @@
       <div class="hero__inner">
         <div class="eyebrow">Corporate Overview</div>
         <h1>Apex Aviation Training Group LLC</h1>
-        <p class="lede">We develop Apex Advantage, a premium aviation education platform combining live instructor-led training, a self-paced learning portal, and simulator-based instruction &mdash; built to prepare pilots for real-world flying, not just a certificate.</p>
+        <p class="lede">We provide individual online ground instruction, mock orals, and digital checkride preparation through Apex Advantage. Our next step is an Austin-area Part 61 flight school, supported by aircraft and operating partnerships.</p>
 
         <div class="hero__facts">
           <div>
@@ -238,11 +247,11 @@
           </div>
           <div>
             <div class="hero__fact-label">Status</div>
-            <div class="hero__fact-value">Free member portal live today</div>
+            <div class="hero__fact-value">Online instruction &amp; digital prep</div>
           </div>
           <div>
             <div class="hero__fact-label">Next Milestone</div>
-            <div class="hero__fact-value">Live ground school &mdash; September 2026</div>
+            <div class="hero__fact-value">Austin-area flight school in development</div>
           </div>
         </div>
       </div>
@@ -257,21 +266,21 @@
           <div class="eyebrow">Who We Are</div>
           <h2 style="font-size:clamp(1.5rem,2.8vw,2rem);font-weight:800;margin-bottom:20px;line-height:1.3">Modern aviation education, built beyond the minimum standard.</h2>
           <p>Apex Aviation Training Group LLC is the company behind Apex Advantage, a training platform for private, instrument, and commercial pilot candidates. The mission is straightforward: provide professional, checkride-focused aviation education that goes beyond minimum FAA standards and prepares students to become safer, more competent pilots.</p>
-          <p>Apex Advantage combines live instructor-led training, self-paced online learning, interactive scenario-based education, checkride preparation resources, and a growing aviation community &mdash; bridging the gap between traditional ground school and real-world pilot decision-making.</p>
-          <p>The company is led by a working Commercial Pilot and Certified Flight Instructor, and every product decision is made by someone who is directly in the training environment with students, not removed from it.</p>
+          <p>Today, Apex serves pilots through individual online ground sessions, mock oral exams, and self-paced digital preparation. Training is tailored to each pilot's knowledge gaps and goals, with an emphasis on practical scenarios and sound decision-making.</p>
+          <p>Led by a Commercial Pilot and CFI/CFII, Apex is developing a Part 61 flight school in the Austin area. Aircraft, airport arrangements, and financing are being evaluated before an opening date is announced.</p>
         </div>
         <div>
           <div class="fact-card">
             <div class="fact-card__label">Founded &amp; Operated By</div>
-            <div class="fact-card__value">Andrew Serrazina, Commercial Pilot &amp; CFI</div>
+            <div class="fact-card__value">Andrew Serrazina, Commercial Pilot &amp; CFI/CFII</div>
           </div>
           <div class="fact-card">
             <div class="fact-card__label">Flagship Product</div>
             <div class="fact-card__value">Apex Advantage member portal &amp; Checkride Prep System</div>
           </div>
           <div class="fact-card">
-            <div class="fact-card__label">Headquarters</div>
-            <div class="fact-card__value">Austin, Texas</div>
+            <div class="fact-card__label">Planned Flight-School Market</div>
+            <div class="fact-card__value">Austin area, Texas &mdash; location under evaluation</div>
           </div>
         </div>
       </div>
@@ -283,24 +292,24 @@
     <div class="container">
       <div class="section-header">
         <div class="eyebrow">What We Do</div>
-        <h2>Three ways we deliver aviation education.</h2>
-        <p>Apex Advantage is designed as a coordinated system, not a single product &mdash; live instruction, self-paced digital learning, and (starting January 2027) simulator-based training in one facility.</p>
+        <h2>Personal instruction. Practical preparation.</h2>
+        <p>Our current services combine direct instructor support with independent study for private, instrument, and commercial pilot candidates.</p>
       </div>
       <div class="pillar-grid">
         <div class="pillar-card">
           <div class="pillar-card__num">01</div>
-          <h3>Live Instructor-Led Training</h3>
-          <p>Ground school and checkride preparation delivered directly by an active Commercial Pilot and CFI, not a pre-recorded course with no instructor contact.</p>
+          <h3>Individual Online Ground Instruction</h3>
+          <p>One-on-one online sessions with a CFI/CFII, tailored to the pilot's training stage, questions, and areas needing reinforcement.</p>
         </div>
         <div class="pillar-card">
           <div class="pillar-card__num">02</div>
-          <h3>Self-Paced Digital Portal</h3>
-          <p>A free member portal with a 300+ question DPE-style Checkride Prep System, progress tracking, and scenario-based study tools available today.</p>
+          <h3>Mock Oral Exams</h3>
+          <p>Scenario-based oral practice with instructor feedback to identify knowledge gaps and guide the next steps in checkride preparation.</p>
         </div>
         <div class="pillar-card">
           <div class="pillar-card__num">03</div>
-          <h3>Simulator-Based Training</h3>
-          <p>An FAA-certified AATD simulator facility opening in Austin, Texas, extending the platform into hands-on, scenario-based flight training.</p>
+          <h3>Digital Checkride Preparation</h3>
+          <p>The Apex Advantage portal supports self-paced study with checkride preparation resources and scenario-based learning tools.</p>
         </div>
       </div>
     </div>
@@ -310,33 +319,62 @@
   <section class="section section--navy" id="timeline">
     <div class="container">
       <div class="section-header">
-        <div class="eyebrow">Development Timeline</div>
+        <div class="eyebrow">Development Roadmap &middot; Updated November 2026</div>
         <h2>Where the company is today, and what's next.</h2>
-        <p>Three real, dated milestones &mdash; not projections.</p>
+        <p>Current operations and planned expansion, with launch timing dependent on aircraft, location, and financing.</p>
       </div>
       <div class="timeline">
         <div class="timeline-item">
           <div class="timeline-item__date">Live Today</div>
           <div>
             <div class="timeline-item__status">Active</div>
-            <h3>Free Member Portal</h3>
-            <p>The Apex Advantage member portal is live, including the "10 Questions DPEs Love to Ask" guide and the 300+ question DPE-style Checkride Prep System, available to student pilots at every stage today.</p>
+            <h3>Online Instruction &amp; Apex Advantage</h3>
+            <p>Individual online grounds, mock oral exams, and digital preparation are available today. The former 20-module group ground school has been discontinued; current live instruction is delivered individually.</p>
           </div>
         </div>
         <div class="timeline-item">
-          <div class="timeline-item__date">September 2026</div>
+          <div class="timeline-item__date">Next Phase</div>
           <div>
             <div class="timeline-item__status">In Development</div>
-            <h3>Apex Advantage Live Ground School</h3>
-            <p>Structured, live virtual ground school sessions for Private Pilot, Instrument Rating, and Commercial Pilot candidates, taught on a fixed weekly schedule.</p>
+            <h3>Austin-Area Part 61 Flight School</h3>
+            <p>We are pursuing an initial training aircraft and evaluating Austin Executive (KEDC) and Georgetown Municipal (KGTU). Neither airport is a confirmed location. Flight operations will begin only after aircraft, airport arrangements, and financing are in place; an opening date has not been set.</p>
           </div>
         </div>
         <div class="timeline-item">
-          <div class="timeline-item__date">January 2027</div>
+          <div class="timeline-item__date">Future Expansion</div>
           <div>
             <div class="timeline-item__status">In Development</div>
-            <h3>Austin AATD Simulator Facility</h3>
-            <p>An FAA-certified Advanced Aviation Training Device facility opening in Austin, Texas, supporting IPCs, flight reviews, and instrument currency for instrument-rated pilots.</p>
+            <h3>Simulator-Based Training</h3>
+            <p>Simulator-based instruction remains a planned addition to the training offering. Device selection, facility arrangements, funding, and delivery timing have not been finalized.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ AIRCRAFT PARTNERSHIPS ═══ -->
+  <section class="section" id="aircraft">
+    <div class="container">
+      <div class="overview-grid">
+        <div>
+          <div class="eyebrow">Aircraft Partnerships</div>
+          <h2 style="font-size:clamp(1.5rem,2.8vw,2rem);font-weight:800;margin-bottom:20px;line-height:1.3">Help bring Apex flight training to the Austin area.</h2>
+          <p>We are seeking dry-lease or leaseback opportunities for an initial IFR-equipped Cessna 172 or Piper Warrior/Archer suitable for private, instrument, and commercial pilot training.</p>
+          <p>We welcome introductions from individual aircraft owners and leasing companies. Aircraft condition, training suitability, availability, maintenance responsibilities, insurance, and lease economics will be reviewed together before any commitment.</p>
+          <a href="mailto:info@apexaviationtx.com?subject=Aircraft%20Partnership%20Inquiry" class="btn-primary">Discuss an Aircraft Partnership</a>
+        </div>
+        <div>
+          <div class="fact-card">
+            <div class="fact-card__label">Initial Aircraft Profile</div>
+            <div class="fact-card__value">One IFR-equipped Cessna 172 or Piper Warrior/Archer</div>
+          </div>
+          <div class="fact-card">
+            <div class="fact-card__label">Proposed Operating Area</div>
+            <div class="fact-card__value">Austin area &mdash; KEDC and KGTU under consideration</div>
+          </div>
+          <div class="fact-card">
+            <div class="fact-card__label">Start the Conversation</div>
+            <div class="fact-card__value">Share the aircraft type, location, availability, and proposed lease structure.</div>
           </div>
         </div>
       </div>
@@ -385,14 +423,14 @@
     <div class="container">
       <div class="section-header">
         <div class="eyebrow">Leadership</div>
-        <h2>Built and operated by a working CFI.</h2>
+        <h2>Built and operated by a CFI/CFII.</h2>
       </div>
       <div class="leader">
-        <img src="images/AndrewHeadshot.JPG" alt="Andrew Serrazina, Commercial Pilot and Flight Instructor, founder of Apex Aviation Training Group" class="leader__photo" />
+        <img src="images/AndrewHeadshot.JPG" alt="Andrew Serrazina, Commercial Pilot and CFI/CFII, founder of Apex Aviation Training Group" class="leader__photo" />
         <div>
           <div class="leader__name">Andrew Serrazina</div>
-          <div class="leader__title">Commercial Pilot &middot; Flight Instructor &middot; Founder</div>
-          <p class="leader__bio">Andrew Serrazina is a Commercial Pilot and Certified Flight Instructor who founded Apex Aviation Training Group to build the kind of checkride and flight training resources he wished had existed as a student: structured, scenario-based, and focused on genuine understanding rather than memorization.<br /><br />Every product decision for Apex Advantage &mdash; the portal, the curriculum, and the upcoming ground school and simulator facility &mdash; is made from inside the training environment, working directly with student pilots.</p>
+          <div class="leader__title">Commercial Pilot &middot; CFI/CFII &middot; Founder</div>
+          <p class="leader__bio">Andrew Serrazina is a Commercial Pilot and Certified Flight Instructor with an instrument instructor rating (CFI/CFII) who founded Apex Aviation Training Group to build the kind of checkride and flight training resources he wished had existed as a student: structured, scenario-based, and focused on genuine understanding rather than memorization.<br /><br />His work with students informs Apex's individual ground instruction, mock oral exams, and digital preparation resources. He is leading the company's planned expansion into Austin-area flight training and aircraft partnerships.</p>
         </div>
       </div>
     </div>
@@ -404,7 +442,7 @@
       <div class="contact-box">
         <div class="eyebrow" style="text-align:center">For Partners &amp; Investors</div>
         <h2>Let's talk.</h2>
-        <p>For partnership, investment, or institutional inquiries, reach out directly &mdash; we respond within one business day.</p>
+        <p>We welcome conversations with aircraft owners, lessors, operating partners, and prospective investors about the Austin-area expansion. Tell us about your aircraft or organization and how you would like to work together.</p>
         <a href="mailto:info@apexaviationtx.com" class="btn-primary">
           info@apexaviationtx.com
         </a>
@@ -419,7 +457,7 @@
         <span>&copy; 2026 Apex Aviation Training Group LLC. All rights reserved.</span>
       </div>
       <div class="footer__links">
-        <a href="https://apexaviationtx.com" target="_blank" rel="noopener">Apex Advantage Portal</a>
+        <a href="https://apexaviationtx.com" target="_blank" rel="noopener">Apex Aviation Training</a>
         <a href="mailto:info@apexaviationtx.com">Contact</a>
       </div>
       <p class="footer__legal">Apex Aviation Training Group LLC operates the Apex Advantage training platform. This page is a corporate overview provided for informational purposes to prospective partners and investors and does not constitute an offer to sell, or a solicitation of an offer to buy, any securities.</p>
