@@ -218,17 +218,16 @@
           </div>
         </div>
 
-        <!-- Refer-a-Friend promo -- permanently hidden now (see
-             renderReferralPromoBanner() in portal-stable.js). Its reward
-             was "a free Ground School session," redeemed against a
-             registration flow that's now closed (Group Ground School is
-             discontinued); the inner copy is left as historical record,
-             not shown to anyone, pending a product decision on whether
-             to repoint the reward at Private Instruction. -->
+        <!-- Refer-a-Friend promo -- v164: repointed at a free Checkride
+             Prep unlock ($29 value, instant digital fulfillment) now that
+             Group Ground School (the old reward's redemption path) is
+             discontinued. See renderReferralPromoBanner() in
+             portal-stable.js and redeem_referral_reward_checkride_prep()
+             (supabase-portal-schema-v164). -->
         <div class="portal-card" id="referralPromoBanner" hidden style="margin-bottom:24px;border-color:rgba(244,180,0,0.25);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
           <div>
-            <h3 style="color:#fff;font-size:15px;font-weight:800;margin-bottom:4px">🎁 Give a Friend a Free Ground School Class</h3>
-            <p style="color:rgba(255,255,255,0.55);font-size:13px;margin:0">Share your link — once a friend enrolls, you get a free Ground School session.</p>
+            <h3 style="color:#fff;font-size:15px;font-weight:800;margin-bottom:4px">🎁 Give a Friend Free Checkride Prep</h3>
+            <p style="color:rgba(255,255,255,0.55);font-size:13px;margin:0">Share your link — once a friend enrolls, you get the full Checkride Prep System free.</p>
           </div>
           <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
             <button type="button" class="btn btn--primary" id="referralPromoCopyBtn">Get My Referral Link</button>
@@ -1957,6 +1956,12 @@
             <h3 style="color:#fff;font-size:16px;font-weight:700;margin-bottom:6px">Refer a Friend</h3>
             <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:16px">Share your link with a friend who's training for their checkride.</p>
             <div id="referralRewardBanner" style="display:none;margin-bottom:14px;padding:12px 14px;background:rgba(244,180,0,0.1);border:1px solid rgba(244,180,0,0.35);border-radius:8px;font-size:13px;color:#fff"></div>
+            <!-- v164: redeems against redeem_referral_reward_checkride_prep()
+                 -- see renderReferralProgram()'s availableReferralRewards
+                 handling in portal-stable.js. Hidden unless the member has
+                 at least one earned-but-unredeemed reward and doesn't
+                 already have Checkride Prep unlocked. -->
+            <button type="button" class="btn btn--primary btn--full" id="referralRewardRedeemBtn" style="display:none;margin-bottom:14px">🎁 Unlock Checkride Prep Free</button>
             <div class="portal-referral-code">
               <code id="referralCode">—</code>
               <button class="btn btn--ghost" id="referralCopyBtn">Copy Link</button>

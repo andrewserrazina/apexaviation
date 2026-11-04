@@ -7780,19 +7780,23 @@
 
     availableReferralRewards = referrals.filter(function (r) { return r.status === 'rewarded' && !r.redeemed_at; }).length;
 
-    // Ground School registration (what this reward was redeemed against)
-    // is closed -- a member who earned a reward before that happened
-    // still has a real, legitimately-earned credit, just no self-serve
-    // way to spend it anymore (redeem_referral_reward() would need a
-    // product change to repoint it, out of scope here). Tell them to
-    // reach out rather than pointing at a "register and choose Use a
-    // Free Referral Reward" flow that no longer exists in the UI.
+    // v164: self-serve redemption via redeem_referral_reward_checkride_
+    // prep() (supabase-portal-schema-v164) -- repoints the reward at a
+    // free Checkride Prep unlock now that Ground School registration
+    // (what the old reward redeemed against) is closed. A member who
+    // already has Checkride Prep unlocked has nothing to redeem into
+    // (the RPC itself blocks it), so the button/banner stay hidden for
+    // them rather than offering a redemption that would just error.
     var banner = document.getElementById('referralRewardBanner');
-    if (availableReferralRewards > 0) {
+    var redeemBtn = document.getElementById('referralRewardRedeemBtn');
+    var canRedeem = availableReferralRewards > 0 && !(member && member.checkridePrepUnlocked);
+    if (canRedeem) {
       banner.style.display = 'block';
-      banner.textContent = '🎁 You have ' + availableReferralRewards + ' earned referral reward' + (availableReferralRewards === 1 ? '' : 's') + ' — email info@apexaviationtx.com to use ' + (availableReferralRewards === 1 ? 'it' : 'them') + '.';
+      banner.textContent = '🎁 You have ' + availableReferralRewards + ' earned referral reward' + (availableReferralRewards === 1 ? '' : 's') + ' — unlock the full Checkride Prep System free.';
+      redeemBtn.style.display = 'block';
     } else {
       banner.style.display = 'none';
+      redeemBtn.style.display = 'none';
     }
 
     var listEl = document.getElementById('referralList');
@@ -7836,18 +7840,25 @@
   // just below, so a member who sees the banner once this session isn't
   // double/triple-counted as three "views."
   var referralPromoViewTrackedThisSession = false;
-  // The reward this banner advertised ("a free Ground School session")
-  // is redeemed via redeem_referral_reward(), which only ever spent
-  // against the legacy ground_sessions path -- now unreachable (the
-  // browse-and-register UI it depends on is permanently hidden, see
-  // section-ground-school above). Rather than keep promoting a reward
-  // that can no longer be redeemed, this banner stays hidden until the
-  // reward is repointed at a real product (needs a redeem_referral_
-  // reward() change, not just copy -- out of scope here).
+  // v164: repointed at a free Checkride Prep unlock, redeemed via
+  // redeem_referral_reward_checkride_prep() (supabase-portal-schema-
+  // v164) -- restores this banner's original logic (07b249e), which was
+  // hardcoded hidden when the old reward ("a free Ground School
+  // session") became unredeemable after Group Ground School closed.
+  // Hidden once dismissed, once the member has made any referral (the
+  // "Refer a Friend" card below is the ongoing home for that), or once
+  // the member already has Checkride Prep unlocked -- they could never
+  // actually redeem this reward, so pitching it would be misleading.
   function renderReferralPromoBanner() {
     var banner = document.getElementById('referralPromoBanner');
     if (!banner) return;
-    banner.hidden = true;
+    var dismissed = false;
+    try { dismissed = localStorage.getItem(referralPromoDismissKey) === '1'; } catch (e) {}
+    banner.hidden = dismissed || !referralCode || referrals.length > 0 || (member && member.checkridePrepUnlocked);
+    if (!banner.hidden && !referralPromoViewTrackedThisSession) {
+      referralPromoViewTrackedThisSession = true;
+      if (window.apexTrack) apexTrack('referral_promo_banner_viewed', { profile_id: member.id });
+    }
   }
   var referralPromoCopyBtn = document.getElementById('referralPromoCopyBtn');
   if (referralPromoCopyBtn) referralPromoCopyBtn.addEventListener('click', function () { copyReferralLink('dashboard_banner'); });
@@ -7856,6 +7867,28 @@
     document.getElementById('referralPromoBanner').hidden = true;
     if (window.apexTrack) apexTrack('referral_promo_dismissed', { profile_id: member.id });
     try { localStorage.setItem(referralPromoDismissKey, '1'); } catch (e) {}
+  });
+
+  // v164: redeems against redeem_referral_reward_checkride_prep() --
+  // reloads on success rather than hand-patching every gated section's
+  // local state, the same "let a fresh load pick up the new entitlement"
+  // approach a Stripe-checkout-driven unlock already gets via its own
+  // redirect back into the dashboard.
+  var referralRewardRedeemBtn = document.getElementById('referralRewardRedeemBtn');
+  if (referralRewardRedeemBtn) referralRewardRedeemBtn.addEventListener('click', function () {
+    referralRewardRedeemBtn.disabled = true;
+    referralRewardRedeemBtn.textContent = 'Unlocking…';
+    apexSupabase.rpc('redeem_referral_reward_checkride_prep').then(function (res) {
+      if (res.error) {
+        referralRewardRedeemBtn.disabled = false;
+        referralRewardRedeemBtn.textContent = '🎁 Unlock Checkride Prep Free';
+        toast(res.error.message || 'Could not redeem your reward. Please try again.');
+        return;
+      }
+      if (window.apexTrack) apexTrack('referral_reward_redeemed', { profile_id: member.id });
+      toast('Checkride Prep unlocked! Reloading…');
+      window.location.reload();
+    });
   });
 
   document.getElementById('referralForm').addEventListener('submit', function (e) {

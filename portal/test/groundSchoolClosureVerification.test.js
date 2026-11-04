@@ -184,23 +184,34 @@ describe('Dashboard upsells no longer route to Ground School registration', () =
   })
 })
 
-describe('Refer-a-Friend: promo banner permanently hidden, reward not silently repointed', () => {
-  it('renderReferralPromoBanner() always hides the banner (no live reward to promote)', () => {
+describe('Refer-a-Friend: v164 repointed at a free Checkride Prep unlock, legacy RPC left alone', () => {
+  it('renderReferralPromoBanner() shows real logic again (dismissed/no-code/already-referred/already-unlocked gates), not hardcoded hidden', () => {
     const body = extractFunctionBody(portalStableSource, 'function renderReferralPromoBanner() {', 'renderReferralPromoBanner()')
-    expect(body.replace(/\s+/g, ' ').trim()).toBe(
-      "var banner = document.getElementById('referralPromoBanner'); if (!banner) return; banner.hidden = true;"
-    )
+    const normalized = body.replace(/\s+/g, ' ').trim()
+    expect(normalized).not.toBe("var banner = document.getElementById('referralPromoBanner'); if (!banner) return; banner.hidden = true;")
+    expect(normalized).toMatch(/dismissed \|\| !referralCode \|\| referrals\.length > 0/)
+    expect(normalized).toMatch(/member\.checkridePrepUnlocked/)
   })
 
-  it('a member with an existing unspent reward is told to contact Andrew, not pointed at a dead redeem flow', () => {
+  it('a member with an existing unspent reward gets a working in-app redeem button, not an email-us instruction', () => {
     const idx = portalStableSource.indexOf("document.getElementById('referralRewardBanner')")
     expect(idx).toBeGreaterThan(-1)
-    const block = portalStableSource.slice(idx, idx + 600)
-    expect(block).not.toMatch(/Use a Free Referral Reward/)
-    expect(block).toMatch(/email info@apexaviationtx\.com/)
+    const block = portalStableSource.slice(idx, idx + 700)
+    expect(block).not.toMatch(/email info@apexaviationtx\.com/)
+    expect(block).toMatch(/referralRewardRedeemBtn/)
+    expect(block).toMatch(/checkridePrepUnlocked/)
   })
 
-  it('redeem_referral_reward is still wired (existing obligations preserved), but only from inside the hidden browse/register modal', () => {
+  it('redeem_referral_reward_checkride_prep() is wired to a real click handler, and is blocked for a member who already has Checkride Prep unlocked', () => {
+    expect(portalStableSource).toContain("apexSupabase.rpc('redeem_referral_reward_checkride_prep')")
+    const idx = portalStableSource.indexOf("document.getElementById('referralRewardRedeemBtn')")
+    expect(idx).toBeGreaterThan(-1)
+    const canRedeemIdx = portalStableSource.indexOf('var canRedeem =')
+    expect(canRedeemIdx).toBeGreaterThan(-1)
+    expect(portalStableSource.slice(canRedeemIdx, canRedeemIdx + 200)).toMatch(/!\(member && member\.checkridePrepUnlocked\)/)
+  })
+
+  it('redeem_referral_reward (legacy) is still wired (existing obligations preserved), but only from inside the hidden browse/register modal', () => {
     // The RPC itself is deliberately untouched server-side -- a member who
     // already earned a reward can still have it redeemed (by Andrew,
     // directly, per the banner above) without a backend change. This just
