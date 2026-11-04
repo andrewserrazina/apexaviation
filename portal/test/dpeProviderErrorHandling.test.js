@@ -127,7 +127,7 @@ function buildDpeChatCore({ fetchImpl } = {}) {
   `
   // eslint-disable-next-line no-new-func
   const factory = new Function('ANTHROPIC_API_KEY', 'ANTHROPIC_MODEL', 'fetch', src)
-  return factory('test-key', 'claude-sonnet-5', fetchImpl)
+  return factory('test-key', 'claude-haiku-5-5', fetchImpl)
 }
 
 function anthropicResponse(text) {

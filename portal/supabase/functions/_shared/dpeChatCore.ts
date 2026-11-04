@@ -12,7 +12,13 @@
 //   ANTHROPIC_API_KEY
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!
-const ANTHROPIC_MODEL = 'claude-sonnet-5'
+// Nov 2026: switched from claude-sonnet-5 to claude-haiku-5-5 for cost
+// (per-token price is roughly 1/20th of Sonnet 5) -- requested explicitly,
+// see git history. Everything else in this file (the JSON-envelope
+// contract, the retry-once-on-malformed-response behavior, the failure
+// classification) is unchanged and applies identically regardless of
+// which model answers.
+const ANTHROPIC_MODEL = 'claude-haiku-5-5'
 
 // Nov 2026 incident (App Store rejection of 1.1 (14)): production logs
 // showed Oral Practice failing with a bare HTTP 500 whenever the
