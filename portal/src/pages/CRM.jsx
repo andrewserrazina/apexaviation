@@ -16,6 +16,13 @@ const STAGES = [
 const REFERRAL_SOURCES = ['Walk-in', 'Website', 'Social Media', 'Referral', 'Google', 'Flying Club', 'Event', 'Other']
 const BLANK = { full_name: '', email: '', phone: '', stage: 'inquiry', referral_source: '', notes: '' }
 
+// Derived server-side by capture-waitlist-lead from which waitlist
+// checkboxes a visitor selected (see that function's classifyLocation
+// Segment()) -- null for every lead created another way (e.g. a
+// walk-in added here directly), which is why every lookup below falls
+// back to showing nothing rather than a bare "null".
+const LOCATION_SEGMENT_LABELS = { austin_in_person: 'Austin In-Person', virtual: 'Virtual', both: 'Austin + Virtual' }
+
 export default function CRM() {
   const { profile } = useAuth()
   // Office managers get full CRM management (this page's core purpose
@@ -34,6 +41,7 @@ export default function CRM() {
   const [notes, setNotes] = useState([])
   const [noteText, setNoteText] = useState('')
   const [addingNote, setAddingNote] = useState(false)
+  const [segmentFilter, setSegmentFilter] = useState('all')
 
   async function load() {
     const { data } = await supabase.from('leads').select('*').order('created_at', { ascending: false })
@@ -92,7 +100,9 @@ export default function CRM() {
     closeModal(); load()
   }
 
-  const byStage = (key) => leads.filter(l => l.stage === key)
+  const visibleLeads = segmentFilter === 'all' ? leads : leads.filter(l => l.location_segment === segmentFilter)
+  const byStage = (key) => visibleLeads.filter(l => l.stage === key)
+  const austinWaitlistCount = leads.filter(l => l.location_segment === 'austin_in_person' || l.location_segment === 'both').length
 
   return (
     <Layout>
@@ -101,11 +111,20 @@ export default function CRM() {
           <h2 className="page-title">CRM</h2>
           <p className="page-sub">Lead pipeline & prospects</p>
         </div>
-        <button className="btn-primary-sm" onClick={openCreate}>+ Add Lead</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <select value={segmentFilter} onChange={e => setSegmentFilter(e.target.value)} aria-label="Filter leads by location interest">
+            <option value="all">All leads</option>
+            <option value="austin_in_person">Austin In-Person</option>
+            <option value="virtual">Virtual</option>
+            <option value="both">Austin + Virtual</option>
+          </select>
+          <button className="btn-primary-sm" onClick={openCreate}>+ Add Lead</button>
+        </div>
       </div>
 
       <div className="stat-grid stat-grid--sm" style={{ marginBottom: 24 }}>
         <div className="stat-card"><p className="stat-card__label">Total Leads</p><p className="stat-card__value">{leads.length}</p></div>
+        <div className="stat-card"><p className="stat-card__label">Austin Waitlist</p><p className="stat-card__value">{austinWaitlistCount}</p></div>
         <div className="stat-card"><p className="stat-card__label">New Inquiries</p><p className="stat-card__value">{byStage('inquiry').length}</p></div>
         <div className="stat-card"><p className="stat-card__label">Active Students</p><p className="stat-card__value">{byStage('active').length}</p></div>
         <div className="stat-card"><p className="stat-card__label">Graduated</p><p className="stat-card__value">{byStage('graduated').length}</p></div>
@@ -127,6 +146,7 @@ export default function CRM() {
                     {lead.email && <p className="crm-card__contact">{lead.email}</p>}
                     {lead.phone && <p className="crm-card__contact">{lead.phone}</p>}
                     {lead.referral_source && <span className="crm-card__source">{lead.referral_source}</span>}
+                    {lead.location_segment && <span className="crm-card__source">{LOCATION_SEGMENT_LABELS[lead.location_segment] ?? lead.location_segment}</span>}
                     <p className="crm-card__date">{new Date(lead.created_at).toLocaleDateString()}</p>
                   </div>
                 ))}
@@ -220,6 +240,7 @@ export default function CRM() {
                 {activeLead.email && <div className="crm-detail-row"><span>✉</span><span>{activeLead.email}</span></div>}
                 {activeLead.phone && <div className="crm-detail-row"><span>📞</span><span>{activeLead.phone}</span></div>}
                 {activeLead.referral_source && <div className="crm-detail-row"><span>📣</span><span>{activeLead.referral_source}</span></div>}
+                {activeLead.location_segment && <div className="crm-detail-row"><span>📍</span><span>{LOCATION_SEGMENT_LABELS[activeLead.location_segment] ?? activeLead.location_segment}</span></div>}
                 <div className="crm-detail-row"><span>📅</span><span>Added {new Date(activeLead.created_at).toLocaleDateString()}</span></div>
               </div>
               {activeLead.notes && (

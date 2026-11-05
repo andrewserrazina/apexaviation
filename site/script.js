@@ -93,9 +93,36 @@ function captureWaitlistLead(form) {
 
 const waitlistForm = document.getElementById('waitlistForm');
 const waitlistSuccess = document.getElementById('waitlistSuccess');
+const waitlistServiceError = document.getElementById('waitlistServiceError');
+const waitlistSuccessMsg = document.getElementById('waitlistSuccessMsg');
 if (waitlistForm) {
   waitlistForm.addEventListener('submit', (e) => {
     e.preventDefault();
+    const checkedServices = [...waitlistForm.querySelectorAll('[name="services"]:checked')];
+    if (!checkedServices.length) {
+      if (waitlistServiceError) waitlistServiceError.hidden = false;
+      return;
+    }
+    if (waitlistServiceError) waitlistServiceError.hidden = true;
+
+    // Tailor the confirmation copy to what they actually checked --
+    // in-person-only, virtual-only, or both -- same segment distinction
+    // capture-waitlist-lead computes server-side for the CRM, kept here
+    // purely for a friendlier success message (not sent to the server;
+    // the function re-derives it from the service labels themselves).
+    if (waitlistSuccessMsg) {
+      const segments = new Set(checkedServices.map((el) => el.dataset.segment));
+      const wantsInPerson = segments.has('in_person');
+      const wantsVirtual = segments.has('virtual');
+      if (wantsInPerson && !wantsVirtual) {
+        waitlistSuccessMsg.textContent = "Welcome to Apex Aviation. We'll be in touch before our February 2027 Austin launch with priority access details.";
+      } else if (wantsVirtual && !wantsInPerson) {
+        waitlistSuccessMsg.textContent = "Welcome to Apex Aviation. Our virtual services are live today -- keep an eye on your inbox, we'll follow up shortly.";
+      } else {
+        waitlistSuccessMsg.textContent = "Welcome to Apex Aviation. We'll follow up about getting started virtually now, plus priority access before our February 2027 Austin launch.";
+      }
+    }
+
     submitToFormspree(waitlistForm, waitlistSuccess);
     captureWaitlistLead(waitlistForm);
   });

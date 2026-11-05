@@ -704,15 +704,19 @@
             </div>
           </div>
           <div class="form-group">
-            <label>I'm interested in</label>
+            <label>I'm interested in <span style="font-weight:400;color:rgba(255,255,255,0.45)">(check all that apply)</span></label>
             <div class="checkbox-grid">
-              <label class="checkbox-item"><input type="checkbox" name="services" value="Private Pilot Training" /><span>Private Pilot Training</span></label>
-              <label class="checkbox-item"><input type="checkbox" name="services" value="Instrument Rating" /><span>Instrument Rating</span></label>
-              <label class="checkbox-item"><input type="checkbox" name="services" value="Commercial Pilot" /><span>Commercial Pilot</span></label>
-              <label class="checkbox-item"><input type="checkbox" name="services" value="Apex Advantage Ground" /><span>Apex Advantage Ground</span></label>
-              <label class="checkbox-item"><input type="checkbox" name="services" value="IPC / BFR / Currency" /><span>IPC / BFR / Currency</span></label>
-              <label class="checkbox-item"><input type="checkbox" name="services" value="Checkride Prep Flights" /><span>Checkride Prep Flights</span></label>
+              <div class="checkbox-grid__label">In-person, once Austin opens</div>
+              <label class="checkbox-item"><input type="checkbox" name="services" value="Private Pilot Training" data-segment="in_person" /><span>Private Pilot Flight Training</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="services" value="Instrument Rating" data-segment="in_person" /><span>Instrument Rating</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="services" value="Commercial Pilot" data-segment="in_person" /><span>Commercial Pilot</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="services" value="IPC / BFR / Currency" data-segment="in_person" /><span>IPC / BFR / Currency</span></label>
+              <div class="checkbox-grid__label" style="margin-top:4px">Virtual, available right now</div>
+              <label class="checkbox-item"><input type="checkbox" name="services" value="Private Instruction" data-segment="virtual" /><span>Private Instruction ($55/hr)</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="services" value="Checkride Prep System" data-segment="virtual" /><span>Checkride Prep System ($29)</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="services" value="Mock Oral Exam" data-segment="virtual" /><span>Mock Oral Exam ($129)</span></label>
             </div>
+            <p class="form__hint" id="waitlistServiceError" hidden>Pick at least one so we know how to follow up.</p>
           </div>
           <button type="submit" class="btn btn--primary btn--full">Join the Waitlist</button>
           <p class="form__note">No spam. Unsubscribe anytime. We'll reach out before launch.</p>
@@ -720,7 +724,7 @@
         <div class="form__success" id="waitlistSuccess">
           <svg width="56" height="56" viewBox="0 0 56 56" fill="none"><circle cx="28" cy="28" r="28" fill="#F4B400" fill-opacity=".1"/><path d="M18 28l8 8 14-16" stroke="#F4B400" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <h3>You're on the List.</h3>
-          <p>Welcome to Apex Aviation. We'll be in touch before our February 2027 Austin launch with priority access details.</p>
+          <p id="waitlistSuccessMsg">Welcome to Apex Aviation. We'll be in touch before our February 2027 Austin launch with priority access details.</p>
         </div>
       </div>
     </div>

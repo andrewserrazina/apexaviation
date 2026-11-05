@@ -2119,6 +2119,16 @@
   gap: 10px;
   margin-top: 6px;
 }
+.checkbox-grid__label {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-top: 4px;
+}
+.checkbox-grid__label:first-child { margin-top: 0; }
 .checkbox-item {
   display: flex;
   align-items: flex-start;
