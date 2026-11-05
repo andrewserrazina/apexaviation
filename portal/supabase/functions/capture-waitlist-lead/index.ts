@@ -1,8 +1,9 @@
-// Captures marketing-site waitlist signups (home.html, landing.html)
-// as real rows in the CRM's leads table, so sales follow-up doesn't
-// depend on someone checking the Formspree inbox. Both waitlist forms
-// still also submit to Formspree independently -- this is a second,
-// parallel destination, not a replacement.
+// Captures marketing-site waitlist signups (home.html -- landing.html
+// is now just a redirect stub, see its own comment) as real rows in
+// the CRM's leads table, so sales follow-up doesn't depend on someone
+// checking the Formspree inbox. The waitlist form still also submits
+// to Formspree independently -- this is a second, parallel
+// destination, not a replacement.
 //
 // Public, unauthenticated form -- runs with the service role key
 // server-side (same pattern as create-free-account) since the `leads`
@@ -32,6 +33,26 @@ const corsHeaders = {
 // dropping this submission as a "duplicate" that was never inserted.
 function escapeIlike(value: string): string {
   return value.replace(/[\\%_]/g, (c) => '\\' + c)
+}
+
+// The exact service checkbox values home.html's waitlist form submits
+// (site/home.html's #waitlistForm) -- kept here, not trusted from the
+// client, so a lead's location_segment can't be spoofed or drift out
+// of sync with what's actually selected. A service value that matches
+// neither set (an old cached page still submitting a retired label, or
+// a future new one not yet added here) simply doesn't count toward
+// either side, rather than throwing -- this never blocks the lead from
+// being captured.
+const IN_PERSON_SERVICES = new Set(['Private Pilot Training', 'Instrument Rating', 'Commercial Pilot', 'IPC / BFR / Currency'])
+const VIRTUAL_SERVICES = new Set(['Private Instruction', 'Checkride Prep System', 'Mock Oral Exam'])
+
+function classifyLocationSegment(services: string[]): 'austin_in_person' | 'virtual' | 'both' | null {
+  const wantsInPerson = services.some((s) => IN_PERSON_SERVICES.has(s))
+  const wantsVirtual = services.some((s) => VIRTUAL_SERVICES.has(s))
+  if (wantsInPerson && wantsVirtual) return 'both'
+  if (wantsInPerson) return 'austin_in_person'
+  if (wantsVirtual) return 'virtual'
+  return null
 }
 
 serve(async (req) => {
@@ -86,6 +107,7 @@ serve(async (req) => {
       stage: 'inquiry',
       referral_source: 'Website',
       notes,
+      location_segment: classifyLocationSegment(services),
     })
     if (insertError) throw insertError
 
