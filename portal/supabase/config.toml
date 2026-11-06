@@ -49,3 +49,12 @@ verify_jwt = false
 # the platform default (verify_jwt = true) and every scheduled invocation
 # would 401 before the function's own code ever ran.
 verify_jwt = false
+
+[functions.send-referral-nudge]
+# Triggered manually (no Supabase session), not on a schedule -- no
+# Supabase session exists either way, so platform-level JWT verification
+# must be off; auth is instead enforced in code against
+# internal_admin_secrets (key='referral_nudge_secret') -- see that
+# function's own header comment for why this isn't a Deno env secret
+# like every other function here.
+verify_jwt = false
