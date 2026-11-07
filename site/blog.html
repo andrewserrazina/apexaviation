@@ -109,7 +109,7 @@
       text-transform: uppercase;
       color: var(--gold);
     }
-    .blog-card__date { font-size: 12px; color: var(--gray); }
+    .blog-card__date { font-size: 12px; color: #718096; }
     .blog-card__title {
       font-size: 18px;
       font-weight: 800;
@@ -117,7 +117,7 @@
       line-height: 1.35;
       margin-bottom: 10px;
     }
-    .blog-card__excerpt { font-size: 14px; color: var(--gray); line-height: 1.7; flex: 1; }
+    .blog-card__excerpt { font-size: 14px; color: #4a5568; line-height: 1.7; flex: 1; }
     .blog-card__read-more {
       margin-top: 20px;
       font-size: 13px;
@@ -141,7 +141,7 @@
       font-family: var(--font);
       font-size: 13px;
       font-weight: 600;
-      color: var(--gray);
+      color: #4a5568;
       cursor: pointer;
       transition: all 0.15s ease;
     }
@@ -151,7 +151,7 @@
       border-color: var(--navy);
       color: #fff;
     }
-    #blogLoading, .blog-empty {
+    .blog-empty {
       text-align: center;
       padding: 80px 20px;
       color: var(--gray);
@@ -225,10 +225,127 @@
         <button class="blog-filter__btn" data-cat="training">Training</button>
         <button class="blog-filter__btn" data-cat="apex-news">Apex News</button>
         <button class="blog-filter__btn" data-cat="texas-flying">Texas Flying</button>
-        <button class="blog-filter__btn" data-cat="ground-school">Ground School</button>
       </div>
-      <div id="blogLoading">Loading posts…</div>
-      <div class="blog-grid" id="blogGrid" style="display:none"></div>
+      <div class="blog-grid" id="blogGrid">
+
+        <a class="blog-card" href="blog-ifr-currency-austin.html" data-cat="pilot-tips">
+          <div class="blog-card__img-placeholder"><svg width="64" height="64" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="blog-card__body">
+            <div class="blog-card__meta">
+              <span class="blog-card__category">Pilot Tips</span>
+              <span class="blog-card__date">June 15, 2026</span>
+            </div>
+            <div class="blog-card__title">How Austin Pilots Stay IFR Current</div>
+            <div class="blog-card__excerpt">The 66 HIT rule, why currency isn't proficiency, and practical strategies for staying sharp in Central Texas.</div>
+            <div class="blog-card__read-more">Read post <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          </div>
+        </a>
+
+        <a class="blog-card" href="blog-ipc-what-to-expect.html" data-cat="training">
+          <div class="blog-card__img-placeholder"><svg width="64" height="64" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="blog-card__body">
+            <div class="blog-card__meta">
+              <span class="blog-card__category">Training</span>
+              <span class="blog-card__date">June 15, 2026</span>
+            </div>
+            <div class="blog-card__title">What to Expect From an IPC in Austin</div>
+            <div class="blog-card__excerpt">What the FAA requires, what separates a real proficiency check from a checkbox exercise, and how to prepare.</div>
+            <div class="blog-card__read-more">Read post <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          </div>
+        </a>
+
+        <a class="blog-card" href="blog-instrument-currency-vs-instrument-proficiency.html" data-cat="pilot-tips">
+          <div class="blog-card__img-placeholder"><svg width="64" height="64" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="blog-card__body">
+            <div class="blog-card__meta">
+              <span class="blog-card__category">Pilot Tips</span>
+              <span class="blog-card__date">June 30, 2026</span>
+            </div>
+            <div class="blog-card__title">Instrument Currency vs. Instrument Proficiency</div>
+            <div class="blog-card__excerpt">The FAA only requires currency. But currency and proficiency aren't the same thing — and confusing them is a common mistake.</div>
+            <div class="blog-card__read-more">Read post <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          </div>
+        </a>
+
+        <a class="blog-card" href="blog-what-is-scenario-based-training.html" data-cat="training">
+          <div class="blog-card__img-placeholder"><svg width="64" height="64" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="blog-card__body">
+            <div class="blog-card__meta">
+              <span class="blog-card__category">Training</span>
+              <span class="blog-card__date">June 30, 2026</span>
+            </div>
+            <div class="blog-card__title">What Is Scenario-Based Training?</div>
+            <div class="blog-card__excerpt">Most flight training is built around maneuvers. Scenario-based training is built around decisions — here's why that matters.</div>
+            <div class="blog-card__read-more">Read post <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          </div>
+        </a>
+
+        <a class="blog-card" href="blog-how-many-simulator-hours-count-toward-instrument-rating.html" data-cat="training">
+          <div class="blog-card__img-placeholder"><svg width="64" height="64" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="blog-card__body">
+            <div class="blog-card__meta">
+              <span class="blog-card__category">Training</span>
+              <span class="blog-card__date">June 26, 2026</span>
+            </div>
+            <div class="blog-card__title">How Many Simulator Hours Count Toward Your Instrument Rating?</div>
+            <div class="blog-card__excerpt">Under FAR Part 61, you can credit up to 20 hours of AATD time toward your instrument rating. Here's exactly how it works.</div>
+            <div class="blog-card__read-more">Read post <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          </div>
+        </a>
+
+        <a class="blog-card" href="blog-central-texas-weather-for-pilots.html" data-cat="texas-flying">
+          <div class="blog-card__img-placeholder"><svg width="64" height="64" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="blog-card__body">
+            <div class="blog-card__meta">
+              <span class="blog-card__category">Texas Flying</span>
+              <span class="blog-card__date">June 30, 2026</span>
+            </div>
+            <div class="blog-card__title">Central Texas Weather for Pilots</div>
+            <div class="blog-card__excerpt">The Balcones Escarpment, spring convection, and the summer haze layer — what every Austin-area pilot should know.</div>
+            <div class="blog-card__read-more">Read post <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          </div>
+        </a>
+
+        <a class="blog-card" href="blog-vfr-into-imc-balcones-escarpment-texas-weather.html" data-cat="texas-flying">
+          <div class="blog-card__img-placeholder"><svg width="64" height="64" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="blog-card__body">
+            <div class="blog-card__meta">
+              <span class="blog-card__category">Texas Flying</span>
+              <span class="blog-card__date">June 26, 2026</span>
+            </div>
+            <div class="blog-card__title">VFR into IMC on the Balcones Escarpment</div>
+            <div class="blog-card__excerpt">One of Central Texas's most reliable weather traps — and most Austin-area pilots don't know it until they're inside it.</div>
+            <div class="blog-card__read-more">Read post <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          </div>
+        </a>
+
+        <a class="blog-card" href="blog-flying-austin-class-c-airspace-guide.html" data-cat="texas-flying">
+          <div class="blog-card__img-placeholder"><svg width="64" height="64" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="blog-card__body">
+            <div class="blog-card__meta">
+              <span class="blog-card__category">Texas Flying</span>
+              <span class="blog-card__date">June 30, 2026</span>
+            </div>
+            <div class="blog-card__title">Flying the Austin Class C: A Practical Guide</div>
+            <div class="blog-card__excerpt">One of the busiest Class C environments in Texas — structure, radio work, and frequencies every Central Texas pilot needs.</div>
+            <div class="blog-card__read-more">Read post <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          </div>
+        </a>
+
+        <a class="blog-card" href="blog-general-aviation-airports-austin-texas.html" data-cat="texas-flying">
+          <div class="blog-card__img-placeholder"><svg width="64" height="64" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="blog-card__body">
+            <div class="blog-card__meta">
+              <span class="blog-card__category">Texas Flying</span>
+              <span class="blog-card__date">June 30, 2026</span>
+            </div>
+            <div class="blog-card__title">General Aviation Airports Near Austin, TX</div>
+            <div class="blog-card__excerpt">Austin has more GA airports than most pilots realize — each with its own personality and best use case.</div>
+            <div class="blog-card__read-more">Read post <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          </div>
+        </a>
+
+      </div>
       <div class="blog-empty" id="blogEmpty" style="display:none">No posts in this category yet — check back soon.</div>
     </div>
   </section>
@@ -274,107 +391,25 @@
 
   <script src="script.js"></script>
   <script>
-    const POSTS_DIR = 'posts/';
-    const POST_LIST = [
-      'central-texas-weather-for-pilots.md',
-      'general-aviation-airports-austin-texas.md',
-      'flying-austin-class-c-airspace-guide.md',
-      'instrument-currency-vs-instrument-proficiency.md',
-      'what-is-scenario-based-training.md',
-      'vfr-into-imc-balcones-escarpment-texas-weather.md',
-      'how-many-simulator-hours-count-toward-instrument-rating.md',
-    ];
-    const CATEGORY_LABELS = {
-      'pilot-tips': 'Pilot Tips',
-      'training': 'Training',
-      'apex-news': 'Apex News',
-      'texas-flying': 'Texas Flying',
-      'ground-school': 'Ground School',
-    };
-
-    function parseFrontmatter(text) {
-      const match = text.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-      if (!match) return { meta: {}, body: text };
-      const meta = {};
-      match[1].split('\n').forEach(line => {
-        const colonIdx = line.indexOf(':');
-        if (colonIdx === -1) return;
-        const key = line.slice(0, colonIdx).trim();
-        const val = line.slice(colonIdx + 1).trim().replace(/^["']|["']$/g, '');
-        meta[key] = val;
-      });
-      return { meta, body: match[2] };
-    }
-
-    function formatDate(dateStr) {
-      const d = new Date(dateStr + 'T12:00:00');
-      return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    }
-
-    function renderCard(meta, slug) {
-      const imgHtml = meta.featured_image
-        ? `<img class="blog-card__img" src="${meta.featured_image}" alt="${meta.title}" loading="lazy" />`
-        : `<div class="blog-card__img-placeholder"><svg width="64" height="64" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`;
-      return `
-        <a class="blog-card" href="blog-post.html?post=${slug}" data-cat="${meta.category || ''}">
-          ${imgHtml}
-          <div class="blog-card__body">
-            <div class="blog-card__meta">
-              <span class="blog-card__category">${CATEGORY_LABELS[meta.category] || meta.category}</span>
-              <span class="blog-card__date">${formatDate(meta.date)}</span>
-            </div>
-            <div class="blog-card__title">${meta.title}</div>
-            <div class="blog-card__excerpt">${meta.excerpt}</div>
-            <div class="blog-card__read-more">Read post <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          </div>
-        </a>`;
-    }
-
-    async function loadPosts() {
-      const results = await Promise.all(
-        POST_LIST.map(async filename => {
-          try {
-            const res = await fetch(POSTS_DIR + filename);
-            if (!res.ok) return null;
-            const text = await res.text();
-            const { meta } = parseFrontmatter(text);
-            return { meta, slug: filename.replace('.md', '') };
-          } catch { return null; }
-        })
-      );
-      return results.filter(Boolean).sort((a, b) => new Date(b.meta.date) - new Date(a.meta.date));
-    }
-
-    let allPosts = [];
-    let activeFilter = 'all';
-
-    function renderPosts() {
-      const grid = document.getElementById('blogGrid');
+    function applyFilter(cat) {
+      const cards = document.querySelectorAll('#blogGrid .blog-card');
       const empty = document.getElementById('blogEmpty');
-      const filtered = activeFilter === 'all' ? allPosts : allPosts.filter(p => p.meta.category === activeFilter);
-      if (filtered.length === 0) {
-        grid.style.display = 'none';
-        empty.style.display = 'block';
-      } else {
-        grid.innerHTML = filtered.map(p => renderCard(p.meta, p.slug)).join('');
-        grid.style.display = 'grid';
-        empty.style.display = 'none';
-      }
+      let visibleCount = 0;
+      cards.forEach(card => {
+        const show = cat === 'all' || card.dataset.cat === cat;
+        card.style.display = show ? 'flex' : 'none';
+        if (show) visibleCount++;
+      });
+      empty.style.display = visibleCount === 0 ? 'block' : 'none';
     }
 
-    (async () => {
-      allPosts = await loadPosts();
-      document.getElementById('blogLoading').style.display = 'none';
-      renderPosts();
-      document.querySelectorAll('.blog-filter__btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          document.querySelectorAll('.blog-filter__btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          activeFilter = btn.dataset.cat;
-          renderPosts();
-        });
+    document.querySelectorAll('.blog-filter__btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.blog-filter__btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        applyFilter(btn.dataset.cat);
       });
-    })();
+    });
   </script>
 </body>
 </html>
