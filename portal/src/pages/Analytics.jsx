@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import Layout from '../components/Layout'
+import { parseDateOnly } from '../lib/date'
 
 function BarChart({ data, valueKey, labelKey, color = 'var(--gold)', unit = '' }) {
   const max = Math.max(...data.map(d => d[valueKey] ?? 0), 1)
@@ -255,7 +256,9 @@ export default function Analytics() {
       const hrsByMonth = months.map(m => {
         const val = (logbookRes.data ?? [])
           .filter(e => {
-            const d = new Date(e.date)
+            // logbook_entries.date is a date-only column -- must be
+            // parsed as local midnight, not UTC (see lib/date.js).
+            const d = parseDateOnly(e.date)
             return d.getFullYear() === m.year && d.getMonth() === m.month
           })
           .reduce((s, e) => s + (e.duration_hours ?? 0), 0)

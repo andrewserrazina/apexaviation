@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import Layout from '../components/Layout'
+import { formatDateOnly } from '../lib/date'
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
@@ -238,7 +239,7 @@ export default function Reports() {
                       <thead><tr><th>Type</th><th>Date</th><th>Instructor</th></tr></thead>
                       <tbody>
                         {studentData.endorsements.map(e => (
-                          <tr key={e.id}><td>{e.endorsement_type}</td><td>{new Date(e.date_given).toLocaleDateString()}</td><td>{e.instructor?.full_name ?? '—'}</td></tr>
+                          <tr key={e.id}><td>{e.endorsement_type}</td><td>{formatDateOnly(e.date_given)}</td><td>{e.instructor?.full_name ?? '—'}</td></tr>
                         ))}
                       </tbody>
                     </table>
@@ -256,7 +257,7 @@ export default function Reports() {
                         {studentData.writtenTests.map(w => (
                           <tr key={w.id}>
                             <td>{w.test_type}</td>
-                            <td>{new Date(w.date_taken).toLocaleDateString()}</td>
+                            <td>{formatDateOnly(w.date_taken)}</td>
                             <td style={{ fontWeight: 700, color: w.score >= 70 ? '#4ade80' : '#f87171' }}>{w.score}%</td>
                             <td><span className={w.score >= 70 ? 'badge badge--green' : 'badge badge--red'}>{w.score >= 70 ? 'Pass' : 'Fail'}</span></td>
                           </tr>

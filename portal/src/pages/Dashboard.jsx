@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import Layout from '../components/Layout'
+import { formatDateOnly } from '../lib/date'
 
 const AIRPORT = 'KHYI'
 
@@ -286,7 +287,7 @@ export default function Dashboard() {
                 </div>
                 <div className="activity-row__meta">
                   <span>{e.duration_hours} hrs</span>
-                  <span>{new Date(e.date).toLocaleDateString()}</span>
+                  <span>{formatDateOnly(e.date)}</span>
                 </div>
               </div>
             ))

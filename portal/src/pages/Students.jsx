@@ -32,6 +32,19 @@ function csvField(value) {
   return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
+// Extracts a usable error message from a supabase.functions.invoke()
+// result -- same pattern already used in GroundSchedule.jsx for
+// create-checkout-session, since create-staff-account returns the same
+// jsonError({ error: '...' }) shape.
+function extractInvokeError(res) {
+  if (res.data && res.data.error) return Promise.resolve(res.data.error)
+  const fallback = (res.error && res.error.message) || 'Could not create the account. Please try again.'
+  if (res.error && res.error.context && typeof res.error.context.json === 'function') {
+    return res.error.context.json().then(body => (body && body.error) || fallback).catch(() => fallback)
+  }
+  return Promise.resolve(fallback)
+}
+
 function downloadCsv(rows, columns, filename) {
   const lines = [columns.map(c => csvField(c.label)).join(',')]
   for (const row of rows) lines.push(columns.map(c => csvField(c.get(row))).join(','))
@@ -183,23 +196,24 @@ export default function Students() {
     e.preventDefault()
     setSaving(true)
     setFormError('')
-    const { data: { session: adminSession } } = await supabase.auth.getSession()
-    const { data, error } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: { data: { full_name: form.full_name } },
-    })
-    if (adminSession) await supabase.auth.setSession({ access_token: adminSession.access_token, refresh_token: adminSession.refresh_token })
-    if (error) { setSaving(false); setFormError(error.message); return }
-    if (data.user) {
-      await supabase.from('profiles').update({
+    // Runs server-side under create-staff-account's service-role key
+    // rather than a client-side supabase.auth.signUp() from this admin
+    // session -- signUp() persisted the new student's session and could
+    // briefly authenticate the whole app as them before the admin
+    // session was restored (a real race in AuthContext's global
+    // onAuthStateChange listener, found in a repo-wide bug sweep).
+    const res = await supabase.functions.invoke('create-staff-account', {
+      body: {
+        email: form.email,
+        password: form.password,
         full_name: form.full_name,
         role: 'student',
         certificate_status: form.certificate_status || null,
         medical_expiry: form.medical_expiry || null,
-      }).eq('id', data.user.id)
-    }
+      },
+    })
     setSaving(false)
+    if (res.error || res.data?.error) { setFormError(await extractInvokeError(res)); return }
     closeModal()
     load()
   }
