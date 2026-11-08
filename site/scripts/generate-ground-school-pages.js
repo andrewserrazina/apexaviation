@@ -1,4 +1,15 @@
 #!/usr/bin/env node
+// RETIRED -- DO NOT RUN. The 143 pages this generated were deleted
+// (2026-11-07) and consolidated into the single real
+// apex-advantage-private-instruction.html page. Even with the rotating
+// copy/FAQ variation described below, ~140+ near-duplicate pages for one
+// nationwide product is the "scaled content abuse" pattern Google's spam
+// policies target site-wide, not just per-page -- running this again would
+// recreate the exact problem that was just cleaned up. All
+// ground-school-<city>-<state>.html URLs now 301 to
+// apex-advantage-private-instruction.html via site/_redirects. Kept here
+// for reference only.
+//
 // Generates one SEO landing page per city in ground-school-locations.json,
 // targeting "private pilot ground school near me" / "flight instructor
 // near me" style searches.

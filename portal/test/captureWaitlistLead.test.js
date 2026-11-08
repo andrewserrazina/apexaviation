@@ -47,6 +47,11 @@ const classifySrc = extractBlock(source, 'function classifyLocationSegment(', 'c
     "function classifyLocationSegment(services: string[]): 'austin_in_person' | 'virtual' | 'both' | null {",
     'function classifyLocationSegment(services) {'
   )
+const buildNotesSrc = extractBlock(source, 'function buildNotes(', 'buildNotes')
+  .replace(
+    /function buildNotes\(\s*pageSource: string,\s*zip: string,\s*services: string\[\],\s*trainingGoal: string,\s*targetStartMonth: string,\s*ratesWork: string,\s*lessonWindow1: string,\s*lessonWindow2: string,\s*\): string \{/,
+    'function buildNotes(pageSource, zip, services, trainingGoal, targetStartMonth, ratesWork, lessonWindow1, lessonWindow2) {'
+  )
 
 // eslint-disable-next-line no-new-func
 const classifyLocationSegment = new Function(`
@@ -54,6 +59,12 @@ const classifyLocationSegment = new Function(`
   ${virtualSrc}
   ${classifySrc}
   return classifyLocationSegment
+`)()
+
+// eslint-disable-next-line no-new-func
+const buildNotes = new Function(`
+  ${buildNotesSrc}
+  return buildNotes
 `)()
 
 describe('classifyLocationSegment() (real shipped source, executed)', () => {
@@ -85,5 +96,42 @@ describe('classifyLocationSegment() (real shipped source, executed)', () => {
   it('an unrecognized label alongside a recognized one still classifies correctly', () => {
     expect(classifyLocationSegment(['Apex Advantage Ground', 'Private Pilot Training'])).toBe('austin_in_person')
     expect(classifyLocationSegment(['Apex Advantage Ground', 'Mock Oral Exam'])).toBe('virtual')
+  })
+})
+
+describe('buildNotes() (real shipped source, executed)', () => {
+  it('matches the original home.html shape when none of the newer fields are sent', () => {
+    expect(buildNotes('Website Waitlist (home.html)', '78666', ['Private Pilot Training'], '', '', '', '', ''))
+      .toBe('Website Waitlist (home.html). Zip: 78666. Interested in: Private Pilot Training')
+  })
+
+  it('omits zip/services entirely when empty, same as before', () => {
+    expect(buildNotes('Website Waitlist (home.html)', '', [], '', '', '', '', ''))
+      .toBe('Website Waitlist (home.html)')
+  })
+
+  it('appends the Hutto/Taylor landing-page fields only when present', () => {
+    expect(buildNotes(
+      'Hutto/Taylor Flight Training Landing Page (flight-training-hutto-taylor.html)',
+      '78634',
+      ['Private Pilot Training'],
+      'Never flown before',
+      'March 2027 (planning target)',
+      "Yes, that works for me",
+      'Tuesday mornings',
+      'Saturday afternoons',
+    )).toBe(
+      'Hutto/Taylor Flight Training Landing Page (flight-training-hutto-taylor.html). ' +
+      'Zip: 78634. Interested in: Private Pilot Training. Training goal: Never flown before. ' +
+      'Target start: March 2027 (planning target). Proposed rates work for them: Yes, that works for me. ' +
+      'Preferred lesson windows: Tuesday mornings / Saturday afternoons'
+    )
+  })
+
+  it('joins only whichever of the two lesson windows is actually present', () => {
+    expect(buildNotes('src', '', [], '', '', '', 'Tuesday mornings', ''))
+      .toBe('src. Preferred lesson windows: Tuesday mornings')
+    expect(buildNotes('src', '', [], '', '', '', '', 'Saturday afternoons'))
+      .toBe('src. Preferred lesson windows: Saturday afternoons')
   })
 })

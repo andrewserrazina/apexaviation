@@ -29,7 +29,7 @@ if (trainingDropdown) {
   });
 }
 
-async function submitToFormspree(form, successEl) {
+async function submitToFormspree(form, successEl, onSuccess) {
   const btn = form.querySelector('[type="submit"]');
   const originalText = btn.textContent;
   btn.disabled = true;
@@ -43,6 +43,7 @@ async function submitToFormspree(form, successEl) {
     if (res.ok) {
       form.style.display = 'none';
       successEl.classList.add('visible');
+      if (onSuccess) onSuccess();
     } else {
       const data = await res.json();
       const msg = data.errors ? data.errors.map(e => e.message).join(', ') : 'Something went wrong. Please email info@apexaviationtx.com directly.';
@@ -71,6 +72,15 @@ if (form) {
 // parallel with the Formspree submission above. Fire-and-forget: if
 // this fails, the visitor still sees the normal Formspree success
 // state, since Formspree remains the primary, user-visible path.
+//
+// Shared by every waitlist-style form on the site, not just home.html's
+// -- a form identifies itself via an optional hidden `sourceLabel`
+// field (falls back to the original home.html label when absent, so
+// that page needs no changes) and may optionally include
+// trainingGoal/targetStartMonth/ratesWork/lessonWindow1/lessonWindow2
+// fields (added for the Hutto/Taylor landing page's more detailed
+// waitlist ask); capture-waitlist-lead appends whichever of those are
+// present to the lead's notes, same pattern as zip/services already did.
 function captureWaitlistLead(form) {
   const data = new FormData(form);
   fetch('https://wqzfhcjsfzwrimvsudxy.supabase.co/functions/v1/capture-waitlist-lead', {
@@ -86,7 +96,12 @@ function captureWaitlistLead(form) {
       email: data.get('email') || '',
       zip: data.get('zip') || '',
       services: data.getAll('services'),
-      source: 'Website Waitlist (home.html)',
+      source: data.get('sourceLabel') || 'Website Waitlist (home.html)',
+      trainingGoal: data.get('trainingGoal') || '',
+      targetStartMonth: data.get('targetStartMonth') || '',
+      ratesWork: data.get('ratesWork') || '',
+      lessonWindow1: data.get('lessonWindow1') || '',
+      lessonWindow2: data.get('lessonWindow2') || '',
     }),
   }).catch(() => {});
 }

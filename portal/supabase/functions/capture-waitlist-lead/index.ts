@@ -55,6 +55,34 @@ function classifyLocationSegment(services: string[]): 'austin_in_person' | 'virt
   return null
 }
 
+// Extracted into its own function (rather than left inline in serve())
+// so it's independently testable -- see captureWaitlistLead.test.js.
+// Every field past pageSource is optional, appended only when present,
+// so this produces the exact same notes string as before for any
+// caller (home.html's waitlist form) that doesn't send the newer
+// Hutto/Taylor-landing-page fields at all.
+function buildNotes(
+  pageSource: string,
+  zip: string,
+  services: string[],
+  trainingGoal: string,
+  targetStartMonth: string,
+  ratesWork: string,
+  lessonWindow1: string,
+  lessonWindow2: string,
+): string {
+  const noteParts = [pageSource]
+  if (zip) noteParts.push(`Zip: ${zip}`)
+  if (services.length) noteParts.push(`Interested in: ${services.join(', ')}`)
+  if (trainingGoal) noteParts.push(`Training goal: ${trainingGoal}`)
+  if (targetStartMonth) noteParts.push(`Target start: ${targetStartMonth}`)
+  if (ratesWork) noteParts.push(`Proposed rates work for them: ${ratesWork}`)
+  if (lessonWindow1 || lessonWindow2) {
+    noteParts.push(`Preferred lesson windows: ${[lessonWindow1, lessonWindow2].filter(Boolean).join(' / ')}`)
+  }
+  return noteParts.join('. ')
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
@@ -69,6 +97,15 @@ serve(async (req) => {
     // the specific page lives in notes instead, so this doesn't create a
     // value the CRM's own lead-creation form can't also produce.
     const pageSource = typeof body.source === 'string' && body.source ? body.source : 'Website waitlist form'
+    // Added for the Hutto/Taylor landing page's more detailed waitlist
+    // ask (flight-training-hutto-taylor.html) -- all optional so the
+    // original home.html waitlist form, which never sends these, keeps
+    // working unchanged.
+    const trainingGoal = typeof body.trainingGoal === 'string' ? body.trainingGoal.trim() : ''
+    const targetStartMonth = typeof body.targetStartMonth === 'string' ? body.targetStartMonth.trim() : ''
+    const ratesWork = typeof body.ratesWork === 'string' ? body.ratesWork.trim() : ''
+    const lessonWindow1 = typeof body.lessonWindow1 === 'string' ? body.lessonWindow1.trim() : ''
+    const lessonWindow2 = typeof body.lessonWindow2 === 'string' ? body.lessonWindow2.trim() : ''
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return new Response(JSON.stringify({ error: 'A valid email is required' }), {
@@ -96,10 +133,7 @@ serve(async (req) => {
 
     const fullName = [firstName, lastName].filter(Boolean).join(' ') || email
 
-    const noteParts = [pageSource]
-    if (zip) noteParts.push(`Zip: ${zip}`)
-    if (services.length) noteParts.push(`Interested in: ${services.join(', ')}`)
-    const notes = noteParts.join('. ')
+    const notes = buildNotes(pageSource, zip, services, trainingGoal, targetStartMonth, ratesWork, lessonWindow1, lessonWindow2)
 
     const { error: insertError } = await supabase.from('leads').insert({
       full_name: fullName,
