@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { toOne } from '../lib/postgrestEmbed'
 
 const CATEGORIES = [
   ['pilot_qualifications', 'Pilot Qualifications'],
@@ -86,7 +87,7 @@ export default function MockOralAssessment() {
       .eq('id', bookingId)
       .maybeSingle()
     if (bErr || !b) { setError(bErr?.message || 'Booking not found, or you are not authorized to view it.'); setLoading(false); return }
-    b.intake = b.intake?.[0] ?? null
+    b.intake = toOne(b.intake)
     setBooking(b)
 
     const { data: a } = await supabase.from('mock_oral_assessments').select('*').eq('booking_id', bookingId).maybeSingle()

@@ -248,4 +248,59 @@ describe('AuthContext initialization', () => {
     expect(readState().profileId).toBe(null)
     expect(readState().profileErrorMessage).toBe('RLS denied this read')
   })
+
+  // Bug report: switching tabs and back ("the page refreshes itself")
+  // lost whatever the admin was typing. supabase-js fires a
+  // TOKEN_REFRESHED auth-state event automatically on a timer and
+  // whenever the tab regains focus/visibility -- the listener used to
+  // treat that identically to a real sign-in (flip `loading` back to
+  // true, re-fetch the profile), which every page's own data-loading
+  // effect reads, unmounting/resetting whatever that page was showing.
+  it('K: a TOKEN_REFRESHED event for the same already-hydrated user does not flip loading or re-fetch the profile', async () => {
+    getSessionMock.mockResolvedValue({ data: { session: { user: { id: 'user-6' } } }, error: null })
+    singleMock.mockResolvedValue({ data: { id: 'user-6', full_name: 'Steady Admin' } })
+
+    render(<AuthProvider><TestConsumer /></AuthProvider>)
+    await waitFor(() => expect(readState().loading).toBe(false))
+    expect(readState().profileId).toBe('user-6')
+    expect(singleMock).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      authStateCallback('TOKEN_REFRESHED', { user: { id: 'user-6' } })
+    })
+
+    // No re-fetch, and `loading` never flips back to true -- a page
+    // reading it as a cue to unmount its current view would see no change.
+    expect(readState().loading).toBe(false)
+    expect(readState().profileId).toBe('user-6')
+    expect(singleMock).toHaveBeenCalledTimes(1)
+  })
+
+  // The same tab-refocus event, but for a genuinely different user (e.g.
+  // an admin signs out and a different account signs in on the same
+  // device) must still be treated as a real identity change.
+  it('L: an auth-state event for a different user still triggers a real profile re-fetch', async () => {
+    getSessionMock.mockResolvedValue({ data: { session: { user: { id: 'user-7' } } }, error: null })
+    let resolveSecond
+    singleMock
+      .mockResolvedValueOnce({ data: { id: 'user-7', full_name: 'First Admin' } })
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve }))
+
+    render(<AuthProvider><TestConsumer /></AuthProvider>)
+    await waitFor(() => expect(readState().loading).toBe(false))
+    expect(readState().profileId).toBe('user-7')
+
+    await act(async () => {
+      authStateCallback('SIGNED_IN', { user: { id: 'user-8' } })
+    })
+    // The second fetch is still pending -- loading must already be back to
+    // true, proving this was treated as a real sign-in, not a no-op.
+    expect(readState().loading).toBe(true)
+
+    await act(async () => {
+      resolveSecond({ data: { id: 'user-8', full_name: 'Second Admin' } })
+    })
+    await waitFor(() => expect(readState().profileId).toBe('user-8'))
+    expect(singleMock).toHaveBeenCalledTimes(2)
+  })
 })

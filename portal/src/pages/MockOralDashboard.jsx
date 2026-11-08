@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import Layout from '../components/Layout'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { toOne } from '../lib/postgrestEmbed'
 
 const STATUS_OPTIONS = ['confirmed', 'completed', 'canceled', 'no_show']
 
@@ -66,7 +67,7 @@ export default function MockOralDashboard() {
     if (!isAdmin) query = query.eq('instructor_id', profile.id)
     const { data, error: loadError } = await query
     if (loadError) setError(loadError.message)
-    else setBookings((data ?? []).map(b => ({ ...b, intake: b.intake?.[0] ?? null, assessment: b.assessment?.[0] ?? null })))
+    else setBookings((data ?? []).map(b => ({ ...b, intake: toOne(b.intake), assessment: toOne(b.assessment) })))
     setLoading(false)
   }
 

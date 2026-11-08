@@ -14,6 +14,13 @@ export function AuthProvider({ children }) {
   // admin signUp()/setSession() session swap in Students.jsx) -- only the
   // response matching the most recently requested user id is ever applied.
   const latestUserIdRef = useRef(null)
+  // Tracks which user id we've already hydrated `profile` for, so the
+  // onAuthStateChange listener below can tell a real sign-in/sign-out/user
+  // switch apart from supabase-js firing TOKEN_REFRESHED for the SAME
+  // user -- which it does automatically on a timer and, notably, every
+  // time the tab regains focus/visibility. See the listener for why that
+  // distinction matters.
+  const hydratedUserIdRef = useRef(null)
 
   useEffect(() => {
     let cancelled = false
@@ -60,6 +67,19 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (cancelled) return
       setUser(session?.user ?? null)
+      const newUserId = session?.user?.id ?? null
+      if (newUserId && newUserId === hydratedUserIdRef.current) {
+        // Same signed-in user we already have a profile for -- this is
+        // just supabase-js's automatic token refresh (on its timer, or on
+        // regaining tab focus/visibility), not a real sign-in. Update the
+        // token-bearing `user` object above, but don't flip `loading` or
+        // re-fetch the profile: every admin/instructor page gates its own
+        // data loading and form state on this context, so doing that on
+        // every tab-refocus was unmounting/resetting whatever the admin
+        // was in the middle of looking at or typing, every single time
+        // they switched back to this tab.
+        return
+      }
       if (session?.user) {
         // Without this, `loading` stays false (from the initial mount
         // already resolving) while fetchProfile() is still in flight, so a
@@ -71,6 +91,7 @@ export function AuthProvider({ children }) {
         fetchProfile(session.user.id)
       } else {
         latestUserIdRef.current = null
+        hydratedUserIdRef.current = null
         setProfile(null)
         setLoading(false)
       }
@@ -89,6 +110,7 @@ export function AuthProvider({ children }) {
     // superseded this one by the time it resolves -- discard this result
     // rather than let whichever request happens to finish last win.
     if (latestUserIdRef.current !== userId) return
+    hydratedUserIdRef.current = userId
     // Bug sweep: this used to discard `error` entirely, so a failed fetch
     // (RLS hiccup, transient network error, a just-created profile row not
     // yet visible) set `profile` to null under a "not loading" flag,
