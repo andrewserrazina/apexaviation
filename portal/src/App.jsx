@@ -14,6 +14,7 @@ const Syllabi = lazy(() => import('./pages/Syllabi'))
 const Schedule = lazy(() => import('./pages/Schedule'))
 const OperationsCalendar = lazy(() => import('./pages/OperationsCalendar'))
 const Logbook = lazy(() => import('./pages/Logbook'))
+const TrainingRecords = lazy(() => import('./pages/TrainingRecords'))
 const Billing = lazy(() => import('./pages/Billing'))
 const GroundSchedule = lazy(() => import('./pages/GroundSchedule'))
 const Documents = lazy(() => import('./pages/Documents'))
@@ -79,6 +80,7 @@ export default function App() {
               <Route path="/schedule"    element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
               <Route path="/scheduling"  element={<ProtectedRoute roles={['admin', 'instructor', 'office_manager']}><OperationsCalendar /></ProtectedRoute>} />
               <Route path="/logbook"     element={<ProtectedRoute><Logbook /></ProtectedRoute>} />
+              <Route path="/training-records" element={<ProtectedRoute roles={['admin', 'instructor']}><TrainingRecords /></ProtectedRoute>} />
               <Route path="/billing"     element={<ProtectedRoute><Billing /></ProtectedRoute>} />
               <Route path="/ground-schedule" element={<ProtectedRoute><GroundSchedule /></ProtectedRoute>} />
               <Route path="/attend/:type/:token" element={<Attend />} />
