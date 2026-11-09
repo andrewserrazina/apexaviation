@@ -5,52 +5,81 @@ import { supabase } from '../lib/supabase'
 import ApexLogo from './ApexLogo'
 import NotificationBell from './NotificationBell'
 
+// Rebuilt as part of the Apex Operations portal overhaul: the old nav
+// was 5 groups / 33 items, with Mock Oral and Private Instruction each
+// claiming 2-3 entries for what's structurally the same
+// availability+booking pattern, and a 4-item "Operations" group that
+// mostly duplicated other groups (see the retired operations/
+// subfolder). This groups by what an ops-team member is actually
+// trying to do, with Scheduling consolidated around the new unified
+// calendar (OperationsCalendar) instead of one nav item per booking
+// product.
 const navGroups = [
   {
-    label: 'Overview',
+    label: 'Home',
     items: [
       { to: '/dashboard', label: 'Dashboard', roles: ['admin', 'instructor', 'student'] },
-      { to: '/analytics', label: 'Analytics',  roles: ['admin'] },
-      { to: '/marketing-funnel', label: 'Marketing & Funnel', roles: ['admin'] },
     ],
   },
   {
-    label: 'Training',
+    label: 'Scheduling',
     items: [
-      { to: '/students',        label: 'Students',        roles: ['admin', 'office_manager'] },
-      { to: '/instructors',     label: 'Instructors',     roles: ['admin', 'instructor', 'student'] },
-      { to: '/aircraft',        label: 'Fleet',           roles: ['admin', 'instructor', 'student'] },
-      { to: '/syllabi',         label: 'Syllabi',         roles: ['admin', 'instructor', 'student'] },
-      { to: '/dpe-content',     label: 'DPE Question Bank', roles: ['admin'] },
-      { to: '/schedule',        label: 'Schedule',        roles: ['admin', 'instructor', 'student'] },
-      { to: '/logbook',         label: 'Logbook',         roles: ['admin', 'instructor', 'student'] },
-      { to: '/endorsements',    label: 'Endorsements',    roles: ['admin', 'instructor', 'student'] },
-      // Group Ground School ($25/class) is discontinued and no longer
-      // advertised anywhere -- there's nothing left for a student to
-      // book here, so the nav entry is hidden for that role. Left
-      // visible for admin/instructor, who may still need it for
-      // historical schedule data; GroundSchedule.jsx itself is
-      // untouched (not deleted), consistent with this being an
-      // advertising change, not a backend decommission.
-      { to: '/ground-schedule', label: 'Ground School',   roles: ['admin', 'instructor'] },
-      { to: '/admin/ground-school-schedule', label: 'Class Scheduler', roles: ['admin', 'office_manager'] },
+      { to: '/scheduling', label: 'Calendar', roles: ['admin', 'instructor', 'office_manager'] },
+      { to: '/admin/ground-school-schedule', label: 'Ground School Classes', roles: ['admin', 'office_manager'] },
       { to: '/ground-school-bidding', label: 'Ground School Bidding', roles: ['admin', 'instructor'] },
-      { to: '/instructor-hub',  label: 'Instructor Hub',  roles: ['admin', 'instructor'] },
+      { to: '/mock-oral-availability', label: 'Mock Oral Availability', roles: ['admin', 'instructor'] },
+      { to: '/private-instruction-availability', label: 'Private Instruction Availability', roles: ['admin', 'instructor'] },
+      { to: '/mock-oral-requests', label: 'Mock Oral Requests (Legacy $99)', roles: ['admin', 'instructor'] },
+      // Legacy ($25/class) Ground School is discontinued and no longer
+      // advertised -- nothing left for a student to book here, so the
+      // nav entry stays hidden for that role but visible to
+      // admin/instructor for historical schedule data. GroundSchedule.jsx
+      // itself is untouched, consistent with this being an advertising
+      // change, not a backend decommission.
+      { to: '/ground-schedule', label: 'Legacy Ground School', roles: ['admin', 'instructor'] },
     ],
   },
   {
-    label: 'Business',
+    label: 'Fleet',
     items: [
-      { to: '/crm',      label: 'CRM',      roles: ['admin', 'instructor', 'office_manager'] },
-      { to: '/billing',  label: 'Billing',  roles: ['admin', 'instructor', 'student'] },
-      { to: '/documents', label: 'Documents', roles: ['admin', 'instructor', 'student'] },
-      { to: '/reports',  label: 'Reports',  roles: ['admin'] },
-      { to: '/payroll',  label: 'Payroll',  roles: ['admin'] },
-      { to: '/mock-orals', label: 'Mock Orals', roles: ['admin', 'instructor'] },
-      { to: '/mock-oral-availability', label: 'Mock Oral Availability', roles: ['admin', 'instructor'] },
-      { to: '/mock-oral-requests', label: 'Mock Oral Requests (Legacy $99)', roles: ['admin', 'instructor'] },
-      { to: '/private-instruction', label: 'Private Instruction', roles: ['admin', 'instructor'] },
-      { to: '/private-instruction-availability', label: 'Private Instruction Availability', roles: ['admin', 'instructor'] },
+      { to: '/aircraft', label: 'Aircraft', roles: ['admin', 'instructor', 'student'] },
+    ],
+  },
+  {
+    label: 'Billing & Payroll',
+    items: [
+      { to: '/billing',    label: 'Billing',   roles: ['admin', 'instructor', 'student'] },
+      { to: '/payroll',    label: 'Payroll',   roles: ['admin'] },
+      { to: '/documents',  label: 'Documents', roles: ['admin', 'instructor', 'student'] },
+    ],
+  },
+  {
+    label: 'Training Records',
+    items: [
+      { to: '/training-records', label: 'Training Records', roles: ['admin', 'instructor'] },
+      { to: '/syllabi',          label: 'Syllabi',           roles: ['admin', 'instructor', 'student'] },
+      { to: '/logbook',          label: 'Logbook',           roles: ['admin', 'instructor', 'student'] },
+      { to: '/endorsements',     label: 'Endorsements',      roles: ['admin', 'instructor', 'student'] },
+      { to: '/dpe-content',      label: 'DPE Question Bank', roles: ['admin'] },
+      { to: '/xp-ledger',        label: 'XP Ledger',         roles: ['admin'] },
+      { to: '/pilot-journey',    label: 'Pilot Journey',     roles: ['admin', 'instructor'] },
+    ],
+  },
+  {
+    label: 'People',
+    items: [
+      { to: '/students',    label: 'Students',    roles: ['admin', 'office_manager'] },
+      { to: '/instructors', label: 'Instructors', roles: ['admin', 'instructor', 'student'] },
+      { to: '/crm',         label: 'Leads',       roles: ['admin', 'instructor', 'office_manager'] },
+      { to: '/nonbuyers',   label: 'Nonbuyers',   roles: ['admin'] },
+    ],
+  },
+  {
+    label: 'Reports & Analytics',
+    items: [
+      { to: '/reports',   label: 'Operations Reports', roles: ['admin'] },
+      { to: '/analytics', label: 'Growth Analytics',   roles: ['admin'] },
+      { to: '/marketing-funnel', label: 'Marketing & Funnel', roles: ['admin'] },
     ],
   },
   {
@@ -59,19 +88,14 @@ const navGroups = [
       { to: '/messages',      label: 'Messages',      roles: ['admin', 'instructor', 'student'] },
       { to: '/announcements', label: 'Announcements', roles: ['admin', 'instructor', 'student'] },
       { to: '/broadcast',     label: 'Broadcast',     roles: ['admin'] },
-      { to: '/nonbuyers',     label: 'Nonbuyers',     roles: ['admin'] },
-      { to: '/xp-ledger',     label: 'XP Ledger',     roles: ['admin'] },
       { to: '/missions',      label: 'Missions',      roles: ['admin'] },
-      { to: '/pilot-journey', label: 'Pilot Journey', roles: ['admin', 'instructor'] },
     ],
   },
   {
-    label: 'Operations',
+    label: 'Admin',
     items: [
-      { to: '/operations/dashboard', label: 'Overview',    roles: ['admin', 'instructor', 'office_manager'] },
-      { to: '/operations/schedule',  label: 'Schedule',    roles: ['admin', 'instructor', 'office_manager'] },
-      { to: '/operations/simulator', label: 'Simulator',   roles: ['admin', 'instructor'] },
-      { to: '/operations/settings',  label: 'Settings',    roles: ['admin'] },
+      { to: '/instructor-hub',       label: 'Instructor Hub', roles: ['admin', 'instructor'] },
+      { to: '/operations/settings',  label: 'Staff Roles',    roles: ['admin'] },
     ],
   },
 ]

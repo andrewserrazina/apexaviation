@@ -39,9 +39,6 @@ const MockOralAssessment = lazy(() => import('./pages/MockOralAssessment'))
 const PrivateInstructionDashboard = lazy(() => import('./pages/PrivateInstructionDashboard'))
 const PrivateInstructionAvailability = lazy(() => import('./pages/PrivateInstructionAvailability'))
 const InstructorHub = lazy(() => import('./pages/InstructorHub'))
-const OperationsDashboard = lazy(() => import('./pages/operations/OperationsDashboard'))
-const OperationsSchedule = lazy(() => import('./pages/operations/OperationsSchedule'))
-const OperationsSimulator = lazy(() => import('./pages/operations/OperationsSimulator'))
 const OperationsSettings = lazy(() => import('./pages/operations/OperationsSettings'))
 const PortalSelector = lazy(() => import('./pages/PortalSelector'))
 const FlightStudentDashboard = lazy(() => import('./pages/FlightStudentDashboard'))
@@ -63,10 +60,16 @@ export default function App() {
               <Route path="/portal-select" element={<ProtectedRoute><PortalSelector /></ProtectedRoute>} />
               <Route path="/dashboard"   element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/flight-dashboard" element={<ProtectedRoute roles={['student']}><FlightStudentDashboard /></ProtectedRoute>} />
-              <Route path="/operations" element={<ProtectedRoute roles={['admin', 'instructor', 'office_manager']}><Navigate to="/operations/dashboard" replace /></ProtectedRoute>} />
-              <Route path="/operations/dashboard" element={<ProtectedRoute roles={['admin', 'instructor', 'office_manager']}><OperationsDashboard /></ProtectedRoute>} />
-              <Route path="/operations/schedule" element={<ProtectedRoute roles={['admin', 'instructor', 'office_manager']}><OperationsSchedule /></ProtectedRoute>} />
-              <Route path="/operations/simulator" element={<ProtectedRoute roles={['admin', 'instructor']}><OperationsSimulator /></ProtectedRoute>} />
+              {/* OperationsDashboard/Schedule/Simulator retired -- all
+                  three were placeholders over empty/dead data
+                  (operations_events has 0 rows; the simulator offering
+                  itself was retracted from the business). The unified
+                  Scheduling calendar replaces them; old links redirect
+                  there instead of 404ing. */}
+              <Route path="/operations" element={<Navigate to="/scheduling" replace />} />
+              <Route path="/operations/dashboard" element={<Navigate to="/scheduling" replace />} />
+              <Route path="/operations/schedule" element={<Navigate to="/scheduling" replace />} />
+              <Route path="/operations/simulator" element={<Navigate to="/scheduling" replace />} />
               <Route path="/operations/settings" element={<ProtectedRoute adminOnly><OperationsSettings /></ProtectedRoute>} />
               <Route path="/admin/ground-school-schedule" element={<ProtectedRoute roles={['admin', 'office_manager']}><AdminGroundSchoolSchedule /></ProtectedRoute>} />
               <Route path="/ground-school-bidding" element={<ProtectedRoute roles={['admin', 'instructor']}><GroundSchoolBidding /></ProtectedRoute>} />

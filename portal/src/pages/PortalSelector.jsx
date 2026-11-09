@@ -57,7 +57,7 @@ export default function PortalSelector() {
             <strong>Training &amp; Education Portal</strong>
             <p>10 DPE questions, Checkride Prep Pack, and ground school registration.</p>
           </button>
-          <button type="button" className="portal-option-card" onClick={() => navigate('/operations/dashboard')}>
+          <button type="button" className="portal-option-card" onClick={() => navigate('/scheduling')}>
             <span className="portal-option-card__kicker">Apex Operations</span>
             <strong>Flight School Management Portal</strong>
             <p>Scheduling, ground school, instructor management, aircraft, students, and CRM.</p>
