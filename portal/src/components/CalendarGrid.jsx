@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   addMonths, addWeeks, eachDayOfInterval, endOfMonth, endOfWeek,
   format, isSameDay, isSameMonth, isToday, startOfMonth, startOfWeek,
@@ -13,6 +13,7 @@ const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 export default function CalendarGrid({
   events, getEventDate, renderEvent, onDayClick, initialDate,
   view: controlledView, defaultView = 'month', onViewChange, showViewToggle = false,
+  onRangeChange,
 }) {
   const [current, setCurrent] = useState(initialDate ?? new Date())
   const [internalView, setInternalView] = useState(defaultView)
@@ -33,6 +34,14 @@ export default function CalendarGrid({
   const rangeStart = view === 'week' ? startOfWeek(current) : startOfWeek(startOfMonth(current))
   const rangeEnd = view === 'week' ? endOfWeek(current) : endOfWeek(endOfMonth(current))
   const days = eachDayOfInterval({ start: rangeStart, end: rangeEnd })
+
+  // Lets a caller that fetches its own events (OperationsCalendar) know
+  // which window is on screen, without lifting `current`/`view` into
+  // full controlled state -- existing consumers that don't pass this
+  // are unaffected.
+  useEffect(() => {
+    onRangeChange?.({ start: rangeStart, end: rangeEnd, view })
+  }, [rangeStart.getTime(), rangeEnd.getTime(), view])
   const navLabel = view === 'week'
     ? `${format(startOfWeek(current), 'MMM d')} – ${format(endOfWeek(current), 'MMM d')}`
     : format(current, 'MMMM yyyy')
