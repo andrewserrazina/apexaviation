@@ -44,6 +44,12 @@
 //     checkout session) so the first row is correct without waiting on
 //     a second webhook event.
 //
+//   'pay-invoice' — Apex Operations (the flight-school portal, not Apex
+//     Advantage): marks the paid invoices row 'paid' and stamps its
+//     stripe_session_id. The invoice row already exists (created by
+//     staff in Billing.jsx) -- this purpose only ever updates it, never
+//     inserts, and is a no-op on retry if it's already marked paid.
+//
 // Beyond checkout.session.completed, this also handles the Apex
 // Advantage Membership subscription lifecycle:
 //   'customer.subscription.updated' — renewals, plan changes, and the
@@ -824,6 +830,34 @@ async function handleGroundSchoolRegistration(supabase: any, session: Stripe.Che
   }
 }
 
+// Apex Operations -- the invoice row already exists (staff created it in
+// Billing.jsx); this only ever updates it. The WHERE status <> 'paid'
+// guard is the idempotency check: a Stripe retry of an already-
+// processed event finds zero rows updated and does nothing further,
+// rather than re-sending the in-app notification below.
+async function handlePayInvoice(supabase: any, session: Stripe.Checkout.Session) {
+  const invoiceId = session.metadata?.invoice_id as string
+  if (!invoiceId) throw new Error('Missing invoice_id on checkout session')
+
+  const { data: updated, error } = await supabase
+    .from('invoices')
+    .update({ status: 'paid', stripe_session_id: session.id })
+    .eq('id', invoiceId)
+    .neq('status', 'paid')
+    .select('id, student_id, amount_cents')
+    .maybeSingle()
+  if (error) throw error
+  if (!updated) return // already processed on a prior attempt, or invoice was deleted
+
+  await supabase.from('notifications').insert({
+    user_id: updated.student_id,
+    title: 'Invoice Paid',
+    body: `Your payment of $${(updated.amount_cents / 100).toFixed(2)} was received. Thanks!`,
+    type: 'success',
+    link: '/billing',
+  })
+}
+
 async function handleMockOralBooking(supabase: any, session: Stripe.Checkout.Session) {
   const profileId = (session.metadata?.profile_id as string) || null
   const fullName = (session.metadata?.full_name as string) || 'Student'
@@ -1381,6 +1415,8 @@ serve(async (req) => {
         await handleUnlockGroundSchoolPack(supabase, session)
       } else if (purpose === 'upgrade-ground-school-pack') {
         await handleUpgradeGroundSchoolPack(supabase, session)
+      } else if (purpose === 'pay-invoice') {
+        await handlePayInvoice(supabase, session)
       } else {
         // Not retryable -- no future delivery of this same event will
         // ever carry a different, recognized purpose. See

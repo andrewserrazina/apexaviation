@@ -117,7 +117,13 @@ export default function Schedule() {
 
   function openEdit(lesson, e) {
     e.stopPropagation()
-    if (!canEdit) return
+    if (!canEdit) {
+      // Students can't edit a lesson, but they can open it read-only to
+      // see their instructor's debrief notes -- previously clicking a
+      // lesson did nothing for a student.
+      if (isStudent) setModal({ mode: 'view', lesson })
+      return
+    }
     const start = new Date(lesson.starts_at)
     const end = new Date(lesson.ends_at)
     setForm({
@@ -426,8 +432,31 @@ export default function Schedule() {
         </div>
       )}
 
+      {/* Lesson detail modal (student, read-only) */}
+      {modal?.mode === 'view' && (
+        <Modal title={modal.lesson.lesson_type ?? 'Lesson'} onClose={closeModal}>
+          <p className="activity-row__sub" style={{ marginBottom: 16 }}>
+            {new Date(modal.lesson.starts_at).toLocaleString([], { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+            {modal.lesson.instructor?.full_name ? ` · with ${modal.lesson.instructor.full_name}` : ''}
+          </p>
+          <div className="form-group">
+            <label>Debrief Notes</label>
+            {modal.lesson.debrief_notes ? (
+              <p style={{ whiteSpace: 'pre-wrap', color: 'var(--text)', fontSize: 14 }}>{modal.lesson.debrief_notes}</p>
+            ) : (
+              <p className="empty-state" style={{ padding: '12px 0' }}>Your instructor hasn't added debrief notes for this lesson yet.</p>
+            )}
+          </div>
+          <div className="modal-form__actions">
+            <div style={{ marginLeft: 'auto' }}>
+              <button type="button" className="btn-secondary" onClick={closeModal}>Close</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {/* Lesson booking/edit modal */}
-      {modal && (
+      {modal && modal.mode !== 'view' && (
         <Modal title={modal.mode === 'create' ? 'Book Lesson' : 'Edit Lesson'} onClose={closeModal}>
           <form onSubmit={handleSave} className="modal-form">
             {formError && <div className="form-error">{formError}</div>}

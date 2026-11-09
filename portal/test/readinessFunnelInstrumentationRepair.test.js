@@ -68,7 +68,7 @@ describe('create-checkout-session/index.ts: server-side checkout-failure observa
     expect(innerCatchIdx).toBeLessThan(returnIdx)
   })
 
-  it('every remaining purpose branch\'s Stripe call still has a matching logCheckoutAttempt() call', () => {
+  it('every remaining purpose branch\'s Stripe call still has a matching logCheckoutAttempt() call, except the one documented exception', () => {
     // Every purpose branch's Stripe call + logCheckoutAttempt() call
     // should still appear exactly as many times as each other -- this is
     // a coarse guard against a change having accidentally touched one
@@ -80,11 +80,20 @@ describe('create-checkout-session/index.ts: server-side checkout-failure observa
     // of closing Group Ground School's discontinued purchase paths --
     // not a case of this repair's own shared top/catch code touching
     // branch logic it shouldn't have.
+    //
+    // 'pay-invoice' (Apex Operations billing) is the one deliberate,
+    // documented exception to the 1:1 pairing: it has a Stripe call but
+    // no logCheckoutAttempt() call, because checkout_session_attempts
+    // feeds send-lifecycle-emails' abandoned-checkout recovery job,
+    // which is built entirely around re-engaging Apex Advantage
+    // consumer-product drop-offs -- see that branch's own comment in
+    // create-checkout-session/index.ts. The gap is exactly one, not a
+    // sign this repair's pairing invariant broke.
     const stripeCallCount = (checkoutSource.match(/stripe\.checkout\.sessions\.create\(/g) || []).length
     const logAttemptCount = (checkoutSource.match(/await logCheckoutAttempt\(/g) || []).length
     expect(stripeCallCount).toBeGreaterThanOrEqual(9)
     expect(logAttemptCount).toBeGreaterThanOrEqual(9)
-    expect(stripeCallCount).toBe(logAttemptCount)
+    expect(stripeCallCount).toBe(logAttemptCount + 1)
   })
 })
 

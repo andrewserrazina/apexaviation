@@ -20,7 +20,7 @@ export default function FlightStudentDashboard() {
   const [totalHours, setTotalHours] = useState(0)
   const [nextLesson, setNextLesson] = useState(null)
   const [upcomingCount, setUpcomingCount] = useState(0)
-  const [lastDebrief, setLastDebrief] = useState(null)
+  const [debriefs, setDebriefs] = useState([])
   const [programs, setPrograms] = useState([]) // enrolled flight syllabi, with lessons + completion
 
   useEffect(() => { if (profile) load() }, [profile])
@@ -48,7 +48,7 @@ export default function FlightStudentDashboard() {
         .lt('starts_at', now)
         .not('debrief_notes', 'is', null)
         .order('starts_at', { ascending: false })
-        .limit(1),
+        .limit(25),
       supabase.from('student_syllabi')
         .select('*, syllabus:syllabi(id, name, category, type)')
         .eq('student_id', profile.id),
@@ -57,7 +57,7 @@ export default function FlightStudentDashboard() {
     setTotalHours((hoursRows ?? []).reduce((sum, r) => sum + (r.duration_hours ?? 0), 0))
     setNextLesson(upcoming?.[0] ?? null)
     setUpcomingCount(upcomingTotal ?? 0)
-    setLastDebrief(pastWithDebrief?.[0] ?? null)
+    setDebriefs(pastWithDebrief ?? [])
 
     const flightEnrollments = (enrollments ?? []).filter(en => en.syllabus?.type === 'flight')
     const enriched = await Promise.all(flightEnrollments.map(async en => {
@@ -125,21 +125,25 @@ export default function FlightStudentDashboard() {
               )}
             </section>
 
-            <section className="card">
-              <h3 className="card__title">Latest Debrief</h3>
-              {!lastDebrief ? (
-                <p className="empty-state">No debrief notes yet — your instructor will add these after a lesson.</p>
-              ) : (
-                <div>
-                  <p className="activity-row__sub" style={{ marginBottom: 8 }}>
-                    {lastDebrief.lesson_type ?? 'Lesson'} · {formatLessonTime(lastDebrief.starts_at)} · {lastDebrief.instructor?.full_name ?? 'Instructor'}
-                  </p>
-                  <p style={{ whiteSpace: 'pre-wrap' }}>{lastDebrief.debrief_notes}</p>
-                </div>
-              )}
-            </section>
-
           </div>
+
+          <section className="card" style={{ marginTop: 20 }}>
+            <h3 className="card__title">Debrief History</h3>
+            {debriefs.length === 0 ? (
+              <p className="empty-state">No debrief notes yet — your instructor will add these after a lesson.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxHeight: 480, overflowY: 'auto' }}>
+                {debriefs.map(d => (
+                  <div key={d.id} style={{ borderBottom: '1px solid var(--border)', paddingBottom: 16 }}>
+                    <p className="activity-row__sub" style={{ marginBottom: 6 }}>
+                      {d.lesson_type ?? 'Lesson'} · {formatLessonTime(d.starts_at)} · {d.instructor?.full_name ?? 'Instructor'}
+                    </p>
+                    <p style={{ whiteSpace: 'pre-wrap' }}>{d.debrief_notes}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
 
           <section className="card" style={{ marginTop: 20 }}>
             <h3 className="card__title">Program Outline</h3>
