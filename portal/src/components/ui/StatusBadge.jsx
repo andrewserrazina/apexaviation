@@ -1,3 +1,6 @@
+const TONES = ['success', 'warning', 'danger', 'info']
+
 export default function StatusBadge({ children, tone = 'neutral' }) {
-  return <span className={`status-badge status-badge--${tone}`}>{children}</span>
+  const suffix = TONES.includes(tone) ? ` status-badge--${tone}` : ''
+  return <span className={`status-badge${suffix}`}>{children}</span>
 }

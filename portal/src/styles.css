@@ -22,6 +22,31 @@
   --sidebar-w: 248px;
   --font-sans: 'Montserrat', sans-serif;
   --font-serif: 'Playfair Display', serif;
+
+  /* Spacing/radius scale -- new, additive. Existing rules keep their
+     hand-written pixel values (retrofitting 2000+ lines of CSS onto
+     this scale is out of scope for this pass); new components below
+     and new pages going forward should use these instead of another
+     one-off pixel value. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  /* Status tones -- status-badge/badge only ever defined success/warning
+     (green/gold) plus an ad hoc red/blue on .badge. Named here once so
+     new code reads var(--tone-danger) etc. instead of a bare hex. */
+  --tone-success: #34d399;
+  --tone-danger: #f87171;
+  --tone-info: #60a5fa;
 }
 
 body {
@@ -221,6 +246,15 @@ em { font-family: 'Playfair Display', serif; font-style: italic; }
   flex-wrap: wrap;
   gap: 16px;
 }
+.page-header__eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 4px;
+}
+.page-header__actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .page-title {
   font-size: 24px;
   font-weight: 800;
@@ -274,7 +308,8 @@ em { font-family: 'Playfair Display', serif; font-style: italic; }
 }
 
 /* ─── CARD ───────────────────────────────────── */
-.card {
+.card,
+.portal-card {
   background: var(--navy-2);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -346,8 +381,10 @@ em { font-family: 'Playfair Display', serif; font-style: italic; }
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
   background: rgba(255,255,255,0.07); color: var(--text);
 }
-.status-badge--success { background: rgba(52,211,153,0.15); color: #34d399; }
+.status-badge--success { background: rgba(52,211,153,0.15); color: var(--tone-success); }
 .status-badge--warning { background: rgba(244,180,0,0.15); color: var(--gold); }
+.status-badge--danger  { background: rgba(239,68,68,0.15); color: var(--tone-danger); }
+.status-badge--info    { background: rgba(96,165,250,0.15); color: var(--tone-info); }
 
 .table-scroll { overflow-x: auto; }
 .admin-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
@@ -568,10 +605,12 @@ em { font-family: 'Playfair Display', serif; font-style: italic; }
   padding: 32px;
   text-align: center;
 }
+.empty-state__action { margin-top: 16px; }
 
 /* ─── CALENDAR CLICKABLE ─────────────────────── */
 .calendar__cell--clickable { cursor: pointer; }
 .calendar__cell--clickable:hover { background: rgba(255,255,255,0.02); }
+.calendar__cell--week { min-height: 320px; }
 .cal-event { cursor: pointer; }
 .cal-event:hover { background: rgba(244,180,0,0.2); }
 
