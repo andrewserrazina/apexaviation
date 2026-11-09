@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
+import { PageHeader, StatsRow, Button, Table } from '../components/ui'
+import { toOne } from '../lib/postgrestEmbed'
 
 const BLANK = { student_id: '', description: '', amount: '', status: 'unpaid' }
+const STATUS_OPTIONS = [{ value: '', label: 'All statuses' }, { value: 'unpaid', label: 'Unpaid' }, { value: 'pending', label: 'Pending' }, { value: 'paid', label: 'Paid' }]
 
 function printInvoice(inv, studentName) {
   const win = window.open('', '_blank')
@@ -44,12 +47,18 @@ function printInvoice(inv, studentName) {
   win.document.close()
 }
 
+function daysOutstanding(issuedAt) {
+  return Math.max(0, Math.round((Date.now() - new Date(issuedAt).getTime()) / 86400000))
+}
+
 export default function Billing() {
   const { profile } = useAuth()
   const [invoices, setInvoices] = useState([])
   const [loading, setLoading] = useState(true)
   const [students, setStudents] = useState([])
   const [studentId, setStudentId] = useState('')
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(BLANK)
   const [saving, setSaving] = useState(false)
@@ -58,6 +67,10 @@ export default function Billing() {
   const isAdmin = profile?.role === 'admin'
   const isInstructor = profile?.role === 'instructor'
   const canEdit = isAdmin
+  // Admins see every invoice across the whole school by default (no
+  // student has to be picked first) -- instructors still pick one of
+  // their own students, since they can't see the rest of the roster.
+  const adminWideView = isAdmin
 
   async function loadStudents() {
     if (isAdmin) {
@@ -79,22 +92,24 @@ export default function Billing() {
     if (isAdmin || isInstructor) loadStudents()
   }, [profile])
 
-  async function loadInvoices(id) {
-    if (!id) { setLoading(false); return }
+  async function loadInvoices() {
     setLoading(true)
-    const { data } = await supabase
-      .from('invoices')
-      .select('*')
-      .eq('student_id', id)
-      .order('issued_at', { ascending: false })
-    setInvoices(data ?? [])
+    let query = supabase.from('invoices').select('*, student:profiles!student_id(full_name)').order('issued_at', { ascending: false })
+    if (adminWideView) {
+      if (studentId) query = query.eq('student_id', studentId)
+    } else {
+      const id = isInstructor ? studentId : profile.id
+      if (!id) { setInvoices([]); setLoading(false); return }
+      query = query.eq('student_id', id)
+    }
+    const { data } = await query
+    setInvoices((data ?? []).map(inv => ({ ...inv, student: toOne(inv.student) })))
     setLoading(false)
   }
 
   useEffect(() => {
     if (!profile) return
-    const id = (isAdmin || isInstructor) ? studentId : profile.id
-    loadInvoices(id)
+    loadInvoices()
   }, [studentId, profile])
 
   function openCreate() {
@@ -136,96 +151,120 @@ export default function Billing() {
     setSaving(false)
     if (error) { setFormError(error.message); return }
     closeModal()
-    const id = (isAdmin || isInstructor) ? studentId : profile.id
-    loadInvoices(id)
+    loadInvoices()
   }
 
   async function handleDelete() {
     if (!window.confirm('Delete this invoice?')) return
     await supabase.from('invoices').delete().eq('id', modal.inv.id)
     closeModal()
-    const id = (isAdmin || isInstructor) ? studentId : profile.id
-    loadInvoices(id)
+    loadInvoices()
   }
 
   const statusClass = s => ({ paid: 'badge badge--green', unpaid: 'badge badge--red', pending: 'badge badge--yellow' }[s] ?? 'badge')
 
   const showSelector = isAdmin || isInstructor
-  const showTable = !showSelector || studentId
+  const showTable = adminWideView || !showSelector || studentId
+
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter(inv => {
+      if (statusFilter && inv.status !== statusFilter) return false
+      if (search) {
+        const haystack = `${inv.student?.full_name ?? ''} ${inv.description ?? ''}`.toLowerCase()
+        if (!haystack.includes(search.toLowerCase())) return false
+      }
+      return true
+    })
+  }, [invoices, statusFilter, search])
 
   const totalOwed = invoices.filter(i => i.status !== 'paid').reduce((sum, i) => sum + (i.amount_cents ?? 0), 0)
   const totalPaid = invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + (i.amount_cents ?? 0), 0)
-
-  const currentStudentName = showSelector
-    ? students.find(s => s.id === studentId)?.full_name
-    : profile?.full_name
+  const overdueCount = invoices.filter(i => i.status !== 'paid' && daysOutstanding(i.issued_at) > 30).length
 
   return (
     <Layout>
-      <div className="page-header">
-        <h2 className="page-title">Billing</h2>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          {canEdit && showTable && (
-            <button className="btn-primary-sm" onClick={openCreate}>+ New Invoice</button>
-          )}
-          {showSelector && (
-            <select className="select-input" value={studentId} onChange={e => setStudentId(e.target.value)}>
-              <option value="">Select a student</option>
-              {students.map(s => <option key={s.id} value={s.id}>{s.full_name}</option>)}
+      <PageHeader
+        eyebrow="Apex Operations"
+        title="Billing"
+        description={adminWideView ? 'Every student invoice across the school.' : 'Student invoice ledger.'}
+        actions={canEdit && showTable && <Button variant="primary" onClick={openCreate}>+ New Invoice</Button>}
+      />
+
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 20 }}>
+        {showSelector && (
+          <select className="select-input" value={studentId} onChange={e => setStudentId(e.target.value)}>
+            <option value="">{adminWideView ? 'All students' : 'Select a student'}</option>
+            {students.map(s => <option key={s.id} value={s.id}>{s.full_name}</option>)}
+          </select>
+        )}
+        {showTable && (
+          <>
+            <input
+              className="search-input"
+              type="text"
+              placeholder="Search student or description…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            <select className="select-input" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+              {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
-          )}
-        </div>
+          </>
+        )}
       </div>
 
       {showTable && invoices.length > 0 && (
-        <div className="stat-grid stat-grid--sm" style={{ marginBottom: 24 }}>
-          <div className="stat-card">
-            <p className="stat-card__label">Balance Due</p>
-            <p className="stat-card__value" style={{ color: totalOwed > 0 ? '#f87171' : 'var(--text)' }}>${(totalOwed / 100).toFixed(2)}</p>
-          </div>
-          <div className="stat-card">
-            <p className="stat-card__label">Total Paid</p>
-            <p className="stat-card__value" style={{ color: '#4ade80' }}>${(totalPaid / 100).toFixed(2)}</p>
-          </div>
-          <div className="stat-card">
-            <p className="stat-card__label">Total Invoiced</p>
-            <p className="stat-card__value">${((totalOwed + totalPaid) / 100).toFixed(2)}</p>
-          </div>
-        </div>
+        <StatsRow
+          size="sm"
+          stats={[
+            { label: 'Balance Due', value: `$${(totalOwed / 100).toFixed(2)}`, sub: overdueCount > 0 ? `${overdueCount} overdue 30+ days` : undefined },
+            { label: 'Total Paid', value: `$${(totalPaid / 100).toFixed(2)}` },
+            { label: 'Total Invoiced', value: `$${((totalOwed + totalPaid) / 100).toFixed(2)}` },
+          ]}
+        />
       )}
 
-      {loading ? <p className="empty-state">Loading…</p> : (
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Invoice #</th>
-                <th>Issued</th>
-                <th>Description</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th></th>
+      {!showTable ? (
+        <p className="empty-state">Select a student to view their invoices.</p>
+      ) : loading ? (
+        <p className="empty-state">Loading…</p>
+      ) : (
+        <Table>
+          <thead>
+            <tr>
+              <th>Invoice #</th>
+              {adminWideView && <th>Student</th>}
+              <th>Issued</th>
+              <th>Description</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredInvoices.length === 0 ? (
+              <tr><td colSpan={adminWideView ? 7 : 6} className="empty-state">No invoices match.</td></tr>
+            ) : filteredInvoices.map(inv => (
+              <tr key={inv.id}>
+                <td>#{inv.id.slice(0, 8).toUpperCase()}</td>
+                {adminWideView && <td>{inv.student?.full_name ?? '—'}</td>}
+                <td>
+                  {new Date(inv.issued_at).toLocaleDateString()}
+                  {inv.status !== 'paid' && daysOutstanding(inv.issued_at) > 30 && (
+                    <span className="status-badge status-badge--danger" style={{ marginLeft: 8 }}>{daysOutstanding(inv.issued_at)}d</span>
+                  )}
+                </td>
+                <td>{inv.description}</td>
+                <td>${Number(inv.amount_cents / 100).toFixed(2)}</td>
+                <td><span className={statusClass(inv.status)}>{inv.status}</span></td>
+                <td style={{ display: 'flex', gap: 10 }}>
+                  <button className="btn-link" onClick={() => printInvoice(inv, inv.student?.full_name)}>Print</button>
+                  {canEdit && <button className="btn-link" onClick={() => openEdit(inv)}>Edit</button>}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {invoices.length === 0 ? (
-                <tr><td colSpan={6} className="empty-state">No invoices yet.</td></tr>
-              ) : invoices.map(inv => (
-                <tr key={inv.id}>
-                  <td>#{inv.id.slice(0, 8).toUpperCase()}</td>
-                  <td>{new Date(inv.issued_at).toLocaleDateString()}</td>
-                  <td>{inv.description}</td>
-                  <td>${Number(inv.amount_cents / 100).toFixed(2)}</td>
-                  <td><span className={statusClass(inv.status)}>{inv.status}</span></td>
-                  <td style={{ display: 'flex', gap: 10 }}>
-                    <button className="btn-link" onClick={() => printInvoice(inv, currentStudentName)}>Print</button>
-                    {canEdit && <button className="btn-link" onClick={() => openEdit(inv)}>Edit</button>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </Table>
       )}
 
       {modal && (

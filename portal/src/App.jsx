@@ -12,7 +12,9 @@ const Students = lazy(() => import('./pages/Students'))
 const Instructors = lazy(() => import('./pages/Instructors'))
 const Syllabi = lazy(() => import('./pages/Syllabi'))
 const Schedule = lazy(() => import('./pages/Schedule'))
+const OperationsCalendar = lazy(() => import('./pages/OperationsCalendar'))
 const Logbook = lazy(() => import('./pages/Logbook'))
+const TrainingRecords = lazy(() => import('./pages/TrainingRecords'))
 const Billing = lazy(() => import('./pages/Billing'))
 const GroundSchedule = lazy(() => import('./pages/GroundSchedule'))
 const Documents = lazy(() => import('./pages/Documents'))
@@ -37,9 +39,6 @@ const MockOralAssessment = lazy(() => import('./pages/MockOralAssessment'))
 const PrivateInstructionDashboard = lazy(() => import('./pages/PrivateInstructionDashboard'))
 const PrivateInstructionAvailability = lazy(() => import('./pages/PrivateInstructionAvailability'))
 const InstructorHub = lazy(() => import('./pages/InstructorHub'))
-const OperationsDashboard = lazy(() => import('./pages/operations/OperationsDashboard'))
-const OperationsSchedule = lazy(() => import('./pages/operations/OperationsSchedule'))
-const OperationsSimulator = lazy(() => import('./pages/operations/OperationsSimulator'))
 const OperationsSettings = lazy(() => import('./pages/operations/OperationsSettings'))
 const PortalSelector = lazy(() => import('./pages/PortalSelector'))
 const FlightStudentDashboard = lazy(() => import('./pages/FlightStudentDashboard'))
@@ -61,10 +60,16 @@ export default function App() {
               <Route path="/portal-select" element={<ProtectedRoute><PortalSelector /></ProtectedRoute>} />
               <Route path="/dashboard"   element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/flight-dashboard" element={<ProtectedRoute roles={['student']}><FlightStudentDashboard /></ProtectedRoute>} />
-              <Route path="/operations" element={<ProtectedRoute roles={['admin', 'instructor', 'office_manager']}><Navigate to="/operations/dashboard" replace /></ProtectedRoute>} />
-              <Route path="/operations/dashboard" element={<ProtectedRoute roles={['admin', 'instructor', 'office_manager']}><OperationsDashboard /></ProtectedRoute>} />
-              <Route path="/operations/schedule" element={<ProtectedRoute roles={['admin', 'instructor', 'office_manager']}><OperationsSchedule /></ProtectedRoute>} />
-              <Route path="/operations/simulator" element={<ProtectedRoute roles={['admin', 'instructor']}><OperationsSimulator /></ProtectedRoute>} />
+              {/* OperationsDashboard/Schedule/Simulator retired -- all
+                  three were placeholders over empty/dead data
+                  (operations_events has 0 rows; the simulator offering
+                  itself was retracted from the business). The unified
+                  Scheduling calendar replaces them; old links redirect
+                  there instead of 404ing. */}
+              <Route path="/operations" element={<Navigate to="/scheduling" replace />} />
+              <Route path="/operations/dashboard" element={<Navigate to="/scheduling" replace />} />
+              <Route path="/operations/schedule" element={<Navigate to="/scheduling" replace />} />
+              <Route path="/operations/simulator" element={<Navigate to="/scheduling" replace />} />
               <Route path="/operations/settings" element={<ProtectedRoute adminOnly><OperationsSettings /></ProtectedRoute>} />
               <Route path="/admin/ground-school-schedule" element={<ProtectedRoute roles={['admin', 'office_manager']}><AdminGroundSchoolSchedule /></ProtectedRoute>} />
               <Route path="/ground-school-bidding" element={<ProtectedRoute roles={['admin', 'instructor']}><GroundSchoolBidding /></ProtectedRoute>} />
@@ -76,7 +81,9 @@ export default function App() {
               <Route path="/profile"     element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/syllabi"     element={<ProtectedRoute><Syllabi /></ProtectedRoute>} />
               <Route path="/schedule"    element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
+              <Route path="/scheduling"  element={<ProtectedRoute roles={['admin', 'instructor', 'office_manager']}><OperationsCalendar /></ProtectedRoute>} />
               <Route path="/logbook"     element={<ProtectedRoute><Logbook /></ProtectedRoute>} />
+              <Route path="/training-records" element={<ProtectedRoute roles={['admin', 'instructor']}><TrainingRecords /></ProtectedRoute>} />
               <Route path="/billing"     element={<ProtectedRoute><Billing /></ProtectedRoute>} />
               <Route path="/ground-schedule" element={<ProtectedRoute><GroundSchedule /></ProtectedRoute>} />
               <Route path="/attend/:type/:token" element={<Attend />} />

@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
+import { PageHeader, StatsRow, Button, Table } from '../components/ui'
+
+const PERIOD_PRESETS = [
+  { label: 'This Month', range: () => [firstOfMonth(), today()] },
+  { label: 'Last Month', range: () => { const d = new Date(); d.setDate(1); d.setDate(0); const end = d.toISOString().slice(0, 10); d.setDate(1); return [d.toISOString().slice(0, 10), end] } },
+  { label: 'Last 2 Weeks', range: () => { const d = new Date(); d.setDate(d.getDate() - 14); return [d.toISOString().slice(0, 10), today()] } },
+]
 
 function toCSV(headers, rows) {
   return [headers, ...rows].map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n')
@@ -164,12 +171,24 @@ export default function Payroll() {
 
   return (
     <Layout>
-      <div className="page-header">
-        <div>
-          <h2 className="page-title">Payroll</h2>
-          <p className="page-sub">Instructor hours & pay by period</p>
-        </div>
-        <button className="btn-secondary" onClick={exportCSV}>⬇ Export CSV</button>
+      <PageHeader
+        eyebrow="Apex Operations"
+        title="Payroll"
+        description="Instructor hours & pay by period."
+        actions={<Button onClick={exportCSV}>⬇ Export CSV</Button>}
+      />
+
+      <div className="pill-bar" style={{ marginBottom: 12 }}>
+        {PERIOD_PRESETS.map(p => (
+          <button
+            key={p.label}
+            type="button"
+            className="pill-btn"
+            onClick={() => { const [start, end] = p.range(); setPeriodStart(start); setPeriodEnd(end) }}
+          >
+            {p.label}
+          </button>
+        ))}
       </div>
 
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', marginBottom: 20 }}>
@@ -183,11 +202,21 @@ export default function Payroll() {
         </div>
       </div>
 
+      {!loading && instructors.length > 0 && (
+        <StatsRow
+          size="sm"
+          stats={[
+            { label: 'Flight Hours', value: instructors.reduce((s, i) => s + flightHoursFor(i.id), 0).toFixed(1) },
+            { label: 'Classes Taught', value: instructors.reduce((s, i) => s + classesFor(i.id), 0) },
+            { label: 'Total Pay', value: `$${instructors.reduce((s, i) => s + payFor(i), 0).toFixed(2)}` },
+          ]}
+        />
+      )}
+
       {loading ? <p className="empty-state">Loading…</p> : instructors.length === 0 ? (
         <p className="empty-state">No instructors found.</p>
       ) : (
-        <div className="table-wrap">
-          <table className="data-table">
+        <Table>
             <thead>
               <tr>
                 <th>Instructor</th>
@@ -234,8 +263,7 @@ export default function Payroll() {
                 <td></td>
               </tr>
             </tbody>
-          </table>
-        </div>
+        </Table>
       )}
 
       {rateModal && (
