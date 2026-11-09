@@ -108,6 +108,21 @@
 //     handleUpgradeGroundSchoolPack are deliberately left in place for
 //     the same already-in-flight-session reason noted above.
 //
+//   purpose: 'pay-invoice'
+//     Apex Operations (the flight-school portal, not Apex Advantage) --
+//     a student paying one of their own flight-training invoices.
+//     Requires the caller's access token; the caller must be the
+//     invoice's own student_id (an admin paying on a student's behalf
+//     still just marks it paid manually in Billing.jsx -- this endpoint
+//     only ever charges the person it's actually billed to). Price is
+//     read from invoices/invoice_line_items server-side, never trusted
+//     from the client. Deliberately does NOT call logCheckoutAttempt --
+//     that table feeds send-lifecycle-emails' abandoned-checkout
+//     recovery job, built entirely around re-engaging Apex Advantage
+//     consumer-product drop-offs ("come back and unlock Checkride
+//     Prep"); sending that email to a flight student who didn't finish
+//     paying a lesson invoice would be the wrong message entirely.
+//
 // Env vars required (set as Supabase Edge Function secrets):
 //   STRIPE_SECRET_KEY
 //   SUPABASE_URL              (auto-provided by Supabase)
@@ -1100,6 +1115,58 @@ serve(async (req) => {
       await logCheckoutAttempt(supabase, { stripeSessionId: session.id, purpose: 'unlock-study-pack', email, profileId, amountCents: pack.price_cents, utm: body.utm, referrer: body.referrer, clickIds: body.click_ids })
 
       return new Response(JSON.stringify({ url: session.url, amount: pack.price_cents }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (purpose === 'pay-invoice') {
+      const authHeader = req.headers.get('Authorization') || ''
+      const token = authHeader.replace('Bearer ', '').trim()
+      if (!token) return jsonError('Missing Authorization header', 401)
+
+      const { data: userData, error: userErr } = await supabase.auth.getUser(token)
+      if (userErr || !userData?.user) return jsonError('Invalid or expired session', 401)
+
+      const invoiceId = body.invoice_id
+      if (!invoiceId) return jsonError('Missing invoice_id', 400)
+
+      const { data: invoice } = await supabase
+        .from('invoices')
+        .select('id, student_id, description, amount_cents, status')
+        .eq('id', invoiceId)
+        .maybeSingle()
+      if (!invoice) return jsonError('Invoice not found', 404)
+      // Service-role client bypasses RLS, so this is the actual
+      // authorization check: only the student this invoice is billed to
+      // can pay it through this endpoint. An admin collecting payment
+      // another way still just marks it paid manually in Billing.jsx.
+      if (invoice.student_id !== userData.user.id) return jsonError('Not your invoice', 403)
+      if (invoice.status === 'paid') return jsonError('This invoice is already paid', 409)
+      if (!invoice.amount_cents || invoice.amount_cents <= 0) return jsonError('Invoice has no balance due', 400)
+
+      const { data: lineItemRows } = await supabase
+        .from('invoice_line_items')
+        .select('description, amount_cents')
+        .eq('invoice_id', invoiceId)
+        .order('sort_order')
+
+      const stripeLineItems = (lineItemRows && lineItemRows.length > 0 ? lineItemRows : [{ description: invoice.description || 'Invoice balance', amount_cents: invoice.amount_cents }])
+        .filter((li: any) => li.amount_cents > 0)
+        .map((li: any) => ({
+          price_data: { currency: 'usd', product_data: { name: li.description }, unit_amount: li.amount_cents },
+          quantity: 1,
+        }))
+
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        customer_email: userData.user.email,
+        line_items: stripeLineItems,
+        metadata: { purpose: 'pay-invoice', invoice_id: invoiceId, profile_id: userData.user.id },
+        success_url: `${siteOrigin}/billing?paid=1&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${siteOrigin}/billing?checkout_cancelled=1`,
+      })
+
+      return new Response(JSON.stringify({ url: session.url, amount: invoice.amount_cents }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }

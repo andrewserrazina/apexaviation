@@ -68,6 +68,19 @@ function daysOutstanding(issuedAt) {
   return Math.max(0, Math.round((Date.now() - new Date(issuedAt).getTime()) / 86400000))
 }
 
+// Same shape every supabase.functions.invoke() caller in this codebase
+// uses (e.g. GroundSchedule.jsx) -- Edge Functions here return
+// jsonError({ error: '...' }) either in res.data or inside a non-2xx
+// res.error's response body, depending on which layer caught it.
+function extractInvokeError(res) {
+  if (res.data && res.data.error) return Promise.resolve(res.data.error)
+  const fallback = (res.error && res.error.message) || 'Could not start checkout. Please try again.'
+  if (res.error && res.error.context && typeof res.error.context.json === 'function') {
+    return res.error.context.json().then(body => (body && body.error) || fallback).catch(() => fallback)
+  }
+  return Promise.resolve(fallback)
+}
+
 export default function Billing() {
   const { profile } = useAuth()
   const [invoices, setInvoices] = useState([])
@@ -76,6 +89,8 @@ export default function Billing() {
   const [studentId, setStudentId] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [payingId, setPayingId] = useState(null)
+  const [payBanner, setPayBanner] = useState(null) // 'paid' | 'cancelled'
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(BLANK)
   const [saving, setSaving] = useState(false)
@@ -128,6 +143,36 @@ export default function Billing() {
     if (!profile) return
     loadInvoices()
   }, [studentId, profile])
+
+  // Stripe redirects back here after checkout -- success_url/cancel_url
+  // in create-checkout-session's 'pay-invoice' branch both point at
+  // /billing. Strips the query params after reading them so a page
+  // refresh doesn't re-show the banner or re-trigger a reload.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.has('paid')) {
+      setPayBanner('paid')
+      window.history.replaceState({}, '', window.location.pathname)
+      loadInvoices()
+    } else if (params.has('checkout_cancelled')) {
+      setPayBanner('cancelled')
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
+
+  async function payInvoice(inv) {
+    setPayingId(inv.id)
+    const res = await supabase.functions.invoke('create-checkout-session', {
+      body: { purpose: 'pay-invoice', invoice_id: inv.id, origin: window.location.origin },
+    })
+    if (res.error || !res.data?.url) {
+      setPayingId(null)
+      const message = await extractInvokeError(res)
+      alert(message)
+      return
+    }
+    window.location.href = res.data.url
+  }
 
   function openCreate() {
     setForm({ ...BLANK, student_id: studentId, lineItems: [{ ...BLANK_LINE_ITEM }] })
@@ -237,6 +282,17 @@ export default function Billing() {
         actions={canEdit && showTable && <Button variant="primary" onClick={openCreate}>+ New Invoice</Button>}
       />
 
+      {payBanner === 'paid' && (
+        <div className="status-badge status-badge--success" style={{ display: 'block', padding: '10px 14px', marginBottom: 16, fontSize: 13 }}>
+          Payment received — thanks! It may take a moment to show as paid below.
+        </div>
+      )}
+      {payBanner === 'cancelled' && (
+        <div className="status-badge status-badge--warning" style={{ display: 'block', padding: '10px 14px', marginBottom: 16, fontSize: 13 }}>
+          Checkout was cancelled — no payment was made.
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 20 }}>
         {showSelector && (
           <select className="select-input" value={studentId} onChange={e => setStudentId(e.target.value)}>
@@ -304,12 +360,17 @@ export default function Billing() {
                 <td>{summaryOf(inv)}</td>
                 <td>${Number(inv.amount_cents / 100).toFixed(2)}</td>
                 <td><span className={statusClass(inv.status)}>{inv.status}</span></td>
-                <td style={{ display: 'flex', gap: 10 }}>
+                <td style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   <button className="btn-link" onClick={() => printInvoice(inv, inv.student?.full_name)}>Print</button>
                   {canEdit ? (
                     <button className="btn-link" onClick={() => openEdit(inv)}>Edit</button>
                   ) : (
                     <button className="btn-link" onClick={() => openView(inv)}>View</button>
+                  )}
+                  {!canEdit && inv.status !== 'paid' && profile?.id === inv.student_id && (
+                    <button className="btn-link" disabled={payingId === inv.id} onClick={() => payInvoice(inv)}>
+                      {payingId === inv.id ? 'Redirecting…' : 'Pay Now'}
+                    </button>
                   )}
                 </td>
               </tr>
@@ -336,8 +397,13 @@ export default function Billing() {
             Total: ${(modal.inv.amount_cents / 100).toFixed(2)}
           </div>
           <div className="modal-form__actions">
-            <div style={{ marginLeft: 'auto' }}>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
               <button type="button" className="btn-secondary" onClick={closeModal}>Close</button>
+              {modal.inv.status !== 'paid' && profile?.id === modal.inv.student_id && (
+                <button type="button" className="btn-primary-sm" disabled={payingId === modal.inv.id} onClick={() => payInvoice(modal.inv)}>
+                  {payingId === modal.inv.id ? 'Redirecting…' : 'Pay Now'}
+                </button>
+              )}
             </div>
           </div>
         </Modal>
