@@ -130,11 +130,11 @@ if (waitlistForm) {
       const wantsInPerson = segments.has('in_person');
       const wantsVirtual = segments.has('virtual');
       if (wantsInPerson && !wantsVirtual) {
-        waitlistSuccessMsg.textContent = "Welcome to Apex Aviation. We'll be in touch before our February 2027 Austin launch with priority access details.";
+        waitlistSuccessMsg.textContent = "Welcome to Apex Aviation. We'll be in touch before our targeted March 2027 Austin launch with priority access details.";
       } else if (wantsVirtual && !wantsInPerson) {
         waitlistSuccessMsg.textContent = "Welcome to Apex Aviation. Our virtual services are live today -- keep an eye on your inbox, we'll follow up shortly.";
       } else {
-        waitlistSuccessMsg.textContent = "Welcome to Apex Aviation. We'll follow up about getting started virtually now, plus priority access before our February 2027 Austin launch.";
+        waitlistSuccessMsg.textContent = "Welcome to Apex Aviation. We'll follow up about getting started virtually now, plus priority access before our targeted March 2027 Austin launch.";
       }
     }
 
