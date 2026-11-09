@@ -163,7 +163,7 @@ function pageHtml(loc, index) {
 
   <header class="nav" id="nav">
     <div class="container nav__inner">
-      <a href="home.html" class="nav__logo">
+      <a href="/" class="nav__logo">
         <img src="apexwhite.png" alt="Apex Aviation" height="40" style="display:block;width:auto" />
       </a>
       <nav class="nav__links">
@@ -267,7 +267,7 @@ ${faqHtml(region)}
   <footer class="footer">
     <div class="container footer__inner">
       <div class="footer__brand">
-        <a href="home.html" class="nav__logo">
+        <a href="/" class="nav__logo">
         <img src="apexwhite.png" alt="Apex Aviation" height="40" style="display:block;width:auto" />
         </a>
         <p>Train Beyond the Checkride. Live virtual Private Instruction available nationwide, based in Austin, Texas.</p>
@@ -294,7 +294,7 @@ ${faqHtml(region)}
           <a href="instructors.html">Our Instructors</a>
           <a href="fleet.html">The Simulator</a>
           <a href="about.html#founder">Andrew Serrazina</a>
-          <a href="home.html#waitlist">Founding Members</a>
+          <a href="/#waitlist">Founding Members</a>
         </div>
         <div>
           <h4>Contact</h4>
@@ -373,7 +373,7 @@ function hubHtml(files) {
 
   <header class="nav" id="nav">
     <div class="container nav__inner">
-      <a href="home.html" class="nav__logo">
+      <a href="/" class="nav__logo">
         <img src="apexwhite.png" alt="Apex Aviation" height="40" style="display:block;width:auto" />
       </a>
       <nav class="nav__links">
@@ -416,7 +416,7 @@ function hubHtml(files) {
   <footer class="footer">
     <div class="container footer__inner">
       <div class="footer__brand">
-        <a href="home.html" class="nav__logo">
+        <a href="/" class="nav__logo">
         <img src="apexwhite.png" alt="Apex Aviation" height="40" style="display:block;width:auto" />
         </a>
         <p>Train Beyond the Checkride. Live virtual Private Instruction available nationwide, based in Austin, Texas.</p>

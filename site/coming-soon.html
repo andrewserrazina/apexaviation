@@ -5,24 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Apex Aviation — Austin, TX</title>
   <meta name="description" content="Apex Aviation: free member portal and checkride prep live today, single-aircraft flight training opening in Austin, Texas." />
-  <link rel="canonical" href="https://apexaviationtx.com/home.html" />
+  <link rel="canonical" href="https://apexaviationtx.com/" />
   <meta name="robots" content="noindex" />
   <link rel="icon" type="image/png" href="favicon.svg" />
   <!--
     An earlier, unfinished draft of the same "announcement coming July 6,
-    2026" countdown page as site/index.html (see that file's own header
-    comment -- same expired LAUNCH date, same self-redirect-to-home.html-
-    once-it-passes logic), with its own problems on top: the Formspree
-    endpoint was never finished (literal 'REPLACE_WITH_YOUR_FORM_ID'
+    2026" countdown page as site/index.html used to be (the real homepage
+    now lives at site/index.html itself, served directly at the domain
+    root -- see that file's own header), with its own problems on top: the
+    Formspree endpoint was never finished (literal 'REPLACE_WITH_YOUR_FORM_ID'
     placeholder, so that form silently failed for anyone who ever reached
     it) and a leftover "Pre-launch sim preview events" perk from before
     the single-aircraft pivot. Replaced with an immediate redirect, same
-    pattern as index.html/landing.html's own stubs, rather than finishing
-    or fixing a page no real visitor could ever submit. Not deleted
-    outright since this may be indexed/linked externally; redirected
-    instead so nothing 404s.
+    pattern as landing.html's own stub, rather than finishing or fixing a
+    page no real visitor could ever submit. Not deleted outright since
+    this may be indexed/linked externally; redirected instead so nothing
+    404s.
   -->
-  <meta http-equiv="refresh" content="0; url=home.html" />
+  <meta http-equiv="refresh" content="0; url=/" />
   <!-- Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-JFPBCF2GXE"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-JFPBCF2GXE');</script>
@@ -44,7 +44,7 @@
   /></noscript>
   <!-- End Meta Pixel Code -->
   <script>
-    window.location.replace('home.html' + window.location.search);
+    window.location.replace('/' + window.location.search);
   </script>
   <style>
     body { background:#0B1F3A; color:rgba(255,255,255,0.75); font-family:-apple-system,sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; text-align:center; padding:24px; }
@@ -52,6 +52,6 @@
   </style>
 </head>
 <body>
-  <p>Apex Aviation is live now — redirecting to <a href="home.html">the current page</a>…</p>
+  <p>Apex Aviation is live now — redirecting to <a href="/">the current page</a>…</p>
 </body>
 </html>

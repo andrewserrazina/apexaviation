@@ -3,30 +3,119 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Apex Aviation — Austin, TX</title>
-  <meta name="description" content="Apex Aviation: free member portal and checkride prep live today, single-aircraft flight training opening in Austin, Texas." />
-  <link rel="canonical" href="https://apexaviationtx.com/home.html" />
-  <meta name="robots" content="noindex" />
-  <link rel="icon" type="image/png" href="favicon.svg" />
-  <!--
-    This was the pre-launch "announcement coming July 6, 2026" countdown
-    page -- its own countdown script already redirected to home.html the
-    moment that date passed (new Date('2026-07-06...') check), so by the
-    time anyone reads this comment the countdown UI, waitlist form, and
-    its own duplicate inline Formspree call (drifted from site/script.js's
-    shared submitToFormspree() helper -- found during a later audit) were
-    all already dead code no real visitor could ever reach. Replaced with
-    an immediate redirect, same pattern as landing.html's own stub, rather
-    than patching a form nobody can ever submit. Not deleted outright
-    since this is the bare domain root and may be indexed/linked
-    externally; redirected instead so nothing 404s. noindex + canonical
-    above cover search engines; meta-refresh + JS redirect below cover
-    real visitors, including ones with JS disabled.
-  -->
-  <meta http-equiv="refresh" content="0; url=home.html" />
-  <!-- Google Analytics -->
+  <title>Apex Aviation | Train Beyond the Checkride — Austin, TX</title>
+  <meta name="description" content="Free checkride prep resources and a 300+ question DPE study system are live today. Apex Advantage Private Instruction — 1-on-1 time with an instructor, $55/hour — is running now. Single-aircraft flight training opening February 2027 in Austin, TX." />
+  <meta name="keywords" content="Austin instrument training, Austin IPC, Austin instrument proficiency check, Austin flight review, Austin BFR, Austin checkride prep, Austin flight instruction, Austin flight training, Texas instrument pilot training, Austin CFI, Austin CFII" />
+  <meta property="og:title" content="Apex Aviation | Train Beyond the Checkride" />
+  <meta property="og:description" content="Free checkride prep resources are live today. Apex Advantage Private Instruction — 1-on-1 time with an instructor — is running now, $55/hour. Single-aircraft flight training opening February 2027 in Austin, TX." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://apexaviationtx.com/" />
+  <meta property="og:image" content="https://apexaviationtx.com/apexwhite.png" />
+  <meta property="og:site_name" content="Apex Aviation" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Apex Aviation | Train Beyond the Checkride" />
+  <meta name="twitter:description" content="Free checkride prep resources live today. Apex Advantage Private Instruction running now, $55/hour, 1-on-1. Single-aircraft training opens Austin, TX, February 2027." />
+  <meta name="twitter:image" content="https://apexaviationtx.com/apexwhite.png" />
+  <link rel="canonical" href="https://apexaviationtx.com/" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "EducationalOrganization",
+    "name": "Apex Aviation",
+    "description": "A free member portal and 300+ question DPE Checkride Prep System are live today. Apex Advantage Private Instruction — 1-on-1 time with an instructor, $55 per hour, every certificate level — is running now, and single-aircraft flight training is planned to begin in Austin, Texas in February 2027, with the training aircraft being finalized through ongoing discussions with several lessors.",
+    "url": "https://apexaviationtx.com",
+    "logo": "https://apexaviationtx.com/apexwhite.png",
+    "email": "info@apexaviationtx.com",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Austin",
+      "addressRegion": "TX",
+      "addressCountry": "US"
+    },
+    "areaServed": [
+      { "@type": "City", "name": "Austin" },
+      { "@type": "State", "name": "Texas" }
+    ],
+    "hasOfferCatalog": {
+      "@type": "OfferCatalog",
+      "name": "Aviation Training Programs",
+      "itemListElement": [
+        {
+          "@type": "Offer",
+          "availability": "https://schema.org/InStock",
+          "itemOffered": {
+            "@type": "Course",
+            "name": "Free Member Portal & Checkride Prep System",
+            "description": "Free portal access including the '10 Questions DPEs Love to Ask' guide, plus an optional 300+ question DPE-style Checkride Prep System covering every ACS area of operation for Private, Instrument, and Commercial candidates. Available now."
+          }
+        },
+        {
+          "@type": "Offer",
+          "availability": "https://schema.org/InStock",
+          "itemOffered": {
+            "@type": "Service",
+            "name": "Apex Advantage Private Instruction",
+            "description": "1-on-1 time with an Apex Advantage instructor — ground school content, checkride prep, oral prep, or whatever the student needs. $55 per hour, every certificate level."
+          }
+        },
+        {
+          "@type": "Offer",
+          "availability": "https://schema.org/PreOrder",
+          "itemOffered": {
+            "@type": "Course",
+            "name": "IPC — Instrument Proficiency Check",
+            "description": "FAA-accepted Instrument Proficiency Check flown in the actual aircraft with a CFII. Opening Austin, TX February 2027."
+          }
+        },
+        {
+          "@type": "Offer",
+          "availability": "https://schema.org/PreOrder",
+          "itemOffered": {
+            "@type": "Course",
+            "name": "Flight Review / BFR",
+            "description": "FAA Biennial Flight Review and Rusty Pilot reintegration flown in the actual aircraft. Opening Austin, TX February 2027."
+          }
+        }
+      ]
+    },
+    "founder": {
+      "@type": "Person",
+      "name": "Andrew Serrazina",
+      "jobTitle": "Founder & Chief Flight Instructor",
+      "hasCredential": ["CFI", "CFII", "AGI", "Comm. ASEL", "Comm. AMEL", "Inst. Airplane"]
+    },
+    "openingDate": "2027-02-01",
+    "sameAs": []
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      { "@type": "Question", "name": "Is anything available at Apex Aviation right now?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Our free member portal is live today, including the '10 Questions DPEs Love to Ask' guide and an optional 300+ question DPE-style Checkride Prep System for Private, Instrument, and Commercial candidates. Apex Advantage Private Instruction — 1-on-1 time with an instructor, $55 per hour — is running now, and our single-aircraft flight training launches in Austin in February 2027." } },
+      { "@type": "Question", "name": "Do I need to be an instrument-rated pilot to train with Apex?", "acceptedAnswer": { "@type": "Answer", "text": "No. The free portal and checkride prep system are open to student pilots through commercial candidates today. Apex Advantage Private Instruction is also open to all certificate levels. The Austin aircraft training opening February 2027 is primarily designed for instrument-rated pilots pursuing IPC or flight reviews." } },
+      { "@type": "Question", "name": "How do virtual sessions work?", "acceptedAnswer": { "@type": "Answer", "text": "Private Instruction and checkride prep sessions are conducted via video call, 1-on-1, at a time you book directly on the schedule." } },
+      { "@type": "Question", "name": "Will the IPC and flight reviews be done in a simulator?", "acceptedAnswer": { "@type": "Answer", "text": "No. Apex is launching with one dedicated aircraft and no simulator — we're currently in discussion with several lessors on training platforms, including the Cessna 172, Piper PA-28, and Pipistrel Voyager. Every IPC and flight review will be flown for real with a CFII, satisfying FAR 61.57(d). Keeping it to one real aircraft keeps costs down and keeps the training honest." } },
+      { "@type": "Question", "name": "What's the difference between currency and proficiency?", "acceptedAnswer": { "@type": "Answer", "text": "Currency means you meet the FAA's minimums to act as PIC. Proficiency means you can actually handle what real IMC throws at you. Apex trains for proficiency — currency is a byproduct." } },
+      { "@type": "Question", "name": "How do I get started?", "acceptedAnswer": { "@type": "Answer", "text": "Create a free account on the Apex member portal to get the '10 Questions DPEs Love to Ask' guide today. To talk with Andrew directly about Private Instruction, checkride prep, or Austin training, send a message through the contact page — he responds within one business day." } }
+    ]
+  }
+  </script>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="pages.css" />
+  <!-- Google Analytics 4 -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-JFPBCF2GXE"></script>
-  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-JFPBCF2GXE');</script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-JFPBCF2GXE');
+  </script>
   <!-- Meta Pixel Code -->
   <script>
   !function(f,b,e,v,n,t,s)
@@ -40,15 +129,667 @@
   fbq('init', '1049117198055794');
   fbq('track', 'PageView');
   </script>
+  <noscript><img height="1" width="1" style="display:none"
+  src="https://www.facebook.com/tr?id=1049117198055794&ev=PageView&noscript=1"
+  /></noscript>
+  <!-- End Meta Pixel Code -->
+
+  <!-- Microsoft Clarity — replace x95g0qe0g6 with your Clarity Project ID -->
   <script>
-    window.location.replace('home.html' + window.location.search);
+    (function(c,l,a,r,i,t,y){
+      c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+      t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+      y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window,document,'clarity','script','x95g0qe0g6');
   </script>
-  <style>
-    body { background:#0B1F3A; color:rgba(255,255,255,0.75); font-family:-apple-system,sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; text-align:center; padding:24px; }
-    a { color:#F4B400; }
-  </style>
 </head>
 <body>
-  <p>Apex Aviation is live now — redirecting to <a href="home.html">the current page</a>…</p>
+
+  <!-- NAV -->
+  <header class="nav" id="nav">
+    <div class="container nav__inner">
+      <a href="/" class="nav__logo">
+        <img src="apexwhite.png" alt="Apex Aviation" height="40" style="display:block;width:auto" />
+      </a>
+      <nav class="nav__links">
+        <a href="programs.html">Services</a>
+        <div class="nav__dropdown" id="trainingDropdown">
+          <button class="nav__dropdown-toggle" aria-expanded="false" aria-haspopup="true">
+            Training
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="nav__dropdown-menu">
+            <a href="private-pilot-training.html">Private Pilot</a>
+            <a href="instrument-rating-training.html">Instrument Rating</a>
+            <a href="commercial-pilot-training.html">Commercial Pilot</a>
+            <a href="apex-advantage.html">Apex Advantage</a>
+            <a href="apex-advantage-private-instruction.html">Private Instruction</a>
+          </div>
+        </div>
+        <a href="fleet.html">Our Aircraft</a>
+        <a href="about.html">About</a>
+        <a href="instructors.html">Team</a>
+        <a href="pricing.html">Pricing</a>
+        <a href="apex-advantage.html" class="btn btn--nav-outline">Apex Advantage</a>
+        <a href="portal-login.html" class="btn btn--nav-ghost">Login</a>
+        <a href="contact.html" class="btn btn--nav">Book a Session</a>
+      </nav>
+      <button class="nav__hamburger" id="hamburger" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <div class="nav__mobile" id="mobileMenu">
+      <a href="programs.html">Services</a>
+      <a href="private-pilot-training.html">Private Pilot Training</a>
+      <a href="instrument-rating-training.html">Instrument Rating</a>
+      <a href="commercial-pilot-training.html">Commercial Pilot</a>
+      <a href="apex-advantage.html">Apex Advantage</a>
+      <a href="fleet.html">Our Aircraft</a>
+      <a href="about.html">About</a>
+      <a href="instructors.html">Team</a>
+      <a href="pricing.html">Pricing</a>
+      <a href="portal-login.html">Login</a>
+      <a href="contact.html">Book a Session</a>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero" id="home">
+    <div class="hero__bg"></div>
+    <div class="container hero__content">
+      <div class="hero__badge">Free portal live today &nbsp;·&nbsp; Private Instruction live now, $55/hour &nbsp;·&nbsp; Austin aircraft training Feb 2027</div>
+      <h1 class="hero__title">Train Beyond<br /><span>the Checkride.</span></h1>
+      <p class="hero__sub">Apex Aviation is built for pilots at every stage — from your first lesson through Private, Instrument, and Commercial training — who want real proficiency, not just a certificate. Create a free account to start, then add what you need: self-paced checkride prep, a live mock oral, or 1-on-1 instruction.</p>
+      <div class="hero__ctas">
+        <a href="portal-login.html?view=signup" class="btn btn--primary">Create Your Free Account</a>
+        <a href="#apex-advantage-live" class="btn btn--ghost">Explore Apex Advantage</a>
+      </div>
+      <div class="hero__stats">
+        <div class="stat"><span class="stat__num">Free</span><span class="stat__label">Portal Live Today</span></div>
+        <div class="stat__divider"></div>
+        <div class="stat"><span class="stat__num">300+</span><span class="stat__label">DPE Checkride Questions</span></div>
+        <div class="stat__divider"></div>
+        <div class="stat"><span class="stat__num">$55</span><span class="stat__label">Private Instruction / Hour</span></div>
+        <div class="stat__divider"></div>
+        <div class="stat"><span class="stat__num">Feb 2027</span><span class="stat__label">Austin Launch Target</span></div>
+      </div>
+    </div>
+    <div class="hero__scroll">
+      <span>Scroll to explore</span>
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10l6 6 6-6" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+  </section>
+
+  <!-- APEX ADVANTAGE — LIVE TODAY -->
+  <section class="section section--dark" id="apex-advantage-live">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Live Today — No Waitlist Required</div>
+        <h2 class="section__title">Apex Advantage.<br/><em class="accent">Ready before the checkride is.</em></h2>
+        <p class="section__desc">Our single-aircraft Austin training launches in February 2027 — but you don't have to wait for any of this. Every one of these is real, working, and available right now.</p>
+      </div>
+      <div class="programs__grid">
+
+        <!-- Free Portal & DPE Guide -->
+        <div class="program-card program-card--featured">
+          <div class="program-card__badge" style="background:#1F7A4C;border:1px solid rgba(52,199,89,0.5)">Free — Live Today</div>
+          <div class="program-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M9.09 9a3 3 0 015.83 1c0 2-3 2-3 4M12 17.5v.01" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="9" stroke="#F4B400" stroke-width="2"/></svg>
+          </div>
+          <div class="program-card__level">Free Member Portal</div>
+          <h3>10 Questions DPEs Love to Ask</h3>
+          <p>Create a free portal account today and get instant access to the guide every Private Pilot applicant should read before checkride day, plus a dashboard to track your training.</p>
+          <ul>
+            <li>Free forever — no credit card</li>
+            <li>Real DPE-style questions &amp; model answers</li>
+            <li>Your training dashboard in one place</li>
+          </ul>
+          <a href="portal-login.html?view=signup&dest=dpe-questions" class="btn btn--primary">Create Your Free Account</a>
+        </div>
+
+        <!-- Checkride Prep System -->
+        <div class="program-card">
+          <div class="program-card__badge" style="background:#1F7A4C;border:1px solid rgba(52,199,89,0.5)">Live Today</div>
+          <div class="program-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.976-.83 3.42 3.42 0 014.478 0 3.42 3.42 0 001.976.83 3.42 3.42 0 013.166 3.166 3.42 3.42 0 00.83 1.976 3.42 3.42 0 010 4.478 3.42 3.42 0 00-.83 1.976 3.42 3.42 0 01-3.166 3.166 3.42 3.42 0 00-1.976.83 3.42 3.42 0 01-4.478 0 3.42 3.42 0 00-1.976-.83 3.42 3.42 0 01-3.166-3.166 3.42 3.42 0 00-.83-1.976 3.42 3.42 0 010-4.478 3.42 3.42 0 00.83-1.976 3.42 3.42 0 013.166-3.166z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="program-card__level">Checkride Prep</div>
+          <h3>300+ Question Prep System</h3>
+          <p>A full DPE-style question bank covering every ACS area of operation, each with a model answer and the mistakes examiners actually watch for — plus scenario training and progress tracking.</p>
+          <ul>
+            <li>$29, one-time unlock</li>
+            <li>Unlock instantly from your portal</li>
+          </ul>
+          <a href="checkride-prep.html" class="btn btn--outline">Explore Checkride Prep</a>
+        </div>
+
+        <!-- Mock Oral -->
+        <div class="program-card">
+          <div class="program-card__badge" style="background:#1F7A4C;border:1px solid rgba(52,199,89,0.5)">Live Today</div>
+          <div class="program-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M8 10h8M8 14h5M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4-.83L3 20l1.05-3.16A7.86 7.86 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="program-card__level">1:1 With an Instructor</div>
+          <h3>Private Pilot Mock Oral</h3>
+          <p>A live 1-on-1 mock oral exam with an Apex instructor — up to two hours of realistic, DPE-style questioning and honest feedback, the closest thing to checkride day before checkride day.</p>
+          <ul>
+            <li>$129 per session</li>
+            <li>Scheduled directly with your instructor</li>
+            <li>Book anytime from your portal</li>
+          </ul>
+          <a href="apex-advantage-mock-oral.html" class="btn btn--outline">Book a Mock Oral</a>
+        </div>
+
+        <!-- Private Instruction -->
+        <div class="program-card">
+          <div class="program-card__badge" style="background:#1F7A4C;border:1px solid rgba(52,199,89,0.5)">Live Today</div>
+          <div class="program-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422A12.083 12.083 0 0112 20.055 12.083 12.083 0 015.84 10.578L12 14z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="program-card__level">1-on-1, Any Certificate Level</div>
+          <h3>Private Instruction</h3>
+          <p>1-on-1 time with an Apex instructor — ground school content, checkride prep, oral prep, or whatever you need that hour. Delivered virtually so it's available nationwide.</p>
+          <ul>
+            <li>$55 per hour</li>
+            <li>Live instructor, real-time questions</li>
+            <li>Available to students anywhere</li>
+          </ul>
+          <a href="apex-advantage-private-instruction.html" class="btn btn--outline">Learn More</a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- WHY APEX AVIATION -->
+  <section class="about section" id="about">
+    <div class="container about__grid">
+      <div class="about__image">
+        <img src="images/IMG_0231.JPG" alt="Andrew Serrazina instructing in the cockpit" loading="lazy" />
+        <div class="about__badge-card">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="#F4B400"/></svg>
+          <div>
+            <strong>Real Aircraft Training</strong>
+            <span>Opening Feb 2027</span>
+          </div>
+        </div>
+      </div>
+      <div class="about__text">
+        <div class="section__eyebrow">Why Apex Aviation</div>
+        <h2 class="section__title">One aircraft.<br/><em class="accent">Done the right way.</em></h2>
+        <p>Apex is launching lean, on purpose. One dedicated aircraft — currently in discussion with several lessors on training platforms including the Cessna 172, Piper PA-28, and Pipistrel Voyager — one primary instructor, based in Austin — no fleet overhead, no simulator bay or classroom lease to fund before day one. Every lesson is built around genuine student development: structured preparation before you ever get in the airplane, an honest debrief after you get out of it, and a standard of professionalism we hold ourselves to every time.</p>
+        <p>That same philosophy already shapes what's live today: our free member portal and 300+ question DPE Checkride Prep System are built around the same ACS-based, scenario-first approach — so you can start training the Apex way before we ever take off.</p>
+        <ul class="about__list">
+          <li>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#F4B400" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Free portal &amp; 300+ question Checkride Prep System — live today
+          </li>
+          <li>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#F4B400" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            One dedicated aircraft — no fleet, no scheduling conflicts
+          </li>
+          <li>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#F4B400" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Training aircraft selection underway — opening Austin, TX, February 2027
+          </li>
+          <li>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="10" fill="#F4B400" fill-opacity=".12"/><path d="M6 10l3 3 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Scenario-based from day one — proficiency, not just currency
+          </li>
+        </ul>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:28px">
+          <a href="portal-login.html?view=signup" class="btn btn--outline">Get the Free Guide</a>
+          <a href="fleet.html" class="btn btn--outline">Meet the Aircraft</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FLIGHT TRAINING PATHS -->
+  <section class="section section--light" id="training">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Flight Training</div>
+        <h2 class="section__title">Your path to the cockpit<br/><em class="accent">starts here.</em></h2>
+        <p class="section__desc">From first flight to commercial certificate — every Apex program is built around one principle: structured preparation, honest debriefs, and real aircraft time that counts. A curriculum designed for pilots who want to get it right, without paying for overhead they don't need.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:28px">
+
+        <!-- Private Pilot -->
+        <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:var(--radius-lg);padding:36px;box-shadow:var(--shadow);display:flex;flex-direction:column">
+          <div style="display:inline-block;width:fit-content;background:rgba(244,180,0,0.12);border:1px solid rgba(244,180,0,0.35);color:var(--gold);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:3px 10px;border-radius:100px;margin-bottom:14px">Opening Feb 2027</div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Part 61 · Certificate</div>
+          <h3 style="font-size:22px;font-weight:800;color:var(--white);margin-bottom:12px">Private Pilot</h3>
+          <p style="font-size:14px;color:rgba(255,255,255,0.65);line-height:1.7;margin-bottom:24px">Start to checkride with scenario-based dual instruction in the aircraft and a solo endorsement when you're ready. Built for working adults.</p>
+          <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">
+            <a href="private-pilot-training.html" class="btn btn--primary" style="text-align:center">Learn More</a>
+            <a href="/#waitlist" class="btn btn--outline" style="text-align:center;font-size:13px">Join Waitlist</a>
+          </div>
+        </div>
+
+        <!-- Instrument Rating -->
+        <div style="background:var(--navy);border:2px solid var(--gold);border-radius:var(--radius-lg);padding:36px;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;position:relative">
+          <div style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--gold);color:var(--navy);font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;padding:4px 16px;border-radius:100px;white-space:nowrap">Most Popular</div>
+          <div style="display:inline-block;width:fit-content;background:rgba(244,180,0,0.15);border:1px solid rgba(244,180,0,0.4);color:var(--gold);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:3px 10px;border-radius:100px;margin:8px 0 14px">Opening Feb 2027</div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Part 61 · Rating</div>
+          <h3 style="font-size:22px;font-weight:800;color:var(--white);margin-bottom:12px">Instrument Rating</h3>
+          <p style="font-size:14px;color:rgba(255,255,255,0.75);line-height:1.7;margin-bottom:24px">All 40 required instrument hours flown for real — approaches, holds, partial panel, and IFR cross-country in actual IMC and VMC conditions, with an instructor who's lived through both.</p>
+          <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">
+            <a href="instrument-rating-training.html" class="btn btn--primary" style="text-align:center">Learn More</a>
+            <a href="/#waitlist" class="btn btn--outline" style="text-align:center;font-size:13px;border-color:rgba(255,255,255,0.3);color:rgba(255,255,255,0.8)">Join Waitlist</a>
+          </div>
+        </div>
+
+        <!-- Commercial Pilot -->
+        <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:var(--radius-lg);padding:36px;box-shadow:var(--shadow);display:flex;flex-direction:column">
+          <div style="display:inline-block;width:fit-content;background:rgba(244,180,0,0.12);border:1px solid rgba(244,180,0,0.35);color:var(--gold);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:3px 10px;border-radius:100px;margin-bottom:14px">Opening Feb 2027</div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Part 61 · Certificate</div>
+          <h3 style="font-size:22px;font-weight:800;color:var(--white);margin-bottom:12px">Commercial Pilot</h3>
+          <p style="font-size:14px;color:rgba(255,255,255,0.65);line-height:1.7;margin-bottom:24px">Commercial maneuvers, advanced cross-country, and ACS standards — built toward your 250-hour total, flown the way the checkride expects.</p>
+          <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">
+            <a href="commercial-pilot-training.html" class="btn btn--primary" style="text-align:center">Learn More</a>
+            <a href="/#waitlist" class="btn btn--outline" style="text-align:center;font-size:13px">Join Waitlist</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- SERVICES -->
+  <section class="programs section section--dark" id="services">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Coming to Austin — February 2027</div>
+        <h2 class="section__title">Three more ways to train,<br/><em class="accent">once we're in the air.</em></h2>
+        <p class="section__desc">Everything live today is above. These three build on it once our Austin aircraft is flying — certificate training, currency work, and checkride prep flights, all built around deliberate practice and an honest debrief.</p>
+      </div>
+      <div class="programs__grid" style="grid-template-columns:repeat(3,1fr)">
+
+        <!-- Flight Training -->
+        <div class="program-card">
+          <div class="program-card__badge">Opening Feb 2027</div>
+          <div class="program-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="program-card__level">Certificate Training</div>
+          <h3>Flight Training</h3>
+          <p>Private, Instrument, and Commercial certificate training, flown in our Austin-based training aircraft (selection underway with several lessors) — structured lessons, honest debriefs, no wasted hours.</p>
+          <ul>
+            <li>Private Pilot (Part 61)</li>
+            <li>Instrument Rating</li>
+            <li>Commercial Pilot</li>
+          </ul>
+          <a href="programs.html" class="btn btn--outline">View Programs</a>
+        </div>
+
+        <!-- Currency & Proficiency -->
+        <div class="program-card">
+          <div class="program-card__badge" style="background:var(--navy-2);border:1px solid rgba(244,180,0,0.4)">Opening Feb 2027</div>
+          <div class="program-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="program-card__level">Currency &amp; Proficiency</div>
+          <h3>Currency &amp; Proficiency Programs</h3>
+          <p>Stay legal and actually sharp. IPC, Biennial Flight Reviews, Rusty Pilot reintegration, and in-person workshops — all built around scenario-based work that reflects the flying you actually do.</p>
+          <ul>
+            <li>IPC &amp; instrument proficiency</li>
+            <li>FAA Flight Reviews (BFR)</li>
+            <li>Rusty Pilot &amp; proficiency workshops</li>
+          </ul>
+          <a href="programs.html" class="btn btn--outline">View Programs</a>
+        </div>
+
+        <!-- Checkride Prep Flights -->
+        <div class="program-card">
+          <div class="program-card__badge" style="background:var(--navy-2);border:1px solid rgba(244,180,0,0.4)">Opening Feb 2027</div>
+          <div class="program-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.976-.83 3.42 3.42 0 014.478 0 3.42 3.42 0 001.976.83 3.42 3.42 0 013.166 3.166 3.42 3.42 0 00.83 1.976 3.42 3.42 0 010 4.478 3.42 3.42 0 00-.83 1.976 3.42 3.42 0 01-3.166 3.166 3.42 3.42 0 00-1.976.83 3.42 3.42 0 01-4.478 0 3.42 3.42 0 00-1.976-.83 3.42 3.42 0 01-3.166-3.166 3.42 3.42 0 00-.83-1.976 3.42 3.42 0 010-4.478 3.42 3.42 0 00.83-1.976 3.42 3.42 0 013.166-3.166z" stroke="#F4B400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="program-card__level">Checkride Prep</div>
+          <h3>Checkride Prep Flights</h3>
+          <p>The maneuvers and scenarios your DPE will actually ask for, flown in the real aircraft with an instructor who debriefs like an examiner would. No shortcuts, no sim-only reps.</p>
+          <ul>
+            <li>Flown in the actual aircraft</li>
+            <li>Built around your specific checkride</li>
+            <li>Honest, DPE-style debriefs</li>
+          </ul>
+          <a href="fleet.html" class="btn btn--outline">See the Aircraft</a>
+        </div>
+
+      </div>
+      <div style="text-align:center;margin-top:48px;display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
+        <a href="#waitlist" class="btn btn--primary">Join the Austin Waitlist</a>
+        <a href="programs.html" class="btn btn--ghost" style="background:transparent;border-color:rgba(255,255,255,0.35);color:#fff">View All Programs</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ONE AIRCRAFT, DONE RIGHT -->
+  <section class="fleet section" id="one-aircraft">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">One Aircraft, Done Right · Opening February 2027</div>
+        <h2 class="section__title">Small by design,<br/><em class="accent">not by accident.</em></h2>
+        <p class="section__desc">We're launching with one airplane, on purpose. No fleet overhead to pass on to students, no simulator bay or classroom lease to fund upfront — just one aircraft, one instructor, and a standard we hold to every flight.</p>
+      </div>
+      <div class="fleet__grid">
+
+        <div class="fleet-card">
+          <div class="fleet-card__img" style="background: linear-gradient(135deg, #0B1F3A 0%, #162C4F 100%); display:flex; align-items:center; justify-content:center;">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none"><path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" stroke="#F4B400" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div class="fleet-card__tag">Student Development</div>
+          </div>
+          <div class="fleet-card__body">
+            <h3>Real Progress, Tracked Closely</h3>
+            <p>With one aircraft and one primary instructor, every student's progress is tracked personally — not handed off between whoever's available that day. You're not a tail number on a scheduling board.</p>
+            <div class="fleet-card__specs">
+              <div><strong>1</strong><span>Dedicated aircraft</span></div>
+              <div><strong>1</strong><span>Primary instructor</span></div>
+              <div><strong>Personal</strong><span>Progress tracking</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="fleet-card">
+          <div class="fleet-card__img" style="background: linear-gradient(135deg, #0B1F3A 0%, #162C4F 100%); display:flex; align-items:center; justify-content:center;">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke="#F4B400" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div class="fleet-card__tag">Professionalism</div>
+          </div>
+          <div class="fleet-card__body">
+            <h3>A Real Standard, Every Flight</h3>
+            <p>Structured lessons, honest debriefs, and the same scenario-based approach already built into Apex Advantage's digital products — applied in the airplane, not improvised on the ramp.</p>
+            <div class="fleet-card__specs">
+              <div><strong>Debrief</strong><span>Every session</span></div>
+              <div><strong>ACS</strong><span>Standards-based</span></div>
+              <div><strong>Honest</strong><span>Feedback, always</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="fleet-card">
+          <div class="fleet-card__img" style="background: linear-gradient(135deg, #0B1F3A 0%, #162C4F 100%); display:flex; align-items:center; justify-content:center;">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none"><path d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" stroke="#F4B400" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div class="fleet-card__tag">Cost-Conscious</div>
+          </div>
+          <div class="fleet-card__body">
+            <h3>Built to Keep Costs Down</h3>
+            <p>No simulator bay or classroom lease to fund upfront means less overhead baked into every hour. The free portal, Checkride Prep, and Private Instruction all exist to help you spend less before you ever touch the controls.</p>
+            <div class="fleet-card__specs">
+              <div><strong>$55/hr</strong><span>Private Instruction</span></div>
+              <div><strong>$29</strong><span>Checkride Prep</span></div>
+              <div><strong>Free</strong><span>Member portal</span></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <div style="text-align:center;margin-top:48px">
+        <a href="#waitlist" class="btn btn--outline">Reserve Your Spot</a>
+        <p style="margin-top:16px;font-size:0.95rem;color:#2D3748">Near Hutto or Taylor? See our <a href="flight-training-hutto-taylor.html">proposed Taylor Municipal Airport (T74) training location</a>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOUNDER SECTION -->
+  <section class="instructors section section--light" id="founder">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">The Team</div>
+        <h2 class="section__title">Built by a pilot<br/><em class="accent">who needed this training.</em></h2>
+        <p class="section__desc">Andrew Serrazina founded Apex because the training he wanted as an active IFR pilot didn't exist in Austin — focused, scenario-based recurrent work without the student-pilot machinery around it.</p>
+      </div>
+      <div class="instructors__grid">
+
+        <div class="instructor-card">
+          <div class="instructor-card__img">
+            <img src="images/AndrewHeadshot.JPG" alt="Andrew Serrazina — Founder" loading="lazy" />
+          </div>
+          <div class="instructor-card__body">
+            <h3>Andrew Serrazina</h3>
+            <div class="instructor-card__title">Founder &amp; Chief Instructor</div>
+            <p>Andrew's view is simple: most instrument pilots are not as current as they think they are, and most recurrent training is too easy to actually change that. He built Apex because he wanted a place in Austin where a working IFR pilot could get an honest assessment, a hard scenario, and a debrief that didn't pull punches — without having to wade through a flight school structured for private pilot students. Every aspect of the Apex curriculum reflects what he would want as the pilot in the left seat.</p>
+            <div class="instructor-card__certs">
+              <span>CFI</span><span>CFII</span><span>AGI</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="instructor-card">
+          <div class="instructor-card__img" style="background: linear-gradient(135deg, #0B1F3A 0%, #162C4F 100%); display:flex; align-items:center; justify-content:center; height:260px;">
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" stroke="#F4B400" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="instructor-card__body">
+            <h3>Scenario-Based Learning</h3>
+            <div class="instructor-card__title">Our Training Philosophy</div>
+            <p>Every Apex session is built around realistic scenarios — not rote maneuvers. We train the decision-making, situational awareness, and automation management that differentiate a current pilot from a safe one. Currency is the floor. Proficiency is the goal.</p>
+            <div class="instructor-card__certs">
+              <span>Scenario-Based</span><span>ADM Focus</span><span>ACS Standards</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="instructor-card">
+          <div class="instructor-card__img" style="background: linear-gradient(135deg, #0B1F3A 0%, #162C4F 100%); display:flex; align-items:center; justify-content:center; height:260px;">
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" stroke="#F4B400" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="instructor-card__body">
+            <h3>Starting Lean, On Purpose</h3>
+            <div class="instructor-card__title">No Dedicated Facility — Yet</div>
+            <p>We're launching with one dedicated aircraft and no dedicated classroom — currently in discussion with several lessors on training platforms, including the Cessna 172, Piper PA-28, and Pipistrel Voyager. Ground instruction stays where it already works well — Apex Advantage Private Instruction, live and 1-on-1, virtually. Flight time happens in the aircraft once an agreement is finalized. As the program grows, so will the footprint.</p>
+            <div class="instructor-card__certs">
+              <span>Austin Area</span><span>Single Aircraft</span><span>Feb 2027</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <section class="section" style="background:var(--navy);padding:80px 0;">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__eyebrow">Pilot Feedback</div>
+        <h2 class="section__title" style="color:var(--white)">What pilots say about<br/><em class="accent" style="color:var(--gold-light)">training with Andrew.</em></h2>
+      </div>
+
+      <!-- Featured quote -->
+      <blockquote style="border-left:3px solid var(--gold);padding:24px 32px;margin:0 0 48px;background:rgba(255,255,255,0.04);border-radius:0 var(--radius) var(--radius) 0;max-width:860px;margin-left:auto;margin-right:auto">
+        <p style="font-size:18px;line-height:1.8;color:rgba(255,255,255,0.85);font-style:italic;margin:0 0 16px">&ldquo;I had an amazing experience training with Andrew as my Certified Flight Instructor. From day one, he made everything feel approachable and stress-free, even when learning some of the more challenging concepts. He's incredibly knowledgeable, patient, and knows how to explain things in a way that actually sticks. What really stood out to me was how much he genuinely cares about his students' progress and confidence.&rdquo;</p>
+        <footer style="color:var(--gold);font-weight:600;font-size:14px;letter-spacing:0.04em">— Alyssa K.</footer>
+      </blockquote>
+
+      <div class="testimonials__grid">
+        <div class="testimonial-card">
+          <div class="testimonial-card__quote">&ldquo;Explains subjects in great detail. Definitely will attend his courses again.&rdquo;</div>
+          <div class="testimonial-card__author">
+            <div class="testimonial-card__name">Patricia M.</div>
+          </div>
+        </div>
+        <div class="testimonial-card">
+          <div class="testimonial-card__quote">&ldquo;Excellent Instructor! I had a great time with Andrew on his class! Looking forward to his VOR-focused class in the near future.&rdquo;</div>
+          <div class="testimonial-card__author">
+            <div class="testimonial-card__name">Victor G.</div>
+          </div>
+        </div>
+        <div class="testimonial-card">
+          <div class="testimonial-card__quote">&ldquo;Andrew was great, knowledgeable, friendly, and made you feel comfortable in the plane. I highly recommend him for your pilot training needs.&rdquo;</div>
+          <div class="testimonial-card__author">
+            <div class="testimonial-card__name">Alex B.</div>
+          </div>
+        </div>
+        <div class="testimonial-card">
+          <div class="testimonial-card__quote">&ldquo;Andrew was a terrific instructor — extremely knowledgeable and always able to explain concepts so I could understand everything. Very comforting whenever I needed it. I would definitely recommend him to anyone looking for a CFI.&rdquo;</div>
+          <div class="testimonial-card__author">
+            <div class="testimonial-card__name">Sabine C.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ SECTION -->
+  <section class="section section--light" id="faq">
+    <div class="container" style="max-width:800px">
+      <div class="section__header">
+        <div class="section__eyebrow">Common Questions</div>
+        <h2 class="section__title">Answers before<br/><em class="accent">you have to ask.</em></h2>
+      </div>
+      <div class="faq-list">
+        <div class="faq-item">
+          <button class="faq-item__question">Is anything available at Apex Aviation right now?<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div class="faq-item__answer"><p>Yes. Our free member portal is live today, including the "10 Questions DPEs Love to Ask" guide and an optional 300+ question DPE-style Checkride Prep System covering every ACS area of operation for Private, Instrument, and Commercial candidates. Apex Advantage Private Instruction — 1-on-1 time with an instructor, $55 per hour — is running now, and our single-aircraft flight training launches in Austin, TX in February 2027.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">Do I need to be an instrument-rated pilot to train with Apex?<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div class="faq-item__answer"><p>No. The free portal and checkride prep system are open to student pilots through commercial candidates today. Apex Advantage Private Instruction is also open to all certificate levels. The Austin aircraft training opening February 2027 is primarily designed for instrument-rated pilots pursuing IPC or flight reviews, but contact Andrew if you have a specific need.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">How do virtual sessions work?<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div class="faq-item__answer"><p>Private Instruction and checkride prep sessions are conducted via video call. Andrew shares his screen for diagrams, charts, and ACS task walkthroughs. Book whatever hour works for you directly from the schedule.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">Will the IPC and flight reviews be done in a simulator?<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div class="faq-item__answer"><p>No — we're launching with one dedicated aircraft and no simulator. We're currently in discussion with several lessors on training platforms, including the Cessna 172, Piper PA-28, and Pipistrel Voyager. Every IPC and flight review will be flown for real, with a CFII, satisfying FAR 61.57(d). It keeps costs down and keeps the training honest. Training is targeted to open in Austin in February 2027.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">What's the difference between currency and proficiency?<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div class="faq-item__answer"><p>Currency means you meet the FAA's minimums to act as PIC. Proficiency means you can actually handle what real IMC throws at you. A pilot can be legally current after six approaches on a clear day and still be dangerously unprepared for a partial-panel situation in actual conditions. Apex trains for proficiency — currency is a byproduct.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-item__question">How do I get started?<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div class="faq-item__answer"><p><a href="portal-login.html?view=signup" style="color:var(--gold);text-decoration:underline">Create a free portal account</a> to get the "10 Questions DPEs Love to Ask" guide today. To talk with Andrew directly about Private Instruction, checkride prep, or upcoming Austin training, send a message through the <a href="contact.html" style="color:var(--gold);text-decoration:underline">contact page</a> — he responds within one business day.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WAITLIST SECTION -->
+  <section class="waitlist-section section" id="waitlist">
+    <div class="container waitlist__inner">
+      <div class="waitlist__text">
+        <div class="section__eyebrow" id="waitlistEyebrow">Founding Member Waitlist</div>
+        <h2 class="section__title" id="waitlistHeading">First in the pattern<br/>gets the <em class="accent">best approach.</em></h2>
+        <p id="waitlistIntro">We open in Austin in February 2027 with a single aircraft and limited founding member slots. Tell us about your flying and we'll confirm your spot before public enrollment opens.</p>
+        <ul class="waitlist__perks">
+          <li>Priority scheduling for all programs</li>
+          <li>Founding Member pricing (locked in at launch rates)</li>
+          <li>Direct access to Andrew during inaugural year</li>
+          <li>A real say in how the schedule gets built</li>
+        </ul>
+      </div>
+      <div class="waitlist__form-wrap">
+        <form class="contact__form" id="waitlistForm">
+          <input type="hidden" name="_source" value="waitlist" />
+          <h3>Join the Waitlist</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="wlFirstName">First Name</label>
+              <input type="text" id="wlFirstName" name="firstName" placeholder="Andrew" required />
+            </div>
+            <div class="form-group">
+              <label for="wlLastName">Last Name</label>
+              <input type="text" id="wlLastName" name="lastName" placeholder="Smith" required />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="wlEmail">Email Address</label>
+              <input type="email" id="wlEmail" name="email" placeholder="andrew@email.com" required />
+            </div>
+            <div class="form-group">
+              <label for="wlZip">Zip Code</label>
+              <input type="text" id="wlZip" name="zip" placeholder="78666" maxlength="10" autocomplete="postal-code" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>I'm interested in <span style="font-weight:400;color:rgba(255,255,255,0.45)">(check all that apply)</span></label>
+            <div class="checkbox-grid">
+              <div class="checkbox-grid__label">In-person, once Austin opens</div>
+              <label class="checkbox-item"><input type="checkbox" name="services" value="Private Pilot Training" data-segment="in_person" /><span>Private Pilot Flight Training</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="services" value="Instrument Rating" data-segment="in_person" /><span>Instrument Rating</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="services" value="Commercial Pilot" data-segment="in_person" /><span>Commercial Pilot</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="services" value="IPC / BFR / Currency" data-segment="in_person" /><span>IPC / BFR / Currency</span></label>
+              <div class="checkbox-grid__label" style="margin-top:4px">Virtual, available right now</div>
+              <label class="checkbox-item"><input type="checkbox" name="services" value="Private Instruction" data-segment="virtual" /><span>Private Instruction ($55/hr)</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="services" value="Checkride Prep System" data-segment="virtual" /><span>Checkride Prep System ($29)</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="services" value="Mock Oral Exam" data-segment="virtual" /><span>Mock Oral Exam ($129)</span></label>
+            </div>
+            <p class="form__hint" id="waitlistServiceError" hidden>Pick at least one so we know how to follow up.</p>
+          </div>
+          <button type="submit" class="btn btn--primary btn--full">Join the Waitlist</button>
+          <p class="form__note">No spam. Unsubscribe anytime. We'll reach out before launch.</p>
+        </form>
+        <div class="form__success" id="waitlistSuccess">
+          <svg width="56" height="56" viewBox="0 0 56 56" fill="none"><circle cx="28" cy="28" r="28" fill="#F4B400" fill-opacity=".1"/><path d="M18 28l8 8 14-16" stroke="#F4B400" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <h3>You're on the List.</h3>
+          <p id="waitlistSuccessMsg">Welcome to Apex Aviation. We'll be in touch before our February 2027 Austin launch with priority access details.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container footer__inner">
+      <div class="footer__brand">
+        <a href="/" class="nav__logo">
+        <img src="apexwhite.png" alt="Apex Aviation" height="40" style="display:block;width:auto" />
+        </a>
+        <p>Train Beyond the Checkride. Free portal &amp; checkride prep live today — real aircraft training opens in Austin, Texas, February 2027.</p>
+        <div class="footer__social">
+          <a href="https://www.facebook.com/profile.php?id=61590455400224" target="_blank" rel="noopener" aria-label="Facebook"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></a>
+          <a href="https://www.instagram.com/apexaviationtx" target="_blank" rel="noopener" aria-label="Instagram"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.5" cy="6.5" r="1.5"/></svg></a>
+          <a href="https://www.youtube.com/@apexaviationtx" target="_blank" rel="noopener" aria-label="YouTube"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M22.54 6.42a2.78 2.78 0 00-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46a2.78 2.78 0 00-1.95 1.96A29 29 0 001 12a29 29 0 00.46 5.58a2.78 2.78 0 001.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 001.95-1.96A29 29 0 0023 12a29 29 0 00-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="white"/></svg></a>
+          <a href="https://www.tiktok.com/@apexaviationtx" target="_blank" rel="noopener" aria-label="TikTok"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/></svg></a>
+          <a href="https://www.linkedin.com/company/apex-aviation-tx" target="_blank" rel="noopener" aria-label="LinkedIn"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg></a>
+        </div>
+      </div>
+      <div class="footer__links">
+        <div>
+          <h4>Training</h4>
+          <a href="apex-advantage-private-instruction.html">Private Instruction</a>
+          <a href="programs.html#learning">Checkride Prep</a>
+          <a href="programs.html#recurrent">IPC &amp; Instrument</a>
+          <a href="programs.html#recurrent">Flight Reviews</a>
+        </div>
+        <div>
+          <h4>Company</h4>
+          <a href="about.html">About Apex</a>
+          <a href="instructors.html">Our Instructors</a>
+          <a href="fleet.html">Our Aircraft</a>
+          <a href="service-areas.html">Service Areas</a>
+          <a href="about.html#founder">Andrew Serrazina</a>
+        </div>
+        <div>
+          <h4>Contact</h4>
+          <a href="mailto:info@apexaviationtx.com">info@apexaviationtx.com</a>
+          <a href="contact.html">Book a Session</a>
+          <span style="color:var(--gray-2);font-size:14px">Austin, Texas</span>
+        </div>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <div class="container">
+        <p>&copy; 2026 Apex Aviation. All rights reserved. · <a href="privacy.html" style="color:var(--gray-2)">Privacy Policy</a></p>
+        <p>Train Beyond the Checkride. · Austin, Texas</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+  <script>
+    // Group Ground School is discontinued -- ?interest=ground-school
+    // arrivals (old ad creative, bookmarks, the repurposed city landing
+    // pages) now redirect to Private Instruction, its replacement, same
+    // "straight to the real booking page" pattern as before.
+    (function () {
+      var interest = new URLSearchParams(window.location.search).get('interest');
+      if (interest !== 'ground-school') return;
+      window.location.replace('apex-advantage-private-instruction.html');
+    })();
+  </script>
 </body>
 </html>

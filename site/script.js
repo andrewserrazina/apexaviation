@@ -73,10 +73,10 @@ if (form) {
 // this fails, the visitor still sees the normal Formspree success
 // state, since Formspree remains the primary, user-visible path.
 //
-// Shared by every waitlist-style form on the site, not just home.html's
-// -- a form identifies itself via an optional hidden `sourceLabel`
-// field (falls back to the original home.html label when absent, so
-// that page needs no changes) and may optionally include
+// Shared by every waitlist-style form on the site, not just the
+// homepage's -- a form identifies itself via an optional hidden
+// `sourceLabel` field (falls back to the original homepage label when
+// absent, so that page needs no changes) and may optionally include
 // trainingGoal/targetStartMonth/ratesWork/lessonWindow1/lessonWindow2
 // fields (added for the Hutto/Taylor landing page's more detailed
 // waitlist ask); capture-waitlist-lead appends whichever of those are
@@ -96,7 +96,7 @@ function captureWaitlistLead(form) {
       email: data.get('email') || '',
       zip: data.get('zip') || '',
       services: data.getAll('services'),
-      source: data.get('sourceLabel') || 'Website Waitlist (home.html)',
+      source: data.get('sourceLabel') || 'Website Waitlist (homepage)',
       trainingGoal: data.get('trainingGoal') || '',
       targetStartMonth: data.get('targetStartMonth') || '',
       ratesWork: data.get('ratesWork') || '',
