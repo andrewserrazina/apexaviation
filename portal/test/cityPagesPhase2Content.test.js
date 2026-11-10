@@ -98,8 +98,12 @@ describe('Phase 2: Pflugerville explicitly disclaims any Apex connection to KEDC
 describe('Phase 2: Round Rock is framed around its commuter/no-local-airport reality', () => {
   const html = read('flight-training-round-rock.html')
 
-  it('states Round Rock has no airport of its own', () => {
-    expect(html).toMatch(/no (general aviation )?airport of its own|has no airport/)
+  it('states Round Rock has no public-use general aviation airport of its own (narrowly, not an unverifiable absolute)', () => {
+    expect(html).toMatch(/no public-use (general aviation )?airport of its own/)
+  })
+
+  it('acknowledges the nearby private hospital heliport rather than ignoring it', () => {
+    expect(html).toMatch(/heliport/i)
   })
 
   it('does not fabricate a specific drive-time in minutes to a named airport', () => {
