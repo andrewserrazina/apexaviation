@@ -91,7 +91,8 @@ describe('Phase 2: Pflugerville explicitly disclaims any Apex connection to KEDC
   })
 
   it('links to the existing Class C airspace guide instead of duplicating it', () => {
-    expect(html).toContain('blog-flying-austin-class-c-airspace-guide.html')
+    // Phase 4: internal links use the extensionless canonical URL standard.
+    expect(html).toContain('blog-flying-austin-class-c-airspace-guide')
   })
 })
 
