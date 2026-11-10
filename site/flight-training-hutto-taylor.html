@@ -346,8 +346,8 @@
           huttoTaylorSubmitTracked = true;
           if (window.apexTrack) apexTrack('landing_page_lead_submitted', { landing_page: 'hutto_taylor' });
           else if (window.gtag) gtag('event', 'landing_page_lead_submitted', { landing_page: 'hutto_taylor' });
+          captureWaitlistLead(huttoTaylorForm);
         });
-        captureWaitlistLead(huttoTaylorForm);
       });
     }
   </script>
