@@ -43,7 +43,17 @@ async function submitToFormspree(form, successEl, onSuccess) {
     if (res.ok) {
       form.style.display = 'none';
       successEl.classList.add('visible');
-      if (onSuccess) onSuccess();
+      if (typeof onSuccess === 'function') onSuccess();
+      // Track successful submissions, never just clicks or invalid forms.
+      if ((form.id === 'waitlistForm' || form.id === 'huttoTaylorForm') && typeof window.gtag === 'function') {
+        window.gtag('event', 'flight_training_interest_submitted', {
+          form_id: form.id,
+          page_path: window.location.pathname
+        });
+      }
+      if (form.id === 'contactForm' && typeof window.gtag === 'function') {
+        window.gtag('event', 'contact_form_submitted', { page_path: window.location.pathname });
+      }
     } else {
       const data = await res.json();
       const msg = data.errors ? data.errors.map(e => e.message).join(', ') : 'Something went wrong. Please email info@apexaviationtx.com directly.';
@@ -83,7 +93,7 @@ if (form) {
 // present to the lead's notes, same pattern as zip/services already did.
 function captureWaitlistLead(form) {
   const data = new FormData(form);
-  fetch('https://wqzfhcjsfzwrimvsudxy.supabase.co/functions/v1/capture-waitlist-lead', {
+  return fetch('https://wqzfhcjsfzwrimvsudxy.supabase.co/functions/v1/capture-waitlist-lead', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -103,7 +113,13 @@ function captureWaitlistLead(form) {
       lessonWindow1: data.get('lessonWindow1') || '',
       lessonWindow2: data.get('lessonWindow2') || '',
     }),
-  }).catch(() => {});
+  }).then(response => {
+    if (!response.ok) console.warn('CRM lead capture returned an error; primary Formspree record was preserved.');
+    return response.ok;
+  }).catch(() => {
+    console.warn('CRM lead capture failed; primary Formspree record was preserved.');
+    return false;
+  });
 }
 
 const waitlistForm = document.getElementById('waitlistForm');
@@ -138,8 +154,9 @@ if (waitlistForm) {
       }
     }
 
-    submitToFormspree(waitlistForm, waitlistSuccess);
-    captureWaitlistLead(waitlistForm);
+    submitToFormspree(waitlistForm, waitlistSuccess, () => {
+      captureWaitlistLead(waitlistForm);
+    });
   });
 }
 
