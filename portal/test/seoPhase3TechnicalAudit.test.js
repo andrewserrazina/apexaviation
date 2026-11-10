@@ -50,11 +50,28 @@ describe('Phase 3: ground-school redirect rule, collapsed to one wildcard', () =
   it('the wildcard rule targets the real consolidated page', () => {
     const match = redirects.match(/^\/ground-school-\*\s+(\S+)\s+301/m)
     expect(match).toBeTruthy()
-    expect(match[1]).toBe('/apex-advantage-private-instruction.html')
+    expect(match[1]).toBe('/apex-advantage-private-instruction')
   })
 
-  it('the retired Hutto/Taylor redirect from Phase 1 is still present and unchanged', () => {
-    expect(redirects).toMatch(/^\/flight-training-hutto-taylor\.html\s+\/flight-training-taylor\.html\s+301/m)
+  it('the retired Hutto/Taylor redirect from Phase 1 is still present, now targeting the extensionless destination', () => {
+    // Originally targeted /flight-training-taylor.html; live preview testing
+    // during Phase 3 validation found that target itself then 308-redirects
+    // to the extensionless form (a double hop: 301 -> 308 -> 200). Repointed
+    // directly at the extensionless destination so this is a single 301.
+    expect(redirects).toMatch(/^\/flight-training-hutto-taylor\.html\s+\/flight-training-taylor\s+301/m)
+  })
+
+  it('no redirect rule\'s destination still has a .html extension (would double-hop through the platform\'s own clean-URL redirect)', () => {
+    // Excludes the final /* /404.html 404 rule, which is a status rewrite,
+    // not a redirect -- curl confirmed it returns a bare 404 with no
+    // Location header, so it can't chain the way a redirect destination can.
+    const offenders = redirects
+      .split('\n')
+      .filter((line) => line.trim() && !line.trim().startsWith('#'))
+      .filter((line) => /\s+30[128]\s*!?\s*$/.test(line.trim()) || /\s+30[128]!?$/.test(line.trim()))
+      .filter((line) => !line.includes('/404.html'))
+      .filter((line) => /\.html(\s|#)/.test(line.split(/\s+/).slice(1).join(' ')))
+    expect(offenders).toEqual([])
   })
 
   it('still ends with the 404 catch-all as the last rule', () => {

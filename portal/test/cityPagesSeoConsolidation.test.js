@@ -41,7 +41,11 @@ describe('city pages: retired flight-training-hutto-taylor.html', () => {
     const redirects = read('_redirects')
     const match = redirects.match(/^\/flight-training-hutto-taylor\.html\s+(\S+)\s+301/m)
     expect(match).toBeTruthy()
-    expect(match[1]).toBe('/flight-training-taylor.html')
+    // Phase 3 live validation found the .html target itself then
+    // 308-redirected to the extensionless form (a 301 -> 308 -> 200 chain).
+    // Repointed directly at the extensionless destination so this is a
+    // single-hop 301, per the rule name ("not a redirect chain").
+    expect(match[1]).toBe('/flight-training-taylor')
   })
 
   it('is removed from sitemap.xml', () => {

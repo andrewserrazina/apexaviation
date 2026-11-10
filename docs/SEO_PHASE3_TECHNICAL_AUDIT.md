@@ -109,35 +109,38 @@ $ grep -o '<loc>[^<]*</loc>' site/sitemap.xml | sed 's#<loc>##;s#</loc>##' \
 
 Trailing slashes behave the same way: `/flight-training-taylor/` → 308.
 
-### Root cause (repo evidence, with a documented gap)
+### Root cause — corrected during PR review (platform identified)
 
-Nothing in `site/netlify.toml` or `site/_redirects` creates this `.html` → extensionless
-redirect — it isn't expressed anywhere in this repository. `netlify.toml`
-here only sets security headers:
+**Correction to this section's original version**: it attributed this
+behavior to "Netlify Pretty URLs." That was wrong. The actual hosting
+platform for this site is **Cloudflare Pages**, not Netlify — confirmed by
+checking the PR's own deploy-preview bot comment (`cloudflare-workers-and-pages[bot]`,
+giving a `*.apexaviation.pages.dev` branch-preview URL) and by testing that
+preview directly: it reproduces the identical `.html` → extensionless 308
+behavior found on production, including on a project (`apexaviation`) whose
+branch-preview response headers match production's fingerprint (`server:
+cloudflare`, no Netlify-specific headers on either). The `netlify.toml` /
+`_redirects` file names are a red herring here — **Cloudflare Pages supports
+the same `_redirects` file syntax as a documented compatibility feature**,
+so this repo's `_redirects` file is genuinely being read by Cloudflare
+Pages, while `netlify.toml` is likely inert (Cloudflare Pages has no reason
+to read a Netlify-specific config file; it wasn't tested whether it's
+ignored outright or silently has no effect, but nothing in it does anything
+Cloudflare Pages would need).
 
-```toml
-[build]
-  publish = "."
+Cloudflare Pages has its own automatic clean-URL behavior for static HTML
+files — serving `/page` directly (200) for a file at `page.html`, and
+308-redirecting `/page.html` requests to the clean path — which is what's
+actually happening here, not a Netlify feature. This is **not configurable
+from `netlify.toml`** (a Netlify-only file) and does not appear to be
+something `_redirects` can override for files that still exist as static
+assets (confirmed indirectly: this behavior persists even though nothing in
+`_redirects` requests it).
 
-[[headers]]
-  for = "/*"
-  [headers.values]
-    X-Frame-Options = "DENY"
-    ...
-```
-
-This matches Netlify's documented "Pretty URLs" post-processing feature,
-which auto-redirects `.html` requests to the clean/extensionless path for any
-HTML file it finds, and is controlled by a **site-level setting in the
-Netlify dashboard** (Site configuration → Build & deploy → Post processing),
-not by anything expressible in `netlify.toml` or `_redirects` on the plan/version
-this site appears to be using. I could not confirm this dashboard setting
-directly — I have no Netlify dashboard or API access from this session — but
-the observed behavior (100% consistent across every page type tested, not
-listed in any repo-tracked redirect config, and matching Netlify's documented
-Pretty URLs behavior exactly) makes this the best-supported explanation
-available from here. **This should be confirmed against the actual Netlify
-site settings before any fix is chosen** — see Section 6.
+I do not have Cloudflare dashboard/API access from this session to confirm
+whether this clean-URL behavior has an on/off toggle the way Netlify's
+Pretty URLs does. **This should be confirmed against the actual Cloudflare
+Pages project settings before Phase 4 is finalized** — see Section 6.
 
 ### Why this matters for indexing
 
@@ -204,31 +207,108 @@ one actually *works* — 301 — since "chicago" sorts before "philadelphia"),
 - **Not a stale-deploy issue.** `git blame` confirms all 143 lines were
   added in a single commit (`975f798`, 2026-11-07) — there's no earlier
   commit whose deploy could be "stuck" partway through this block.
-- **Not a file-size or line-count problem I could pin to a documented
-  limit.** The file is ~12KB / 158 lines total; the failure boundary sits at
-  byte offset ~8,468 and line 112 — neither lines up with a Netlify limit I
-  could find documented (Netlify's documented ceiling is far higher, on the
-  order of 1,000+ rules).
+- **Likely explanation, found after identifying the real platform
+  (Cloudflare Pages, not Netlify — see Section 2): a documented Cloudflare
+  Pages `_redirects` constraint.** Cloudflare's own docs cap a `_redirects`
+  file at 2,000 *static* rules but only **100 *dynamic* (splat/wildcard)
+  rules**, and explicitly recommend putting static rules before dynamic
+  ones — processing dynamic rules out of order against a large static block
+  has been reported (third-party, not official, so treated as corroborating
+  rather than conclusive) to cause later static rules to silently stop
+  working. The pre-fix file had exactly this shape: a splat rule
+  (`/operations/*`) at line 4, *before* the 143-line static
+  `/ground-school-*.html` block starting at line 14. This is a materially
+  better-supported explanation than anything in this doc's original version
+  (which guessed at Netlify limits for the wrong platform) — but it's still
+  a plausible mechanism inferred from documented limits and one third-party
+  report, not something confirmed against this project's actual Cloudflare
+  deploy logs. Either way, **the fix applied below removes the problem
+  regardless of the exact mechanism**: collapsing the 143 static rules into
+  one splat rule drops the file to 3 dynamic rules total, nowhere near the
+  100-rule dynamic budget, and removes the large static block that the
+  ordering issue (if that's what this is) would have interacted with.
 
 ### What I did about it
 
-Since I can't inspect Netlify's deploy logs or dashboard from here, I can't
-prove the exact mechanism. But the fix doesn't require knowing the
-mechanism: **I replaced all 143 individual literal rules with one wildcard
-rule** using Netlify's documented splat syntax:
+Since I can't inspect the hosting platform's deploy logs or dashboard from
+here, I can't prove the exact mechanism. But the fix doesn't require knowing
+the mechanism: **I replaced all 143 individual literal rules with one
+wildcard rule** using the splat syntax both Netlify and Cloudflare Pages
+support:
 
 ```
-/ground-school-*  /apex-advantage-private-instruction.html  301
+/ground-school-*  /apex-advantage-private-instruction  301
 ```
 
 This is semantically identical to the original intent (any
 `/ground-school-...` path redirects to the consolidated page), is far
 simpler, and sidesteps whatever caused only part of a long literal-rule
-block to be honored. This is the "smallest reliable fix compatible with the
-site's actual hosting platform" available from the repo alone. **It has not
-been verified live post-deploy** — see Section 6 for the exact commands to
-re-run after this PR deploys, to confirm all 143 slugs now 301 correctly,
-including the 45 that were previously broken.
+block to be honored.
+
+### Validated live against the PR's actual deploy preview (not production — PR not yet merged)
+
+This PR's branch builds a real preview deployment
+(`https://seo-phase3-technical-audit-2.apexaviation.pages.dev`, confirmed as
+the correct marketing-site project by its homepage title matching
+production — a sibling Cloudflare Pages project in this same repo,
+`apexadvantage`, serves an unrelated React app and was initially mistaken
+for the right preview before this was caught). All 143 original slugs were
+tested **in both `.html` and extensionless form** (286 requests total)
+against this preview.
+
+**Result: 143/143 `.html` URLs return 301; 143/143 extensionless URLs also
+return 301** — including every one of the 45 that returned 404 before this
+fix (spot-checked by name: `seattle-wa`, `springfield-ma`, `philadelphia-pa`,
+`tulsa-ok`, and others from the original failing list are all in the
+passing 143 now).
+
+**A second defect was found during this validation**: following the full
+redirect chain (`curl -L -w "num_redirects=%{num_redirects}"`) showed **2
+redirects, not 1** — `/ground-school-chicago-il.html` → 301 →
+`/apex-advantage-private-instruction.html` → 308 →
+`/apex-advantage-private-instruction` → 200. The wildcard rule's own target
+still had a `.html` extension, which itself triggered the same clean-URL
+redirect described in Section 2 — an avoidable, unnecessary intermediate
+hop. **Fixed** by repointing the wildcard rule directly at the extensionless
+destination (shown above). Re-tested after the fix: `num_redirects=1`,
+`final_http_code=200`, final URL is the extensionless destination directly.
+
+**The same double-hop defect was found and fixed in two other existing
+rules** while validating this one:
+
+| Rule | Before | After |
+|---|---|---|
+| `/flight-training-hutto-taylor.html` (Phase 1) | → `/flight-training-taylor.html` → 308 → `/flight-training-taylor` (2 hops) | → `/flight-training-taylor` (1 hop) |
+| `/operations/*` | → `/portal.html#operations` → 308 → `/portal#operations` (2 hops) | → `/portal#operations` (1 hop) |
+
+Both re-tested live against the same preview after the fix: single
+redirect, 200 final status, correct destination.
+
+**No redirect loops found.** No rule's destination matches its own source
+pattern, directly or after following the clean-URL hop; every chain now
+terminates at a real 200 within exactly 1 hop.
+
+**Unrelated URLs confirmed unaffected**, tested directly against the same
+preview: homepage (`/`) → 200 unchanged; `/pricing.html` → 308 unchanged
+(pre-existing platform clean-URL behavior, not something this PR touches);
+`/pricing` → 200 unchanged. The wildcard rule only matches paths starting
+with `/ground-school-`; it cannot affect any other path.
+
+### What was *not*, and could not be, tested from this session
+
+- **Production itself.** PR #291 is not merged/deployed, so all of the
+  above is from the PR's own branch-preview deployment, not
+  `https://apexaviationtx.com`. The preview is served by the same
+  platform/project family as production (identical response-header
+  fingerprint, identical pre-existing clean-URL behavior reproduced
+  exactly), which is the strongest evidence available short of an actual
+  production deploy — but it is not production. **Re-run the same 286
+  ground-school requests against production after this PR merges and
+  deploys** to close this gap; the exact commands are reproducible by
+  substituting the preview URL above for `https://apexaviationtx.com`.
+- Whether Cloudflare Pages' clean-URL behavior has a project-level on/off
+  setting (the Cloudflare equivalent of Netlify's Pretty URLs toggle) — no
+  dashboard/API access from this session.
 
 ---
 
@@ -343,39 +423,47 @@ export if it's worth pursuing further.
 
 ---
 
-## 6. Outstanding uncertainties and recommended next steps (not executed here)
+## 6. Outstanding uncertainties and next steps
 
-1. **Confirm whether Netlify's "Pretty URLs" post-processing setting is
-   enabled** for this site (Netlify dashboard → Site configuration → Build &
-   deploy → Post processing). This is the best-supported explanation for
-   Section 2's finding, but I have no dashboard/API access to confirm it
-   directly.
-2. **Decide the canonical URL form** (`.html` vs. extensionless) for the
-   whole site, then execute that decision in one dedicated, reviewed pass:
-   - **Option A — turn off Pretty URLs in the Netlify dashboard.** Zero repo
-     changes; makes `.html` serve 200 directly again, matching every
-     existing canonical tag, sitemap entry, and internal link as-is.
-     Lowest repo risk, but requires dashboard access this session doesn't
-     have, and needs confirming it doesn't break something else relying on
-     the clean-URL behavior.
+**Update**: the canonical-URL decision in item 2 below has since been made
+by the site owner — **Option B, extensionless URLs, approved**. That work
+is being implemented as a separate Phase 4 PR (not folded into this one),
+per the explicit instruction not to combine the two. The options are kept
+below as the record of what was presented and why Option B was chosen over
+Option A.
+
+1. **Platform confirmed**: the hosting platform is **Cloudflare Pages**, not
+   Netlify (corrected above, in Section 2) — confirmed by testing this PR's
+   own Cloudflare Pages branch-preview deployment directly. Still
+   unconfirmed: whether Cloudflare Pages' automatic clean-URL behavior has a
+   project-level on/off setting; no dashboard/API access from this session.
+2. **The canonical URL form decision** (`.html` vs. extensionless):
+   - **Option A — disable the platform's automatic clean-URL redirect** (if
+     such a setting exists on Cloudflare Pages; unconfirmed). Zero repo
+     changes; would make `.html` serve 200 directly again, matching every
+     existing canonical tag, sitemap entry, and internal link as-is. Lowest
+     repo risk, but depends on a setting that may not exist or be
+     accessible, and would need confirming it doesn't break anything else
+     relying on the clean-URL behavior.
    - **Option B — adopt the extensionless form as canonical everywhere**
      (rewrite ~100+ pages' canonical/og/JSON-LD URLs, `sitemap.xml`'s 76
      entries, and every internal `.html` link). Matches current hosting
-     behavior and modern clean-URL convention, but is a large, sitewide
-     content change with real risk of introducing mistakes across that many
-     files.
-   - **My recommendation: Option A first.** It's a single settings change,
-     reversible, and testable in minutes, versus a multi-hundred-edit repo
-     change for Option B. If Option A isn't available or doesn't fully
-     resolve it, Option B becomes the fallback, done as its own
-     dedicated, carefully-tested PR — not folded into this one.
-3. **Re-verify the 143 ground-school redirects live after this PR deploys**:
+     behavior exactly and modern clean-URL convention, but is a large,
+     sitewide content change.
+   - **Decision: Option B, approved by the site owner.** Rationale given:
+     preserve the URL format already live in production rather than change
+     hosting behavior to match outdated `.html` references. Being
+     implemented as Phase 4 (separate PR, in progress).
+3. **Re-verify the 143 ground-school redirects against production** (not
+   just the PR's deploy preview, which is what this doc's evidence is from)
+   after this PR merges and deploys:
    ```bash
    for slug in ground-school-philadelphia-pa.html ground-school-seattle-wa.html \
        ground-school-springfield-ma.html ground-school-tulsa-ok.html; do
      curl -sS -o /dev/null -w "%{http_code} $slug\n" "https://apexaviationtx.com/$slug"
    done
-   # expect 301 for all four (previously 404)
+   # expect 301 for all four (previously 404; confirmed 301 on the PR's
+   # own preview deployment during validation, not yet on production)
    ```
 4. **Pull the raw Search Console URL-level export** (Index Coverage report →
    export) if the single 4xx/redirect-error entries, or the specific 29
