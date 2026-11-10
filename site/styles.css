@@ -841,6 +841,7 @@ a { text-decoration: none; color: inherit; }
 /* ─── Responsive ────────────────────────────────────────────────── */
 @media (max-width: 1024px) {
   .programs__grid { grid-template-columns: repeat(2, 1fr); }
+  .training-paths-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .pricing__grid { grid-template-columns: repeat(2, 1fr); }
   .footer__inner { grid-template-columns: 1fr 1fr; }
   .testimonials__grid { grid-template-columns: repeat(2, 1fr); }
@@ -851,7 +852,8 @@ a { text-decoration: none; color: inherit; }
   .nav__links { display: none; }
   .nav__hamburger { display: flex; }
 
-  .hero__ctas { flex-direction: column; align-items: flex-start; }
+  .hero__ctas { flex-direction: column; align-items: stretch; }
+  .hero__ctas .btn { white-space: normal; text-align: center; }
   .hero__stats { gap: 20px; }
   .stat__divider { display: none; }
 
@@ -859,7 +861,8 @@ a { text-decoration: none; color: inherit; }
   .about__image img { height: 320px; }
   .about__badge-card { right: 12px; bottom: -16px; }
 
-  .programs__grid { grid-template-columns: 1fr; }
+  .programs__grid { grid-template-columns: 1fr !important; }
+  .training-paths-grid { grid-template-columns: 1fr !important; }
   .fleet__grid { grid-template-columns: 1fr; }
   .instructors__grid { grid-template-columns: 1fr; }
   .pricing__grid { grid-template-columns: 1fr; }
