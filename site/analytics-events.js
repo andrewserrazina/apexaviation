@@ -70,8 +70,8 @@
     'landing_page_viewed', 'pricing_viewed', 'registration_started', 'registration_completed',
     'product_preview_viewed', 'checkout_started', 'purchase_completed',
     'early_access_cta_click',
-    // Hutto/Taylor flight-training landing page (flight-training-hutto-taylor.html) --
-    // fired once per successful waitlist-form submission on that page.
+    // Taylor flight-training landing page (flight-training-taylor.html) --
+    // fired once per successful interest-list-form submission on that page.
     'landing_page_lead_submitted',
     // Abandoned Checkout Recovery Repair (v152) -- the _clicked half of the
     // checkout_recovery_N_sent/_clicked/checkout_recovered funnel (see the
