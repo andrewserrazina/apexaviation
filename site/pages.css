@@ -2129,7 +2129,7 @@
   margin-top: 4px;
 }
 .checkbox-grid__label:first-child { margin-top: 0; }
-.checkbox-item {
+label.checkbox-item {
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -2137,6 +2137,8 @@
   font-size: 14px;
   font-weight: 500;
   color: #fff;
+  text-transform: none;
+  letter-spacing: normal;
   line-height: 1.4;
 }
 .checkbox-item input[type="checkbox"] {

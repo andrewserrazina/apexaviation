@@ -181,7 +181,7 @@ describe('stripe-webhook: handlePrivateInstructionBooking', () => {
 
 describe('Rewritten marketing pages: no stale group Ground School language', () => {
   const SITE_ROOT = path.join(REPO_ROOT, 'site')
-  const flagshipPages = ['home.html', 'apex-advantage.html', 'programs.html', 'pricing.html']
+  const flagshipPages = ['index.html', 'apex-advantage.html', 'programs.html', 'pricing.html']
   const staleTerms = [/\$25\s*\/?\s*(per\s+)?class/i, /\$400/, /group class/i, /scheduled class/i]
 
   for (const page of flagshipPages) {
