@@ -197,7 +197,7 @@ if (revealTargets.length && !prefersReducedMotion && 'IntersectionObserver' in w
   }, 800);
 }
 
-// FAQ accordion (homepage)
+// FAQ accordion (sitewide)
 document.querySelectorAll('.faq-item__question').forEach(btn => {
   btn.addEventListener('click', () => {
     const item = btn.closest('.faq-item');

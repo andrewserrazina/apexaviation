@@ -22,6 +22,19 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="pages.css" />
+  <style>
+    /* ── Mobile overrides ── */
+    @media (max-width: 640px) {
+      .instructor-card {
+        flex-direction: column !important;
+        padding: 32px 24px !important;
+        gap: 28px !important;
+      }
+      .instructor-card__avatar {
+        width: 100% !important;
+      }
+    }
+  </style>
   <!-- Google Analytics 4 -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-JFPBCF2GXE"></script>
   <script>
@@ -58,6 +71,7 @@
   </script>
 </head>
 <body>
+  <a href="#main-content" class="skip-link">Skip to content</a>
 
   <header class="nav" id="nav">
     <div class="container nav__inner">
@@ -106,6 +120,8 @@
     </div>
   </header>
 
+  <main id="main-content">
+
   <!-- PAGE HERO -->
   <section class="page-hero">
     <div class="page-hero__bg-text">TEAM</div>
@@ -122,8 +138,8 @@
       <div style="max-width:860px;margin:0 auto">
 
         <!-- Andrew Serrazina -->
-        <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:var(--radius-lg);padding:48px;box-shadow:var(--shadow);display:flex;gap:48px;align-items:flex-start">
-          <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:20px">
+        <div class="instructor-card" style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:var(--radius-lg);padding:48px;box-shadow:var(--shadow);display:flex;gap:48px;align-items:flex-start">
+          <div class="instructor-card__avatar" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:20px">
             <div style="width:180px;height:180px;border-radius:50%;overflow:hidden;border:3px solid var(--gold)">
               <img src="images/AndrewHeadshot.JPG" alt="Andrew Serrazina — Founder & Chief Instructor, Apex Aviation" style="width:100%;height:100%;object-fit:cover;object-position:center top" />
             </div>
@@ -204,6 +220,7 @@
       </div>
     </div>
   </section>
+  </main>
 
   <footer class="footer">
     <div class="container footer__inner">

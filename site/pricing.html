@@ -22,6 +22,21 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="pages.css" />
+  <style>
+    /* ── Mobile/tablet overrides ── */
+    @media (max-width: 900px) {
+      .pricing-live-grid,
+      .pricing-austin-grid {
+        grid-template-columns: 1fr 1fr !important;
+      }
+    }
+    @media (max-width: 640px) {
+      .pricing-live-grid,
+      .pricing-austin-grid {
+        grid-template-columns: 1fr !important;
+      }
+    }
+  </style>
   <!-- Google Analytics 4 -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-JFPBCF2GXE"></script>
   <script>
@@ -58,6 +73,7 @@
   </script>
 </head>
 <body>
+  <a href="#main-content" class="skip-link">Skip to content</a>
 
   <header class="nav" id="nav">
     <div class="container nav__inner">
@@ -106,6 +122,8 @@
     </div>
   </header>
 
+  <main id="main-content">
+
   <!-- PAGE HERO -->
   <section class="page-hero">
     <div class="page-hero__bg-text">PRICING</div>
@@ -126,7 +144,7 @@
         <p class="section__desc">Private Instruction and Mock Orals are live, conducted via video with Andrew, and book instantly online. The Checkride Prep System is self-paced — unlock it instantly and study on your own schedule.</p>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:28px;max-width:1100px;margin:0 auto">
+      <div class="pricing-live-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:28px;max-width:1100px;margin:0 auto">
 
         <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:var(--radius-lg);padding:36px;box-shadow:var(--shadow)">
           <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:16px">Private Instruction</div>
@@ -180,7 +198,7 @@
         <p class="section__desc">We're planning to launch lean, with one dedicated aircraft and no dedicated facility to fund upfront. Our expected aircraft is a Piper PA-28, currently under lease negotiation, and rates haven't been finalized yet. Join the interest list to get rate information as soon as it's set, before public enrollment opens.</p>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-bottom:48px">
+      <div class="pricing-austin-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-bottom:48px">
 
         <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius-lg);padding:32px;text-align:center">
           <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:16px">Aircraft &amp; Instruction</div>
@@ -230,32 +248,32 @@
       </div>
       <div class="faq-list">
         <div class="faq-item">
-          <button class="faq-item__question">
+          <button class="faq-item__question" aria-expanded="false" aria-controls="faq-answer-1">
             How do I book a virtual session?
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div class="faq-item__answer"><p>Email <a href="mailto:info@apexaviationtx.com" style="color:var(--gold)">info@apexaviationtx.com</a> with your certificate level, what you're working toward, and which program you're interested in. Andrew will respond within one business day with availability and session details. No prepayment required to get started.</p></div>
+          <div class="faq-item__answer" id="faq-answer-1"><p>Email <a href="mailto:info@apexaviationtx.com" style="color:var(--gold)">info@apexaviationtx.com</a> with your certificate level, what you're working toward, and which program you're interested in. Andrew will respond within one business day with availability and session details. No prepayment required to get started.</p></div>
         </div>
         <div class="faq-item">
-          <button class="faq-item__question">
+          <button class="faq-item__question" aria-expanded="false" aria-controls="faq-answer-2">
             What happens after I join the waitlist?
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div class="faq-item__answer"><p>Once you join, you'll hear from Andrew before Austin training opens with full rate information, your place in the scheduling priority queue, and details on any pre-launch events. Founding Member rates are locked in for your first year of training — no surprises when pricing is updated after launch.</p></div>
+          <div class="faq-item__answer" id="faq-answer-2"><p>Once you join, you'll hear from Andrew before Austin training opens with full rate information, your place in the scheduling priority queue, and details on any pre-launch events. Founding Member rates are locked in for your first year of training — no surprises when pricing is updated after launch.</p></div>
         </div>
         <div class="faq-item">
-          <button class="faq-item__question">
+          <button class="faq-item__question" aria-expanded="false" aria-controls="faq-answer-3">
             Can I do virtual prep now and aircraft training later?
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div class="faq-item__answer"><p>Absolutely — and it's the ideal setup. Use Private Instruction or checkride prep now to sharpen your knowledge and oral exam skills. When our planned Austin aircraft training begins, targeting March 2027, you'll walk in with strong systems knowledge and your oral exam prep done, and your flight time can focus entirely on the maneuvers and scenarios that matter.</p></div>
+          <div class="faq-item__answer" id="faq-answer-3"><p>Absolutely — and it's the ideal setup. Use Private Instruction or checkride prep now to sharpen your knowledge and oral exam skills. When our planned Austin aircraft training begins, targeting March 2027, you'll walk in with strong systems knowledge and your oral exam prep done, and your flight time can focus entirely on the maneuvers and scenarios that matter.</p></div>
         </div>
         <div class="faq-item">
-          <button class="faq-item__question">
+          <button class="faq-item__question" aria-expanded="false" aria-controls="faq-answer-4">
             Why isn't there a flight simulator?
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5l5 5 5-5" stroke="#F4B400" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div class="faq-item__answer"><p>We're planning to launch lean, with one dedicated aircraft and no AATD. Our expected aircraft is a Piper PA-28, currently under lease negotiation. Standing up a simulator bay means real upfront facility and hardware costs — money we'd rather not pass on to students before we've even opened. One real aircraft keeps things simple and keeps costs down. We may revisit a simulator down the road as the program grows.</p></div>
+          <div class="faq-item__answer" id="faq-answer-4"><p>We're planning to launch lean, with one dedicated aircraft and no AATD. Our expected aircraft is a Piper PA-28, currently under lease negotiation. Standing up a simulator bay means real upfront facility and hardware costs — money we'd rather not pass on to students before we've even opened. One real aircraft keeps things simple and keeps costs down. We may revisit a simulator down the road as the program grows.</p></div>
         </div>
       </div>
     </div>
@@ -275,6 +293,7 @@
       </div>
     </div>
   </section>
+  </main>
 
   <footer class="footer">
     <div class="container footer__inner">

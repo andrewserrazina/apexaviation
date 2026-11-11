@@ -55,6 +55,18 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="pages.css" />
+  <style>
+    /* ── Mobile overrides ── */
+    @media (max-width: 640px) {
+      .founder-grid {
+        grid-template-columns: 1fr !important;
+        gap: 32px !important;
+      }
+      .mission-vision-grid {
+        grid-template-columns: 1fr !important;
+      }
+    }
+  </style>
   <!-- Google Analytics 4 -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-JFPBCF2GXE"></script>
   <script>
@@ -91,6 +103,7 @@
   </script>
 </head>
 <body>
+  <a href="#main-content" class="skip-link">Skip to content</a>
 
   <header class="nav" id="nav">
     <div class="container nav__inner">
@@ -139,6 +152,8 @@
     </div>
   </header>
 
+  <main id="main-content">
+
   <!-- PAGE HERO -->
   <section class="page-hero">
     <div class="page-hero__bg-text">ABOUT</div>
@@ -156,7 +171,7 @@
         <img src="images/IMG_0232.JPG" alt="Andrew Serrazina in the cockpit" loading="lazy" />
         <div class="about__badge-card">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="#F4B400"/></svg>
-          <div><strong>Train Beyond the Checkride.</strong><span>Austin, TX · Est. 2027</span></div>
+          <div><strong>Train Beyond the Checkride.</strong><span>Targeting March 2027</span></div>
         </div>
       </div>
       <div class="about__text">
@@ -177,7 +192,7 @@
         <h2 class="section__title">Andrew Serrazina</h2>
         <p class="section__desc">Founder &amp; Chief Instructor · CFI · CFII · AGI · Comm. ASEL · Comm. AMEL · Inst. Airplane</p>
       </div>
-      <div style="display:grid;grid-template-columns:340px 1fr;gap:56px;align-items:start;max-width:900px;margin:0 auto">
+      <div class="founder-grid" style="display:grid;grid-template-columns:340px 1fr;gap:56px;align-items:start;max-width:900px;margin:0 auto">
         <div>
           <img src="images/AndrewHeadshot.JPG" alt="Andrew Serrazina — Founder, Apex Aviation" loading="lazy" style="border-radius:var(--radius-lg);width:100%;box-shadow:var(--shadow-lg);object-fit:cover" />
           <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
@@ -208,7 +223,7 @@
   <!-- MISSION & VISION -->
   <section class="section">
     <div class="container">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;max-width:900px;margin:0 auto">
+      <div class="mission-vision-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:32px;max-width:900px;margin:0 auto">
         <div style="background:var(--navy);border-radius:var(--radius-lg);padding:40px">
           <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:16px">Mission</div>
           <p style="color:var(--white);font-size:18px;line-height:1.7;margin:0;font-weight:500">To help pilots build real-world proficiency through modern, scenario-based aviation training.</p>
@@ -268,6 +283,7 @@
       </div>
     </div>
   </section>
+  </main>
 
   <footer class="footer">
     <div class="container footer__inner">
