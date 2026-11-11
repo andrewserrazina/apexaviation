@@ -46,6 +46,21 @@ body {
   font-size: 16px;
   overflow-x: hidden;
 }
+.skip-link {
+  position: absolute;
+  top: -48px;
+  left: 16px;
+  z-index: 1000;
+  background: var(--gold);
+  color: var(--navy);
+  font-weight: 700;
+  font-size: 14px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: top var(--transition);
+}
+.skip-link:focus { top: 16px; }
 
 img { display: block; max-width: 100%; height: auto; }
 a { text-decoration: none; color: inherit; }
@@ -549,6 +564,17 @@ a { text-decoration: none; color: inherit; }
   gap: 8px;
 }
 .program-card ul li::before { content: '→'; color: var(--blue); font-weight: 700; }
+.program-card__screenshot {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 11;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  margin-bottom: 20px;
+  background: var(--navy);
+}
+.program-card__screenshot img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
 
 /* ─── FLEET ─────────────────────────────────────────────────────── */
 .fleet__grid {
