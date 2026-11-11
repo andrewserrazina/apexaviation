@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Layout from '../components/Layout'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import PrivatePilotSyllabus from '../components/PrivatePilotSyllabus.jsx'
 
 // Same fixed destination PortalSelector.jsx uses for Apex Advantage --
 // a separate app entirely (vanilla-JS site/portal.html), not part of
@@ -59,7 +60,9 @@ export default function FlightStudentDashboard() {
     setUpcomingCount(upcomingTotal ?? 0)
     setDebriefs(pastWithDebrief ?? [])
 
-    const flightEnrollments = (enrollments ?? []).filter(en => en.syllabus?.type === 'flight')
+    // Private Pilot flight syllabus gets its own full stage/lesson/FAA-experience
+    // view below (<PrivatePilotSyllabus />) instead of this generic outline.
+    const flightEnrollments = (enrollments ?? []).filter(en => en.syllabus?.type === 'flight' && en.syllabus?.category !== 'Private Pilot')
     const enriched = await Promise.all(flightEnrollments.map(async en => {
       const [{ data: lessons }, { data: completions }] = await Promise.all([
         supabase.from('syllabus_lessons').select('*').eq('syllabus_id', en.syllabus.id).order('sort_order'),
@@ -144,6 +147,11 @@ export default function FlightStudentDashboard() {
               </div>
             )}
           </section>
+
+          <div style={{ marginTop: 20 }}>
+            <h3 className="card__title" style={{ marginBottom: 12 }}>My Private Pilot Syllabus</h3>
+            <PrivatePilotSyllabus studentId={profile.id} canEdit={false} />
+          </div>
 
           <section className="card" style={{ marginTop: 20 }}>
             <h3 className="card__title">Program Outline</h3>

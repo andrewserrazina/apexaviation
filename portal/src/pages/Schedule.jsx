@@ -8,7 +8,7 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const LESSON_TYPES = ['Discovery Flight', 'Private Pilot Training', 'Instrument Training', 'Commercial Training', 'Flight Review', 'Check Ride Prep', 'Other']
 
-const BLANK_FORM = { student_id: '', instructor_id: '', date: '', start_time: '', end_time: '', aircraft_id: '', lesson_type: 'Private Pilot Training', debrief_notes: '' }
+const BLANK_FORM = { student_id: '', instructor_id: '', date: '', start_time: '', end_time: '', aircraft_id: '', lesson_type: 'Private Pilot Training', syllabus_lesson_id: '', debrief_notes: '' }
 const BLANK_REQ = { instructor_id: '', preferred_date: '', preferred_time: '', lesson_type: 'Private Pilot Training', notes: '' }
 
 export default function Schedule() {
@@ -18,6 +18,7 @@ export default function Schedule() {
   const [students, setStudents] = useState([])
   const [instructors, setInstructors] = useState([])
   const [aircraft, setAircraft] = useState([])
+  const [syllabusLessons, setSyllabusLessons] = useState([]) // Private Pilot Course catalog, for the unit picker
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(BLANK_FORM)
   const [saving, setSaving] = useState(false)
@@ -97,6 +98,17 @@ export default function Schedule() {
       .then(({ data }) => setAircraft(data ?? []))
   }, [])
 
+  useEffect(() => {
+    if (!canEdit) return
+    supabase.from('syllabi').select('id').eq('type', 'flight').eq('category', 'Private Pilot').maybeSingle()
+      .then(({ data: syllabus }) => {
+        if (!syllabus) return
+        supabase.from('syllabus_lessons').select('id, lesson_code, title, stage, plan_flight_hours, plan_ground_hours')
+          .eq('syllabus_id', syllabus.id).order('sort_order')
+          .then(({ data }) => setSyllabusLessons(data ?? []))
+      })
+  }, [canEdit])
+
   function lessonsOnDay(day) {
     return lessons.filter(l => {
       const d = new Date(l.starts_at)
@@ -134,6 +146,7 @@ export default function Schedule() {
       end_time: end.toTimeString().slice(0, 5),
       aircraft_id: lesson.aircraft_id ?? '',
       lesson_type: lesson.lesson_type ?? 'Private Pilot Training',
+      syllabus_lesson_id: lesson.syllabus_lesson_id ?? '',
       debrief_notes: lesson.debrief_notes ?? '',
     })
     setFormError('')
@@ -143,6 +156,25 @@ export default function Schedule() {
   function closeModal() { setModal(null); setFormError('') }
   function field(key, val) { setForm(f => ({ ...f, [key]: val })) }
   function buildIso(date, time) { return new Date(`${date}T${time}:00`).toISOString() }
+
+  function addMinutesToTime(time, minutes) {
+    const [h, m] = time.split(':').map(Number)
+    const total = h * 60 + m + minutes
+    const wrapped = ((total % 1440) + 1440) % 1440
+    return `${String(Math.floor(wrapped / 60)).padStart(2, '0')}:${String(wrapped % 60).padStart(2, '0')}`
+  }
+
+  function selectSyllabusUnit(lessonId) {
+    const unit = syllabusLessons.find(l => l.id === lessonId)
+    if (!unit) { field('syllabus_lesson_id', ''); return }
+    const planHours = Number(unit.plan_flight_hours ?? 0) + Number(unit.plan_ground_hours ?? 0)
+    setForm(f => ({
+      ...f,
+      syllabus_lesson_id: unit.id,
+      lesson_type: `${unit.lesson_code} • ${unit.title.replace(/^[FG]\d+\s*[•-]\s*/, '')}`,
+      end_time: f.start_time ? addMinutesToTime(f.start_time, Math.round(planHours * 60)) : f.end_time,
+    }))
+  }
 
   async function checkConflicts(startsAt, endsAt, aircraftId, instructorId, excludeId) {
     const conflicts = []
@@ -197,6 +229,7 @@ export default function Schedule() {
       instructor_id: form.instructor_id || null,
       aircraft_id: form.aircraft_id || null,
       lesson_type: form.lesson_type || null,
+      syllabus_lesson_id: form.syllabus_lesson_id || null,
       starts_at: startsAt,
       ends_at: endsAt,
     }
@@ -504,9 +537,25 @@ export default function Schedule() {
                 <label>Lesson Type</label>
                 <select value={form.lesson_type} onChange={e => field('lesson_type', e.target.value)}>
                   {LESSON_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  {form.syllabus_lesson_id && !LESSON_TYPES.includes(form.lesson_type) && <option value={form.lesson_type}>{form.lesson_type}</option>}
                 </select>
               </div>
             </div>
+            {syllabusLessons.length > 0 && (
+              <div className="form-group">
+                <label>Private Pilot Unit (optional)</label>
+                <select value={form.syllabus_lesson_id} onChange={e => selectSyllabusUnit(e.target.value)}>
+                  <option value="">No unit — free-text lesson type above</option>
+                  {[1, 2, 3, 4].map(stage => (
+                    <optgroup key={stage} label={`Stage ${stage}`}>
+                      {syllabusLessons.filter(l => l.stage === stage).map(l => (
+                        <option key={l.id} value={l.id}>{l.lesson_code} • {l.title.replace(/^[FG]\d+\s*[•-]\s*/, '')}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
+            )}
             {modal.mode === 'edit' && (
               <div className="form-group">
                 <label>Debrief Notes</label>
