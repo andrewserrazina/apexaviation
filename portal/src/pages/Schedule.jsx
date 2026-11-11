@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
@@ -13,6 +14,8 @@ const BLANK_REQ = { instructor_id: '', preferred_date: '', preferred_time: '', l
 
 export default function Schedule() {
   const { profile } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [lessons, setLessons] = useState([])
   const [current, setCurrent] = useState(new Date())
   const [students, setStudents] = useState([])
@@ -126,6 +129,24 @@ export default function Schedule() {
     setFormError('')
     setModal({ mode: 'create' })
   }
+
+  function openCreateForDateStr(dateStr) {
+    if (!canEdit) return
+    setForm({ ...BLANK_FORM, date: dateStr, instructor_id: isInstructor ? profile.id : '' })
+    setFormError('')
+    setModal({ mode: 'create' })
+  }
+
+  // Arriving here from OperationsCalendar's "+ Schedule" day action --
+  // jump to that month and open the create flow pre-filled with the
+  // clicked date, then clear the state so a refresh/back doesn't reopen it.
+  useEffect(() => {
+    if (!profile || !canEdit || !location.state?.prefillDate) return
+    const [y, m] = location.state.prefillDate.split('-').map(Number)
+    setCurrent(new Date(y, m - 1, 1))
+    openCreateForDateStr(location.state.prefillDate)
+    navigate(location.pathname, { replace: true, state: null })
+  }, [profile, canEdit, location.state])
 
   function openEdit(lesson, e) {
     e.stopPropagation()

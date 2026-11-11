@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
 import CalendarGrid from '../components/CalendarGrid'
@@ -100,6 +100,8 @@ function validateClass(form, targetStatus = form.status) {
 }
 
 export default function AdminGroundSchoolSchedule() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const [classes, setClasses] = useState([])
   const [instructors, setInstructors] = useState([])
   const [loading, setLoading] = useState(true)
@@ -144,6 +146,15 @@ export default function AdminGroundSchoolSchedule() {
   }
 
   useEffect(() => { load() }, [])
+
+  // Arriving here from OperationsCalendar's "+ Schedule" day action --
+  // open the quick-add flow pre-filled with the date that was clicked,
+  // then clear the state so a refresh/back doesn't reopen it.
+  useEffect(() => {
+    if (!location.state?.prefillDate) return
+    openCreateOnDate(new Date(`${location.state.prefillDate}T00:00:00`))
+    navigate(location.pathname, { replace: true, state: null })
+  }, [location.state])
 
   function field(key, value) {
     setForm(current => ({ ...current, [key]: value }))
