@@ -133,6 +133,26 @@ describe('Phase 3: nationwide consolidation page accurately states virtual-only 
   })
 })
 
+describe('/home and /home.html redirect to / without the unsupported Netlify "!" force flag', () => {
+  // Cloudflare Pages does not appear to support Netlify's "!" force-redirect
+  // suffix: /home and /home.html with "301!" were silently ignored in
+  // production and fell through to the generic 404 catch-all instead of
+  // redirecting to "/". Fixed by dropping "!" from just these two rules.
+  const redirects = read('_redirects')
+
+  it('has a plain (no "!") 301 rule for /home -> /', () => {
+    expect(redirects).toMatch(/^\/home\s+\/\s+301$/m)
+  })
+
+  it('has a plain (no "!") 301 rule for /home.html -> /', () => {
+    expect(redirects).toMatch(/^\/home\.html\s+\/\s+301$/m)
+  })
+
+  it('leaves the /index.html rule untouched (its behavior comes from the platform, not this line)', () => {
+    expect(redirects).toMatch(/^\/index\.html\s+\/\s+301!$/m)
+  })
+})
+
 describe('Phase 3: sitemap.xml remains well-formed and free of retired URLs', () => {
   const sitemap = read('sitemap.xml')
 

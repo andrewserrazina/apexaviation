@@ -1,6 +1,13 @@
 /index.html  /  301!
-/home  /  301!
-/home.html  /  301!
+# Cloudflare Pages does not appear to support Netlify's "!" force-redirect
+# suffix -- these two rules were silently ignored, so /home and /home.html
+# fell through to the generic 404 catch-all instead of redirecting to "/".
+# (The /index.html rule above has the same "!" and is left untouched: it
+# already works today because Cloudflare Pages' own built-in index-file
+# redirect handles /index.html -> / before _redirects is even evaluated,
+# so that line's behavior doesn't depend on whether "!" parses here.)
+/home  /  301
+/home.html  /  301
 /operations/*  /portal#operations 302
 
 # Consolidated Hutto/Taylor landing page back into the single Taylor
