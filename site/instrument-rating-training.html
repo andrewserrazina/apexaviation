@@ -22,6 +22,18 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:ital@0;1&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="pages.css" />
+  <style>
+    /* ── Mobile overrides ── */
+    @media (max-width: 640px) {
+      .irt-why-grid {
+        grid-template-columns: 1fr !important;
+        gap: 28px !important;
+      }
+      .irt-curriculum-grid {
+        grid-template-columns: 1fr !important;
+      }
+    }
+  </style>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -74,6 +86,7 @@
   </script>
 </head>
 <body>
+  <a href="#main-content" class="skip-link">Skip to content</a>
 
   <header class="nav" id="nav">
     <div class="container nav__inner">
@@ -122,6 +135,8 @@
     </div>
   </header>
 
+  <main id="main-content">
+
   <section class="page-hero">
     <div class="page-hero__bg-text">INSTRUMENT</div>
     <div class="container page-hero__inner">
@@ -153,7 +168,7 @@
         </div>
 
         <!-- WHY IFR -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:center;margin-bottom:64px">
+        <div class="irt-why-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:center;margin-bottom:64px">
           <div>
             <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Why Instrument Training</div>
             <h2 style="color:var(--white);font-size:30px;font-weight:800;line-height:1.2;margin:0 0 16px">The rating that changes<br/>everything.</h2>
@@ -227,7 +242,7 @@
         <div style="margin-bottom:64px">
           <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Curriculum</div>
           <h2 style="color:var(--white);font-size:28px;font-weight:800;margin:0 0 24px">What You'll Master</h2>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="irt-curriculum-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:18px 20px;display:flex;align-items:center;gap:14px">
               <span style="color:var(--gold);font-size:20px;flex-shrink:0">🎯</span>
               <span style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Precision &amp; non-precision approaches</span>
@@ -279,6 +294,7 @@
       </div>
     </div>
   </section>
+  </main>
 
   <footer class="footer">
     <div class="container footer__inner">
