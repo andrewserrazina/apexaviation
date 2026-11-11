@@ -161,30 +161,55 @@ if (waitlistForm) {
 }
 
 // Scroll-in animations
-const observer = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      entry.target.style.opacity = '1';
-      entry.target.style.transform = 'translateY(0)';
-      observer.unobserve(entry.target);
-    }
-  });
-}, { threshold: 0.1 });
+const revealTargets = document.querySelectorAll('.program-card, .fleet-card, .instructor-card, .pricing-card');
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-document.querySelectorAll('.program-card, .fleet-card, .instructor-card, .pricing-card').forEach(el => {
-  el.style.opacity = '0';
-  el.style.transform = 'translateY(24px)';
-  el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-  observer.observe(el);
-});
+if (revealTargets.length && !prefersReducedMotion && 'IntersectionObserver' in window) {
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.style.opacity = '1';
+        entry.target.style.transform = 'translateY(0)';
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  revealTargets.forEach(el => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(24px)';
+    el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+    observer.observe(el);
+  });
+
+  // Safety net: an anchor-jump straight to a section (e.g. the hero's own
+  // CTAs), a very fast scroll, or a render pipeline that doesn't simulate
+  // real scrolling at all (crawlers, link-preview bots, full-page
+  // screenshot tools) can land on this content before the observer ever
+  // fires. Force everything visible after a short delay so nothing stays
+  // invisible longer than a brief fade-in, regardless of how it was reached.
+  setTimeout(() => {
+    revealTargets.forEach(el => {
+      el.style.opacity = '1';
+      el.style.transform = 'translateY(0)';
+    });
+    observer.disconnect();
+  }, 800);
+}
 
 // FAQ accordion (homepage)
 document.querySelectorAll('.faq-item__question').forEach(btn => {
   btn.addEventListener('click', () => {
     const item = btn.closest('.faq-item');
     const isOpen = item.classList.contains('open');
-    document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
-    if (!isOpen) item.classList.add('open');
+    document.querySelectorAll('.faq-item').forEach(i => {
+      i.classList.remove('open');
+      i.querySelector('.faq-item__question').setAttribute('aria-expanded', 'false');
+    });
+    if (!isOpen) {
+      item.classList.add('open');
+      btn.setAttribute('aria-expanded', 'true');
+    }
   });
 });
 
@@ -225,7 +250,7 @@ document.querySelectorAll('.faq-item__question').forEach(btn => {
             <label class="checkbox-item"><input type="checkbox" name="services" value="Commercial Pilot" /><span>Commercial Pilot</span></label>
             <label class="checkbox-item"><input type="checkbox" name="services" value="Apex Advantage Ground" /><span>Apex Advantage</span></label>
             <label class="checkbox-item"><input type="checkbox" name="services" value="IPC / BFR / Currency" /><span>IPC / BFR</span></label>
-            <label class="checkbox-item"><input type="checkbox" name="services" value="Simulator Sessions" /><span>Simulator</span></label>
+            <label class="checkbox-item"><input type="checkbox" name="services" value="Mock Oral Exam" /><span>Mock Oral</span></label>
           </div>
         </div>
         <button type="submit" class="btn btn--primary btn--full">Join the Waitlist</button>
@@ -237,25 +262,34 @@ document.querySelectorAll('.faq-item__question').forEach(btn => {
       <p class="form__note" style="text-align:center;margin-top:10px">${cfg.ctaNote || 'Free forever. No credit card required.'}</p>`;
 
   overlay.innerHTML = `
-    <div class="exit-popup">
+    <div class="exit-popup" role="dialog" aria-modal="true" aria-labelledby="exitPopupHeading">
       <button class="exit-popup__close" id="exitPopupClose" aria-label="Close">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
       </button>
       <div class="exit-popup__eyebrow">${cfg.eyebrow || 'Founding Member Waitlist'}</div>
-      <h2>${cfg.heading || 'Before you go — secure your spot.'}</h2>
-      <p>${cfg.body || '24 founding member slots open January 2027. Join the waitlist for locked-in pricing and priority scheduling.'}</p>
+      <h2 id="exitPopupHeading">${cfg.heading || 'Before you go — secure your spot.'}</h2>
+      <p>${cfg.body || 'Limited founding member slots for our Austin flight training, targeting March 2027. Join the waitlist for locked-in pricing and priority scheduling.'}</p>
       ${cfg.mode === 'cta' ? ctaModeHtml : `${formModeHtml}
       <div class="form__success" id="exitPopupSuccess" style="display:none;text-align:center;padding:24px 0">
         <svg width="48" height="48" viewBox="0 0 56 56" fill="none" style="margin-bottom:12px"><circle cx="28" cy="28" r="28" fill="#F4B400" fill-opacity=".1"/><path d="M18 28l8 8 14-16" stroke="#F4B400" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <h3 style="color:var(--navy);margin-bottom:8px">You're on the list.</h3>
-        <p style="color:var(--gray)">We'll be in touch before our January 2027 launch.</p>
+        <p style="color:var(--gray)">We'll be in touch before our targeted March 2027 Austin launch.</p>
       </div>`}
     </div>`;
   document.body.appendChild(overlay);
 
+  let lastFocused = null;
+  function openPopup() {
+    lastFocused = document.activeElement;
+    overlay.classList.add('active');
+    const closeBtn = document.getElementById('exitPopupClose');
+    if (closeBtn) closeBtn.focus();
+  }
+
   function dismiss() {
     overlay.classList.remove('active');
     sessionStorage.setItem(STORAGE_KEY, '1');
+    if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
   }
 
   document.getElementById('exitPopupClose').addEventListener('click', dismiss);
@@ -301,7 +335,7 @@ document.querySelectorAll('.faq-item__question').forEach(btn => {
   document.addEventListener('mouseleave', (e) => {
     if (triggered || e.clientY > 20) return;
     triggered = true;
-    overlay.classList.add('active');
+    openPopup();
   });
 
   // Trigger: mobile — user scrolls back up to the very top after engaging
@@ -321,7 +355,7 @@ document.querySelectorAll('.faq-item__question').forEach(btn => {
     if (!mobileTriggered && maxScroll > 800 && cur < 150) {
       mobileTriggered = true;
       triggered = true;
-      overlay.classList.add('active');
+      openPopup();
     }
   }, { passive: true });
 })();
