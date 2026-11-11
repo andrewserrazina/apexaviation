@@ -6,8 +6,15 @@ import CalendarGrid from '../components/CalendarGrid'
 import Modal from '../components/Modal'
 import { PageHeader, EmptyState } from '../components/ui'
 import {
-  EVENT_TYPES, EVENT_TYPE_LABELS, EVENT_TYPE_TONES, fetchOperationsEvents,
+  EVENT_TYPES, EVENT_TYPE_LABELS, EVENT_TYPE_TONES, EVENT_TYPE_LINKS, fetchOperationsEvents,
 } from '../lib/operationsEvents'
+
+// The two event types that can actually be created for a single date in
+// one step -- private instruction and mock orals are availability-slot
+// systems (students book themselves against a range), not a "schedule
+// one event on this day" flow, so they don't get a quick-create action
+// here; their own pages are still reachable from the nav as usual.
+const QUICK_SCHEDULE_TYPES = [EVENT_TYPES.LESSON, EVENT_TYPES.GROUND_CLASS]
 
 const ALL_TYPES = Object.values(EVENT_TYPES)
 
@@ -43,6 +50,11 @@ export default function OperationsCalendar() {
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [range?.start?.getTime(), range?.end?.getTime(), [...activeTypes].join(',')])
+
+  function scheduleOnSelectedDay(type) {
+    if (!selectedDay) return
+    navigate(EVENT_TYPE_LINKS[type], { state: { prefillDate: format(selectedDay, 'yyyy-MM-dd') } })
+  }
 
   function toggleType(type) {
     setActiveTypes(prev => {
@@ -112,8 +124,16 @@ export default function OperationsCalendar() {
 
       {selectedDay && (
         <Modal title={format(selectedDay, 'EEEE, MMMM d, yyyy')} onClose={() => setSelectedDay(null)} wide>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+            {QUICK_SCHEDULE_TYPES.map(type => (
+              <button key={type} type="button" className="btn-secondary" onClick={() => scheduleOnSelectedDay(type)}>
+                + {EVENT_TYPE_LABELS[type]}
+              </button>
+            ))}
+          </div>
+
           {dayEvents.length === 0 ? (
-            <EmptyState title="Nothing scheduled" description="No lessons, classes, or bookings on this day." />
+            <EmptyState title="Nothing scheduled" description="No lessons, classes, or bookings on this day yet." />
           ) : (
             <div className="agenda-list">
               {dayEvents.map(event => (
