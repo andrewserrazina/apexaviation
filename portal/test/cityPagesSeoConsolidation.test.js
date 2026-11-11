@@ -103,14 +103,17 @@ describe('city pages: JSON-LD structured data', () => {
 
 describe('city pages: title/canonical consistency', () => {
   for (const file of cityPageFiles) {
-    it(`${file} has exactly one <title> and one canonical link matching its own filename`, () => {
+    it(`${file} has exactly one <title> and one canonical link matching its own extensionless URL`, () => {
       const html = read(file)
       const titles = html.match(/<title>/g) || []
       expect(titles.length).toBe(1)
 
       const canonicalMatch = html.match(/<link rel="canonical" href="([^"]+)"/)
       expect(canonicalMatch).toBeTruthy()
-      expect(canonicalMatch[1]).toBe(`https://apexaviationtx.com/${file}`)
+      // Phase 4: extensionless URLs are the permanent canonical standard --
+      // .html still resolves (via the platform's own redirect), but is no
+      // longer what pages declare as canonical.
+      expect(canonicalMatch[1]).toBe(`https://apexaviationtx.com/${file.replace(/\.html$/, '')}`)
     })
 
     it(`${file} has exactly one <h1>`, () => {
@@ -167,22 +170,25 @@ describe('city pages: Taylor is the primary resource and carries the rich lead f
 })
 
 describe('sitemap.xml: entries for touched city pages resolve to real files', () => {
+  // Phase 4: sitemap entries are extensionless (the canonical standard);
+  // the underlying files on disk are still named flight-training-*.html.
   const sitemap = read('sitemap.xml')
-  const locs = [...sitemap.matchAll(/<loc>https:\/\/apexaviationtx\.com\/(flight-training-[^<]+\.html)<\/loc>/g)]
+  const locSlugs = [...sitemap.matchAll(/<loc>https:\/\/apexaviationtx\.com\/(flight-training-[^<]+)<\/loc>/g)]
     .map((m) => m[1])
 
   it('lists at least the known city pages', () => {
-    expect(locs.length).toBeGreaterThanOrEqual(cityPageFiles.length)
+    expect(locSlugs.length).toBeGreaterThanOrEqual(cityPageFiles.length)
   })
 
   for (const file of cityPageFiles) {
-    it(`sitemap.xml includes ${file} exactly once`, () => {
-      expect(locs.filter((l) => l === file).length).toBe(1)
+    const slug = file.replace(/\.html$/, '')
+    it(`sitemap.xml includes ${slug} (extensionless) exactly once`, () => {
+      expect(locSlugs.filter((l) => l === slug).length).toBe(1)
     })
   }
 
-  it('every <loc> flight-training-*.html entry corresponds to an existing file', () => {
-    const missing = locs.filter((loc) => !existsSync(path.join(SITE_DIR, loc)))
+  it('every <loc> flight-training-* entry corresponds to an existing file', () => {
+    const missing = locSlugs.filter((slug) => !existsSync(path.join(SITE_DIR, `${slug}.html`)))
     expect(missing).toEqual([])
   })
 })
@@ -193,13 +199,14 @@ describe('service-areas.html: links and structured data point at real, correct p
   it('Hutto and Taylor pills/breadcrumbs point at their own distinct pages, not a shared URL', () => {
     const huttoLinks = [...html.matchAll(/"name":\s*"Hutto, TX",\s*"url":\s*"([^"]+)"/g)].map((m) => m[1])
     const taylorLinks = [...html.matchAll(/"name":\s*"Taylor, TX",\s*"url":\s*"([^"]+)"/g)].map((m) => m[1])
-    expect(huttoLinks).toEqual(['https://apexaviationtx.com/flight-training-hutto.html'])
-    expect(taylorLinks).toEqual(['https://apexaviationtx.com/flight-training-taylor.html'])
+    // Phase 4: extensionless is the canonical standard.
+    expect(huttoLinks).toEqual(['https://apexaviationtx.com/flight-training-hutto'])
+    expect(taylorLinks).toEqual(['https://apexaviationtx.com/flight-training-taylor'])
   })
 
   it('references no page that no longer exists', () => {
-    const hrefs = [...html.matchAll(/href="(flight-training-[^"]+\.html)"/g)].map((m) => m[1])
-    const missing = hrefs.filter((f) => !existsSync(path.join(SITE_DIR, f)))
+    const hrefs = [...html.matchAll(/href="(flight-training-[^"]+)"/g)].map((m) => m[1])
+    const missing = hrefs.filter((slug) => !existsSync(path.join(SITE_DIR, `${slug}.html`)))
     expect(missing).toEqual([])
   })
 })

@@ -142,11 +142,13 @@ describe('Phase 3: sitemap.xml remains well-formed and free of retired URLs', ()
   })
 
   it('every <loc> entry maps to an existing file (except the bare domain root)', () => {
+    // Phase 4: sitemap entries are extensionless; the file on disk still
+    // carries .html (Cloudflare Pages serves /slug from slug.html directly).
     const locs = [...sitemap.matchAll(/<loc>(https:\/\/apexaviationtx\.com\/[^<]*)<\/loc>/g)].map((m) => m[1])
     const missing = locs.filter((loc) => {
       if (loc === 'https://apexaviationtx.com/' || loc === 'https://apexaviationtx.com') return false
       const relPath = loc.replace('https://apexaviationtx.com/', '')
-      return !existsSync(path.join(SITE_DIR, relPath))
+      return !existsSync(path.join(SITE_DIR, `${relPath}.html`))
     })
     expect(missing).toEqual([])
   })
