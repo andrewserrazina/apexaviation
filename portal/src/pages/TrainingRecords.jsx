@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 import { PageHeader, StatsRow, Button } from '../components/ui'
+import PrivatePilotSyllabus from '../components/PrivatePilotSyllabus.jsx'
 import { toOne } from '../lib/postgrestEmbed'
 
 function toCSV(rows) {
@@ -92,11 +93,16 @@ export default function TrainingRecords() {
       stageChecks: stageChecks ?? [],
       writtenTests: writtenTests ?? [],
       logbook: logbook ?? [],
-      syllabusProgress: (studentSyllabi ?? []).map(en => {
-        const totalLessons = (syllabusLessons ?? []).filter(l => l.syllabus_id === en.syllabus_id).length
-        const doneLessons = (completions ?? []).filter(c => c.student_syllabus_id === en.id).length
-        return { ...en, syllabus: toOne(en.syllabus), totalLessons, doneLessons }
-      }),
+      syllabusProgress: (studentSyllabi ?? [])
+        .map(en => ({ ...en, syllabus: toOne(en.syllabus) }))
+        // The Private Pilot flight syllabus gets its own full stage/lesson/FAA-experience
+        // view below (<PrivatePilotSyllabus />) instead of this generic progress-bar card.
+        .filter(en => !(en.syllabus?.type === 'flight' && en.syllabus?.category === 'Private Pilot'))
+        .map(en => {
+          const totalLessons = (syllabusLessons ?? []).filter(l => l.syllabus_id === en.syllabus_id).length
+          const doneLessons = (completions ?? []).filter(c => c.student_syllabus_id === en.id).length
+          return { ...en, totalLessons, doneLessons }
+        }),
       milestones: (milestones ?? []).map(m => ({ ...m, label: labelByKey[m.milestone_key] ?? m.milestone_key })),
     })
     setLoading(false)
@@ -162,10 +168,14 @@ export default function TrainingRecords() {
             ]}
           />
 
+          <div style={{ marginBottom: 20 }}>
+            <PrivatePilotSyllabus studentId={studentId} canEdit />
+          </div>
+
           <div className="card" style={{ marginBottom: 20 }}>
-            <p className="card__title">Syllabus Progress <Link to="/syllabi" className="btn-link" style={{ fontSize: 12, marginLeft: 8 }}>Manage in Syllabi →</Link></p>
+            <p className="card__title">Other Syllabus Progress <Link to="/syllabi" className="btn-link" style={{ fontSize: 12, marginLeft: 8 }}>Manage in Syllabi →</Link></p>
             {record.syllabusProgress.length === 0 ? (
-              <p className="empty-state" style={{ padding: '8px 0' }}>Not enrolled in any syllabus yet.</p>
+              <p className="empty-state" style={{ padding: '8px 0' }}>Not enrolled in any other syllabus.</p>
             ) : record.syllabusProgress.map(en => {
               const pct = en.totalLessons > 0 ? Math.round((en.doneLessons / en.totalLessons) * 100) : 0
               return (

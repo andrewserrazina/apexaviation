@@ -4,7 +4,24 @@ import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
 
-const BLANK = { student_id: '', instructor_id: '', date: '', aircraft_id: '', route: '', duration_hours: '', notes: '' }
+const BLANK = {
+  student_id: '', instructor_id: '', date: '', aircraft_id: '', route: '', duration_hours: '', notes: '',
+  syllabus_lesson_id: '',
+  dual_received: '', solo_time: '', cross_country_time: '', night_time: '',
+  actual_instrument: '', simulated_instrument: '', day_landings: '', night_landings: '', approaches: '',
+}
+
+const BREAKDOWN_FIELDS = [
+  { key: 'dual_received', label: 'Dual Received' },
+  { key: 'solo_time', label: 'Solo' },
+  { key: 'cross_country_time', label: 'Cross-Country' },
+  { key: 'night_time', label: 'Night' },
+  { key: 'actual_instrument', label: 'Actual Instrument' },
+  { key: 'simulated_instrument', label: 'Simulated Instrument' },
+  { key: 'day_landings', label: 'Day Landings', integer: true },
+  { key: 'night_landings', label: 'Night Landings', integer: true },
+  { key: 'approaches', label: 'Approaches', integer: true },
+]
 
 function exportCSV(entries, studentName) {
   const headers = ['Date', 'Aircraft', 'Route', 'Duration (hrs)', 'Instructor', 'Notes']
@@ -34,6 +51,7 @@ export default function Logbook() {
   const [students, setStudents] = useState([])
   const [instructors, setInstructors] = useState([])
   const [aircraft, setAircraft] = useState([])
+  const [syllabusLessons, setSyllabusLessons] = useState([])
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(BLANK)
   const [saving, setSaving] = useState(false)
@@ -67,6 +85,15 @@ export default function Logbook() {
     }
     supabase.from('aircraft').select('id, tail_number, make, model').order('tail_number')
       .then(({ data }) => setAircraft(data ?? []))
+    if (canEdit) {
+      supabase.from('syllabi').select('id').eq('type', 'flight').eq('category', 'Private Pilot').maybeSingle()
+        .then(({ data: syllabus }) => {
+          if (!syllabus) return
+          supabase.from('syllabus_lessons').select('id, lesson_code, title, stage')
+            .eq('syllabus_id', syllabus.id).order('sort_order')
+            .then(({ data }) => setSyllabusLessons(data ?? []))
+        })
+    }
   }, [profile])
 
   async function loadEntries(id) {
@@ -74,7 +101,7 @@ export default function Logbook() {
     setLoading(true)
     const { data } = await supabase
       .from('logbook_entries')
-      .select('*, instructor:profiles!instructor_id(full_name)')
+      .select('*, instructor:profiles!instructor_id(full_name), syllabus_lesson:syllabus_lesson_id(lesson_code)')
       .eq('student_id', id)
       .order('date', { ascending: false })
     setEntries(data ?? [])
@@ -114,6 +141,16 @@ export default function Logbook() {
       route: entry.route ?? '',
       duration_hours: entry.duration_hours ?? '',
       notes: entry.notes ?? '',
+      syllabus_lesson_id: entry.syllabus_lesson_id ?? '',
+      dual_received: entry.dual_received ?? '',
+      solo_time: entry.solo_time ?? '',
+      cross_country_time: entry.cross_country_time ?? '',
+      night_time: entry.night_time ?? '',
+      actual_instrument: entry.actual_instrument ?? '',
+      simulated_instrument: entry.simulated_instrument ?? '',
+      day_landings: entry.day_landings ?? '',
+      night_landings: entry.night_landings ?? '',
+      approaches: entry.approaches ?? '',
     })
     setFormError('')
     setModal({ mode: 'edit', entry })
@@ -134,6 +171,16 @@ export default function Logbook() {
       route: form.route || null,
       duration_hours: parseFloat(form.duration_hours) || 0,
       notes: form.notes || null,
+      syllabus_lesson_id: form.syllabus_lesson_id || null,
+      dual_received: form.dual_received === '' ? null : parseFloat(form.dual_received),
+      solo_time: form.solo_time === '' ? null : parseFloat(form.solo_time),
+      cross_country_time: form.cross_country_time === '' ? null : parseFloat(form.cross_country_time),
+      night_time: form.night_time === '' ? null : parseFloat(form.night_time),
+      actual_instrument: form.actual_instrument === '' ? null : parseFloat(form.actual_instrument),
+      simulated_instrument: form.simulated_instrument === '' ? null : parseFloat(form.simulated_instrument),
+      day_landings: form.day_landings === '' ? null : parseInt(form.day_landings, 10),
+      night_landings: form.night_landings === '' ? null : parseInt(form.night_landings, 10),
+      approaches: form.approaches === '' ? null : parseInt(form.approaches, 10),
     }
     let error
     if (modal.mode === 'create') {
@@ -210,6 +257,7 @@ export default function Logbook() {
                 <th>Aircraft</th>
                 <th>Route</th>
                 <th>Duration</th>
+                <th>Unit</th>
                 <th>Instructor</th>
                 <th>Notes</th>
                 {canEdit && <th></th>}
@@ -217,13 +265,14 @@ export default function Logbook() {
             </thead>
             <tbody>
               {entries.length === 0 ? (
-                <tr><td colSpan={canEdit ? 7 : 6} className="empty-state">No entries yet.</td></tr>
+                <tr><td colSpan={canEdit ? 8 : 7} className="empty-state">No entries yet.</td></tr>
               ) : entries.map(e => (
                 <tr key={e.id}>
                   <td>{new Date(e.date).toLocaleDateString()}</td>
                   <td>{aircraftLabel(e.aircraft_id)}</td>
                   <td>{e.route ?? '—'}</td>
                   <td>{e.duration_hours} hrs</td>
+                  <td>{e.syllabus_lesson?.lesson_code ?? '—'}</td>
                   <td>{e.instructor?.full_name ?? '—'}</td>
                   <td className="td-notes">{e.notes ?? '—'}</td>
                   {canEdit && <td><button className="btn-link" onClick={() => openEdit(e)}>Edit</button></td>}
@@ -279,6 +328,37 @@ export default function Logbook() {
               <div className="form-group">
                 <label>Route</label>
                 <input type="text" placeholder="e.g. KAUS - KSAT" value={form.route} onChange={e => field('route', e.target.value)} />
+              </div>
+            </div>
+            {canEdit && syllabusLessons.length > 0 && (
+              <div className="form-group">
+                <label>Apply to Syllabus Lesson (optional)</label>
+                <select value={form.syllabus_lesson_id} onChange={e => field('syllabus_lesson_id', e.target.value)}>
+                  <option value="">No lesson — standalone flight</option>
+                  {[1, 2, 3, 4].map(stage => (
+                    <optgroup key={stage} label={`Stage ${stage}`}>
+                      {syllabusLessons.filter(l => l.stage === stage).map(l => (
+                        <option key={l.id} value={l.id}>{l.lesson_code} • {l.title.replace(/^[FG]\d+\s*[•-]\s*/, '')}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="form-group">
+              <label style={{ marginBottom: 6, display: 'block' }}>Hour Breakdown (optional)</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
+                {BREAKDOWN_FIELDS.map(f => (
+                  <div key={f.key} className="form-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: 11 }}>{f.label}</label>
+                    <input
+                      type="number" step={f.integer ? '1' : '0.1'} min="0"
+                      value={form[f.key]}
+                      onChange={e => field(f.key, e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+                ))}
               </div>
             </div>
             <div className="form-group">
