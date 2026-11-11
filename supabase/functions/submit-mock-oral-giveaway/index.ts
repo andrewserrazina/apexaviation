@@ -4,7 +4,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.0';
 const ORIGIN='https://apexaviationtx.com';
 const START=Date.parse('2026-10-21T16:00:00Z');
-const END_EXCLUSIVE=Date.parse('2026-11-02T05:00:00Z'); // Nov 2, 00:00 EST.
+const END_EXCLUSIVE=Date.parse('2026-11-11T05:00:00Z'); // Nov 11, 00:00 EST (after Nov 10, 11:59 PM ET).
 const headers={ 'Access-Control-Allow-Origin':ORIGIN,'Access-Control-Allow-Headers':'content-type,authorization,apikey','Access-Control-Allow-Methods':'POST,OPTIONS','Content-Type':'application/json' };
 const respond=(status:number,data:unknown)=>new Response(JSON.stringify(data),{status,headers});
 Deno.serve(async req=>{
@@ -31,7 +31,7 @@ Deno.serve(async req=>{
  const supabase=createClient(url,service,{auth:{persistSession:false}});
  // Bound repeated submissions using HMAC-SHA256 keyed with the existing service role secret.
  // This does NOT prevent rotating-email bot submissions; add provider/network rate controls separately.
- const hmacKey=await crypto.subtle.importKey('raw',new TextEncoder().encode(service),'HMAC',{name:'HMAC',hash:'SHA-256'},false,['sign']);
+ const hmacKey=await crypto.subtle.importKey('raw',new TextEncoder().encode(service),{name:'HMAC',hash:'SHA-256'},false,['sign']);
  const digest=await crypto.subtle.sign('HMAC',hmacKey,new TextEncoder().encode('mock_oral_2026_oct:'+email));
  const emailHash=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
  const hourBucket=new Date(Math.floor(now/3600000)*3600000).toISOString();
