@@ -21,7 +21,7 @@ export default function Schedule() {
   const [students, setStudents] = useState([])
   const [instructors, setInstructors] = useState([])
   const [aircraft, setAircraft] = useState([])
-  const [syllabusLessons, setSyllabusLessons] = useState([]) // Private Pilot Course catalog, for the unit picker
+  const [syllabusLessons, setSyllabusLessons] = useState([]) // Private Pilot + Instrument Rating catalogs, for the unit picker
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(BLANK_FORM)
   const [saving, setSaving] = useState(false)
@@ -103,12 +103,14 @@ export default function Schedule() {
 
   useEffect(() => {
     if (!canEdit) return
-    supabase.from('syllabi').select('id').eq('type', 'flight').eq('category', 'Private Pilot').maybeSingle()
-      .then(({ data: syllabus }) => {
-        if (!syllabus) return
-        supabase.from('syllabus_lessons').select('id, lesson_code, title, stage, plan_flight_hours, plan_ground_hours')
-          .eq('syllabus_id', syllabus.id).order('sort_order')
-          .then(({ data }) => setSyllabusLessons(data ?? []))
+    supabase.from('syllabi').select('id, category').eq('type', 'flight').in('category', ['Private Pilot', 'Instrument Rating'])
+      .then(async ({ data: syllabi }) => {
+        if (!syllabi?.length) return
+        const { data } = await supabase.from('syllabus_lessons')
+          .select('id, lesson_code, title, stage, plan_flight_hours, plan_ground_hours, syllabus_id')
+          .in('syllabus_id', syllabi.map(s => s.id)).order('sort_order')
+        const categoryBySyllabusId = Object.fromEntries(syllabi.map(s => [s.id, s.category]))
+        setSyllabusLessons((data ?? []).map(l => ({ ...l, category: categoryBySyllabusId[l.syllabus_id] })))
       })
   }, [canEdit])
 
@@ -192,7 +194,7 @@ export default function Schedule() {
     setForm(f => ({
       ...f,
       syllabus_lesson_id: unit.id,
-      lesson_type: `${unit.lesson_code} • ${unit.title.replace(/^[FG]\d+\s*[•-]\s*/, '')}`,
+      lesson_type: `${unit.lesson_code} • ${unit.title.replace(/^[A-Za-z]+\d+\s*[•-]\s*/, '')}`,
       end_time: f.start_time ? addMinutesToTime(f.start_time, Math.round(planHours * 60)) : f.end_time,
     }))
   }
@@ -564,15 +566,21 @@ export default function Schedule() {
             </div>
             {syllabusLessons.length > 0 && (
               <div className="form-group">
-                <label>Private Pilot Unit (optional)</label>
+                <label>Syllabus Unit (optional)</label>
                 <select value={form.syllabus_lesson_id} onChange={e => selectSyllabusUnit(e.target.value)}>
                   <option value="">No unit — free-text lesson type above</option>
-                  {[1, 2, 3, 4].map(stage => (
-                    <optgroup key={stage} label={`Stage ${stage}`}>
-                      {syllabusLessons.filter(l => l.stage === stage).map(l => (
-                        <option key={l.id} value={l.id}>{l.lesson_code} • {l.title.replace(/^[FG]\d+\s*[•-]\s*/, '')}</option>
-                      ))}
-                    </optgroup>
+                  {['Private Pilot', 'Instrument Rating'].map(category => (
+                    [1, 2, 3, 4].map(stage => {
+                      const group = syllabusLessons.filter(l => l.category === category && l.stage === stage)
+                      if (!group.length) return null
+                      return (
+                        <optgroup key={`${category}-${stage}`} label={`${category} • Stage ${stage}`}>
+                          {group.map(l => (
+                            <option key={l.id} value={l.id}>{l.lesson_code} • {l.title.replace(/^[A-Za-z]+\d+\s*[•-]\s*/, '')}</option>
+                          ))}
+                        </optgroup>
+                      )
+                    })
                   ))}
                 </select>
               </div>

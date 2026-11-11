@@ -5,11 +5,53 @@ import StatusBadge from './ui/StatusBadge.jsx'
 import Modal from './Modal.jsx'
 import { toOne } from '../lib/postgrestEmbed'
 
-const STAGE_NAMES = {
-  1: 'Stage 1 — Foundations to First Solo',
-  2: 'Stage 2 — Local Independence & Precision',
-  3: 'Stage 3 — Cross-Country, Night & Instruments',
-  4: 'Stage 4 — Practical-Test Readiness',
+// One config per rating this component knows how to render -- each rating's
+// source syllabus has its own stage names and its own FAA experience
+// requirements (§61.109(a) for Private Pilot, §61.65 for Instrument Rating),
+// and only some of those requirement rows can be honestly rolled up from
+// logged flight time; the rest need an instructor to actually look at the
+// source logbook and route, matching the source syllabi's own policy that
+// computed counts never grant eligibility.
+export const RATING_CONFIGS = {
+  'Private Pilot': {
+    stageNames: {
+      1: 'Stage 1 — Foundations to First Solo',
+      2: 'Stage 2 — Local Independence & Precision',
+      3: 'Stage 3 — Cross-Country, Night & Instruments',
+      4: 'Stage 4 — Practical-Test Readiness',
+    },
+    notEnrolledLabel: 'Private Pilot syllabus',
+    computeFaaActuals(rows) {
+      const sum = key => rows.reduce((s, r) => s + Number(r[key] ?? 0), 0)
+      return {
+        total_flight: sum('total_time'),
+        dual_flight: sum('dual_received'),
+        solo_flight: sum('solo_time'),
+        night_instruction: sum('night_time'),
+        night_landings: sum('night_landings'),
+        instrument_reference: rows.reduce((s, r) => s + Number(r.actual_instrument ?? 0) + Number(r.simulated_instrument ?? 0), 0),
+      }
+    },
+  },
+  'Instrument Rating': {
+    stageNames: {
+      1: 'Stage 1 — IFR Fundamentals',
+      2: 'Stage 2 — Procedures & Approaches',
+      3: 'Stage 3 — Cross-Country & Risk Management',
+      4: 'Stage 4 — Checkride Readiness',
+    },
+    notEnrolledLabel: 'Instrument Rating syllabus',
+    computeFaaActuals(rows) {
+      // Cross-country PIC: only a row that's both XC and PIC counts, so the
+      // conservative per-row figure is the smaller of the two on that leg.
+      const xcPic = rows.reduce((s, r) => s + Math.min(Number(r.cross_country_time ?? 0), Number(r.pic_time ?? 0)), 0)
+      return {
+        xc_pic_total: xcPic,
+        xc_pic_airplane: xcPic,
+        instrument_actual_sim: rows.reduce((s, r) => s + Number(r.actual_instrument ?? 0) + Number(r.simulated_instrument ?? 0), 0),
+      }
+    },
+  },
 }
 
 const RATINGS = ['N', 'A', 'P', 'R']
@@ -20,19 +62,13 @@ const DISPOSITION_TONE = {
   'Remediation Assigned': 'danger', 'Complete': 'success', 'Revalidation Required': 'danger',
 }
 
-// Rows the rulebook lets us roll up from existing logged hours -- every
-// other FAA Experience row (qualifying routes, towered ops, the
-// preceding-2-calendar-months window) needs an instructor to actually look
-// at the logbook and route, so we never guess a number for those; the
-// source syllabus is explicit that computed counts never grant eligibility.
-const AUTO_COMPUTABLE = new Set(['total_flight', 'dual_flight', 'solo_flight', 'night_instruction', 'night_landings', 'instrument_reference'])
-
 function fmt(n) {
   const v = Number(n ?? 0)
   return (Math.round(v * 100) / 100).toString()
 }
 
-export default function PrivatePilotSyllabus({ studentId, canEdit = false }) {
+export default function RatingSyllabus({ studentId, category, canEdit = false }) {
+  const config = RATING_CONFIGS[category]
   const [loading, setLoading] = useState(true)
   const [enrollment, setEnrollment] = useState(null)
   const [lessons, setLessons] = useState([])
@@ -45,7 +81,7 @@ export default function PrivatePilotSyllabus({ studentId, canEdit = false }) {
   const [remediationModal, setRemediationModal] = useState(null)
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => { if (studentId) load() }, [studentId])
+  useEffect(() => { if (studentId && config) load() }, [studentId, category])
 
   async function load() {
     setLoading(true)
@@ -55,7 +91,7 @@ export default function PrivatePilotSyllabus({ studentId, canEdit = false }) {
       .select('*, syllabus:syllabi!inner(id, name, type, category)')
       .eq('student_id', studentId)
       .eq('syllabus.type', 'flight')
-      .eq('syllabus.category', 'Private Pilot')
+      .eq('syllabus.category', category)
       .maybeSingle()
 
     if (!enrollments) {
@@ -70,7 +106,7 @@ export default function PrivatePilotSyllabus({ studentId, canEdit = false }) {
       supabase.from('syllabus_lessons').select('*').eq('syllabus_id', en.syllabus.id).order('sort_order'),
       supabase.from('syllabus_lesson_progress').select('*').eq('student_syllabus_id', en.id),
       supabase.from('logbook_entries').select('syllabus_lesson_id, date, dual_received, solo_time').eq('student_id', studentId).not('syllabus_lesson_id', 'is', null),
-      supabase.from('faa_experience_requirements').select('*').order('sort_order'),
+      supabase.from('faa_experience_requirements').select('*').eq('syllabus_id', en.syllabus.id).order('sort_order'),
       supabase.from('student_faa_experience_checks').select('*').eq('student_id', studentId),
       supabase.from('remediation_cases').select('*, lesson:syllabus_lesson_id(lesson_code, title)').eq('student_syllabus_id', en.id).order('identified_date', { ascending: false }),
     ])
@@ -90,25 +126,17 @@ export default function PrivatePilotSyllabus({ studentId, canEdit = false }) {
     setLogbookByLesson(byLesson)
 
     setFaaRequirements(faaReqs ?? [])
-    setFaaChecks(Object.fromEntries((faaCheckRows ?? []).map(c => [c.requirement_key, c])))
+    setFaaChecks(Object.fromEntries((faaCheckRows ?? []).map(c => [c.requirement_id, c])))
     setRemediationCases((remRows ?? []).map(r => ({ ...r, lesson: toOne(r.lesson) })))
 
     // FAA experience actuals: aggregate over ALL of the student's logged
-    // flight time, not just lessons tagged to the syllabus -- experience
+    // flight time, not just lessons tagged to this syllabus -- experience
     // requirements are about the student's total logbook, not one course.
     const { data: allLogbook } = await supabase
       .from('logbook_entries')
-      .select('total_time, dual_received, solo_time, night_time, actual_instrument, simulated_instrument, night_landings')
+      .select('total_time, dual_received, solo_time, pic_time, cross_country_time, night_time, actual_instrument, simulated_instrument, night_landings')
       .eq('student_id', studentId)
-    const sum = (key, fallback) => (allLogbook ?? []).reduce((s, r) => s + Number(r[key] ?? fallback?.(r) ?? 0), 0)
-    setFaaActuals({
-      total_flight: sum('total_time'),
-      dual_flight: sum('dual_received'),
-      solo_flight: sum('solo_time'),
-      night_instruction: sum('night_time'),
-      night_landings: sum('night_landings'),
-      instrument_reference: (allLogbook ?? []).reduce((s, r) => s + Number(r.actual_instrument ?? 0) + Number(r.simulated_instrument ?? 0), 0),
-    })
+    setFaaActuals(config.computeFaaActuals(allLogbook ?? []))
 
     setLoading(false)
   }
@@ -168,23 +196,25 @@ export default function PrivatePilotSyllabus({ studentId, canEdit = false }) {
 
   async function toggleFaaVerified(req) {
     if (!canEdit) return
-    const existing = faaChecks[req.requirement_key]
+    const existing = faaChecks[req.id]
     const verified = !existing?.verified
     const payload = {
-      student_id: studentId, requirement_key: req.requirement_key, verified,
+      student_id: studentId, requirement_id: req.id, verified,
       verified_date: verified ? new Date().toISOString().slice(0, 10) : null,
       updated_at: new Date().toISOString(),
     }
     const { data, error } = existing
       ? await supabase.from('student_faa_experience_checks').update(payload).eq('id', existing.id).select().maybeSingle()
       : await supabase.from('student_faa_experience_checks').insert(payload).select().maybeSingle()
-    if (!error && data) setFaaChecks(c => ({ ...c, [req.requirement_key]: data }))
+    if (!error && data) setFaaChecks(c => ({ ...c, [req.id]: data }))
   }
 
+  if (!config) return null
   if (loading) return <p className="empty-state">Loading syllabus…</p>
-  if (!enrollment) return <p className="empty-state" style={{ padding: '8px 0' }}>Not enrolled in the Private Pilot syllabus.</p>
+  if (!enrollment) return <p className="empty-state" style={{ padding: '8px 0' }}>Not enrolled in the {config.notEnrolledLabel}.</p>
 
-  const stages = [1, 2, 3, 4].map(stage => {
+  const stageNumbers = Object.keys(config.stageNames).map(Number).sort((a, b) => a - b)
+  const stages = stageNumbers.map(stage => {
     const stageLessons = lessons.filter(l => l.stage === stage)
     const planFlight = stageLessons.reduce((s, l) => s + Number(l.plan_flight_hours ?? 0), 0)
     const planGround = stageLessons.reduce((s, l) => s + Number(l.plan_ground_hours ?? 0), 0)
@@ -205,7 +235,7 @@ export default function PrivatePilotSyllabus({ studentId, canEdit = false }) {
           <tbody>
             {stages.map(s => (
               <tr key={s.stage}>
-                <td>{STAGE_NAMES[s.stage]}</td>
+                <td>{config.stageNames[s.stage]}</td>
                 <td>{fmt(s.planFlight)}</td>
                 <td>{fmt(s.planGround)}</td>
                 <td>{fmt(s.actualFlight)}</td>
@@ -224,9 +254,9 @@ export default function PrivatePilotSyllabus({ studentId, canEdit = false }) {
         <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>Planning hours, not a guaranteed number of flights or a completion-time promise.</p>
       </div>
 
-      {[1, 2, 3, 4].map(stage => (
+      {stageNumbers.map(stage => (
         <div className="card" style={{ marginBottom: 20 }} key={stage}>
-          <p className="card__title">{STAGE_NAMES[stage]}</p>
+          <p className="card__title">{config.stageNames[stage]}</p>
           <Table>
             <thead>
               <tr>
@@ -244,7 +274,7 @@ export default function PrivatePilotSyllabus({ studentId, canEdit = false }) {
                 return (
                   <tr key={lesson.id}>
                     <td>{lesson.lesson_code}</td>
-                    <td className="td-notes">{lesson.title.replace(/^[FG]\d+\s*[•-]\s*/, '')}</td>
+                    <td className="td-notes">{lesson.title.replace(/^[A-Za-z]+\d+\s*[•-]\s*/, '')}</td>
                     <td>{lesson.mode}</td>
                     <td>{fmt(planHrs)}</td>
                     <td>{fmt(actualHrs)}</td>
@@ -276,16 +306,17 @@ export default function PrivatePilotSyllabus({ studentId, canEdit = false }) {
       ))}
 
       <div className="card" style={{ marginBottom: 20 }}>
-        <p className="card__title">FAA Experience — §61.109(a)</p>
+        <p className="card__title">FAA Experience — {category === 'Instrument Rating' ? '§61.65' : '§61.109(a)'}</p>
         <Table>
           <thead><tr><th>Requirement</th><th>Minimum</th><th>Actual</th><th>Remaining</th><th>Verified</th></tr></thead>
           <tbody>
             {faaRequirements.map(req => {
-              const check = faaChecks[req.requirement_key]
-              const actual = check?.manual_actual_override ?? (AUTO_COMPUTABLE.has(req.requirement_key) ? faaActuals[req.requirement_key] ?? 0 : null)
+              const check = faaChecks[req.id]
+              const computed = faaActuals[req.requirement_key]
+              const actual = check?.manual_actual_override ?? (computed != null ? computed : null)
               const remaining = actual == null ? null : Math.max(0, Number(req.minimum) - actual)
               return (
-                <tr key={req.requirement_key}>
+                <tr key={req.id}>
                   <td>{req.label}</td>
                   <td>{fmt(req.minimum)}</td>
                   <td>{actual == null ? '— (instructor review)' : fmt(actual)}</td>

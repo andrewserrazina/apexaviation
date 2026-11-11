@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import Layout from '../components/Layout'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
-import PrivatePilotSyllabus from '../components/PrivatePilotSyllabus.jsx'
+import RatingSyllabus, { RATING_CONFIGS } from '../components/RatingSyllabus.jsx'
 
 // Same fixed destination PortalSelector.jsx uses for Apex Advantage --
 // a separate app entirely (vanilla-JS site/portal.html), not part of
@@ -23,6 +23,7 @@ export default function FlightStudentDashboard() {
   const [upcomingCount, setUpcomingCount] = useState(0)
   const [debriefs, setDebriefs] = useState([])
   const [programs, setPrograms] = useState([]) // enrolled flight syllabi, with lessons + completion
+  const [ratingCategories, setRatingCategories] = useState([]) // flight syllabi with a RatingSyllabus config
 
   useEffect(() => { if (profile) load() }, [profile])
 
@@ -60,9 +61,13 @@ export default function FlightStudentDashboard() {
     setUpcomingCount(upcomingTotal ?? 0)
     setDebriefs(pastWithDebrief ?? [])
 
-    // Private Pilot flight syllabus gets its own full stage/lesson/FAA-experience
-    // view below (<PrivatePilotSyllabus />) instead of this generic outline.
-    const flightEnrollments = (enrollments ?? []).filter(en => en.syllabus?.type === 'flight' && en.syllabus?.category !== 'Private Pilot')
+    setRatingCategories([...new Set((enrollments ?? [])
+      .filter(en => en.syllabus?.type === 'flight' && RATING_CONFIGS[en.syllabus?.category])
+      .map(en => en.syllabus.category))])
+
+    // Flight syllabi with a RatingSyllabus config get their own full
+    // stage/lesson/FAA-experience view below instead of this generic outline.
+    const flightEnrollments = (enrollments ?? []).filter(en => en.syllabus?.type === 'flight' && !RATING_CONFIGS[en.syllabus?.category])
     const enriched = await Promise.all(flightEnrollments.map(async en => {
       const [{ data: lessons }, { data: completions }] = await Promise.all([
         supabase.from('syllabus_lessons').select('*').eq('syllabus_id', en.syllabus.id).order('sort_order'),
@@ -148,10 +153,12 @@ export default function FlightStudentDashboard() {
             )}
           </section>
 
-          <div style={{ marginTop: 20 }}>
-            <h3 className="card__title" style={{ marginBottom: 12 }}>My Private Pilot Syllabus</h3>
-            <PrivatePilotSyllabus studentId={profile.id} canEdit={false} />
-          </div>
+          {ratingCategories.map(category => (
+            <div style={{ marginTop: 20 }} key={category}>
+              <h3 className="card__title" style={{ marginBottom: 12 }}>My {category} Syllabus</h3>
+              <RatingSyllabus studentId={profile.id} category={category} canEdit={false} />
+            </div>
+          ))}
 
           <section className="card" style={{ marginTop: 20 }}>
             <h3 className="card__title">Program Outline</h3>

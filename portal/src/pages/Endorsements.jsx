@@ -27,7 +27,7 @@ const ENDORSEMENT_TYPES = [
 ]
 
 const STAGE_CHECK_TYPES = [
-  'Stage 1 Check', 'Stage 2 Check', 'Stage 3 Check',
+  'Stage 1 Check', 'Stage 2 Check', 'Stage 3 Check', 'Stage 4 Check',
   'Pre-Solo Check', 'Pre-XC Check', 'Pre-Checkride Oral',
   'Pre-Checkride Flight', 'Mock Checkride',
 ]
