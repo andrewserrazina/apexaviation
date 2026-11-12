@@ -153,12 +153,12 @@ export default function Students() {
     setEnrollModal({ student })
   }
 
-  // Carries the picked student into the Training Records group (Training
-  // Records, Syllabi, Logbook, Endorsements) via the shared selected-student
-  // context, so picking someone here is the same as picking them there.
-  function viewTrainingRecord(student) {
+  // Carries the picked student into whichever page shares the selected-
+  // student context (Training Records and its adjacent tools, Billing,
+  // Documents) so picking someone here is the same as picking them there.
+  function jumpTo(student, path) {
     setSelectedStudentId(student.id)
-    navigate('/training-records')
+    navigate(path)
   }
 
   function openEmail(student) {
@@ -330,13 +330,15 @@ export default function Students() {
                   </td>
                   <td>{totalHours(s)} hrs</td>
                   <td>
-                    <div style={{ display: 'flex', gap: 10 }}>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                       <button className="btn-link" onClick={() => openEdit(s)}>Edit</button>
                       <button className="btn-link" onClick={() => openEnroll(s)}>Syllabi</button>
                       <button className="btn-link" onClick={() => openEmail(s)}>Email</button>
                       {(s.student_type ?? 'apex_advantage') === 'flight_student' && (
-                        <button className="btn-link" onClick={() => viewTrainingRecord(s)}>Training Record →</button>
+                        <button className="btn-link" onClick={() => jumpTo(s, '/training-records')}>Training Record →</button>
                       )}
+                      <button className="btn-link" onClick={() => jumpTo(s, '/billing')}>Billing →</button>
+                      <button className="btn-link" onClick={() => jumpTo(s, '/documents')}>Documents →</button>
                     </div>
                   </td>
                 </tr>
