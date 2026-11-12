@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 import { PageHeader, StatsRow, Button } from '../components/ui'
-import PrivatePilotSyllabus from '../components/PrivatePilotSyllabus.jsx'
+import RatingSyllabus, { RATING_CONFIGS } from '../components/RatingSyllabus.jsx'
 import { toOne } from '../lib/postgrestEmbed'
 
 function toCSV(rows) {
@@ -93,11 +93,16 @@ export default function TrainingRecords() {
       stageChecks: stageChecks ?? [],
       writtenTests: writtenTests ?? [],
       logbook: logbook ?? [],
+      ratingCategories: [...new Set((studentSyllabi ?? [])
+        .map(en => toOne(en.syllabus))
+        .filter(s => s?.type === 'flight' && RATING_CONFIGS[s.category])
+        .map(s => s.category))],
       syllabusProgress: (studentSyllabi ?? [])
         .map(en => ({ ...en, syllabus: toOne(en.syllabus) }))
-        // The Private Pilot flight syllabus gets its own full stage/lesson/FAA-experience
-        // view below (<PrivatePilotSyllabus />) instead of this generic progress-bar card.
-        .filter(en => !(en.syllabus?.type === 'flight' && en.syllabus?.category === 'Private Pilot'))
+        // Flight syllabi with a RatingSyllabus config get their own full
+        // stage/lesson/FAA-experience view below instead of this generic
+        // progress-bar card.
+        .filter(en => !(en.syllabus?.type === 'flight' && RATING_CONFIGS[en.syllabus?.category]))
         .map(en => {
           const totalLessons = (syllabusLessons ?? []).filter(l => l.syllabus_id === en.syllabus_id).length
           const doneLessons = (completions ?? []).filter(c => c.student_syllabus_id === en.id).length
@@ -168,9 +173,11 @@ export default function TrainingRecords() {
             ]}
           />
 
-          <div style={{ marginBottom: 20 }}>
-            <PrivatePilotSyllabus studentId={studentId} canEdit />
-          </div>
+          {record.ratingCategories.map(category => (
+            <div style={{ marginBottom: 20 }} key={category}>
+              <RatingSyllabus studentId={studentId} category={category} canEdit />
+            </div>
+          ))}
 
           <div className="card" style={{ marginBottom: 20 }}>
             <p className="card__title">Other Syllabus Progress <Link to="/syllabi" className="btn-link" style={{ fontSize: 12, marginLeft: 8 }}>Manage in Syllabi →</Link></p>

@@ -86,12 +86,14 @@ export default function Logbook() {
     supabase.from('aircraft').select('id, tail_number, make, model').order('tail_number')
       .then(({ data }) => setAircraft(data ?? []))
     if (canEdit) {
-      supabase.from('syllabi').select('id').eq('type', 'flight').eq('category', 'Private Pilot').maybeSingle()
-        .then(({ data: syllabus }) => {
-          if (!syllabus) return
-          supabase.from('syllabus_lessons').select('id, lesson_code, title, stage')
-            .eq('syllabus_id', syllabus.id).order('sort_order')
-            .then(({ data }) => setSyllabusLessons(data ?? []))
+      supabase.from('syllabi').select('id, category').eq('type', 'flight').in('category', ['Private Pilot', 'Instrument Rating'])
+        .then(async ({ data: syllabi }) => {
+          if (!syllabi?.length) return
+          const { data } = await supabase.from('syllabus_lessons')
+            .select('id, lesson_code, title, stage, syllabus_id')
+            .in('syllabus_id', syllabi.map(s => s.id)).order('sort_order')
+          const categoryBySyllabusId = Object.fromEntries(syllabi.map(s => [s.id, s.category]))
+          setSyllabusLessons((data ?? []).map(l => ({ ...l, category: categoryBySyllabusId[l.syllabus_id] })))
         })
     }
   }, [profile])
@@ -335,12 +337,18 @@ export default function Logbook() {
                 <label>Apply to Syllabus Lesson (optional)</label>
                 <select value={form.syllabus_lesson_id} onChange={e => field('syllabus_lesson_id', e.target.value)}>
                   <option value="">No lesson — standalone flight</option>
-                  {[1, 2, 3, 4].map(stage => (
-                    <optgroup key={stage} label={`Stage ${stage}`}>
-                      {syllabusLessons.filter(l => l.stage === stage).map(l => (
-                        <option key={l.id} value={l.id}>{l.lesson_code} • {l.title.replace(/^[FG]\d+\s*[•-]\s*/, '')}</option>
-                      ))}
-                    </optgroup>
+                  {['Private Pilot', 'Instrument Rating'].map(category => (
+                    [1, 2, 3, 4].map(stage => {
+                      const group = syllabusLessons.filter(l => l.category === category && l.stage === stage)
+                      if (!group.length) return null
+                      return (
+                        <optgroup key={`${category}-${stage}`} label={`${category} • Stage ${stage}`}>
+                          {group.map(l => (
+                            <option key={l.id} value={l.id}>{l.lesson_code} • {l.title.replace(/^[A-Za-z]+\d+\s*[•-]\s*/, '')}</option>
+                          ))}
+                        </optgroup>
+                      )
+                    })
                   ))}
                 </select>
               </div>
