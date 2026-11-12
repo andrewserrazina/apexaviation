@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useSelectedStudent } from '../context/SelectedStudentContext'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
 import { sendAdminEmail } from '../lib/email'
@@ -52,6 +54,8 @@ function downloadCsv(rows, columns, filename) {
 
 export default function Students() {
   const { profile } = useAuth()
+  const navigate = useNavigate()
+  const { setSelectedStudentId } = useSelectedStudent()
   const [students, setStudents] = useState([])
   const [syllabi, setSyllabi] = useState([])
   const [loading, setLoading] = useState(true)
@@ -147,6 +151,14 @@ export default function Students() {
     const { data } = await supabase.from('student_syllabi').select('syllabus_id').eq('student_id', student.id)
     setEnrollments((data ?? []).map(e => e.syllabus_id))
     setEnrollModal({ student })
+  }
+
+  // Carries the picked student into the Training Records group (Training
+  // Records, Syllabi, Logbook, Endorsements) via the shared selected-student
+  // context, so picking someone here is the same as picking them there.
+  function viewTrainingRecord(student) {
+    setSelectedStudentId(student.id)
+    navigate('/training-records')
   }
 
   function openEmail(student) {
@@ -322,6 +334,9 @@ export default function Students() {
                       <button className="btn-link" onClick={() => openEdit(s)}>Edit</button>
                       <button className="btn-link" onClick={() => openEnroll(s)}>Syllabi</button>
                       <button className="btn-link" onClick={() => openEmail(s)}>Email</button>
+                      {(s.student_type ?? 'apex_advantage') === 'flight_student' && (
+                        <button className="btn-link" onClick={() => viewTrainingRecord(s)}>Training Record →</button>
+                      )}
                     </div>
                   </td>
                 </tr>

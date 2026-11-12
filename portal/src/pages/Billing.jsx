@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useSelectedStudent } from '../context/SelectedStudentContext'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
 import { PageHeader, StatsRow, Button, Table } from '../components/ui'
@@ -86,7 +87,7 @@ export default function Billing() {
   const [invoices, setInvoices] = useState([])
   const [loading, setLoading] = useState(true)
   const [students, setStudents] = useState([])
-  const [studentId, setStudentId] = useState('')
+  const { selectedStudentId: studentId, setSelectedStudentId: setStudentId } = useSelectedStudent()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [payingId, setPayingId] = useState(null)

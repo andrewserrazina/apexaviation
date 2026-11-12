@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useSelectedStudent } from '../context/SelectedStudentContext'
 import Layout from '../components/Layout'
 import { PageHeader, StatsRow, Button } from '../components/ui'
 import RatingSyllabus, { RATING_CONFIGS } from '../components/RatingSyllabus.jsx'
@@ -33,14 +34,16 @@ export default function TrainingRecords() {
   const isInstructor = profile?.role === 'instructor'
 
   const [students, setStudents] = useState([])
-  const [studentId, setStudentId] = useState('')
+  const { selectedStudentId: studentId, setSelectedStudentId: setStudentId } = useSelectedStudent()
   const [loading, setLoading] = useState(false)
   const [record, setRecord] = useState(null)
 
   useEffect(() => {
     if (!profile) return
     if (isAdmin) {
-      supabase.from('profiles').select('id, full_name').eq('role', 'student').order('full_name').then(({ data }) => setStudents(data ?? []))
+      // This page is purely flight-training recordkeeping -- Apex
+      // Advantage (ground-only) members never appear here.
+      supabase.from('profiles').select('id, full_name').eq('role', 'student').eq('student_type', 'flight_student').order('full_name').then(({ data }) => setStudents(data ?? []))
     } else if (isInstructor) {
       supabase.from('lessons').select('student_id, student:profiles!student_id(id, full_name)').eq('instructor_id', profile.id).then(({ data }) => {
         const seen = new Set(); const unique = []

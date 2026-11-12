@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useSelectedStudent } from '../context/SelectedStudentContext'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
 
@@ -45,7 +46,8 @@ export default function Endorsements() {
   const canManage = isAdmin || isInstructor
 
   const [students, setStudents] = useState([])
-  const [selectedStudent, setSelectedStudent] = useState(isStudent ? profile.id : '')
+  const { selectedStudentId, setSelectedStudentId } = useSelectedStudent()
+  const selectedStudent = isStudent ? profile.id : selectedStudentId
   const [tab, setTab] = useState('endorsements')
 
   const [endorsements, setEndorsements] = useState([])
@@ -64,7 +66,10 @@ export default function Endorsements() {
 
   useEffect(() => {
     if (canManage) {
-      supabase.from('profiles').select('id, full_name').eq('role', 'student').order('full_name')
+      // Endorsements/stage checks/written tests are all flight-training
+      // record-keeping -- Apex Advantage (ground-only) members never
+      // appear here, so keep them out of this picker too.
+      supabase.from('profiles').select('id, full_name').eq('role', 'student').eq('student_type', 'flight_student').order('full_name')
         .then(({ data }) => setStudents(data ?? []))
       supabase.from('profiles').select('id, full_name').eq('role', 'instructor').order('full_name')
         .then(({ data }) => setInstructors(data ?? []))
@@ -160,7 +165,7 @@ export default function Endorsements() {
 
       {canManage && (
         <div style={{ marginBottom: 20 }}>
-          <select className="select-input" value={selectedStudent} onChange={e => setSelectedStudent(e.target.value)}>
+          <select className="select-input" value={selectedStudent} onChange={e => setSelectedStudentId(e.target.value)}>
             <option value="">Select a student</option>
             {students.map(s => <option key={s.id} value={s.id}>{s.full_name}</option>)}
           </select>

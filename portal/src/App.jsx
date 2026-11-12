@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { NotifProvider } from './context/NotificationContext'
+import { SelectedStudentProvider } from './context/SelectedStudentContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import LoadingState from './components/ui/LoadingState'
 
@@ -52,65 +53,67 @@ export default function App() {
   return (
     <AuthProvider>
       <NotifProvider>
-        <BrowserRouter>
-          <Suspense fallback={<LoadingState fullScreen label="Loading page…" />}>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/portal-select" element={<ProtectedRoute><PortalSelector /></ProtectedRoute>} />
-              <Route path="/dashboard"   element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/flight-dashboard" element={<ProtectedRoute roles={['student']}><FlightStudentDashboard /></ProtectedRoute>} />
-              {/* OperationsDashboard/Schedule/Simulator retired -- all
-                  three were placeholders over empty/dead data
-                  (operations_events has 0 rows; the simulator offering
-                  itself was retracted from the business). The unified
-                  Scheduling calendar replaces them; old links redirect
-                  there instead of 404ing. */}
-              <Route path="/operations" element={<Navigate to="/scheduling" replace />} />
-              <Route path="/operations/dashboard" element={<Navigate to="/scheduling" replace />} />
-              <Route path="/operations/schedule" element={<Navigate to="/scheduling" replace />} />
-              <Route path="/operations/simulator" element={<Navigate to="/scheduling" replace />} />
-              <Route path="/operations/settings" element={<ProtectedRoute adminOnly><OperationsSettings /></ProtectedRoute>} />
-              <Route path="/admin/ground-school-schedule" element={<ProtectedRoute roles={['admin', 'office_manager']}><AdminGroundSchoolSchedule /></ProtectedRoute>} />
-              <Route path="/ground-school-bidding" element={<ProtectedRoute roles={['admin', 'instructor']}><GroundSchoolBidding /></ProtectedRoute>} />
-              <Route path="/students"    element={<ProtectedRoute roles={['admin', 'office_manager']}><Students /></ProtectedRoute>} />
-              <Route path="/instructors" element={<ProtectedRoute><Instructors /></ProtectedRoute>} />
-              <Route path="/aircraft"    element={<ProtectedRoute><Aircraft /></ProtectedRoute>} />
-              <Route path="/analytics"   element={<ProtectedRoute adminOnly><Analytics /></ProtectedRoute>} />
-              <Route path="/marketing-funnel" element={<ProtectedRoute adminOnly><MarketingFunnel /></ProtectedRoute>} />
-              <Route path="/profile"     element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-              <Route path="/syllabi"     element={<ProtectedRoute><Syllabi /></ProtectedRoute>} />
-              <Route path="/schedule"    element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
-              <Route path="/scheduling"  element={<ProtectedRoute roles={['admin', 'instructor', 'office_manager']}><OperationsCalendar /></ProtectedRoute>} />
-              <Route path="/logbook"     element={<ProtectedRoute><Logbook /></ProtectedRoute>} />
-              <Route path="/training-records" element={<ProtectedRoute roles={['admin', 'instructor']}><TrainingRecords /></ProtectedRoute>} />
-              <Route path="/billing"     element={<ProtectedRoute><Billing /></ProtectedRoute>} />
-              <Route path="/ground-schedule" element={<ProtectedRoute><GroundSchedule /></ProtectedRoute>} />
-              <Route path="/attend/:type/:token" element={<Attend />} />
-              <Route path="/documents"       element={<ProtectedRoute><Documents /></ProtectedRoute>} />
-              <Route path="/crm"             element={<ProtectedRoute><CRM /></ProtectedRoute>} />
-              <Route path="/endorsements"    element={<ProtectedRoute><Endorsements /></ProtectedRoute>} />
-              <Route path="/messages"        element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-              <Route path="/announcements"   element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
-              <Route path="/broadcast"       element={<ProtectedRoute adminOnly><Broadcast /></ProtectedRoute>} />
-              <Route path="/nonbuyers"       element={<ProtectedRoute adminOnly><Nonbuyers /></ProtectedRoute>} />
-              <Route path="/dpe-content"     element={<ProtectedRoute adminOnly><DpeContent /></ProtectedRoute>} />
-              <Route path="/reports"         element={<ProtectedRoute adminOnly><Reports /></ProtectedRoute>} />
-              <Route path="/payroll"         element={<ProtectedRoute adminOnly><Payroll /></ProtectedRoute>} />
-              <Route path="/mock-oral-requests" element={<ProtectedRoute roles={['admin', 'instructor']}><MockOralRequests /></ProtectedRoute>} />
-              <Route path="/mock-orals" element={<ProtectedRoute roles={['admin', 'instructor']}><MockOralDashboard /></ProtectedRoute>} />
-              <Route path="/mock-oral-availability" element={<ProtectedRoute roles={['admin', 'instructor']}><MockOralAvailability /></ProtectedRoute>} />
-              <Route path="/mock-orals/:bookingId" element={<ProtectedRoute roles={['admin', 'instructor']}><MockOralAssessment /></ProtectedRoute>} />
-              <Route path="/private-instruction" element={<ProtectedRoute roles={['admin', 'instructor']}><PrivateInstructionDashboard /></ProtectedRoute>} />
-              <Route path="/private-instruction-availability" element={<ProtectedRoute roles={['admin', 'instructor']}><PrivateInstructionAvailability /></ProtectedRoute>} />
-              <Route path="/instructor-hub"  element={<ProtectedRoute><InstructorHub /></ProtectedRoute>} />
-              <Route path="/xp-ledger"       element={<ProtectedRoute adminOnly><XpLedger /></ProtectedRoute>} />
-              <Route path="/missions"        element={<ProtectedRoute adminOnly><Missions /></ProtectedRoute>} />
-              <Route path="/pilot-journey"   element={<ProtectedRoute roles={['admin', 'instructor']}><PilotJourney /></ProtectedRoute>} />
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
+        <SelectedStudentProvider>
+          <BrowserRouter>
+            <Suspense fallback={<LoadingState fullScreen label="Loading page…" />}>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/portal-select" element={<ProtectedRoute><PortalSelector /></ProtectedRoute>} />
+                <Route path="/dashboard"   element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/flight-dashboard" element={<ProtectedRoute roles={['student']}><FlightStudentDashboard /></ProtectedRoute>} />
+                {/* OperationsDashboard/Schedule/Simulator retired -- all
+                    three were placeholders over empty/dead data
+                    (operations_events has 0 rows; the simulator offering
+                    itself was retracted from the business). The unified
+                    Scheduling calendar replaces them; old links redirect
+                    there instead of 404ing. */}
+                <Route path="/operations" element={<Navigate to="/scheduling" replace />} />
+                <Route path="/operations/dashboard" element={<Navigate to="/scheduling" replace />} />
+                <Route path="/operations/schedule" element={<Navigate to="/scheduling" replace />} />
+                <Route path="/operations/simulator" element={<Navigate to="/scheduling" replace />} />
+                <Route path="/operations/settings" element={<ProtectedRoute adminOnly><OperationsSettings /></ProtectedRoute>} />
+                <Route path="/admin/ground-school-schedule" element={<ProtectedRoute roles={['admin', 'office_manager']}><AdminGroundSchoolSchedule /></ProtectedRoute>} />
+                <Route path="/ground-school-bidding" element={<ProtectedRoute roles={['admin', 'instructor']}><GroundSchoolBidding /></ProtectedRoute>} />
+                <Route path="/students"    element={<ProtectedRoute roles={['admin', 'office_manager']}><Students /></ProtectedRoute>} />
+                <Route path="/instructors" element={<ProtectedRoute><Instructors /></ProtectedRoute>} />
+                <Route path="/aircraft"    element={<ProtectedRoute><Aircraft /></ProtectedRoute>} />
+                <Route path="/analytics"   element={<ProtectedRoute adminOnly><Analytics /></ProtectedRoute>} />
+                <Route path="/marketing-funnel" element={<ProtectedRoute adminOnly><MarketingFunnel /></ProtectedRoute>} />
+                <Route path="/profile"     element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                <Route path="/syllabi"     element={<ProtectedRoute><Syllabi /></ProtectedRoute>} />
+                <Route path="/schedule"    element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
+                <Route path="/scheduling"  element={<ProtectedRoute roles={['admin', 'instructor', 'office_manager']}><OperationsCalendar /></ProtectedRoute>} />
+                <Route path="/logbook"     element={<ProtectedRoute><Logbook /></ProtectedRoute>} />
+                <Route path="/training-records" element={<ProtectedRoute roles={['admin', 'instructor']}><TrainingRecords /></ProtectedRoute>} />
+                <Route path="/billing"     element={<ProtectedRoute><Billing /></ProtectedRoute>} />
+                <Route path="/ground-schedule" element={<ProtectedRoute><GroundSchedule /></ProtectedRoute>} />
+                <Route path="/attend/:type/:token" element={<Attend />} />
+                <Route path="/documents"       element={<ProtectedRoute><Documents /></ProtectedRoute>} />
+                <Route path="/crm"             element={<ProtectedRoute><CRM /></ProtectedRoute>} />
+                <Route path="/endorsements"    element={<ProtectedRoute><Endorsements /></ProtectedRoute>} />
+                <Route path="/messages"        element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+                <Route path="/announcements"   element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
+                <Route path="/broadcast"       element={<ProtectedRoute adminOnly><Broadcast /></ProtectedRoute>} />
+                <Route path="/nonbuyers"       element={<ProtectedRoute adminOnly><Nonbuyers /></ProtectedRoute>} />
+                <Route path="/dpe-content"     element={<ProtectedRoute adminOnly><DpeContent /></ProtectedRoute>} />
+                <Route path="/reports"         element={<ProtectedRoute adminOnly><Reports /></ProtectedRoute>} />
+                <Route path="/payroll"         element={<ProtectedRoute adminOnly><Payroll /></ProtectedRoute>} />
+                <Route path="/mock-oral-requests" element={<ProtectedRoute roles={['admin', 'instructor']}><MockOralRequests /></ProtectedRoute>} />
+                <Route path="/mock-orals" element={<ProtectedRoute roles={['admin', 'instructor']}><MockOralDashboard /></ProtectedRoute>} />
+                <Route path="/mock-oral-availability" element={<ProtectedRoute roles={['admin', 'instructor']}><MockOralAvailability /></ProtectedRoute>} />
+                <Route path="/mock-orals/:bookingId" element={<ProtectedRoute roles={['admin', 'instructor']}><MockOralAssessment /></ProtectedRoute>} />
+                <Route path="/private-instruction" element={<ProtectedRoute roles={['admin', 'instructor']}><PrivateInstructionDashboard /></ProtectedRoute>} />
+                <Route path="/private-instruction-availability" element={<ProtectedRoute roles={['admin', 'instructor']}><PrivateInstructionAvailability /></ProtectedRoute>} />
+                <Route path="/instructor-hub"  element={<ProtectedRoute><InstructorHub /></ProtectedRoute>} />
+                <Route path="/xp-ledger"       element={<ProtectedRoute adminOnly><XpLedger /></ProtectedRoute>} />
+                <Route path="/missions"        element={<ProtectedRoute adminOnly><Missions /></ProtectedRoute>} />
+                <Route path="/pilot-journey"   element={<ProtectedRoute roles={['admin', 'instructor']}><PilotJourney /></ProtectedRoute>} />
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </SelectedStudentProvider>
       </NotifProvider>
     </AuthProvider>
   )

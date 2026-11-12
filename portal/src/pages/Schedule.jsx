@@ -90,7 +90,9 @@ export default function Schedule() {
 
   useEffect(() => {
     if (!canEdit) return
-    supabase.from('profiles').select('id, full_name').eq('role', 'student').order('full_name')
+    // Flight lessons only ever get booked for flight students -- keep
+    // Apex Advantage (ground-only) members out of this picker.
+    supabase.from('profiles').select('id, full_name').eq('role', 'student').eq('student_type', 'flight_student').order('full_name')
       .then(({ data }) => setStudents(data ?? []))
     supabase.from('profiles').select('id, full_name').eq('role', 'instructor').order('full_name')
       .then(({ data }) => setInstructors(data ?? []))

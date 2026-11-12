@@ -25,18 +25,6 @@ const navGroups = [
     label: 'Scheduling',
     items: [
       { to: '/scheduling', label: 'Calendar', roles: ['admin', 'instructor', 'office_manager'] },
-      { to: '/admin/ground-school-schedule', label: 'Ground School Classes', roles: ['admin', 'office_manager'] },
-      { to: '/ground-school-bidding', label: 'Ground School Bidding', roles: ['admin', 'instructor'] },
-      { to: '/mock-oral-availability', label: 'Mock Oral Availability', roles: ['admin', 'instructor'] },
-      { to: '/private-instruction-availability', label: 'Private Instruction Availability', roles: ['admin', 'instructor'] },
-      { to: '/mock-oral-requests', label: 'Mock Oral Requests (Legacy $99)', roles: ['admin', 'instructor'] },
-      // Legacy ($25/class) Ground School is discontinued and no longer
-      // advertised -- nothing left for a student to book here, so the
-      // nav entry stays hidden for that role but visible to
-      // admin/instructor for historical schedule data. GroundSchedule.jsx
-      // itself is untouched, consistent with this being an advertising
-      // change, not a backend decommission.
-      { to: '/ground-schedule', label: 'Legacy Ground School', roles: ['admin', 'instructor'] },
     ],
   },
   {
@@ -96,6 +84,16 @@ const navGroups = [
     items: [
       { to: '/instructor-hub',       label: 'Instructor Hub', roles: ['admin', 'instructor'] },
       { to: '/operations/settings',  label: 'Staff Roles',    roles: ['admin'] },
+      { to: '/admin/ground-school-schedule', label: 'Ground School Classes', roles: ['admin', 'office_manager'] },
+      { to: '/mock-oral-availability', label: 'Mock Oral Availability', roles: ['admin', 'instructor'] },
+      { to: '/private-instruction-availability', label: 'Private Instruction Availability', roles: ['admin', 'instructor'] },
+      { to: '/mock-oral-requests', label: 'Mock Oral Requests (Legacy $99)', roles: ['admin', 'instructor'] },
+      // Ground School Bidding and the legacy ($25/class) Ground School
+      // schedule are intentionally not linked here -- both are
+      // discontinued/superseded booking flows with nothing left for
+      // day-to-day staff to act on. Their pages and routes stay in the
+      // repo (GroundSchoolBidding.jsx, GroundSchedule.jsx) for
+      // historical data; staff with the direct URL can still reach them.
     ],
   },
 ]
