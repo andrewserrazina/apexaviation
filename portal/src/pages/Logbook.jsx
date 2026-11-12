@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useSelectedStudent } from '../context/SelectedStudentContext'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
+import { RATING_CONFIGS } from '../components/RatingSyllabus.jsx'
 
 const BLANK = {
   student_id: '', instructor_id: '', date: '', aircraft_id: '', route: '', duration_hours: '', notes: '',
@@ -89,7 +90,7 @@ export default function Logbook() {
     supabase.from('aircraft').select('id, tail_number, make, model').order('tail_number')
       .then(({ data }) => setAircraft(data ?? []))
     if (canEdit) {
-      supabase.from('syllabi').select('id, category').eq('type', 'flight').in('category', ['Private Pilot', 'Instrument Rating'])
+      supabase.from('syllabi').select('id, category').eq('type', 'flight').in('category', Object.keys(RATING_CONFIGS))
         .then(async ({ data: syllabi }) => {
           if (!syllabi?.length) return
           const { data } = await supabase.from('syllabus_lessons')
@@ -340,7 +341,7 @@ export default function Logbook() {
                 <label>Apply to Syllabus Lesson (optional)</label>
                 <select value={form.syllabus_lesson_id} onChange={e => field('syllabus_lesson_id', e.target.value)}>
                   <option value="">No lesson — standalone flight</option>
-                  {['Private Pilot', 'Instrument Rating'].map(category => (
+                  {Object.keys(RATING_CONFIGS).map(category => (
                     [1, 2, 3, 4].map(stage => {
                       const group = syllabusLessons.filter(l => l.category === category && l.stage === stage)
                       if (!group.length) return null

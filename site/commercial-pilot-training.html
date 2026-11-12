@@ -24,6 +24,11 @@
   <link rel="stylesheet" href="pages.css" />
   <style>
     /* ── Mobile overrides ── */
+    @media (max-width: 900px) {
+      .cpt-syllabus-grid {
+        grid-template-columns: 1fr 1fr !important;
+      }
+    }
     @media (max-width: 640px) {
       .cpt-why-grid {
         grid-template-columns: 1fr !important;
@@ -31,6 +36,12 @@
       }
       .cpt-curriculum-grid {
         grid-template-columns: 1fr !important;
+      }
+      .cpt-syllabus-grid {
+        grid-template-columns: 1fr !important;
+      }
+      .cpt-section-block {
+        margin-bottom: 40px !important;
       }
     }
   </style>
@@ -268,6 +279,51 @@
               <span style="color:rgba(255,255,255,0.85);font-size:14px;font-weight:500">Commercial oral prep &amp; checkride readiness</span>
             </div>
           </div>
+        </div>
+
+        <!-- THE SYLLABUS -->
+        <div class="cpt-section-block" style="margin-bottom:64px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">How Training Is Structured</div>
+          <h2 style="color:var(--white);font-size:28px;font-weight:800;margin:0 0 16px">Every lesson has a plan.</h2>
+          <p style="color:rgba(255,255,255,0.65);line-height:1.85;margin-bottom:32px;max-width:720px">Apex trains commercial candidates against a written, stage-by-stage syllabus — not a loose set of flights booked one at a time. Each lesson has a clear objective and a completion standard your instructor checks before moving you forward, so nothing gets skipped and you always know what's next. This program assumes relevant prior private/instrument experience and a student-specific experience audit — it is not a zero-to-commercial plan.</p>
+
+          <div class="cpt-syllabus-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px">
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:24px 20px">
+              <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--gold);margin-bottom:10px">Stage 1</div>
+              <h3 style="color:var(--white);font-size:16px;font-weight:700;margin:0 0 10px;line-height:1.3">Commercial Foundations &amp; Precision Aircraft Control</h3>
+              <p style="color:rgba(255,255,255,0.6);font-size:13px;line-height:1.6;margin:0 0 14px">Experience audit and baseline, commercial airwork, steep turns, chandelles, lazy eights and eights on pylons, through your first stage check.</p>
+              <p style="font-size:13px;font-weight:700;color:var(--gold);margin:0">13.0 flight · 11.0 ground hrs</p>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:24px 20px">
+              <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--gold);margin-bottom:10px">Stage 2</div>
+              <h3 style="color:var(--white);font-size:16px;font-weight:700;margin:0 0 10px;line-height:1.3">Commercial Operations &amp; Maneuver Proficiency</h3>
+              <p style="color:rgba(255,255,255,0.6);font-size:13px;line-height:1.6;margin:0 0 14px">Short/soft-field work, power-off 180 accuracy landings, accelerated stalls, and emergency operations, through your second stage check.</p>
+              <p style="font-size:13px;font-weight:700;color:var(--gold);margin:0">13.0 flight · 5.0 ground hrs</p>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:24px 20px">
+              <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--gold);margin-bottom:10px">Stage 3</div>
+              <h3 style="color:var(--white);font-size:16px;font-weight:700;margin:0 0 10px;line-height:1.3">Commercial Experience &amp; Advanced Training</h3>
+              <p style="color:rgba(255,255,255,0.6);font-size:13px;line-height:1.6;margin:0 0 14px">Day/night dual cross-countries, complex/TAA/turbine training, your qualifying 300 NM solo/performing-PIC cross-country, and night VFR, through your third stage check.</p>
+              <p style="font-size:13px;font-weight:700;color:var(--gold);margin:0">31.5 flight · 12.0 ground hrs</p>
+            </div>
+            <div style="background:#162C4F;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:24px 20px">
+              <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--gold);margin-bottom:10px">Stage 4</div>
+              <h3 style="color:var(--white);font-size:16px;font-weight:700;margin:0 0 10px;line-height:1.3">ACS Integration, Remediation &amp; Practical Test</h3>
+              <p style="color:rgba(255,255,255,0.6);font-size:13px;line-height:1.6;margin:0 0 14px">Integrated ACS scenario flying, a mock oral and practical test, targeted correction, and a final eligibility audit before test day.</p>
+              <p style="font-size:13px;font-weight:700;color:var(--gold);margin:0">10.0 flight · 5.5 ground hrs</p>
+            </div>
+          </div>
+
+          <div style="background:rgba(244,180,0,0.06);border:1px solid rgba(244,180,0,0.2);border-radius:12px;padding:20px 24px;margin-bottom:20px;display:flex;gap:24px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+            <div>
+              <p style="font-size:13px;color:rgba(255,255,255,0.6);margin:0 0 4px">Additional course planning budget</p>
+              <p style="font-size:20px;font-weight:800;color:var(--white);margin:0">67.5 flight hrs <span style="color:rgba(255,255,255,0.4);font-weight:600">+</span> 18.0 ground hrs</p>
+            </div>
+            <p style="font-size:13px;color:rgba(255,255,255,0.55);line-height:1.6;margin:0;max-width:360px">A syllabus, not a promise — and not a 250-hour complete-from-zero plan. This is additional planning on top of the private/instrument experience you bring in, not a guaranteed number of flights or a completion-time estimate.</p>
+          </div>
+
+          <p style="color:rgba(255,255,255,0.65);line-height:1.85;margin-bottom:12px">Training against a written syllabus instead of ad-hoc lessons means nothing gets skipped, your progress is actually documented rather than just hours in a logbook, and you're never guessing what comes next — your instructor checks each lesson against a real completion standard before signing off and moving you forward.</p>
+          <p style="font-size:13px;color:rgba(255,255,255,0.45)">This is a 14 CFR Part 61 program — flexible and built around your schedule, not a fixed-length Part 141 course.</p>
         </div>
 
         <!-- APEX ADVANTAGE CALLOUT -->

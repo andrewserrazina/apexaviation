@@ -7,11 +7,11 @@ import { toOne } from '../lib/postgrestEmbed'
 
 // One config per rating this component knows how to render -- each rating's
 // source syllabus has its own stage names and its own FAA experience
-// requirements (§61.109(a) for Private Pilot, §61.65 for Instrument Rating),
-// and only some of those requirement rows can be honestly rolled up from
-// logged flight time; the rest need an instructor to actually look at the
-// source logbook and route, matching the source syllabi's own policy that
-// computed counts never grant eligibility.
+// requirements (§61.109(a) for Private Pilot, §61.65 for Instrument Rating,
+// §61.129(a) for Commercial Pilot), and only some of those requirement rows
+// can be honestly rolled up from logged flight time; the rest need an
+// instructor to actually look at the source logbook and route, matching the
+// source syllabi's own policy that computed counts never grant eligibility.
 export const RATING_CONFIGS = {
   'Private Pilot': {
     stageNames: {
@@ -21,6 +21,7 @@ export const RATING_CONFIGS = {
       4: 'Stage 4 — Practical-Test Readiness',
     },
     notEnrolledLabel: 'Private Pilot syllabus',
+    citation: '§61.109(a)',
     computeFaaActuals(rows) {
       const sum = key => rows.reduce((s, r) => s + Number(r[key] ?? 0), 0)
       return {
@@ -41,6 +42,7 @@ export const RATING_CONFIGS = {
       4: 'Stage 4 — Checkride Readiness',
     },
     notEnrolledLabel: 'Instrument Rating syllabus',
+    citation: '§61.65',
     computeFaaActuals(rows) {
       // Cross-country PIC: only a row that's both XC and PIC counts, so the
       // conservative per-row figure is the smaller of the two on that leg.
@@ -49,6 +51,42 @@ export const RATING_CONFIGS = {
         xc_pic_total: xcPic,
         xc_pic_airplane: xcPic,
         instrument_actual_sim: rows.reduce((s, r) => s + Number(r.actual_instrument ?? 0) + Number(r.simulated_instrument ?? 0), 0),
+      }
+    },
+  },
+  'Commercial Pilot': {
+    stageNames: {
+      1: 'Stage 1 — Commercial Foundations & Precision Aircraft Control',
+      2: 'Stage 2 — Commercial Operations & Maneuver Proficiency',
+      3: 'Stage 3 — Commercial Experience & Advanced Training',
+      4: 'Stage 4 — ACS Integration, Remediation & Practical Test',
+    },
+    notEnrolledLabel: 'Commercial Pilot syllabus',
+    citation: '§61.129(a)',
+    computeFaaActuals(rows) {
+      // Apex's whole fleet is single-engine powered airplanes, so the
+      // "total" and "airplane-only" subsets of a category are the same
+      // logged hours -- same conservative approach the Instrument Rating
+      // config takes with xc_pic_total/xc_pic_airplane above. Every other
+      // §61.129(a) row (towered ops, qualifying routes, the 2-calendar-
+      // month recency window, complex/TAA/turbine training, the 20-hour
+      // §61.127 instructed-task requirement) needs an instructor to
+      // actually verify the route/aircraft/task, so it's left blank here
+      // for instructor review rather than guessed at.
+      const totalFlight = rows.reduce((s, r) => s + Number(r.total_time ?? 0), 0)
+      const totalPic = rows.reduce((s, r) => s + Number(r.pic_time ?? 0), 0)
+      const xcPic = rows.reduce((s, r) => s + Math.min(Number(r.cross_country_time ?? 0), Number(r.pic_time ?? 0)), 0)
+      const instrumentActualSim = rows.reduce((s, r) => s + Number(r.actual_instrument ?? 0) + Number(r.simulated_instrument ?? 0), 0)
+      return {
+        total_flight_hours: totalFlight,
+        powered_aircraft_hours: totalFlight,
+        airplane_flight_hours: totalFlight,
+        total_pic_hours: totalPic,
+        airplane_pic_hours: totalPic,
+        xc_pic_hours: xcPic,
+        airplane_xc_pic_hours: xcPic,
+        instrument_training_view_limiting: instrumentActualSim,
+        se_airplane_instrument_training: instrumentActualSim,
       }
     },
   },
@@ -306,7 +344,7 @@ export default function RatingSyllabus({ studentId, category, canEdit = false })
       ))}
 
       <div className="card" style={{ marginBottom: 20 }}>
-        <p className="card__title">FAA Experience — {category === 'Instrument Rating' ? '§61.65' : '§61.109(a)'}</p>
+        <p className="card__title">FAA Experience — {config.citation}</p>
         <Table>
           <thead><tr><th>Requirement</th><th>Minimum</th><th>Actual</th><th>Remaining</th><th>Verified</th></tr></thead>
           <tbody>
