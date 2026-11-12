@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useSelectedStudent } from '../context/SelectedStudentContext'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
 
@@ -36,7 +37,7 @@ export default function Documents() {
 
   const [docs, setDocs] = useState([])
   const [students, setStudents] = useState([])
-  const [selectedStudent, setSelectedStudent] = useState('')
+  const { selectedStudentId: selectedStudent, setSelectedStudentId: setSelectedStudent } = useSelectedStudent()
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(null) // 'upload'
   const [docType, setDocType] = useState('medical_3')

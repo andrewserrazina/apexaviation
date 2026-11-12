@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useSelectedStudent } from '../context/SelectedStudentContext'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
 
@@ -47,7 +48,7 @@ export default function Logbook() {
   const { profile } = useAuth()
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
-  const [studentId, setStudentId] = useState('')
+  const { selectedStudentId, setSelectedStudentId } = useSelectedStudent()
   const [students, setStudents] = useState([])
   const [instructors, setInstructors] = useState([])
   const [aircraft, setAircraft] = useState([])
@@ -63,7 +64,9 @@ export default function Logbook() {
 
   async function loadStudents() {
     if (isAdmin) {
-      const { data } = await supabase.from('profiles').select('id, full_name').eq('role', 'student').order('full_name')
+      // Logbook entries are a flight-training record -- Apex Advantage
+      // (ground-only) members never fly, so keep them out of this picker.
+      const { data } = await supabase.from('profiles').select('id, full_name').eq('role', 'student').eq('student_type', 'flight_student').order('full_name')
       setStudents(data ?? [])
     } else if (isInstructor) {
       const { data: lessonData } = await supabase.from('lessons').select('student_id, student:profiles!student_id(id, full_name)').eq('instructor_id', profile.id)
@@ -112,21 +115,21 @@ export default function Logbook() {
 
   useEffect(() => {
     if (!profile) return
-    const id = canEdit ? studentId : profile.id
+    const id = canEdit ? selectedStudentId : profile.id
     loadEntries(id)
-  }, [studentId, profile])
+  }, [selectedStudentId, profile])
 
   const totalHours = entries.reduce((sum, e) => sum + (e.duration_hours ?? 0), 0).toFixed(1)
 
   const currentStudentName = canEdit
-    ? students.find(s => s.id === studentId)?.full_name
+    ? students.find(s => s.id === selectedStudentId)?.full_name
     : profile?.full_name
 
   function openCreate() {
     setForm({
       ...BLANK,
       instructor_id: isInstructor ? profile.id : '',
-      student_id: !canEdit ? profile.id : studentId,
+      student_id: !canEdit ? profile.id : selectedStudentId,
       date: new Date().toISOString().slice(0, 10),
     })
     setFormError('')
@@ -193,7 +196,7 @@ export default function Logbook() {
     setSaving(false)
     if (error) { setFormError(error.message); return }
     closeModal()
-    const id = canEdit ? studentId : profile.id
+    const id = canEdit ? selectedStudentId : profile.id
     loadEntries(id)
   }
 
@@ -201,11 +204,11 @@ export default function Logbook() {
     if (!window.confirm('Delete this entry?')) return
     await supabase.from('logbook_entries').delete().eq('id', modal.entry.id)
     closeModal()
-    const id = canEdit ? studentId : profile.id
+    const id = canEdit ? selectedStudentId : profile.id
     loadEntries(id)
   }
 
-  const showTable = !canEdit || studentId
+  const showTable = !canEdit || selectedStudentId
 
   // Resolve aircraft tail from id
   function aircraftLabel(id) {
@@ -226,7 +229,7 @@ export default function Logbook() {
             <button className="btn-primary-sm" onClick={openCreate}>+ Log Flight</button>
           )}
           {canEdit && (
-            <select className="select-input" value={studentId} onChange={e => setStudentId(e.target.value)}>
+            <select className="select-input" value={selectedStudentId} onChange={e => setSelectedStudentId(e.target.value)}>
               <option value="">Select a student</option>
               {students.map(s => <option key={s.id} value={s.id}>{s.full_name}</option>)}
             </select>

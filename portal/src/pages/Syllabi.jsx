@@ -57,7 +57,10 @@ export default function Syllabi() {
 
   useEffect(() => {
     load()
-    supabase.from('profiles').select('id, full_name').eq('role', 'student').order('full_name').then(({ data }) => setStudents(data ?? []))
+    // Flight syllabi only make sense to enroll a flight student in --
+    // Apex Advantage (ground-only) members would otherwise flood this
+    // picker 150-to-1.
+    supabase.from('profiles').select('id, full_name').eq('role', 'student').eq('student_type', 'flight_student').order('full_name').then(({ data }) => setStudents(data ?? []))
     supabase.from('profiles').select('id, full_name').eq('role', 'instructor').order('full_name').then(({ data }) => setInstructors(data ?? []))
   }, [])
 
