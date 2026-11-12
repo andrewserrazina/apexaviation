@@ -282,22 +282,6 @@
     </div>
   </footer>
 
-  <script>
-    const hamburger = document.getElementById('hamburger');
-    const mobileMenu = document.getElementById('mobileMenu');
-    hamburger.addEventListener('click', () => {
-      hamburger.classList.toggle('active');
-      mobileMenu.classList.toggle('active');
-    });
-    const toggle = document.getElementById('trainingDropdown');
-    if (toggle) {
-      const btn = toggle.querySelector('.nav__dropdown-toggle');
-      btn.addEventListener('click', () => {
-        const expanded = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!expanded));
-        toggle.classList.toggle('open');
-      });
-    }
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
