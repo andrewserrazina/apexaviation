@@ -22,7 +22,7 @@ const TYPE_FILTER_OPTIONS = [
 ]
 
 const BLANK_EDIT = { full_name: '', email: '', certificate_status: 'None', medical_expiry: '' }
-const BLANK_CREATE = { full_name: '', email: '', password: '', certificate_status: 'None', medical_expiry: '' }
+const BLANK_CREATE = { full_name: '', email: '', password: '', student_type: 'apex_advantage', certificate_status: 'None', medical_expiry: '' }
 
 // Quotes a field only when it actually needs it (contains a comma, quote,
 // or newline) -- doubling any embedded quote per the CSV spec (RFC 4180),
@@ -207,6 +207,7 @@ export default function Students() {
       await supabase.from('profiles').update({
         full_name: form.full_name,
         role: 'student',
+        student_type: form.student_type,
         certificate_status: form.certificate_status || null,
         medical_expiry: form.medical_expiry || null,
       }).eq('id', data.user.id)
@@ -362,9 +363,17 @@ export default function Students() {
                 <input type="email" value={form.email} onChange={e => field('email', e.target.value)} required placeholder="jane@example.com" />
               </div>
             </div>
-            <div className="form-group">
-              <label>Temporary Password</label>
-              <input type="password" value={form.password} onChange={e => field('password', e.target.value)} required placeholder="Min 6 characters" minLength={6} />
+            <div className="form-row">
+              <div className="form-group">
+                <label>Temporary Password</label>
+                <input type="password" value={form.password} onChange={e => field('password', e.target.value)} required placeholder="Min 6 characters" minLength={6} />
+              </div>
+              <div className="form-group">
+                <label>Student Type</label>
+                <select value={form.student_type} onChange={e => field('student_type', e.target.value)}>
+                  {STUDENT_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
             </div>
             <div className="form-row">
               <div className="form-group">

@@ -151,13 +151,29 @@ export default function Layout({ children }) {
       const combined = []
 
       const [profilesRes, lessonsRes, logbookRes, invoicesRes] = await Promise.all([
-        supabase.from('profiles').select('id, full_name, role').ilike('full_name', `%${query}%`).limit(3),
+        supabase.from('profiles').select('id, full_name, role, student_type').ilike('full_name', `%${query}%`).limit(3),
         supabase.from('lessons').select('id, lesson_type, starts_at').ilike('lesson_type', `%${query}%`).limit(3),
         supabase.from('logbook_entries').select('id, route, date').ilike('route', `%${query}%`).limit(3),
         supabase.from('invoices').select('id, description, status').ilike('description', `%${query}%`).limit(3),
       ])
 
-      for (const p of profilesRes.data ?? []) combined.push({ label: p.full_name, sub: p.role, link: p.role === 'student' ? '/students' : '/instructors' })
+      const isStaff = role === 'admin' || role === 'instructor'
+      for (const p of profilesRes.data ?? []) {
+        if (p.role === 'student' && isStaff) {
+          // Jump straight into whichever page actually has something to show
+          // for this student, with them already selected, instead of
+          // landing on the roster and making the user search again. Only
+          // staff get this -- Training Records/Billing are gated to
+          // admin/instructor, so a student searching another student would
+          // otherwise just bounce off a route they can't access.
+          combined.push({
+            label: p.full_name, sub: p.role, studentId: p.id,
+            link: p.student_type === 'flight_student' ? '/training-records' : '/billing',
+          })
+        } else {
+          combined.push({ label: p.full_name, sub: p.role, link: p.role === 'student' ? '/students' : '/instructors' })
+        }
+      }
       for (const l of lessonsRes.data ?? []) combined.push({ label: l.lesson_type ?? 'Lesson', sub: new Date(l.starts_at).toLocaleDateString(), link: '/schedule' })
       for (const e of logbookRes.data ?? []) combined.push({ label: e.route ?? 'Flight', sub: new Date(e.date).toLocaleDateString(), link: '/logbook' })
       for (const i of invoicesRes.data ?? []) combined.push({ label: i.description, sub: i.status, link: '/billing' })
@@ -166,7 +182,7 @@ export default function Layout({ children }) {
       setSearching(false)
       setSearchOpen(true)
     }, 300)
-  }, [query])
+  }, [query, role])
 
   useEffect(() => {
     function handle(e) { if (searchRef.current && !searchRef.current.contains(e.target)) setSearchOpen(false) }
@@ -225,7 +241,7 @@ export default function Layout({ children }) {
                 <button
                   key={i}
                   className="search-result"
-                  onClick={() => { navigate(r.link); setQuery(''); setSearchOpen(false); closeSidebar() }}
+                  onClick={() => { if (r.studentId) setSelectedStudentId(r.studentId); navigate(r.link); setQuery(''); setSearchOpen(false); closeSidebar() }}
                 >
                   <span className="search-result__label">{r.label}</span>
                   <span className="search-result__sub">{r.sub}</span>
