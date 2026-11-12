@@ -36,7 +36,7 @@
 .section--dark .section__title .accent { color: var(--gold-light); }
 .cta-banner .accent { color: var(--gold-light); }
 
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; overflow-x: hidden; }
 
 body {
   font-family: var(--font);
