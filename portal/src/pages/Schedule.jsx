@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
+import { RATING_CONFIGS } from '../components/RatingSyllabus.jsx'
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
@@ -105,7 +106,7 @@ export default function Schedule() {
 
   useEffect(() => {
     if (!canEdit) return
-    supabase.from('syllabi').select('id, category').eq('type', 'flight').in('category', ['Private Pilot', 'Instrument Rating'])
+    supabase.from('syllabi').select('id, category').eq('type', 'flight').in('category', Object.keys(RATING_CONFIGS))
       .then(async ({ data: syllabi }) => {
         if (!syllabi?.length) return
         const { data } = await supabase.from('syllabus_lessons')
@@ -571,7 +572,7 @@ export default function Schedule() {
                 <label>Syllabus Unit (optional)</label>
                 <select value={form.syllabus_lesson_id} onChange={e => selectSyllabusUnit(e.target.value)}>
                   <option value="">No unit — free-text lesson type above</option>
-                  {['Private Pilot', 'Instrument Rating'].map(category => (
+                  {Object.keys(RATING_CONFIGS).map(category => (
                     [1, 2, 3, 4].map(stage => {
                       const group = syllabusLessons.filter(l => l.category === category && l.stage === stage)
                       if (!group.length) return null
