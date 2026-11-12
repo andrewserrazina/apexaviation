@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useSelectedStudent } from '../context/SelectedStudentContext'
 import { supabase } from '../lib/supabase'
 import ApexLogo from './ApexLogo'
 import NotificationBell from './NotificationBell'
@@ -112,6 +113,14 @@ export default function Layout({ children }) {
   const searchRef = useRef()
   const searchTimer = useRef()
 
+  // Several pages (Training Records, Syllabi-adjacent tools, Billing,
+  // Documents) now share one "currently selected student" instead of each
+  // keeping its own -- without a visible indicator here, it's easy to
+  // forget who you're looking at once you've navigated away from the
+  // dropdown that set it. Only staff roles use that shared context at all.
+  const { selectedStudentId, setSelectedStudentId } = useSelectedStudent()
+  const [viewingName, setViewingName] = useState('')
+
   const role = profile?.role ?? 'student'
   const isFlightStudent = role === 'student' && profile?.student_type === 'flight_student'
   const visibleGroups = navGroups
@@ -164,6 +173,14 @@ export default function Layout({ children }) {
     document.addEventListener('mousedown', handle)
     return () => document.removeEventListener('mousedown', handle)
   }, [])
+
+  useEffect(() => {
+    if (!selectedStudentId) { setViewingName(''); return }
+    let cancelled = false
+    supabase.from('profiles').select('full_name').eq('id', selectedStudentId).maybeSingle()
+      .then(({ data }) => { if (!cancelled) setViewingName(data?.full_name ?? '') })
+    return () => { cancelled = true }
+  }, [selectedStudentId])
 
   return (
     <div className="app-shell">
@@ -222,6 +239,25 @@ export default function Layout({ children }) {
             </div>
           )}
         </div>
+
+        {(role === 'admin' || role === 'instructor') && viewingName && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+            margin: '0 16px 12px', padding: '8px 12px', background: 'rgba(244,180,0,0.08)',
+            border: '1px solid rgba(244,180,0,0.25)', borderRadius: 8,
+          }}>
+            <span style={{ fontSize: 12, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span style={{ color: 'var(--muted)' }}>Viewing: </span>
+              <strong>{viewingName}</strong>
+            </span>
+            <button
+              onClick={() => setSelectedStudentId('')}
+              aria-label="Stop viewing this student"
+              title="Stop viewing this student"
+              style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 14, flexShrink: 0, padding: 0, lineHeight: 1 }}
+            >✕</button>
+          </div>
+        )}
 
         <nav className="sidebar__nav">
           {visibleGroups.map(group => (
