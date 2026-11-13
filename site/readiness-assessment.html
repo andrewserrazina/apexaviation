@@ -182,6 +182,50 @@
     .ra-recommend h3 { font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 12px; }
     .ra-recommend p { font-size: 14px; color: rgba(255,255,255,0.65); line-height: 1.7; margin-bottom: 10px; }
 
+    /* ── Readiness-to-Practice Activation ── */
+    .ra-practice-cta {
+      background: linear-gradient(120deg, rgba(244,180,0,0.14), rgba(11,31,58,0.4));
+      border: 1px solid rgba(244,180,0,0.25); border-radius: 14px; padding: 28px 32px; margin-bottom: 24px; text-align: center;
+    }
+    .ra-practice-cta h3 { font-size: 19px; font-weight: 800; color: #fff; margin-bottom: 8px; }
+    .ra-practice-cta p { font-size: 14px; color: rgba(255,255,255,0.65); line-height: 1.6; margin-bottom: 18px; max-width: 440px; margin-left: auto; margin-right: auto; }
+
+    .ra-practice-overlay {
+      position: fixed; inset: 0; background: rgba(6,13,26,0.92); z-index: 200;
+      display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 40px 16px;
+    }
+    .ra-practice-panel { background: #0B1F3A; border: 1px solid rgba(244,180,0,0.2); border-radius: 16px; padding: 32px; max-width: 560px; width: 100%; position: relative; }
+    .ra-practice-close {
+      position: absolute; top: 16px; right: 16px; background: none; border: none; color: rgba(255,255,255,0.5);
+      cursor: pointer; padding: 6px; line-height: 0;
+    }
+    .ra-practice-close:hover { color: #fff; }
+    .ra-practice-meta { font-size: 12.5px; color: rgba(255,255,255,0.4); margin-bottom: 20px; font-weight: 600; }
+    .ra-practice-option {
+      display: block; width: 100%; text-align: left; background: #0f2545; border: 1.5px solid rgba(255,255,255,0.1);
+      border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; color: #fff; font-family: inherit; font-size: 14.5px;
+      cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    }
+    .ra-practice-option:hover:not(:disabled) { border-color: rgba(244,180,0,0.35); background: #142544; }
+    .ra-practice-option:disabled { cursor: default; opacity: 0.55; }
+    .ra-practice-option--correct { border-color: #4ade80 !important; background: rgba(74,222,128,0.12) !important; opacity: 1 !important; color: #fff !important; }
+    .ra-practice-option--incorrect { border-color: #f87171 !important; background: rgba(248,113,113,0.1) !important; opacity: 1 !important; color: #fff !important; }
+    .ra-practice-feedback { border-radius: 10px; padding: 16px 18px; margin: 14px 0 20px; font-size: 13.5px; line-height: 1.65; color: rgba(255,255,255,0.75); background: rgba(255,255,255,0.04); }
+    .ra-practice-feedback strong { color: #fff; display: block; margin-bottom: 4px; }
+    .ra-practice-summary { text-align: center; }
+    .ra-practice-summary__score { font-size: 40px; font-weight: 800; color: var(--gold); margin-bottom: 8px; }
+    .ra-practice-summary__cats { font-size: 13.5px; color: rgba(255,255,255,0.6); margin-bottom: 22px; }
+    .ra-practice-upgrade {
+      background: rgba(244,180,0,0.08); border: 1px solid rgba(244,180,0,0.25); border-radius: 12px; padding: 20px; margin: 20px 0; text-align: left;
+    }
+    .ra-practice-upgrade h4 { font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 6px; }
+    .ra-practice-upgrade p { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.6; margin-bottom: 14px; }
+    @media (max-width: 640px) {
+      .ra-practice-cta { padding: 22px 20px; }
+      .ra-practice-panel { padding: 24px 20px; }
+      .ra-practice-overlay { padding: 20px 12px; }
+    }
+
     .ra-convert {
       background: linear-gradient(120deg, rgba(244,180,0,0.14), rgba(11,31,58,0.4));
       border: 1px solid rgba(244,180,0,0.25); border-radius: 14px; padding: 32px; margin-bottom: 24px; text-align: center;
@@ -459,6 +503,20 @@
     var timing = '';
     var results = null; // set once computed
     var savedLeadEmail = null; // set once we know who this is (gate submit)
+    // Readiness-to-Practice Activation: the signed-in profile id at the
+    // moment renderFullResults() runs, if any -- set by each of its two
+    // call sites (the immediate-session path in renderTeaser(), and a
+    // successful handleGateLogin()) right before calling it. null for an
+    // anonymous visitor past the gate is never fabricated; it's simply
+    // absent (this page has no global "current member" object the way
+    // portal-stable.js does, so this is the narrowest addition that makes
+    // profile_id available to the new practice-session analytics below).
+    var currentProfileId = null;
+    // Set from renderFullResults(isUnlocked)'s own argument -- needed by
+    // the practice-completion screen (rendered later, from a button click,
+    // long after isUnlocked would otherwise be out of scope) to decide
+    // between a "continue" action and a real upgrade offer.
+    var currentIsUnlocked = false;
 
     var startBtn = document.getElementById('raStartBtn');
     var quizSection = document.getElementById('raQuiz');
@@ -713,6 +771,7 @@
           // with the real profile_id known, and show the full report.
           savedLeadEmail = session.user.email;
           saveLead(session.user.id);
+          currentProfileId = session.user.id;
           if (window.apexTrack) apexTrack('readiness_score_viewed', { score: results.overallScore, readiness_band: results.band, gated: false });
           fetchCheckridePrepUnlocked(session.user.id).then(function (isUnlocked) { renderFullResults(isUnlocked); });
           return;
@@ -792,6 +851,7 @@
         }
         savedLeadEmail = email;
         saveLead(res.data.user.id);
+        currentProfileId = res.data.user.id;
         if (window.apexTrack) apexTrack('readiness_signup_completed', { mode: 'login' });
         // Identity stitching: this session is authenticated as this
         // profile RIGHT NOW, on the same origin as the anon_id that's
@@ -951,6 +1011,18 @@
     function renderFullResults(isUnlocked) {
       quizSection.hidden = true;
       resultsSection.hidden = false;
+      currentIsUnlocked = !!isUnlocked;
+      // Distinct from readiness_score_viewed (fired at this function's two
+      // call sites, above, for the score-reveal moment -- sometimes
+      // pre-auth via the gate). This is the full-breakdown-with-CTA render
+      // itself, which only ever happens here, once, post-auth.
+      if (window.apexTrack) {
+        apexTrack('readiness_results_viewed', {
+          score: results.overallScore, readiness_band: results.band,
+          already_unlocked: currentIsUnlocked,
+          profile_id: currentProfileId || undefined,
+        });
+      }
 
       var catRows = Object.keys(CATEGORIES).map(function (c) {
         var score = results.categoryScores[c];
@@ -999,6 +1071,7 @@
         highlightHtml +
         '<div class="ra-cat-scores">' + catScoresHtml + '</div>' +
         '<div class="ra-recommend"><h3>Where to Focus Next</h3>' + (recommendHtml || '<p>You covered every area solidly -- keep your skills sharp with regular review.</p>') + '<p>' + escapeHtml(timingRecommendation(results.timing, results.overallScore)) + '</p></div>' +
+        '<div class="ra-practice-cta"><h3>Start Your 5-Minute Checkride Practice</h3><p>Practice the topics that need the most attention with a short, personalized session.</p><button type="button" class="btn--cta-primary" id="raPracticeCtaBtn" style="width:auto;padding:14px 28px">Start Practice Session</button></div>' +
         mockOralHtml +
         (window.APEX_MOCK_ORAL_GIVEAWAY_LIVE ? '<div style="text-align:center;margin:16px 0;padding:16px;border:1px solid #F4B400;border-radius:10px"><strong style="color:#F4B400">Mock Oral Giveaway</strong><p style="color:#fff;margin:8px 0">You completed the assessment. Enter for a chance to win a Private Pilot Mock Oral.</p><a href="mock-oral-giveaway?from=assessment&assessment_finished=1" style="color:#F4B400;font-weight:700">Submit giveaway entry →</a></div>' : '') +
         (isUnlocked ?
@@ -1041,6 +1114,17 @@
           if (window.apexTrack) apexTrack('readiness_low_commitment_clicked', { score: results.overallScore, readiness_band: results.band, product: 'study_pack_airspace_mastery', source: 'readiness_assessment' });
         });
       }
+      var practiceCtaBtn = document.getElementById('raPracticeCtaBtn');
+      if (practiceCtaBtn) practiceCtaBtn.addEventListener('click', function () {
+        if (window.apexTrack) {
+          apexTrack('readiness_practice_cta_clicked', {
+            score: results.overallScore, readiness_band: results.band,
+            weakest_category: results.weakest[0] ? results.weakest[0].cat : null,
+            profile_id: currentProfileId || undefined,
+          });
+        }
+        startReadinessPractice();
+      });
       var mockOralCta = document.getElementById('raMockOralCta');
       if (mockOralCta) mockOralCta.addEventListener('click', function () {
         if (window.apexTrack) apexTrack('readiness_mock_oral_clicked', { score: results.overallScore, readiness_band: results.band, checkride_timing: results.timing, weakest_category: results.weakest[0] ? results.weakest[0].cat : null, source: 'readiness_assessment' });
@@ -1049,6 +1133,214 @@
       if (shareBtn) shareBtn.addEventListener('click', function () { handleShare(results); });
 
       window.scrollTo({ top: resultsSection.offsetTop - 20, behavior: 'smooth' });
+    }
+
+    // ── Readiness-to-Practice Activation: first-practice session ──────
+    // Reuses the SAME free, public question bank this page's own
+    // assessment already draws from (checkride_readiness_questions, loaded
+    // into QUESTIONS above) -- never a new question bank, and never the
+    // paywalled DPE_DATA bank that powers the portal's Checkride Prep
+    // practice modes (DPE_DATA is 100% gated server-side, and
+    // portal-stable.js's loadPremiumContent() deliberately gives it no
+    // free per-category access -- see that file's own comment on not
+    // inventing a content association that isn't real). This also
+    // surfaces each question's `explain`/`review` fields for the first
+    // time anywhere on the site; the assessment quiz above loads them
+    // but never renders them.
+    var PRACTICE_SIZE = 5;
+    var practiceQuestions = [];
+    var practiceIndex = 0;
+    var practiceCorrectCount = 0;
+    var practiceWeakTopics = {}; // cat -> true, for any question missed in this practice session
+    var currentPracticeSessionId = null;
+
+    function shuffleArray(arr) {
+      var a = arr.slice();
+      for (var i = a.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+      }
+      return a;
+    }
+
+    // Pure, dependency-free selection logic -- see
+    // test/selectPracticeQuestions.test.js for direct coverage via
+    // source-extraction (this inline <script> isn't import()able under
+    // vitest/Node). Three-tier fallback, each padded up to maxCount from
+    // the next-widest pool (without repeating a question already chosen)
+    // rather than returning a short session when more real questions are
+    // available:
+    //   1. Questions the visitor answered wrong on the assessment, if at
+    //      least 3 exist -- the most relevant possible re-practice set,
+    //      since these are confirmed, not inferred, gaps.
+    //   2. Otherwise, all questions in the visitor's bottom-2 weakest
+    //      categories (results.weakest, from computeResults() above).
+    //   3. Otherwise (e.g. a perfect/near-perfect score, or too little
+    //      category signal), the full active question bank -- "an
+    //      appropriate introductory Private Pilot practice session" per
+    //      spec, never invented content.
+    function selectPracticeQuestions(questions, results, maxCount) {
+      maxCount = maxCount || 5;
+      if (!questions || !questions.length) return [];
+      var wrongSet = {};
+      ((results && results.answerLog) || []).forEach(function (a) { if (a && !a.correct) wrongSet[a.q] = true; });
+      var wrongQuestions = questions.filter(function (q, i) { return wrongSet[i]; });
+
+      var weakCats = ((results && results.weakest) || []).filter(Boolean).map(function (w) { return w.cat; });
+      var weakQuestions = questions.filter(function (q) { return weakCats.indexOf(q.cat) !== -1; });
+
+      var pool = wrongQuestions.length >= 3 ? wrongQuestions : (weakQuestions.length > 0 ? weakQuestions : questions);
+
+      var chosen = shuffleArray(pool).slice(0, maxCount);
+      if (chosen.length < maxCount) {
+        var remainder = shuffleArray(questions.filter(function (q) { return chosen.indexOf(q) === -1; }));
+        chosen = chosen.concat(remainder.slice(0, maxCount - chosen.length));
+      }
+      return chosen;
+    }
+
+    function startReadinessPractice() {
+      practiceQuestions = selectPracticeQuestions(QUESTIONS, results, PRACTICE_SIZE);
+      practiceIndex = 0;
+      practiceCorrectCount = 0;
+      practiceWeakTopics = {};
+      currentPracticeSessionId = 'ps_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+      if (window.apexTrack) {
+        apexTrack('readiness_practice_started', {
+          practice_session_id: currentPracticeSessionId,
+          practice_question_count: practiceQuestions.length,
+          profile_id: currentProfileId || undefined,
+        });
+      }
+      renderPracticeOverlay();
+    }
+
+    function renderPracticeOverlay() {
+      var existing = document.getElementById('raPracticeOverlay');
+      if (existing) existing.remove();
+      var overlay = document.createElement('div');
+      overlay.className = 'ra-practice-overlay';
+      overlay.id = 'raPracticeOverlay';
+      overlay.innerHTML = '<div class="ra-practice-panel" id="raPracticePanel" role="dialog" aria-modal="true" aria-label="Checkride Practice Session"></div>';
+      document.body.appendChild(overlay);
+      renderPracticeStep();
+    }
+
+    function closeReadinessPractice() {
+      var overlay = document.getElementById('raPracticeOverlay');
+      if (overlay) overlay.remove();
+    }
+
+    function renderPracticeStep() {
+      var panel = document.getElementById('raPracticePanel');
+      if (!panel) return;
+
+      if (practiceIndex >= practiceQuestions.length) {
+        renderPracticeCompletion(panel);
+        return;
+      }
+
+      var q = practiceQuestions[practiceIndex];
+      var optionsHtml = q.options.map(function (opt, i) {
+        return '<button type="button" class="ra-practice-option" data-idx="' + i + '">' + escapeHtml(opt) + '</button>';
+      }).join('');
+
+      panel.innerHTML =
+        '<button type="button" class="ra-practice-close" id="raPracticeCloseBtn" aria-label="Close practice session">&times;</button>' +
+        '<div class="ra-practice-meta">Question ' + (practiceIndex + 1) + ' of ' + practiceQuestions.length + ' &middot; ' + escapeHtml(CATEGORIES[q.cat]) + '</div>' +
+        '<div class="ra-step__question" style="margin-bottom:16px">' + escapeHtml(q.q) + '</div>' +
+        '<div id="raPracticeOptions">' + optionsHtml + '</div>' +
+        '<div id="raPracticeFeedbackArea"></div>';
+
+      document.getElementById('raPracticeCloseBtn').addEventListener('click', closeReadinessPractice);
+      panel.querySelectorAll('.ra-practice-option').forEach(function (btn) {
+        btn.addEventListener('click', function () { handlePracticeAnswer(q, parseInt(btn.dataset.idx, 10)); });
+      });
+    }
+
+    function handlePracticeAnswer(q, idx) {
+      var panel = document.getElementById('raPracticePanel');
+      var isCorrect = idx === q.correct;
+      if (isCorrect) { practiceCorrectCount++; } else { practiceWeakTopics[q.cat] = true; }
+
+      panel.querySelectorAll('.ra-practice-option').forEach(function (btn, i) {
+        btn.disabled = true;
+        if (i === q.correct) btn.classList.add('ra-practice-option--correct');
+        else if (i === idx) btn.classList.add('ra-practice-option--incorrect');
+      });
+
+      var feedbackArea = document.getElementById('raPracticeFeedbackArea');
+      feedbackArea.innerHTML =
+        '<div class="ra-practice-feedback">' +
+          '<strong>' + (isCorrect ? 'Correct' : 'Not Quite') + '</strong>' +
+          (q.explain ? escapeHtml(q.explain) : '') +
+          (!isCorrect && q.review ? '<br><br><em>Review: ' + escapeHtml(q.review) + '</em>' : '') +
+        '</div>' +
+        '<button type="button" class="btn--cta-primary" id="raPracticeNextBtn" style="width:100%">' +
+          (practiceIndex + 1 < practiceQuestions.length ? 'Next Question' : 'See My Results') +
+        '</button>';
+      document.getElementById('raPracticeNextBtn').addEventListener('click', function () {
+        practiceIndex++;
+        renderPracticeStep();
+      });
+    }
+
+    function renderPracticeCompletion(panel) {
+      var weakTopicLabels = Object.keys(practiceWeakTopics).map(function (c) { return CATEGORIES[c]; });
+
+      // Never shown to a member who already owns Checkride Prep -- a
+      // continue-learning action, not an upgrade offer, per spec.
+      var upgradeHtml = currentIsUnlocked ?
+        '<div class="ra-practice-upgrade">' +
+          '<h4>Keep Practicing</h4>' +
+          '<p>Continue inside Apex Advantage Checkride Prep -- your full DPE-style question library, Checkride Mode, and weak-area tracking are already unlocked.</p>' +
+          '<a href="portal-login.html?dest=checkride-prep" class="btn--cta-primary" id="raPracticeContinueCta" style="display:block;text-align:center">Continue in Checkride Prep</a>' +
+        '</div>'
+        :
+        '<div class="ra-practice-upgrade">' +
+          '<h4>Keep Building Your Checkride Confidence</h4>' +
+          '<p>Continue with more practice questions, explanations, and targeted review inside Apex Advantage.</p>' +
+          '<a href="portal-login.html?view=signup&amp;dest=checkride-prep&amp;source=readiness_practice" class="btn--cta-primary" id="raPracticeUpgradeCta" style="display:block;text-align:center">Unlock Checkride Prep</a>' +
+        '</div>';
+
+      panel.innerHTML =
+        '<button type="button" class="ra-practice-close" id="raPracticeCloseBtn" aria-label="Close practice session">&times;</button>' +
+        '<div class="ra-practice-summary">' +
+          '<div class="ra-practice-summary__score">' + practiceCorrectCount + ' / ' + practiceQuestions.length + '</div>' +
+          '<p>Nice work -- you completed a focused practice session.' + (weakTopicLabels.length ? ' Keep an eye on: ' + weakTopicLabels.map(escapeHtml).join(', ') + '.' : '') + '</p>' +
+        '</div>' +
+        upgradeHtml;
+
+      document.getElementById('raPracticeCloseBtn').addEventListener('click', closeReadinessPractice);
+
+      if (window.apexTrack) {
+        apexTrack('readiness_practice_results_viewed', {
+          practice_session_id: currentPracticeSessionId,
+          practice_correct_count: practiceCorrectCount,
+          practice_question_count: practiceQuestions.length,
+          profile_id: currentProfileId || undefined,
+        });
+        // Only a real upgrade offer for a non-owner -- an already-unlocked
+        // member's "continue" action above is never reported as one.
+        if (!currentIsUnlocked) {
+          apexTrack('readiness_upgrade_offer_viewed', {
+            practice_session_id: currentPracticeSessionId,
+            source: 'readiness_practice_completion',
+            profile_id: currentProfileId || undefined,
+          });
+        }
+      }
+
+      var upgradeCta = document.getElementById('raPracticeUpgradeCta');
+      if (upgradeCta) upgradeCta.addEventListener('click', function () {
+        if (window.apexTrack) {
+          apexTrack('readiness_upgrade_clicked', {
+            practice_session_id: currentPracticeSessionId,
+            source: 'readiness_practice_completion',
+            profile_id: currentProfileId || undefined,
+          });
+        }
+      });
     }
 
     function handleShare(r) {

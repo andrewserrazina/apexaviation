@@ -142,6 +142,37 @@
     'readiness_assessment_viewed', 'readiness_assessment_started', 'readiness_question_answered',
     'readiness_assessment_completed', 'readiness_score_viewed', 'readiness_signup_started',
     'readiness_signup_completed', 'readiness_checkride_prep_clicked',
+    // Readiness-to-Practice Activation (site/readiness-assessment.html) --
+    // a free, short (~5 question) practice session offered directly from
+    // the assessment results screen, reusing the same free question bank
+    // the assessment itself draws from (never the paywalled DPE_DATA
+    // bank). Each name below is a genuinely new, distinct journey moment,
+    // not a duplicate of an existing one:
+    //   readiness_results_viewed: the full-breakdown-with-CTA render
+    //     itself (renderFullResults()). Distinct from readiness_score_
+    //     viewed above, which fires at the score-REVEAL moment (sometimes
+    //     pre-auth, behind the gate) -- this fires once, post-auth, when
+    //     the full report (and the new practice CTA) actually renders.
+    //   readiness_practice_cta_clicked / readiness_practice_started /
+    //     readiness_practice_completed / readiness_practice_results_
+    //     viewed: the new practice session's own click/start/finish/
+    //     results-shown moments. Deliberately NOT named or merged with
+    //     practice_started/practice_completed below -- those belong to
+    //     the separate, paywalled Checkride Mode / DPE Rapid Fire
+    //     feature (portal-stable.js startPractice()/endPractice()) and
+    //     conflating the two would make that feature's own funnel
+    //     unreadable.
+    //   readiness_upgrade_offer_viewed / readiness_upgrade_clicked: the
+    //     secondary Checkride Prep offer shown on the practice completion
+    //     screen, for a visitor who does not yet own it. Never fired for
+    //     an already-unlocked member, who sees a "continue" action
+    //     instead of an upgrade pitch. checkout_started/purchase_completed
+    //     need no new trigger here -- the click lands on the existing
+    //     portal-login.html upgrade deep link, which already instruments
+    //     checkout downstream.
+    'readiness_results_viewed', 'readiness_practice_cta_clicked', 'readiness_practice_started',
+    'readiness_practice_completed', 'readiness_practice_results_viewed',
+    'readiness_upgrade_offer_viewed', 'readiness_upgrade_clicked',
     // Readiness -> Checkride Prep bridge (site/portal-stable.js,
     // enforceUpgradeDeepLink()/openUnlockModal()): fires only when a
     // member's own readiness_assessment_leads row exists, so the pitch
