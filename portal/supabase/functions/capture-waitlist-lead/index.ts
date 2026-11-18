@@ -43,7 +43,7 @@ function escapeIlike(value: string): string {
 // a future new one not yet added here) simply doesn't count toward
 // either side, rather than throwing -- this never blocks the lead from
 // being captured.
-const IN_PERSON_SERVICES = new Set(['Private Pilot Training', 'Instrument Rating', 'Commercial Pilot', 'IPC / BFR / Currency'])
+const IN_PERSON_SERVICES = new Set(['Private Pilot Training', 'Instrument Rating', 'Commercial Pilot', 'IPC / BFR / Currency', 'Flight Time Building'])
 const VIRTUAL_SERVICES = new Set(['Private Instruction', 'Checkride Prep System', 'Mock Oral Exam'])
 
 function classifyLocationSegment(services: string[]): 'austin_in_person' | 'virtual' | 'both' | null {
