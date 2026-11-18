@@ -2401,3 +2401,19 @@ label.checkbox-item {
 }
 .ft-service-card__title { font-weight: 700; margin: 0 0 8px; font-size: 15px; }
 .ft-service-card__desc { margin: 0; font-size: 14px; opacity: 0.85; }
+
+/* Blog article related-reading navigation — scoped to editorial pages. */
+.article-related {
+  margin: 36px 0 28px;
+  padding: 24px 26px;
+  border: 1px solid #dce3eb;
+  border-left: 4px solid #F4B400;
+  background: #f7f9fc;
+}
+.article-related h2 { color: #0B1F3A; font-size: 1.2rem; line-height: 1.35; margin: 0 0 16px; }
+.article-related ul { list-style: disc; padding-left: 22px; margin: 0; display: grid; gap: 10px; }
+.article-related li { padding-left: 2px; }
+.article-related a { color: #0B1F3A; font-weight: 650; text-underline-offset: 3px; }
+.article-related a:hover { color: #885f00; }
+.article-related a:focus-visible { outline: 3px solid #F4B400; outline-offset: 3px; }
+@media (max-width: 600px) { .article-related { padding: 20px; } }
