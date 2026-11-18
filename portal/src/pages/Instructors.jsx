@@ -7,6 +7,19 @@ import Modal from '../components/Modal'
 const BLANK_CREATE = { full_name: '', email: '', password: '', certificates: '', bio: '' }
 const BLANK_EDIT = { full_name: '', email: '', certificates: '', bio: '' }
 
+// Same shape every supabase.functions.invoke() caller in this codebase
+// uses (e.g. Billing.jsx, GroundSchedule.jsx) -- Edge Functions here
+// return jsonError({ error: '...' }) either in res.data or inside a
+// non-2xx res.error's response body, depending on which layer caught it.
+function extractInvokeError(res) {
+  if (res.data && res.data.error) return Promise.resolve(res.data.error)
+  const fallback = (res.error && res.error.message) || 'Could not create the instructor account. Please try again.'
+  if (res.error && res.error.context && typeof res.error.context.json === 'function') {
+    return res.error.context.json().then(body => (body && body.error) || fallback).catch(() => fallback)
+  }
+  return Promise.resolve(fallback)
+}
+
 export default function Instructors() {
   const { profile } = useAuth()
   const isAdmin = profile?.role === 'admin'
@@ -70,23 +83,28 @@ export default function Instructors() {
     e.preventDefault()
     setSaving(true)
     setFormError('')
-    const { data: { session: adminSession } } = await supabase.auth.getSession()
-    const { data, error } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: { data: { full_name: form.full_name } },
-    })
-    if (adminSession) await supabase.auth.setSession({ access_token: adminSession.access_token, refresh_token: adminSession.refresh_token })
-    if (error) { setSaving(false); setFormError(error.message); return }
-    if (data.user) {
-      await supabase.from('profiles').update({
+    // Routed through create-instructor-account (service role key,
+    // server-side) rather than calling supabase.auth.signUp() directly
+    // from this admin session -- signUp() can swap the browser's active
+    // session over to the brand-new user before it's promoted to
+    // instructor, which silently fails any follow-up admin-only write
+    // under RLS with no error the caller ever sees. That was the root
+    // cause of instructors never appearing after a successful-looking
+    // save.
+    const res = await supabase.functions.invoke('create-instructor-account', {
+      body: {
         full_name: form.full_name,
-        role: 'instructor',
-        certificates: form.certificates || null,
-        bio: form.bio || null,
-      }).eq('id', data.user.id)
-    }
+        email: form.email,
+        password: form.password,
+        certificates: form.certificates,
+        bio: form.bio,
+      },
+    })
     setSaving(false)
+    if (res.error || res.data?.error) {
+      setFormError(await extractInvokeError(res))
+      return
+    }
     closeModal()
     load()
   }
