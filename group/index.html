@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Apex Aviation Training Group | Corporate Overview</title>
-  <meta name="description" content="Apex Aviation Training Group LLC provides online ground instruction, mock orals, and digital checkride preparation through Apex Advantage, with an Austin-area Part 61 flight school in development. Explore aircraft and operating partnerships." />
-  <meta property="og:title" content="Apex Aviation Training Group | Corporate Overview" />
-  <meta property="og:description" content="Online pilot instruction today. An Austin-area flight school in development. Aircraft leasing and operating partnership opportunities." />
+  <title>Apex Aviation Training Group | Aviation Education &amp; Innovation</title>
+  <meta name="description" content="Meet the team behind Apex Advantage, Apex Explains, and Apex Systems. Explore aviation education available today and planned Austin-area flight training." />
+  <meta property="og:title" content="Apex Aviation Training Group | Aviation Education &amp; Innovation" />
+  <meta property="og:description" content="Explore Apex Advantage pilot education, original Apex Explains animations, Apex Systems technology in development, and planned Texas flight training." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://apexaviationgroup.com/" />
   <meta property="og:site_name" content="Apex Aviation Training Group" />
@@ -242,6 +242,28 @@
     .footer__links a { color: rgba(255,255,255,0.5); text-decoration: none; }
     .footer__links a:hover { color: var(--gold); }
     .footer__legal { width: 100%; font-size: 12px; color: rgba(255,255,255,0.3); margin-top: 20px; line-height: 1.7; max-width: 900px; }
+    /* ─── V2: refined hero, product system, accessible mobile rhythm ─── */
+    .hero__gold { color: var(--gold); }
+    .hero__actions { display: flex; flex-wrap: wrap; gap: 14px; margin: 0 0 36px; }
+    .btn-secondary { display:inline-flex; align-items:center; justify-content:center; padding:15px 28px; border:1px solid rgba(255,255,255,.5); color:#fff; font-size:14px; font-weight:700; text-decoration:none; }
+    .btn-secondary:hover { border-color:var(--gold); color:var(--gold); }
+    .ecosystem-section { background: #fff; }
+    .ecosystem-grid { display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:18px; max-width:1050px; margin:auto; }
+    .ecosystem-card { display:flex; flex-direction:column; min-width:0; border:1px solid var(--border); border-top:3px solid var(--navy); background:#fbfcfe; padding:30px; min-height:265px; transition:transform .2s ease,border-color .2s ease; }
+    .ecosystem-card:hover { transform:translateY(-3px); border-color:rgba(11,31,58,.3); }
+    .ecosystem-card__top { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:28px; }
+    .ecosystem-card__index { font-size:10px; letter-spacing:.1em; font-weight:800; color:var(--gray); }
+    .ecosystem-status { font-size:11px; font-weight:800; background:#e9f2e9; color:#255b35; padding:5px 9px; }
+    .ecosystem-status--future { background:#e8edf5; color:#35465b; }
+    .ecosystem-card h3 { font-size:clamp(1.4rem,2.5vw,1.8rem); line-height:1.25; margin-bottom:12px; }
+    .ecosystem-card h3 em { color:#9b6b00; font-family:'Playfair Display',Georgia,serif; font-weight:400; }
+    .ecosystem-card p { color:var(--gray); font-size:14px; line-height:1.8; margin-bottom:24px; }
+    .ecosystem-card__link,.ecosystem-card__note { margin-top:auto; font-size:13px; font-weight:800; color:var(--navy); }
+    .ecosystem-card__link { text-decoration:underline; text-decoration-color:var(--gold); text-underline-offset:5px; }
+    .ecosystem-card__note { color:var(--gray); }
+    @media(max-width:820px) { .ecosystem-grid { grid-template-columns:1fr; } .ecosystem-card { min-height:0; } }
+    @media(max-width:600px) { .container{padding:0 20px;} .section{padding:64px 0;} .hero{padding:72px 0 65px;} .hero p.lede{font-size:16px;} .hero__actions{flex-direction:column;align-items:stretch;} .hero__actions a {width:100%;} .nav__links{gap:10px 16px;} .nav__inner{padding:16px 20px;} .ecosystem-card{padding:24px;} .stat-card{padding:22px 12px;} .contact-box{padding:30px 20px;} }
+    @media(prefers-reduced-motion: reduce){ .ecosystem-card{transition:none;} html{scroll-behavior:auto;} }
   </style>
 </head>
 <body>
@@ -253,14 +275,12 @@
         <span>Apex Aviation Training Group</span>
       </a>
       <nav class="nav__links">
-        <a href="#overview">Overview</a>
-        <a href="#pricing">Pricing</a>
-        <a href="#traction">Traction</a>
-        <a href="#timeline">Development</a>
-        <a href="#aircraft">Aircraft Partners</a>
-        <a href="#market">Market</a>
-        <a href="#leadership">Leadership</a>
-        <a href="#testimonials">Testimonials</a>
+        <a href="#ecosystem">Our Ecosystem</a>
+        <a href="#services">Available Now</a>
+        <a href="#traction">Our Impact</a>
+        <a href="#timeline">Our Roadmap</a>
+        <a href="#aircraft">Partnerships</a>
+        <a href="#leadership">About</a>
         <a href="#contact" class="nav__cta">Contact</a>
       </nav>
     </div>
@@ -271,9 +291,10 @@
     <div class="hero__bg" aria-hidden="true"></div>
     <div class="container">
       <div class="hero__inner">
-        <div class="eyebrow">Corporate Overview</div>
-        <h1>Apex Aviation Training Group LLC</h1>
-        <p class="lede">We provide individual online ground instruction, mock orals, and digital checkride preparation through Apex Advantage. Our next step is an Austin-area Part 61 flight school, supported by aircraft and operating partnerships.</p>
+        <div class="eyebrow">Apex Aviation Training Group LLC</div>
+        <h1>Modern Aviation Education.<br /><span class="accent hero__gold">Built Beyond the Checkride.</span></h1>
+        <p class="lede">We connect personalized pilot instruction, digital checkride preparation, and original aviation learning technology—while developing the next generation of flight training in Central Texas.</p>
+        <div class="hero__actions"><a class="btn-primary" href="https://apexaviationtx.com/apex-advantage">Explore Apex Advantage</a><a class="btn-secondary" href="#ecosystem">Discover Our Ecosystem</a></div>
 
         <div class="hero__facts">
           <div>
@@ -285,8 +306,8 @@
             <div class="hero__fact-value">Online instruction &amp; digital prep</div>
           </div>
           <div>
-            <div class="hero__fact-label">Next Milestone</div>
-            <div class="hero__fact-value">Austin-area flight school in development</div>
+            <div class="hero__fact-label">Texas Expansion</div>
+            <div class="hero__fact-value">Targeting March 2027 · approvals pending</div>
           </div>
         </div>
       </div>
@@ -302,7 +323,7 @@
           <h2 style="font-size:clamp(1.5rem,2.8vw,2rem);font-weight:800;margin-bottom:20px;line-height:1.3">Modern aviation education, built beyond the minimum standard.</h2>
           <p>Apex Aviation Training Group LLC is the company behind Apex Advantage, a training platform for private, instrument, and commercial pilot candidates. The mission is straightforward: provide professional, checkride-focused aviation education that goes beyond minimum FAA standards and prepares students to become safer, more competent pilots.</p>
           <p>Today, Apex serves pilots through individual online ground sessions, mock oral exams, and self-paced digital preparation. Training is tailored to each pilot's knowledge gaps and goals, with an emphasis on practical scenarios and sound decision-making.</p>
-          <p>Led by a Commercial Pilot and CFI/CFII, Apex is developing a Part 61 flight school in the Austin area. Aircraft, airport arrangements, and financing are being evaluated before an opening date is announced.</p>
+          <p>Led by a Commercial Pilot and CFI/CFII, Apex is developing a Part 61 flight school in Central Texas. Taylor Municipal Airport (T74) is a preferred location under discussion; aircraft, insurance, airport approvals, and operating arrangements remain pending. March 2027 is a target, not a confirmed opening date.</p>
         </div>
         <div>
           <div class="fact-card">
@@ -315,18 +336,55 @@
           </div>
           <div class="fact-card">
             <div class="fact-card__label">Planned Flight-School Market</div>
-            <div class="fact-card__value">Austin area, Texas &mdash; location under evaluation</div>
+            <div class="fact-card__value">Central Texas &mdash; T74 preferred; no airport agreement finalized</div>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ═══ WHAT WE DO ═══ -->
-  <section class="section section--light">
+  <!-- ═══ APEX ECOSYSTEM ═══ -->
+  <section class="section ecosystem-section" id="ecosystem" aria-labelledby="ecosystem-heading">
     <div class="container">
       <div class="section-header">
-        <div class="eyebrow">What We Do</div>
+        <div class="eyebrow">One Mission · Four Connected Initiatives</div>
+        <h2 id="ecosystem-heading">An education ecosystem built for every stage of the journey.</h2>
+        <p>Learn with the tools available today, and explore what we're building for the next generation of pilots.</p>
+      </div>
+      <div class="ecosystem-grid">
+        <article class="ecosystem-card">
+          <div class="ecosystem-card__top"><span class="ecosystem-card__index">01 / DIGITAL EDUCATION</span><span class="ecosystem-status">Available now</span></div>
+          <h3>Apex <em>Advantage</em></h3>
+          <p>Digital checkride preparation, DPE-style questions, personalized online ground instruction, and mock oral exams.</p>
+          <a href="https://apexaviationtx.com/apex-advantage" class="ecosystem-card__link">Explore Apex Advantage <span aria-hidden="true">↗</span></a>
+        </article>
+        <article class="ecosystem-card">
+          <div class="ecosystem-card__top"><span class="ecosystem-card__index">02 / AVIATION MEDIA</span><span class="ecosystem-status ecosystem-status--future">In production</span></div>
+          <h3>Apex <em>Explains</em></h3>
+          <p>Original animated lessons that make challenging aerodynamics and aircraft concepts easier to understand. New educational content is in production.</p>
+          <span class="ecosystem-card__note">Content series in development</span>
+        </article>
+        <article class="ecosystem-card">
+          <div class="ecosystem-card__top"><span class="ecosystem-card__index">03 / INTERACTIVE LEARNING</span><span class="ecosystem-status ecosystem-status--future">In development</span></div>
+          <h3>Apex <em>Systems</em></h3>
+          <p>Interactive educational aircraft models and visual systems demonstrations. Our PA-28-140 prototype and local browser explorer are under development.</p>
+          <span class="ecosystem-card__note">Not yet available to students</span>
+        </article>
+        <article class="ecosystem-card">
+          <div class="ecosystem-card__top"><span class="ecosystem-card__index">04 / FLIGHT TRAINING</span><span class="ecosystem-status ecosystem-status--future">Planned expansion</span></div>
+          <h3>Apex <em>Aviation</em></h3>
+          <p>Working toward a Central Texas Part 61 flight school with an initial PA-28. Taylor (T74) is a preferred airport; March 2027 remains a conditional target.</p>
+          <a href="https://apexaviationtx.com" class="ecosystem-card__link">Explore planned training <span aria-hidden="true">↗</span></a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ WHAT WE DO ═══ -->
+  <section class="section section--light" id="services">
+    <div class="container">
+      <div class="section-header">
+        <div class="eyebrow">Available Today</div>
         <h2>Personal instruction. Practical preparation.</h2>
         <p>Our current services combine direct instructor support with independent study for private, instrument, and commercial pilot candidates.</p>
       </div>
@@ -356,7 +414,7 @@
       <div class="section-header">
         <div class="eyebrow">Business Model &amp; Pricing</div>
         <h2>How Apex Advantage makes money today.</h2>
-        <p>Three live, direct-to-consumer products, each sold individually &mdash; no subscription required to access the free member portal.</p>
+        <p>Instructor-led options and digital preparation offered separately, with free member-portal access. Rates shown reflect the currently published offers.</p>
       </div>
       <div class="price-grid">
         <div class="price-card">
@@ -387,27 +445,27 @@
       <div class="section-header">
         <div class="eyebrow">Traction</div>
         <h2>Real usage, not projections.</h2>
-        <p>Live platform metrics as of November 2026, since the member portal launched in June 2026.</p>
+        <p>Snapshot of Apex Advantage database records as of November 18, 2026. Counts measure platform use and content, not checkride outcomes.</p>
       </div>
       <div class="stat-grid">
         <div class="stat-card">
-          <div class="stat-card__value">300+</div>
-          <div class="stat-card__label">Registered members</div>
+          <div class="stat-card__value">307</div>
+          <div class="stat-card__label">Registered portal profiles</div>
         </div>
         <div class="stat-card">
           <div class="stat-card__value">464</div>
-          <div class="stat-card__label">Question DPE-style Checkride Prep bank</div>
+          <div class="stat-card__label">DPE-style question records</div>
         </div>
         <div class="stat-card">
-          <div class="stat-card__value">194</div>
-          <div class="stat-card__label">Free Readiness Assessments completed</div>
+          <div class="stat-card__value">195</div>
+          <div class="stat-card__label">Readiness assessment records</div>
         </div>
         <div class="stat-card">
-          <div class="stat-card__value">150+</div>
-          <div class="stat-card__label">Members actively studying in the portal</div>
+          <div class="stat-card__value">23</div>
+          <div class="stat-card__label">Portal purchase records</div>
         </div>
       </div>
-      <p class="stat-footnote">23 paid unlocks of the Checkride Prep System to date, plus a member referral program now live. Early-stage figures &mdash; shared here as real usage data, not a revenue claim.</p>
+      <p class="stat-footnote">Database-record counts, as of November 18, 2026. Purchase records are not independently reconciled completed payments; assessments may include repeat submissions. No revenue or active-user claim is implied.</p>
     </div>
   </section>
 
@@ -433,7 +491,7 @@
           <div>
             <div class="timeline-item__status">In Development</div>
             <h3>Austin-Area Part 61 Flight School</h3>
-            <p>We are pursuing an initial training aircraft and evaluating Austin Executive (KEDC) and Georgetown Municipal (KGTU). Neither airport is a confirmed location. Flight operations will begin only after aircraft, airport arrangements, and financing are in place; an opening date has not been set.</p>
+            <p>We are working toward an initial Piper PA-28 training aircraft, with Taylor Municipal Airport (T74) a preferred location. Airport permissions, insurance, aircraft leasing, and parking remain unresolved. We are targeting March 2027, subject to final operational approvals; no opening date is guaranteed.</p>
           </div>
         </div>
         <div class="timeline-item">
@@ -441,7 +499,7 @@
           <div>
             <div class="timeline-item__status">In Development</div>
             <h3>Simulator-Based Training</h3>
-            <p>Simulator-based instruction remains a planned addition to the training offering. Device selection, facility arrangements, funding, and delivery timing have not been finalized.</p>
+            <p>Simulator-based training and discovery flights are planned concepts, not currently available services. Device selection, approvals, facilities, pricing, and launch timing have not been finalized.</p>
           </div>
         </div>
       </div>
@@ -455,18 +513,18 @@
         <div>
           <div class="eyebrow">Aircraft Partnerships</div>
           <h2 style="font-size:clamp(1.5rem,2.8vw,2rem);font-weight:800;margin-bottom:20px;line-height:1.3">Help bring Apex flight training to the Austin area.</h2>
-          <p>We are seeking dry-lease or leaseback opportunities for an initial IFR-equipped Cessna 172 or Piper Warrior/Archer suitable for private, instrument, and commercial pilot training.</p>
+          <p>We are evaluating a Piper PA-28 as our initial aircraft for private and instrument training, and welcome suitable dry-lease or leaseback proposals. No aircraft is currently represented here as leased or available for training.</p>
           <p>We welcome introductions from individual aircraft owners and leasing companies. Aircraft condition, training suitability, availability, maintenance responsibilities, insurance, and lease economics will be reviewed together before any commitment.</p>
           <a href="mailto:info@apexaviationtx.com?subject=Aircraft%20Partnership%20Inquiry" class="btn-primary">Discuss an Aircraft Partnership</a>
         </div>
         <div>
           <div class="fact-card">
             <div class="fact-card__label">Initial Aircraft Profile</div>
-            <div class="fact-card__value">One IFR-equipped Cessna 172 or Piper Warrior/Archer</div>
+            <div class="fact-card__value">One training-suitable Piper PA-28, subject to lease and operational approval</div>
           </div>
           <div class="fact-card">
             <div class="fact-card__label">Proposed Operating Area</div>
-            <div class="fact-card__value">Austin area &mdash; KEDC and KGTU under consideration</div>
+            <div class="fact-card__value">Central Texas &mdash; Taylor Municipal (T74) preferred; other options under evaluation</div>
           </div>
           <div class="fact-card">
             <div class="fact-card__label">Start the Conversation</div>
@@ -481,7 +539,7 @@
   <section class="section section--light" id="market">
     <div class="container">
       <div class="section-header">
-        <div class="eyebrow">Market</div>
+        <div class="eyebrow">Who We Serve</div>
         <h2>Who Apex Advantage serves.</h2>
         <p>The platform is built to expand from individual pilot training into institutional aviation education partnerships.</p>
       </div>
