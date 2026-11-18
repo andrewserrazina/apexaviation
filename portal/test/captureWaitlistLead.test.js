@@ -72,6 +72,10 @@ describe('classifyLocationSegment() (real shipped source, executed)', () => {
     expect(classifyLocationSegment(['Private Pilot Training'])).toBe('austin_in_person')
     expect(classifyLocationSegment(['Instrument Rating', 'Commercial Pilot'])).toBe('austin_in_person')
     expect(classifyLocationSegment(['IPC / BFR / Currency'])).toBe('austin_in_person')
+    // Added for the flight-time-building-austin.html landing page's new
+    // waitlist checkbox (site/index.html's #waitlistForm) -- same
+    // in-person bucket as the other planned Austin-area services.
+    expect(classifyLocationSegment(['Flight Time Building'])).toBe('austin_in_person')
   })
 
   it('classifies virtual-only selections as virtual', () => {
@@ -82,6 +86,7 @@ describe('classifyLocationSegment() (real shipped source, executed)', () => {
   it('classifies a mix of both kinds as both', () => {
     expect(classifyLocationSegment(['Private Pilot Training', 'Checkride Prep System'])).toBe('both')
     expect(classifyLocationSegment(['IPC / BFR / Currency', 'Private Instruction', 'Commercial Pilot'])).toBe('both')
+    expect(classifyLocationSegment(['Flight Time Building', 'Mock Oral Exam'])).toBe('both')
   })
 
   it('returns null for no services, or services matching neither known set', () => {
