@@ -540,9 +540,9 @@
 
     document.querySelectorAll('[data-apx-cta]').forEach(function (el) {
       el.addEventListener('click', function () {
+        // apexTrack already dispatches to GA4. Only use direct gtag as a fallback.
         if (window.apexTrack) apexTrack('private_instruction_cta_click', { location: el.dataset.apxCtaLocation || 'unknown' });
-        if (!window.gtag) return;
-        gtag('event', 'private_instruction_cta_click', { location: el.dataset.apxCtaLocation || 'unknown' });
+        else if (window.gtag) gtag('event', 'private_instruction_cta_click', { location: el.dataset.apxCtaLocation || 'unknown' });
       });
     });
 
@@ -783,7 +783,7 @@
       grid.querySelectorAll('[data-apx-cta]').forEach(function (el) {
         el.addEventListener('click', function () {
           if (window.apexTrack) apexTrack('private_instruction_cta_click', { location: el.dataset.apxCtaLocation || 'unknown' });
-          if (window.gtag) gtag('event', 'private_instruction_cta_click', { location: el.dataset.apxCtaLocation || 'unknown' });
+          else if (window.gtag) gtag('event', 'private_instruction_cta_click', { location: el.dataset.apxCtaLocation || 'unknown' });
         });
       });
 
