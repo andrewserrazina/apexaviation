@@ -45,7 +45,7 @@ async function submitToFormspree(form, successEl, onSuccess) {
       successEl.classList.add('visible');
       if (typeof onSuccess === 'function') onSuccess();
       // Track successful submissions, never just clicks or invalid forms.
-      if ((form.id === 'waitlistForm' || form.id === 'huttoTaylorForm') && typeof window.gtag === 'function') {
+      if ((form.id === 'waitlistForm' || form.id === 'taylorForm') && typeof window.gtag === 'function') {
         window.gtag('event', 'flight_training_interest_submitted', {
           form_id: form.id,
           page_path: window.location.pathname
