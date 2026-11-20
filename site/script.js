@@ -155,6 +155,8 @@ if (waitlistForm) {
     }
 
     submitToFormspree(waitlistForm, waitlistSuccess, () => {
+      if (window.apexTrack) window.apexTrack('landing_page_lead_submitted', { landing_page: 'home' });
+      else if (window.gtag) window.gtag('event', 'landing_page_lead_submitted', { landing_page: 'home' });
       captureWaitlistLead(waitlistForm);
     });
   });
