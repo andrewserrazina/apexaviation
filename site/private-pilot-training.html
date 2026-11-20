@@ -443,5 +443,11 @@
   </footer>
 
   <script src="script.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="portal-supabase.js"></script>
+  <script src="analytics-events.js"></script>
+  <script>
+    if (window.apexTrack) apexTrack('landing_page_viewed', { landing_page: 'private_pilot_training' });
+  </script>
 </body>
 </html>
