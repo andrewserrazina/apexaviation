@@ -94,11 +94,12 @@
   </script>
 </head>
 <body>
+  <a href="#main-content" class="skip-link">Skip to content</a>
 
   <header class="nav" id="nav">
     <div class="container nav__inner">
       <a href="/" class="nav__logo">
-        <img src="apexwhite.png" alt="Apex Aviation" height="40" style="display:block;width:auto" />
+        <img src="apex-logo-nav.png" alt="Apex Aviation" width="60" height="40" style="display:block;width:auto" />
       </a>
       <nav class="nav__links">
         <a href="programs">Services</a>
@@ -123,7 +124,7 @@
         <a href="portal-login.html" class="btn btn--nav-ghost">Login</a>
         <a href="contact" class="btn btn--nav">Book a Session</a>
       </nav>
-      <button class="nav__hamburger" id="hamburger" aria-label="Toggle menu">
+      <button class="nav__hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false" aria-controls="mobileMenu">
         <span></span><span></span><span></span>
       </button>
     </div>
@@ -142,6 +143,7 @@
     </div>
   </header>
 
+  <main id="main-content">
   <section class="page-hero">
     <div class="page-hero__bg-text">TAYLOR</div>
     <div class="container page-hero__inner">
@@ -393,12 +395,13 @@
       </div>
     </div>
   </section>
+  </main>
 
   <footer class="footer">
     <div class="container footer__inner">
       <div class="footer__brand">
         <a href="/" class="nav__logo">
-        <img src="apexwhite.png" alt="Apex Aviation" height="40" style="display:block;width:auto" />
+        <img src="apex-logo-nav.png" alt="Apex Aviation" width="60" height="40" style="display:block;width:auto" />
         </a>
         <p>Train Beyond the Checkride. Real aircraft training planned for Taylor Municipal Airport (T74) — targeting March 2027.</p>
         <div class="footer__social">

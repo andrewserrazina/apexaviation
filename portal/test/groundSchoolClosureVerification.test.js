@@ -304,7 +304,12 @@ describe('Mock Oral: both active price tiers are real, distinct, and server-pric
   })
 
   it('pricing.html lists both the base and recheck prices for Mock Oral', () => {
-    const idx = pricingSource.indexOf('Private Pilot Mock Oral')
+    // lastIndexOf, not indexOf -- 'Private Pilot Mock Oral' also appears once
+    // earlier in this file's FAQPage JSON-LD (an offer name, no recheck price
+    // listed there by design), so indexOf landed on that block instead of the
+    // visible pricing card and made this assertion depend on scan order
+    // rather than on the actual rendered card.
+    const idx = pricingSource.lastIndexOf('Private Pilot Mock Oral')
     expect(idx).toBeGreaterThan(-1)
     const card = pricingSource.slice(idx, idx + 1000)
     expect(card).toMatch(/\$129/)
