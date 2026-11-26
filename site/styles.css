@@ -311,11 +311,15 @@ a { text-decoration: none; color: inherit; }
 .nav__hamburger {
   display: none;
   flex-direction: column;
+  justify-content: center;
+  align-items: center;
   gap: 5px;
   background: none;
   border: none;
   cursor: pointer;
   padding: 4px;
+  min-width: 44px;
+  min-height: 44px;
 }
 .nav__hamburger span {
   display: block;
@@ -907,4 +911,13 @@ a { text-decoration: none; color: inherit; }
   .programs__grid { grid-template-columns: 1fr; }
   .fleet__grid { grid-template-columns: 1fr; }
   .testimonials__grid { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
