@@ -92,7 +92,7 @@
     }
     .mo-hero-sub {
       font-size: clamp(20px, 2.6vw, 28px); font-weight: 700; color: var(--gold);
-      margin: 10px 0 18px; font-family: Georgia, serif; font-style: italic;
+      margin: 10px 0 18px; font-family: 'Playfair Display', Georgia, serif; font-style: italic;
     }
     .mo-trust-line {
       display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 22px;
@@ -262,6 +262,8 @@
   </style>
 </head>
 <body>
+  <a href="#main-content" class="skip-link">Skip to content</a>
+
   <header class="nav" id="nav">
     <div class="container nav__inner">
       <a href="/" class="nav__logo">
@@ -280,6 +282,8 @@
       <a href="portal-login.html">Already registered? Log in</a>
     </div>
   </header>
+
+  <main id="main-content">
 
   <!-- ═══════════════════════════════════════════════════════════
        HERO
@@ -490,6 +494,8 @@
     </div>
   </section>
 
+  </main>
+
   <footer class="footer">
     <div class="container footer__inner">
       <div class="footer__brand">
@@ -540,9 +546,9 @@
 
     document.querySelectorAll('[data-apx-cta]').forEach(function (el) {
       el.addEventListener('click', function () {
+        // apexTrack already dispatches to GA4. Only use direct gtag as a fallback.
         if (window.apexTrack) apexTrack('private_instruction_cta_click', { location: el.dataset.apxCtaLocation || 'unknown' });
-        if (!window.gtag) return;
-        gtag('event', 'private_instruction_cta_click', { location: el.dataset.apxCtaLocation || 'unknown' });
+        else if (window.gtag) gtag('event', 'private_instruction_cta_click', { location: el.dataset.apxCtaLocation || 'unknown' });
       });
     });
 
@@ -783,7 +789,7 @@
       grid.querySelectorAll('[data-apx-cta]').forEach(function (el) {
         el.addEventListener('click', function () {
           if (window.apexTrack) apexTrack('private_instruction_cta_click', { location: el.dataset.apxCtaLocation || 'unknown' });
-          if (window.gtag) gtag('event', 'private_instruction_cta_click', { location: el.dataset.apxCtaLocation || 'unknown' });
+          else if (window.gtag) gtag('event', 'private_instruction_cta_click', { location: el.dataset.apxCtaLocation || 'unknown' });
         });
       });
 

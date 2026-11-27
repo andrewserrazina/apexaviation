@@ -60,6 +60,23 @@
     gtag('js', new Date());
     gtag('config', 'G-JFPBCF2GXE');
   </script>
+  <!-- Meta Pixel Code -->
+  <script>
+  !function(f,b,e,v,n,t,s)
+  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+  n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];
+  s.parentNode.insertBefore(t,s)}(window, document,'script',
+  'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '1049117198055794');
+  fbq('track', 'PageView');
+  </script>
+  <noscript><img height="1" width="1" style="display:none"
+  src="https://www.facebook.com/tr?id=1049117198055794&ev=PageView&noscript=1"
+  /></noscript>
+  <!-- End Meta Pixel Code -->
   <style>
     /* ── Page-specific additions, scoped with mo- prefix ── */
     .mo-hero-badge {
@@ -70,7 +87,7 @@
     }
     .mo-hero-sub {
       font-size: clamp(20px, 2.6vw, 28px); font-weight: 700; color: var(--gold);
-      margin: 10px 0 18px; font-family: Georgia, serif; font-style: italic;
+      margin: 10px 0 18px; font-family: 'Playfair Display', Georgia, serif; font-style: italic;
     }
     .mo-trust-line {
       display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 22px;
@@ -290,6 +307,8 @@
   </style>
 </head>
 <body>
+  <a href="#main-content" class="skip-link">Skip to content</a>
+
   <header class="nav" id="nav">
     <div class="container nav__inner">
       <a href="/" class="nav__logo">
@@ -308,6 +327,8 @@
       <a href="portal-login.html">Already registered? Log in</a>
     </div>
   </header>
+
+  <main id="main-content">
 
   <!-- ═══════════════════════════════════════════════════════════
        HERO
@@ -525,6 +546,8 @@
       </div>
     </div>
   </section>
+
+  </main>
 
   <footer class="footer">
     <div class="container footer__inner">
