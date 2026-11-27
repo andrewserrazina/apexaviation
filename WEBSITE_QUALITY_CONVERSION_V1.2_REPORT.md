@@ -10,7 +10,7 @@
 
 This pass covered a full content/visual/accessibility/performance/conversion audit of the public site (93 HTML files) plus the portal's conversion-adjacent paths, followed by implementation of every fix that was both (a) clearly correct and (b) within the brief's blast-radius limits. Nothing was deployed, merged, or published; several substantive items (regulatory wording, color-contrast measurement, the portal.html heading structure) are flagged for owner decision rather than silently changed.
 
-**Implemented this pass (11 items, all passing full verification):**
+**Implemented this pass (12 items, all passing full verification):**
 1. Sitewide `<main>` landmark + skip-link fix — 70 pages (68 from the original sweep + 2 giveaway pages caught during test-writing)
 2. Meta Pixel restored on `apex-advantage-mock-oral.html`
 3. Checkride Prep FAQ accordion `aria-expanded`/`aria-controls` wiring (12 items)
@@ -22,6 +22,7 @@ This pass covered a full content/visual/accessibility/performance/conversion aud
 9. Readiness-article hero image resized (−60%) and reprioritized for LCP
 10. Three `fleet.html` images given explicit width/height to prevent layout shift
 11. **Homepage conversion-hierarchy fix:** removed a fully duplicated "Flight Training" card from the Services section that re-listed the same three certificates the Flight Training Paths grid already covers
+12. **Mock Oral shared images optimized:** `andrew-hero.jpg` (−67%) and `andrew-instructor.jpg` (−56%), used across 30 referencing pages — resize targets deliberately chosen to preserve every page's existing HTML `width`/`height` attributes exactly, so no markup changed anywhere. *(Note: this item was implemented and tested alongside #9 in the original pass but was missed from this executive summary's numbered list until the PR #346 final-integration review caught the gap — see the PR's commit history for when it landed. Content and crop are unchanged; confirmed by direct visual diff against the `main` versions.)*
 
 **Explicitly not implemented (owner review required):** the homepage's instrument-hours regulatory wording (§3 below) — prepared, not published, per the brief's Section 6/14 instructions.
 
@@ -48,7 +49,8 @@ This pass covered a full content/visual/accessibility/performance/conversion aud
 | 13 | Homepage instrument-hours claim | "All 40 required instrument hours flown for real... in actual IMC and VMC conditions" overstates what 14 CFR §61.65 actually requires | **Deferred — owner/instructor review required** | Regulatory citation check (§61.65(d)/(i)/(j); AOPA reporting on the April 2016 final rule, 81 FR 21449) | Suggested wording prepared, not published — see §3 | **Not implemented** | N/A until approved |
 | 14 | ~20 pages | Flagged color-contrast concern from Fork 3's a11y sweep | Deferred — needs a dedicated contrast-ratio measurement pass (WCAG AA/AAA per element), not a blind CSS edit | Fork 3 finding, not independently re-measured this pass | — | **Flagged, not fixed** | N/A |
 | 15 | `portal.html` | 21-heading SPA shell structure flagged by Fork 3 | Deferred — this is a React-rendered app shell; any heading-hierarchy fix belongs in the component code, not static HTML, and needs its own scoped pass | Fork 3 finding | — | **Flagged, not fixed** | N/A |
-| 16 | `apex-advantage-private-instruction.html` | Open PR #340 (GA4 event-dedup fix) touches this same page | Deliberately not duplicated | PR list check | Recommend the owner merge #340 on its own | **Deferred to owner** | N/A |
+| 16 | `apex-advantage-private-instruction.html` | Open PR #340 (GA4 event-dedup fix) touches this same page | Reconciled during PR #346 final-integration prep | PR #340's `get_files` diff fetched and compared byte-for-byte | Applied PR #340's exact fix (`if`→`else if` on both CTA listener paths, same comment) directly in this branch, so the dedup fix lands regardless of merge order | **Fixed (incorporated)** | New Playwright smoke-test assertion confirms both listener paths carry the fix; `git diff` matches PR #340's patch exactly |
+| 19 | `site/assets/images/mock-oral/andrew-hero.jpg`, `andrew-instructor.jpg` | These two shared images were modified in the PR but not called out in this report's original Executive Summary/Issue Register | Reporting gap, caught during PR #346 final-integration review | `git log`/`git diff origin/main` confirms both changes are part of this sprint's own commit, not a stray/unrelated edit; direct visual diff against the `main` versions confirms identical photo content (same crop, same subject, no AI alteration) | Documented properly here as Executive Summary item #12: intentional performance optimization (−67%/−56% file size), resize targets chosen to exactly preserve the aspect ratio of every referencing page's existing `width`/`height` attributes so no markup changed | **Fixed (now properly documented)** | Aspect-ratio regression test (`websiteQualityConversionV12Regression.test.js`), visual diff against `main`, image-integrity Playwright check (0 broken images) |
 | 17 | Blog `h2→h4` heading pattern | Fork 3 initially flagged this as a blog-template bug | **Investigated and downgraded** — this is the universal sitewide footer heading pattern ("Training"/"Company"/"Contact"), present identically on every page type, not something the blog template introduced | Checked `index.html`'s own footer, found the identical pattern | Not worth a sitewide footer-heading-level rewrite for a low-real-impact, debatable WCAG technique (footer is still navigable by landmark role) | **Investigated, not fixed** | N/A |
 | 18 | "Stat-badge" element on city pages | Fork 5 described a distinct widget showing unhedged driving-time figures | **Could not corroborate** — searched Bastrop/Marble Falls/New Braunfels for any such class/pattern; found none. The real, fixable instances were plain body copy (see #7), which were fixed instead | Targeted grep across city pages | Did not fabricate a fix for an unverified claim | **Investigated, not found as described** | N/A |
 
@@ -103,7 +105,7 @@ This reframes the claim as Apex's training philosophy (verifiably true once the 
 - Meta Pixel now initializes identically across all 3 live paid-product pages (Mock Oral, Private Instruction, Checkride Prep) — confirmed via source inspection and the new regression test. **Not independently confirmed:** actual delivery to the Meta Events Manager dashboard — a source-code `fbq()` call proves the client attempted to fire the event, not that Meta received and attributed it. That requires either Events Manager access or a live network capture against the production domain, neither of which this pass had cause to do (no production changes were made).
 - GA4 event definitions were not modified anywhere in this pass.
 - The 14-day baseline event counts referenced in the brief are **event counts, not distinct users or a funnel** — no cohort conversion rate was calculated from them, and no zero-event period was read as proof of a broken tracker, per the brief's explicit instruction.
-- **PR #340** (open, GA4 event-dedup fix on `apex-advantage-private-instruction.html`) was deliberately left untouched to avoid a merge conflict with this sprint's typography fix on the same file. **Recommendation: merge #340 independently of this sprint's work.**
+- **PR #340** (open, GA4 event-dedup fix on `apex-advantage-private-instruction.html`) was initially left untouched in the first review pass to avoid a merge conflict with this sprint's typography fix on the same file. During PR #346's final-integration prep, its exact fix was applied directly in this branch (confirmed byte-for-byte against #340's diff), so the dedup fix is now present regardless of merge order. **Recommendation: once PR #346 merges, close #340 as superseded** — its complete fix is already in `main` via #346.
 
 ## 9. Visual Gallery
 
@@ -127,16 +129,16 @@ Published: **https://claude.ai/artifact/VwSSqnpLQKVdkjJzbPc82A**
 3. **`portal.html` heading structure** — flagged, needs a scoped React-component-level fix, not a static-HTML patch.
 4. **Checkride Prep TBT (~1.4s)** — no safe, confident fix identified this pass; needs dedicated profiling.
 5. **Meta Pixel delivery confirmation** — source code is correct; actual Events Manager delivery is unverified.
-6. **PR #340** — recommend merging independently; not touched here to avoid conflict.
+6. ~~**PR #340**~~ — **Resolved as of PR #346's final-integration pass:** its exact dedup fix is now incorporated directly in this branch (see Issue Register #16). Close #340 as superseded once #346 merges.
 7. **Fresh Lighthouse re-measurement** — the readiness-article LCP improvement is only inferred from the image-size reduction, not re-measured, since nothing is live.
 
 ## 12. Integration Plan
 
-1. Owner/instructor reviews §3's regulatory wording recommendation and approves, edits, or rejects it.
-2. Owner reviews the visual gallery and this issue register, flags anything they want reverted or changed before it goes further.
-3. Once approved: commit the worktree's changes, push to a review branch, open a PR (not done automatically per Section 17).
+1. ~~Owner/instructor reviews §3's regulatory wording recommendation~~ — **done:** owner-approved copy applied (PR #346).
+2. ~~Owner reviews the visual gallery and this issue register~~ — **done:** PR #346 opened, reviewed, and is now in final-integration cleanup.
+3. ~~Once approved: commit, push, open a PR~~ — **done:** PR #346, commit `176334678ff038cb932cac648a452a79d14261d5` (superseded by the final-integration commit once final checks land).
 4. After merge: re-run the post-merge production verification pattern established for PR #345 (deploy confirmation, live smoke tests, fresh Lighthouse, analytics coverage check) — this is the only way to confirm the performance and Meta Pixel items above with real numbers.
-5. Separately: merge PR #340, schedule the color-contrast and portal.html heading follow-ups, and decide on the Checkride Prep TBT investigation.
+5. Close PR #340 as superseded once #346 merges (its fix is already incorporated — see Issue Register #16). Separately schedule the color-contrast and portal.html heading follow-ups, and decide on the Checkride Prep TBT investigation.
 
 ---
 *No commits, pushes, merges, or deploys were made as part of this review package, per the brief's Section 17.*
