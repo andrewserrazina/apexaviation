@@ -7,6 +7,8 @@
 <style>
 :root{font-family:Montserrat,Arial,sans-serif;color:#fff;background:#080f1e;--gold:#f4b400}
 *{box-sizing:border-box}body{margin:0;background:#080f1e;min-height:100vh}
+.skip-link{position:absolute;top:-48px;left:16px;z-index:1000;background:var(--gold);color:#0b1f3a;padding:10px 16px;border-radius:6px;font-weight:700;font-size:14px;transition:top .15s ease}
+.skip-link:focus{top:16px}
 .site-nav{background:#0b1f3a;border-bottom:1px solid rgba(255,255,255,.06)}
 .nav-inner{max-width:1120px;margin:auto;padding:12px 22px;min-height:70px;display:flex;align-items:center;justify-content:space-between;gap:24px}
 .nav-logo img{width:50px;max-height:43px;object-fit:contain}.nav-links{display:flex;flex-wrap:wrap;gap:22px;align-items:center;justify-content:flex-end}
@@ -35,7 +37,9 @@ form[hidden]{display:none!important}
 a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 @media(max-width:780px){.nav-inner{flex-direction:column;gap:9px}.nav-links{gap:11px;justify-content:center}.nav-links a{font-size:11px}.nav-links .nav-outline,.nav-links .nav-cta{padding:8px 11px}.wrap{padding:30px 18px 60px}.panel{padding:26px 22px}}
 </style></head>
-<body><header class="site-nav"><nav class="nav-inner" aria-label="Main navigation"><a class="nav-logo" href="/" aria-label="Apex Aviation home"><img src="apex-logo-nav.png" alt="Apex Aviation" width="60" height="40" style="display:block;width:auto"></a><div class="nav-links"><a href="/programs">Services</a><a href="/apex-advantage-private-pilot.html">Training</a><a href="/about">About</a><a href="/instructors">Team</a><a href="/pricing">Pricing</a><a class="nav-outline" href="/apex-advantage">Apex Advantage</a><a href="/portal-login.html">Login</a><a class="nav-cta" href="/contact">Book a Session</a></div></nav></header><main class="wrap"><a class="back" href="/readiness-assessment">← Back to Readiness Assessment</a><div class="intro">
+<body>
+  <a href="#main-content" class="skip-link">Skip to content</a>
+  <header class="site-nav"><nav class="nav-inner" aria-label="Main navigation"><a class="nav-logo" href="/" aria-label="Apex Aviation home"><img src="apex-logo-nav.png" alt="Apex Aviation" width="60" height="40" style="display:block;width:auto"></a><div class="nav-links"><a href="/programs">Services</a><a href="/apex-advantage-private-pilot.html">Training</a><a href="/about">About</a><a href="/instructors">Team</a><a href="/pricing">Pricing</a><a class="nav-outline" href="/apex-advantage">Apex Advantage</a><a href="/portal-login.html">Login</a><a class="nav-cta" href="/contact">Book a Session</a></div></nav></header><main class="wrap" id="main-content"><a class="back" href="/readiness-assessment">← Back to Readiness Assessment</a><div class="intro">
 <div class="eyebrow">APEX ADVANTAGE • FREE GIVEAWAY</div><h1>Win a Private Pilot Mock Oral</h1>
 <p>Complete our free 20-question Checkride Readiness Assessment, then enter for a chance to win an online one-on-one Private Pilot Mock Oral (up to two hours; $129 value).</p>
 <p class="deadline">Entries close November 10, 2026 at 11:59 PM Eastern.</p>
